@@ -42,6 +42,8 @@ Screws and nuts:
 * [7x M3 Mutter](https://www.amazon.de/gp/product/B01H8XN99A)
 * [5x M2 Mutter](https://www.amazon.de/gp/product/B01H8XN7VK)
 
+You can consider getting slotted-head screws for the M2 ones if you are worried about damaging the tiny Allen screws.
+
 ### Dependencies
 
 * ESP32 device driver
