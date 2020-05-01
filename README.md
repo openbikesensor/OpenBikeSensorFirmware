@@ -30,6 +30,18 @@ or
 
 Li-Ion batteries are usually cheaper and have higher capacity at the same size. Lithiom-Iron batteries are considered quite safe.
 
+Screws and nuts:
+*[1x M5x35](https://www.amazon.de/gp/product/B078TNC9H1)
+*[2x M4x30](https://www.amazon.de/gp/product/B01IMGZTT0)
+*[7x M3x45](https://www.amazon.de/gp/product/B07KTBYPFP)
+*[4x M2x12](https://www.amazon.de/gp/product/B078TQYZVX)
+*[1x M2x10](https://www.amazon.de/gp/product/B01GQX070W)
+
+*[1x M5 Mutter](https://www.amazon.de/gp/product/B07961ZH1B)
+*[2x M4 Mutter](https://www.amazon.de/gp/product/B07961ZH19)
+*[7x M3 Mutter](https://www.amazon.de/gp/product/B01H8XN99A)
+*[5x M2 Mutter](https://www.amazon.de/gp/product/B01H8XN7VK)
+
 ### Dependencies
 
 * ESP32 device driver
