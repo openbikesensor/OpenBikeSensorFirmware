@@ -1,27 +1,28 @@
 /*
-Copyright (C) 2019 Zweirat
-Contact: https://openbikesensor.org
+  Copyright (C) 2019 Zweirat
+  Contact: https://openbikesensor.org
 
-This file is part of the OpenBikeSensor project.
+  This file is part of the OpenBikeSensor project.
 
-The OpenBikeSensor sensor firmware is free software: you can redistribute 
-it and/or modify it under the terms of the GNU General Public License as 
-published by the Free Software Foundation, either version 3 of the License,
-or (at your option) any later version.
+  The OpenBikeSensor sensor firmware is free software: you can redistribute
+  it and/or modify it under the terms of the GNU General Public License as
+  published by the Free Software Foundation, either version 3 of the License,
+  or (at your option) any later version.
 
-The OpenBikeSensor sensor firmware is distributed in the hope that it will
-be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of 
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General 
-Public License for more details.
+  The OpenBikeSensor sensor firmware is distributed in the hope that it will
+  be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
+  Public License for more details.
 
-You should have received a copy of the GNU General Public License along with
-the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
+  You should have received a copy of the GNU General Public License along with
+  the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
 //#include <TM1637Display.h>
 #include "SSD1306.h"
 #include "font.h"
+#include "logo.h"
 
 const int CLK = 33; //Set the CLK pin connection to the display
 const int DIO = 25; //Set the DIO pin connection to the display
@@ -44,8 +45,8 @@ class DisplayDevice
 
 };
 /*
-class TM1637DisplayDevice : public DisplayDevice
-{
+  class TM1637DisplayDevice : public DisplayDevice
+  {
   public:
     TM1637DisplayDevice() : DisplayDevice() {
       m_display = new TM1637Display(CLK, DIO);
@@ -80,7 +81,7 @@ class TM1637DisplayDevice : public DisplayDevice
   private:
     TM1637Display* m_display;
 
-};
+  };
 */
 class SSD1306DisplayDevice : public DisplayDevice
 {
@@ -91,6 +92,8 @@ class SSD1306DisplayDevice : public DisplayDevice
       m_display->init();
       m_display->setBrightness(255);
       m_display->setFont(Dialog_plain_50);
+      m_display->drawXbm(0, 0, OBSLogo_width, OBSLogo_height, OBSLogo);
+
     }
     ~SSD1306DisplayDevice() {
       delete m_display;
