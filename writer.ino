@@ -144,7 +144,7 @@ void FileWriter::setFileName() {
   }
 }
 
-uint16_t FileWriter::getDataLenght() {
+uint16_t FileWriter::getDataLength() {
   return dataString.length();
 }
 
