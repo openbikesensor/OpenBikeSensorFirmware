@@ -35,11 +35,13 @@ class DisplayDevice
     DisplayDevice() {}
     virtual ~DisplayDevice() {}
     virtual void showValue(uint8_t) = 0;
+    virtual void invert() = 0;
 
   protected:
     virtual void init() = 0;
     virtual void clear() = 0;
     virtual void setMaxBrightness() = 0;
+
 
 
 
@@ -110,6 +112,9 @@ class SSD1306DisplayDevice : public DisplayDevice
         m_display->drawString(0, 0, String(value));
       }
       m_display->display();
+    }
+    void invert() {
+      m_display->invertDisplay();
     }
   protected:
     void init()
