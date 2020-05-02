@@ -254,6 +254,8 @@ void loop() {
   currentSet->altitude = gps.altitude;
   currentSet->date = gps.date;
   currentSet->time = gps.time;
+  currentSet->speed = gps.speed;
+  currentSet->course = gps.course;
   sensorManager->reset();
 
   CurrentTime = millis();
