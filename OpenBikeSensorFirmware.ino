@@ -391,6 +391,10 @@ void loop() {
     Serial.printf("Deleting dataset\n");
     delete dataset;
   }
+  
+  if ((writer->getDataLength() > 5000) && !(digitalRead())) {
+    writer->writeDataToSD();
+  }
 
   if (deviceConnected) {
     Serial.printf("*** NOTIFY: %d ***\n", buffer[1] );
