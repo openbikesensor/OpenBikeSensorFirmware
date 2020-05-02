@@ -48,6 +48,7 @@ class FileWriter
     virtual void writeHeader() = 0;
     virtual void writeData(DataSet*) = 0;
     void writeDataToSD();
+    uint16_t getDataLenght();
 
   protected:
     String m_fileExtension;

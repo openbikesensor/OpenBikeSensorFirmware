@@ -144,6 +144,10 @@ void FileWriter::setFileName() {
   }
 }
 
+uint16_t FileWriter::getDataLenght() {
+  return dataString.length();
+}
+
 void FileWriter::writeDataToSD() {
   this->appendFile(SD, m_filename.c_str(), dataString.c_str() );
   dataString = "";
