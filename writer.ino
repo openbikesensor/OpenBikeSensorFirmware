@@ -151,7 +151,7 @@ void FileWriter::writeDataToSD() {
 
 void CSVFileWriter::writeHeader() {
   String headerString;
-  headerString += "Date;Time;Latitude;Longitude";
+  headerString += "Date;Time;Latitude;Longitude;Course;Speed";
   for (size_t idx = 0; idx < sensorManager->m_sensors.size(); ++idx)
   {
     headerString += ";" + sensorManager->m_sensors[idx].sensorLocation;
@@ -177,6 +177,12 @@ void CSVFileWriter::writeData(DataSet* set) {
 
   String longitudeString = String(set->location.lng(), 6);
   dataString = dataString + longitudeString;
+
+  String courseString = String(set->course.deg(), 3);
+  dataString = dataString + courseString;
+
+  String speedString = String(set->speed.kmph(), 4);
+  dataString = dataString + speedString;
 
   for (size_t idx = 0; idx < set->sensorValues.size(); ++idx)
   {
