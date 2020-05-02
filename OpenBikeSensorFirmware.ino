@@ -374,6 +374,7 @@ void loop() {
       Serial.printf("Wrote set to file\n");
       delete dataset;
     }
+    writer->writeDataToSD();
     minDistanceToConfirm = MAX_SENSOR_VALUE;
     transmitConfirmedData = false;
   }
@@ -391,8 +392,8 @@ void loop() {
     Serial.printf("Deleting dataset\n");
     delete dataset;
   }
-  
-  if ((writer->getDataLength() > 5000) && !(digitalRead())) {
+
+  if ((writer->getDataLength() > 5000) && !(digitalRead(PushButton))) {
     writer->writeDataToSD();
   }
 
