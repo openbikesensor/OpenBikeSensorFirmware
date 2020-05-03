@@ -346,6 +346,7 @@ void loop() {
   if (transmitConfirmedData)
   {
     displayTest->invert();
+    m_display->display();
     Serial.printf("Trying to transmit Confirmed data \n");
     buffer[1] = minDistanceToConfirm;
     // make sure the minimum distance is saved only once
@@ -379,6 +380,7 @@ void loop() {
     minDistanceToConfirm = MAX_SENSOR_VALUE;
     transmitConfirmedData = false;
     displayTest->invert();
+    displayTest->display();
   }
   else
   {

@@ -95,7 +95,7 @@ class SSD1306DisplayDevice : public DisplayDevice
       m_display->setBrightness(255);
       m_display->setFont(Dialog_plain_50);
       m_display->drawXbm(0, 0, OBSLogo_width, OBSLogo_height, OBSLogo);
-
+      m_display->display();
     }
     ~SSD1306DisplayDevice() {
       delete m_display;
