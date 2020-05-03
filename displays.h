@@ -115,6 +115,7 @@ class SSD1306DisplayDevice : public DisplayDevice
     }
     void invert() {
       m_display->invertDisplay();
+      m_display->display();
     }
   protected:
     void init()
