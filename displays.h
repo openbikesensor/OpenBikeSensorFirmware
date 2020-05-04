@@ -36,6 +36,8 @@ class DisplayDevice
     virtual ~DisplayDevice() {}
     virtual void showValue(uint8_t) = 0;
     virtual void invert() = 0;
+    virtual void normalDisplay() = 0;
+    virtual void drawString(int16_t, int16_t, String) = 0;
 
   protected:
     virtual void init() = 0;
@@ -116,6 +118,13 @@ class SSD1306DisplayDevice : public DisplayDevice
     void invert() {
       m_display->invertDisplay();
       m_display->display();
+    }
+    void normalDisplay() {
+      m_display->normalDisplay();
+      m_display->display();
+    }
+    void drawString(int16_t x, int16_t y, String text) {
+      
     }
   protected:
     void init()
