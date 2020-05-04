@@ -138,6 +138,7 @@ void setup() {
   //sensorNames.push_back(sensorName1);
   //displayTest = new TM1637DisplayDevice;
   displayTest = new SSD1306DisplayDevice;
+  displayTest->drawString(64, 0, "V2020.5.1");
   //displayTest2 = new SSD1306DisplayDevice;
 
   //enter configuration mode and enable OTA if button is pressed,
@@ -179,11 +180,13 @@ void setup() {
   while (!SD.begin())
   {
     Serial.println("Card Mount Failed");
+    displayTest->drawString(64, 12, "Mounting SD");
     delay(20);
   }
 
   {
     Serial.println("Card Mount Succeeded");
+    displayTest->drawString(64,24, "...success");
 
     // Should load default config if run for the first time
     Serial.println(F("Loading configuration..."));
@@ -216,8 +219,11 @@ void setup() {
     readGPSData();
     delay(1000);
     Serial.println("Waiting for GPS fix... \n");
+    displayTest->drawString(64,36, "Wait for GPS");
+    String satellitesString = String(gps.satellites.value()) + "satellites";
   }
   Serial.println("Got GPS Fix  \n");
+  displayTest->drawString(64,48, "Got GPS Fix");
   //heartRateBLEInit();
   Serial.println("Waiting a client connection to notify...");
 }
