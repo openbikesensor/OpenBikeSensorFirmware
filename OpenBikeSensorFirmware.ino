@@ -378,7 +378,7 @@ void loop() {
     writer->writeDataToSD();
     minDistanceToConfirm = MAX_SENSOR_VALUE;
     transmitConfirmedData = false;
-    displayTest->invert();
+    displayTest->normalDisplay();
   }
   else
   {
