@@ -214,7 +214,7 @@ void setup() {
   // PIN-Modes
   pinMode(PushButton, INPUT);
 
-  //while (gps.satellites.value() < 4)
+  while (gps.satellites.value() < 4)
   {
     readGPSData();
     delay(1000);
