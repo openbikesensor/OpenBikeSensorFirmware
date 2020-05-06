@@ -80,7 +80,8 @@ void saveConfiguration(const char *filename, const Config &config) {
   doc["numSensors"] = config.numSensors;
   for (size_t idx = 0; idx < config.numSensors; ++idx)
   {
-
+    String offsetString = "offsetInfo"+String(idx);
+    doc[offsetString] = config.sensorOffsets[idx];
   }
   doc["hostname"] = config.hostname;
   doc["port"] = config.port;
