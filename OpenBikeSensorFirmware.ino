@@ -136,13 +136,8 @@ String esp_chipid;
 void setup() {
   Serial.begin(115200);
 
-
-  String sensorName1 = "DistanceLeft";
-  //sensorNames.push_back(sensorName1);
-  //displayTest = new TM1637DisplayDevice;
   displayTest = new SSD1306DisplayDevice;
   displayTest->drawString(64, 0, OBSVersion);
-  //displayTest2 = new SSD1306DisplayDevice;
 
   //enter configuration mode and enable OTA if button is pressed,
   buttonState = digitalRead(PushButton);
@@ -162,12 +157,13 @@ void setup() {
   }
 
 
-  //sensor1 = new HCSR04DistanceSensor;
   sensorManager = new HCSR04SensorManager;
+  
   HCSR04SensorInfo sensorManaged1;
   sensorManaged1.sensorLocation = "Lid";
   sensorManaged1.offset = 35;
   sensorManager->registerSensor(sensorManaged1);
+  
   HCSR04SensorInfo sensorManaged2;
   sensorManaged2.offset = 35;
   sensorManaged2.triggerPin = 25;
@@ -215,8 +211,6 @@ void setup() {
 
   // initialize EEPROM with predefined size
   EEPROM.begin(EEPROM_SIZE);
-
-  //sensor1->setOffset(EEPROM.read(0));
 
   // PIN-Modes
   pinMode(PushButton, INPUT);
