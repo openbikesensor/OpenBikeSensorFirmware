@@ -46,25 +46,38 @@ You can consider getting slotted-head screws for the M2 ones if you are worried 
 
 ### Dependencies
 
-* ESP32 device driver
-* Arduino IDE
-* [TM1637 Library](https://github.com/avishorp/TM1637) - installed through Arduino library manager
-* [SSD1306 Library](https://github.com/adafruit/Adafruit_SSD1306) - installed through Arduino library manager
-* [TinyGPSPlus Library](https://github.com/mikalhart/TinyGPSPlus)
+* [Arduino IDE](https://www.arduino.cc/en/main/software)
 
-### Installing
+Board:
 
-* clone or download repository
-* open in Arduino IDE
-* compile and upload to ESP32
+* [ESP32 by Espressif](https://github.com/espressif/arduino-esp32)
+
+Libraries:
+
+* [ArduinoJson by Benoit Blanchon](https://github.com/bblanchon/ArduinoJson)
+* [CircularBuffer by AgileWare](https://github.com/rlogiacco/CircularBuffer)
+* [TinyGPSPlus by Mikal Hart](https://github.com/mikalhart/TinyGPSPlus)
+* [SSD1306 by ThingPulse](https://github.com/ThingPulse/esp8266-oled-ssd1306) 
+
+### Install
+
+* Clone this repository
+* Install board
+* Install dependencies
+* Open `OpenBikeSensorFirmware.ino` in Arduino IDE
+* Compile and upload to ESP32
 * Connect sensor
 
+A detailed description for Ubuntu can be found in the [install/Ubuntu.md](./install/Ubuntu.md).
+
 ### Use
-* power up device
-* push the button each time there is a value shown in the display and you want to confirm it was a vehicle overtaking you
-* power down
+
+* Power up the device
+* Push the button each time there is a value shown in the display and you want to confirm it was a vehicle overtaking you
+* Power down
 
 ### Configuration
+
 Most of the configuration is a stub and needs further development. But uploading new firmware works. You can enter the configuration mode by pushing the button while turning the device on. Then it will open a unique WiFi including the devices Macadress named "OpenBikeSensor-xxxxxxxxxxxx". Initial password is "12345678". The configuration page can be found on "http://openbikesensor.local" or "172.20.0.1". You can directly upload a precompiled binary.
 
 ## Acknowledgments
