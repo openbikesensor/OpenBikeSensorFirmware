@@ -24,17 +24,22 @@
 // only if provided appropriate credit to the author and link to the original article.
 
 void handleForm() {
-  String offsetL = server.arg("offsetL");
-  String offsetR = server.arg("offsetR");
+  String offsetS1 = server.arg("offsetS1");
+  String offsetS2 = server.arg("offsetS2");
   String confirmation = server.arg("confirmation");
   char handleBarString[8];
-  uint8_t handleBarWidth;
-  handleBarWidth = atoi(offsetL.c_str());
-  Serial.print("OffsetL:");
-  Serial.println(handleBarWidth);
+  Vector<uint8_t> offsets;
+  offsets.push_back(atoi(offsetS1.c_str()));
+  offsets.push_back(atoi(offsetS2.c_str()));
 
-  Serial.print("offsetR:");
-  Serial.println(offsetR);
+  
+  Serial.print("Offset Sensor 1:");
+  Serial.println(offsets[0]);
+
+  Serial.print("Offset Sensor 2:");
+  Serial.println(offsets[1]);
+
+  
 
   Serial.print("confirmation:");
   Serial.println(confirmation);

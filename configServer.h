@@ -75,15 +75,15 @@ String navigationIndex =
   "<input type=button onclick=window.open('/reboot') class=btn value=Reboot></form>" + style;
 
 
-/* Config page */
+/* Sensor Config page, note that S1 refers to m_sensors[0] */
 String configIndex =
   "<form name=configForm action=/action_page>"
   "<h1>OpenBikeSensor Config</h1>"
-  "<input name=offsetL placeholder='Offset Left'> "
-  "<input name=offsetR placeholder='Offset Right'> "
-  "<p>Which sensors values should be confirme?.</p>"
-  "<input type=radio id=lid name=confirmation value=lid><label for=lid>Lid</label><br>"
-  "<input type=radio id=case name=confirmation value=case><label for=case>Case</label><br>"
+  "<input name=offsetS1 placeholder='Offset Sensor 1'> "
+  "<input name=offsetS2 placeholder='Offset Sensor 2'> "
+  "<p>Which sensor values should be confirmed?.</p>"
+  "<input type=radio id=sensor1 name=confirmation value=0><label for=lid>Sensor 1</label><br>"
+  "<input type=radio id=sensor2 name=confirmation value=1><label for=case>Sensor 2</label><br>"
   "<input type=submit onclick=window.open('/navigationIndex') class=btn value=Submit>"
   "</form>" + style;
 
