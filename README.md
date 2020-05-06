@@ -4,7 +4,7 @@ Distance Measurement HC-SR04 ultrasonic sensors connected to ESP32
 
 ## Description
 
-Inspired by the Berlin project Radmesser. This version uses a simple bush button to confirm distances measures were actually overtaking vehicles. It has its own GPS and SD card for logging, so it does not require additional hardware like a smartphone.
+Inspired by the Berlin project Radmesser. This version uses a simple push button to confirm distances measures were actually overtaking vehicles. It has its own GPS and SD card for logging, so it does not require additional hardware like a smartphone.
 
 ## Getting Started
 
