@@ -47,6 +47,9 @@
 
 //GPS
 
+//Version
+const char *OBSVersion = "V2020.5.1";
+
 // define the number of bytes to store
 #define EEPROM_SIZE 1
 #define EEPROM_SIZE 128
@@ -138,15 +141,19 @@ void setup() {
   //sensorNames.push_back(sensorName1);
   //displayTest = new TM1637DisplayDevice;
   displayTest = new SSD1306DisplayDevice;
-  displayTest->drawString(64, 0, "V2020.5.1");
+  displayTest->drawString(64, 0, OBSVersion);
   //displayTest2 = new SSD1306DisplayDevice;
 
   //enter configuration mode and enable OTA if button is pressed,
   buttonState = digitalRead(PushButton);
-  if (buttonState == HIGH)
+  //if (buttonState == HIGH)
   {
+    displayTest->clear();
     startServer();
     OtaInit(esp_chipid);
+    displayTest->drawString(0, 0, "OpenBikeSensor");
+    displayTest->drawString(0, 12, OBSVersion);
+
     while (true) {
       server.handleClient();
       delay(1);
@@ -186,7 +193,7 @@ void setup() {
 
   {
     Serial.println("Card Mount Succeeded");
-    displayTest->drawString(64,24, "...success");
+    displayTest->drawString(64, 24, "...success");
 
     // Should load default config if run for the first time
     Serial.println(F("Loading configuration..."));
@@ -219,11 +226,13 @@ void setup() {
     readGPSData();
     delay(1000);
     Serial.println("Waiting for GPS fix... \n");
-    displayTest->drawString(64,36, "Wait for GPS");
+    //ToDo: clear line
+    //displayTest->clearRectangle(64,36,64,12);
+    displayTest->drawString(64, 36, "Wait for GPS");
     String satellitesString = String(gps.satellites.value()) + "satellites";
   }
   Serial.println("Got GPS Fix  \n");
-  displayTest->drawString(64,48, "Got GPS Fix");
+  displayTest->drawString(64, 48, "Got GPS Fix");
   //heartRateBLEInit();
   Serial.println("Waiting a client connection to notify...");
 }

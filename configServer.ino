@@ -27,19 +27,16 @@ void handleForm() {
   String offsetS1 = server.arg("offsetS1");
   String offsetS2 = server.arg("offsetS2");
   String confirmation = server.arg("confirmation");
-  char handleBarString[8];
+
   Vector<uint8_t> offsets;
   offsets.push_back(atoi(offsetS1.c_str()));
   offsets.push_back(atoi(offsetS2.c_str()));
 
-  
   Serial.print("Offset Sensor 1:");
   Serial.println(offsets[0]);
 
   Serial.print("Offset Sensor 2:");
   Serial.println(offsets[1]);
-
-  
 
   Serial.print("confirmation:");
   Serial.println(confirmation);
@@ -47,6 +44,7 @@ void handleForm() {
   String s = "<a href='/'> Go Back </a>";
   server.send(200, "text/html", s); //Send web page
 }
+
 void handleReboot() {
   ESP.restart();
 }
@@ -71,7 +69,8 @@ bool CreateWifiSoftAP(String chipID)
   WiFi.disconnect();
   Serial.print(F("Initalize SoftAP "));
   String APName = "OpenBikeSensor-" + chipID;
-  SoftAccOK  =  WiFi.softAP(APName.c_str(), "12345678"); // Passwortlänge mindestens 8 Zeichen !
+  String APPassword = "12345678";
+  SoftAccOK  =  WiFi.softAP(APName.c_str(), APPassword.c_str()); // Passwortlänge mindestens 8 Zeichen !
   delay(2000); // Without delay I've seen the IP address blank
   /* Soft AP network parameters */
   IPAddress apIP(172, 20, 0, 1);
@@ -83,11 +82,16 @@ bool CreateWifiSoftAP(String chipID)
     //dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
     //dnsServer.start(DNS_PORT, "*", apIP);
     Serial.println(F("successful."));
+    displayTest->drawString(0, 30, APName.c_str());
+    String passwordString = "Password: " + APPassword;
+    displayTest->drawString(0, 40, passwordString.c_str());
+    String connectString = "open page:172.20.0.1";
+    displayTest->drawString(0, 50, connectString.c_str());
   } else
   {
     Serial.println(F("Soft AP Error."));
     Serial.println(APName.c_str());
-    Serial.println("12345678");
+    Serial.println(APPassword.c_str());
   }
   return SoftAccOK;
 }

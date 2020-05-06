@@ -38,10 +38,10 @@ class DisplayDevice
     virtual void invert() = 0;
     virtual void normalDisplay() = 0;
     virtual void drawString(int16_t, int16_t, String) = 0;
+    virtual void clear() = 0;
 
   protected:
     virtual void init() = 0;
-    virtual void clear() = 0;
     virtual void setMaxBrightness() = 0;
 
 
@@ -130,15 +130,15 @@ class SSD1306DisplayDevice : public DisplayDevice
       m_display->drawString(x, y, text);
       m_display->display();
     }
+    void clear() {
+      m_display->clear();
+    }
   protected:
     void init()
     {
       m_display->init();
       m_display->setBrightness(255);
       m_display->setFont(Dialog_plain_50);
-    }
-    void clear() {
-
     }
     void setMaxBrightness() {
 
