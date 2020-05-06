@@ -45,6 +45,8 @@ class HCSR04SensorManager
     void getDistances();
     void reset();
     void registerSensor(HCSR04SensorInfo);
+    void setOffsets(Vector<uint8_t>);
+    void setTimeouts();
 
   protected:
 

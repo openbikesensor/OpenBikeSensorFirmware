@@ -65,6 +65,29 @@ void HCSR04SensorManager::reset() {
   }
 }
 
+void HCSR04SensorManager::setOffsets(Vector<uint8_t> offsets) {
+  for (size_t idx = 0; idx < m_sensors.size(); ++idx)
+  {
+    if (idx < offsets.size())
+    {
+      m_sensors[idx].offset = offsets[idx];
+    }
+    else
+    {
+      m_sensors[idx].offset = 0;
+    }
+  }
+  setTimeouts();
+}
+
+void HCSR04SensorManager::setTimeouts() {
+  for (size_t idx = 0; idx < m_sensors.size(); ++idx)
+  {
+    m_sensors[idx].timeout = 15000 + (int)(m_sensors[idx].offset * 29.1 * 2);
+  }
+}
+
+
 void HCSR04SensorManager::getDistances() {
   const uint32_t max_timeout_us = clockCyclesToMicroseconds(UINT_MAX);
   for (size_t idx = 0; idx < m_sensors.size(); ++idx)
