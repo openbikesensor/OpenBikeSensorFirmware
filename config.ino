@@ -43,7 +43,10 @@ void loadConfiguration(const char *configFilename, Config &config) {
   config.numSensors = doc["numSensors"] | 2;
   for (size_t idx = 0; idx < config.numSensors; ++idx)
   {
-
+    uint8_t offsetTemp;
+    String offsetString = "offsetInfo"+String(idx);
+    offsetTemp = doc[offsetString] | 35;
+    config.sensorOffsets.push_back(offsetTemp);
   }
   strlcpy(config.ssid, doc["ssid"] | "Freifunk", sizeof(config.ssid));
   strlcpy(config.password, doc["password"] | "Freifunk", sizeof(config.password));

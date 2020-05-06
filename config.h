@@ -22,6 +22,7 @@ class HCSR04SensorInfo;
 
 struct Config {
   uint8_t numSensors;
+  Vector<uint8_t> sensorOffsets;
   Vector<HCSR04SensorInfo> sensorInfos;
   char ssid[32];
   char password[64];
