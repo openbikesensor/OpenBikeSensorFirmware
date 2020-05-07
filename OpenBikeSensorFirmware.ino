@@ -49,7 +49,7 @@
 //GPS
 
 //Version
-const char *OBSVersion = "V2020.5.1";
+const char *OBSVersion = "v0.1.0";
 
 // define the number of bytes to store
 #define EEPROM_SIZE 1
