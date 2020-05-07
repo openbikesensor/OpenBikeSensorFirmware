@@ -155,7 +155,7 @@ void setup() {
 
   //enter configuration mode and enable OTA if button is pressed,
   buttonState = digitalRead(PushButton);
-  //if (buttonState == HIGH)
+  if (buttonState == HIGH)
   {
     displayTest->clear();
     startServer();
@@ -174,14 +174,16 @@ void setup() {
 
   HCSR04SensorInfo sensorManaged1;
   sensorManaged1.sensorLocation = "Lid";
-  sensorManaged1.offset = 35;
-  sensorManager->registerSensor(sensorManaged1);
 
   HCSR04SensorInfo sensorManaged2;
-  sensorManaged2.offset = 35;
   sensorManaged2.triggerPin = 25;
   sensorManaged2.echoPin = 26;
   sensorManaged2.sensorLocation = "Case";
+
+  sensorManager->setOffsets(config.sensorOffsets);
+  sensorManager->setTimeouts();
+
+  sensorManager->registerSensor(sensorManaged1);
   sensorManager->registerSensor(sensorManaged2);
 
   //GPS

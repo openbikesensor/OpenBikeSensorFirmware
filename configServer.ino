@@ -28,15 +28,14 @@ void handleForm() {
   String offsetS2 = server.arg("offsetS2");
   String confirmation = server.arg("confirmation");
 
-  Vector<uint8_t> offsets;
-  offsets.push_back(atoi(offsetS1.c_str()));
-  offsets.push_back(atoi(offsetS2.c_str()));
+  config.sensorOffsets[0] = atoi(offsetS1.c_str());
+  config.sensorOffsets[1] = atoi(offsetS2.c_str());
 
   Serial.print("Offset Sensor 1:");
-  Serial.println(offsets[0]);
+  Serial.println(config.sensorOffsets[0]);
 
   Serial.print("Offset Sensor 2:");
-  Serial.println(offsets[1]);
+  Serial.println(config.sensorOffsets[1]);
 
   Serial.print("confirmation:");
   Serial.println(confirmation);

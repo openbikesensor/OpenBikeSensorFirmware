@@ -44,7 +44,7 @@ void loadConfiguration(const char *configFilename, Config &config) {
   for (size_t idx = 0; idx < config.numSensors; ++idx)
   {
     uint8_t offsetTemp;
-    String offsetString = "offsetInfo"+String(idx);
+    String offsetString = "offsetInfo" + String(idx);
     offsetTemp = doc[offsetString] | 35;
     config.sensorOffsets.push_back(offsetTemp);
   }
@@ -80,7 +80,7 @@ void saveConfiguration(const char *filename, const Config &config) {
   doc["numSensors"] = config.numSensors;
   for (size_t idx = 0; idx < config.numSensors; ++idx)
   {
-    String offsetString = "offsetInfo"+String(idx);
+    String offsetString = "offsetInfo" + String(idx);
     doc[offsetString] = config.sensorOffsets[idx];
   }
   doc["hostname"] = config.hostname;
