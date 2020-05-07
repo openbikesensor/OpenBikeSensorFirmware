@@ -158,7 +158,8 @@ void CSVFileWriter::writeHeader() {
   headerString += "Date;Time;Latitude;Longitude;Course;Speed";
   for (size_t idx = 0; idx < sensorManager->m_sensors.size(); ++idx)
   {
-    headerString += ";" + sensorManager->m_sensors[idx].sensorLocation;
+    headerString += ";";
+    headerString += sensorManager->m_sensors[idx].sensorLocation;
   }
   headerString += ";Confirmed";
   headerString += "\n";

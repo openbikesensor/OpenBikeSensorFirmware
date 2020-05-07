@@ -32,7 +32,7 @@ struct HCSR04SensorInfo
   uint32_t pulse_start_cycle_count;
   uint32_t timeout_cycles;
   uint32_t start_cycle_count;
-  String sensorLocation;
+  char* sensorLocation;
 };
 
 class HCSR04SensorManager

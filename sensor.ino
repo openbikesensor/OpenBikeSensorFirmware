@@ -49,7 +49,6 @@ float HCSR04DistanceSensor::getDistance() {
   return (distance);
 }
 
-
 void HCSR04SensorManager::registerSensor(HCSR04SensorInfo sensorInfo) {
   m_sensors.push_back(sensorInfo);
   pinMode(sensorInfo.triggerPin, OUTPUT);

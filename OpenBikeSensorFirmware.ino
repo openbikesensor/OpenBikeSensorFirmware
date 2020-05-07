@@ -174,17 +174,16 @@ void setup() {
 
   HCSR04SensorInfo sensorManaged1;
   sensorManaged1.sensorLocation = "Lid";
+  sensorManager->registerSensor(sensorManaged1);
 
   HCSR04SensorInfo sensorManaged2;
   sensorManaged2.triggerPin = 25;
   sensorManaged2.echoPin = 26;
   sensorManaged2.sensorLocation = "Case";
+  sensorManager->registerSensor(sensorManaged2);
 
   sensorManager->setOffsets(config.sensorOffsets);
   sensorManager->setTimeouts();
-
-  sensorManager->registerSensor(sensorManaged1);
-  sensorManager->registerSensor(sensorManaged2);
 
   //GPS
   SerialGPS.begin(9600, SERIAL_8N1, 16, 17);
@@ -193,20 +192,16 @@ void setup() {
   }
 
   // readLastFixFromEEPROM();
-
-
+  displayTest->drawString(64, 12, "Mounting SD");
   while (!SD.begin())
   {
     Serial.println("Card Mount Failed");
-    displayTest->drawString(64, 12, "Mounting SD");
     delay(20);
   }
 
   {
     Serial.println("Card Mount Succeeded");
     displayTest->drawString(64, 24, "...success");
-
-
 
     writer = new CSVFileWriter;
     writer->setFileName();
