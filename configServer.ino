@@ -41,6 +41,13 @@ void handleForm() {
   Serial.print("confirmation:");
   Serial.println(confirmation);
 
+  // Create configuration file
+  Serial.println(F("Saving configuration..."));
+  saveConfiguration(configFilename, config);
+
+  Serial.println(F("Print config file..."));
+  printFile(configFilename);
+
   String s = "<a href='/'> Go Back </a>";
   server.send(200, "text/html", s); //Send web page
 }

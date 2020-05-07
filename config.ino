@@ -27,7 +27,7 @@ void setHandleBarWidth(int width) {
 
 void loadConfiguration(const char *configFilename, Config &config) {
   // Open file for reading
-  File file = SD.open(configFilename);
+  File file = SPIFFS.open(configFilename);
 
   // Allocate a temporary JsonDocument
   // Don't forget to change the capacity to match your requirements.
@@ -62,10 +62,10 @@ void loadConfiguration(const char *configFilename, Config &config) {
 // Saves the configuration to a file
 void saveConfiguration(const char *filename, const Config &config) {
   // Delete existing file, otherwise the configuration is appended to the file
-  SD.remove(filename);
+  SPIFFS.remove(filename);
 
   // Open file for writing
-  File file = SD.open(filename, FILE_WRITE);
+  File file = SPIFFS.open(filename, FILE_WRITE);
   if (!file) {
     Serial.println(F("Failed to create file"));
     return;
@@ -100,7 +100,7 @@ void saveConfiguration(const char *filename, const Config &config) {
 // Prints the content of a file to the Serial
 void printFile(const char *filename) {
   // Open file for reading
-  File file = SD.open(filename);
+  File file = SPIFFS.open(filename);
   if (!file) {
     Serial.println(F("Failed to read file"));
     return;

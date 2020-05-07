@@ -29,6 +29,7 @@
 #include "FS.h"
 #include "SD.h"
 #include "SPI.h"
+#include "SPIFFS.h"
 
 #include "gps.h"
 
@@ -139,6 +140,19 @@ void setup() {
   displayTest = new SSD1306DisplayDevice;
   displayTest->drawString(64, 0, OBSVersion);
 
+  if (!SPIFFS.begin(true)) {
+    Serial.println("An Error has occurred while mounting SPIFFS");
+    return;
+  }
+
+  // Should load default config if run for the first time
+  Serial.println(F("Loading configuration..."));
+  loadConfiguration(configFilename, config);
+
+  // Dump config file
+  Serial.println(F("Print config file..."));
+  printFile(configFilename);
+
   //enter configuration mode and enable OTA if button is pressed,
   buttonState = digitalRead(PushButton);
   //if (buttonState == HIGH)
@@ -156,14 +170,13 @@ void setup() {
     }
   }
 
-
   sensorManager = new HCSR04SensorManager;
-  
+
   HCSR04SensorInfo sensorManaged1;
   sensorManaged1.sensorLocation = "Lid";
   sensorManaged1.offset = 35;
   sensorManager->registerSensor(sensorManaged1);
-  
+
   HCSR04SensorInfo sensorManaged2;
   sensorManaged2.offset = 35;
   sensorManaged2.triggerPin = 25;
@@ -191,17 +204,7 @@ void setup() {
     Serial.println("Card Mount Succeeded");
     displayTest->drawString(64, 24, "...success");
 
-    // Should load default config if run for the first time
-    Serial.println(F("Loading configuration..."));
-    loadConfiguration(configFilename, config);
 
-    // Create configuration file
-    Serial.println(F("Saving configuration..."));
-    saveConfiguration(configFilename, config);
-
-    // Dump config file
-    Serial.println(F("Print config file..."));
-    printFile(configFilename);
 
     writer = new CSVFileWriter;
     writer->setFileName();
