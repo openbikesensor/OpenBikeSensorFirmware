@@ -53,6 +53,7 @@ class HCSR04SensorManager
   private:
 };
 
+/*
 class Sensor
 {
   public:
@@ -114,4 +115,4 @@ class HCSR04DistanceSensor : public DistanceSensor
     int m_triggerPin = 15;
     int m_echoPin = 4;
     int m_timeout = 15000;
-};
+};*/

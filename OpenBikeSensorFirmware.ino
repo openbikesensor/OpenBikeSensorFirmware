@@ -97,38 +97,10 @@ uint32_t nextSerialTaskTs = 0;
 uint32_t nextOledTaskTs = 0;
 
 uint8_t handleBarWidth = 0;
-bool deviceConnected = false;
-/*
-  class MyServerCallbacks: public BLEServerCallbacks {
-    void onConnect(BLEServer* pServer) {
-      deviceConnected = true;
-    };
 
-    void onDisconnect(BLEServer* pServer) {
-      deviceConnected = false;
-    }
-
-  };
-
-  class MyWriterCallbacks: public BLECharacteristicCallbacks {
-    void onWrite(BLECharacteristic *pCharacteristic) {
-      std::string value = pCharacteristic->getValue();
-      handleBarWidth = atoi(value.c_str());
-      timeout = 15000 + (int)(handleBarWidth * 29.1 * 2);
-      EEPROM.write(0, handleBarWidth);
-      EEPROM.commit();
-    }
-  };
-*/
 DisplayDevice* displayTest;
-//DisplayDevice* displayTest2;
 
 FileWriter* writer;
-
-//DistanceSensor* sensor1;
-//DistanceSensor* sensor2;
-// See the following for generating UUIDs:
-// https://www.uuidgenerator.net/
 
 HCSR04SensorManager* sensorManager;
 
@@ -253,7 +225,7 @@ template <class T> int EEPROM_readAnything(int ee, T& value)
 }
 
 void loop() {
-  //ArduinoOTA.handle();
+  //ArduinoOTA.handle(); 
   DataSet* currentSet = new DataSet;
   uint8_t confirmationSensorID = 1;
   //writeLastFixToEEPROM();
@@ -273,15 +245,12 @@ void loop() {
   if ((CurrentTime - timeOfMinimum ) > 5000)
   {
     minDistanceToConfirm = MAX_SENSOR_VALUE;
-
   }
 
   while ((CurrentTime - StartTime) < measureInterval)
   {
     CurrentTime = millis();
-    //sensor1->getMinDistance(minDistance);
     sensorManager->getDistances();
-
 
     //displayTest->showValue(minDistance);
     if (sensorManager->sensorValues[confirmationSensorID] < minDistanceToConfirm)
@@ -290,8 +259,6 @@ void loop() {
       timeOfMinimum = millis();
     }
     displayTest->showValue(minDistanceToConfirm);
-    //displayTest->showValue(gps.satellites.value());
-    //displayTest2->showValue(minDistanceToConfirm);
 
     if ((minDistanceToConfirm < MAX_SENSOR_VALUE) && !transmitConfirmedData)
     {
@@ -406,11 +373,6 @@ void loop() {
 
   if ((writer->getDataLength() > 5000) && !(digitalRead(PushButton))) {
     writer->writeDataToSD();
-  }
-
-  if (deviceConnected) {
-    Serial.printf("*** NOTIFY: %d ***\n", buffer[1] );
-    //heartRateBLENotify(buffer);
   }
 
   unsigned long ElapsedTime = CurrentTime - StartTime;

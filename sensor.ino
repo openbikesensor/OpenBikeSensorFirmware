@@ -18,6 +18,7 @@
   the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/*
 void DistanceSensor::getMinDistance(uint8_t& min_distance) {
   float dist;
   dist = getDistance() - float(m_offset);
@@ -47,7 +48,7 @@ float HCSR04DistanceSensor::getDistance() {
 
   distance = (duration / 2) / 29.1; // Distanz in CM
   return (distance);
-}
+}*/
 
 void HCSR04SensorManager::registerSensor(HCSR04SensorInfo sensorInfo) {
   m_sensors.push_back(sensorInfo);
