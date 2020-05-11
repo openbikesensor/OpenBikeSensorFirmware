@@ -12,7 +12,7 @@ Inspired by the Berlin project Radmesser. This version uses a simple push button
 
 The prototype by [Zweirat](https://zweirat-stuttgart.de/projekte/openbikesensor/) used the following:
 * [ESP32](https://www.az-delivery.de/products/esp32-developmentboard)
-* [HC-SR04P](https://www.ebay.de/itm/183610614563)
+* [HC-SR04P](https://www.google.com/search?q=HC-SR04P&tbm=shop)
 * [5-pin XS9 Aviation Connector](https://www.aliexpress.com/item/32512693653.html)
 * [12mm Push Button](https://www.aliexpress.com/item/4000295670163.html)
 * [0.96 inch OLED Display](https://www.aliexpress.com/item/32896971385.html)
