@@ -26,8 +26,25 @@
 void handleForm() {
   String offsetS1 = server.arg("offsetS1");
   String offsetS2 = server.arg("offsetS2");
-  String confirmation = server.arg("confirmation");
-
+  String displayGPS = server.arg("displayGPS");
+  String obsUserID = server.arg("obsUserID");
+  String hostname = server.arg("hostname");
+  //String confirmation = server.arg("confirmation");
+  
+    displayTest->clear();
+    displayTest->drawString(64, 36, "displayConfig");
+    displayTest->drawString(64, 48, displayGPS);
+  if(displayGPS == "on")
+    config.displayConfig |= 0x01;
+  else
+    config.displayConfig &= ~0x01;
+    
+  if(hostname.length()>0)
+      strlcpy(config.hostname,hostname.c_str(),sizeof(config.hostname));
+  if(obsUserID.length()>0)
+      strlcpy(config.obsUserID,obsUserID.c_str(),sizeof(config.obsUserID));
+  
+    
   config.sensorOffsets[0] = atoi(offsetS1.c_str());
   config.sensorOffsets[1] = atoi(offsetS2.c_str());
 
@@ -37,18 +54,46 @@ void handleForm() {
   Serial.print("Offset Sensor 2:");
   Serial.println(config.sensorOffsets[1]);
 
-  Serial.print("confirmation:");
-  Serial.println(confirmation);
+  //Serial.print("confirmation:");
+  //Serial.println(confirmation);
 
   // Create configuration file
   Serial.println(F("Saving configuration..."));
   saveConfiguration(configFilename, config);
 
-  Serial.println(F("Print config file..."));
-  printFile(configFilename);
-
   String s = "<a href='/'> Go Back </a>";
   server.send(200, "text/html", s); //Send web page
+}
+
+void createConfigPage()
+{
+  String configPage = configIndexPrefix;
+  configPage += "Offset S1<input name=offsetS1 placeholder='Offset Sensor 1' value=";
+  if(config.sensorOffsets.size()>0)
+  {
+    configPage += String(config.sensorOffsets[0]);
+  }
+  configPage += "> ";
+  configPage += "Offset S2<input name=offsetS2 placeholder='Offset Sensor 2' value=";
+  if(config.sensorOffsets.size()>1)
+  {
+    configPage += String(config.sensorOffsets[1]);
+  }
+  configPage += "> ";
+  // unused so far 
+  // configPage +="<p>Which sensor values should be confirmed?.</p>"
+  //"<input type=radio id=sensor1 name=confirmation value=0><label for=lid>Sensor 1</label><br>"
+  //"<input type=radio id=sensor2 name=confirmation value=1><label for=case>Sensor 2</label><br>";
+  
+  configPage +="Upload Host<input name='hostname' placeholder='hostname' value=" + String(config.hostname) +" >";
+  configPage +="Upload UserID<input name='obsUserID' placeholder='API ID' value=" + String(config.obsUserID) +" >";
+  bool DisplayGPS = config.displayConfig & 0x01;
+  if(DisplayGPS)
+    configPage +="Display Satelites<input type='checkbox' name=displayGPS  checked=checked>";
+  else
+    configPage +="Display Satelites<input type='checkbox' name=displayGPS>";
+  configPage+=configIndexPostfix;
+  server.send(200, "text/html", configPage);
 }
 
 void handleReboot() {
@@ -61,9 +106,13 @@ void wifiAction() {
 
   Serial.print("ssid:");
   Serial.println(ssid);
-
-  Serial.print("pass:");
-  Serial.println(pass);
+  strlcpy(config.ssid,ssid.c_str(),sizeof(config.ssid));
+  if(pass.length()>0)
+      strlcpy(config.password,pass.c_str(),sizeof(config.password));
+  
+  // Create configuration file
+  Serial.println(F("Saving configuration..."));
+  saveConfiguration(configFilename, config);
 
   String s = "<a href='/'> Go Back </a>";
   server.send(200, "text/html", s); //Send web page
@@ -110,12 +159,14 @@ void startServer() {
   esp_chipid += String((uint32_t)chipid_num, HEX);
 #endif
   // Connect to WiFi network
-  WiFi.begin(ssid, password);
+  Serial.println("Trying to connect to");
+  Serial.println(config.ssid);
+  WiFi.begin(config.ssid, config.password);
   Serial.println("ChipID  ");
   Serial.println(esp_chipid.c_str());
   // Wait for connection
   uint16_t startTime = millis();
-  uint16_t timeout = 3000;
+  uint16_t timeout = 12000;
   Serial.printf("Timeout %u\n", timeout);
   Serial.printf("startTime %u\n", startTime);
   while ((WiFi.status() != WL_CONNECTED) && (( millis() - startTime) <= timeout)) {
@@ -130,9 +181,12 @@ void startServer() {
   {
     Serial.println("");
     Serial.print("Connected to ");
-    Serial.println(ssid);
+    Serial.println(config.ssid);
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
+    displayTest->drawString(0, 30, "connected to");
+    displayTest->drawString(0, 40, config.ssid);
+    displayTest->drawString(0, 50, WiFi.localIP().toString().c_str());
   }
 
   /*use mdns for host name resolution*/
@@ -158,7 +212,7 @@ void startServer() {
   });
   server.on("/configIndex", HTTP_GET, []() {
     server.sendHeader("Connection", "close");
-    server.send(200, "text/html", configIndex);
+    createConfigPage();
   });
   server.on("/wifiSettingsIndex", HTTP_GET, []() {
     server.sendHeader("Connection", "close");

@@ -25,13 +25,13 @@
 #include <EEPROM.h>
 #define CIRCULAR_BUFFER_INT_SAFE
 #include <CircularBuffer.h>
+#include "gps.h"
 #include "displays.h"
 #include "FS.h"
 #include "SD.h"
 #include "SPI.h"
 #include "SPIFFS.h"
 
-#include "gps.h"
 
 #include "writer.h"
 #include "sensor.h"
@@ -190,12 +190,13 @@ void setup() {
   while (gps.satellites.value() < 4)
   {
     readGPSData();
-    delay(1000);
+    delay(300);
     Serial.println("Waiting for GPS fix... \n");
     //ToDo: clear line
     //displayTest->clearRectangle(64,36,64,12);
     displayTest->drawString(64, 36, "Wait for GPS");
-    String satellitesString = String(gps.satellites.value()) + "satellites";
+    String satellitesString = String(gps.satellites.value()) + " sats";
+    displayTest->drawString(64, 48, satellitesString);
   }
   Serial.println("Got GPS Fix  \n");
   displayTest->drawString(64, 48, "Got GPS Fix");

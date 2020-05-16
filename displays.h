@@ -24,6 +24,8 @@
 #include "font.h"
 #include "logo.h"
 
+
+extern Config config;
 const int CLK = 33; //Set the CLK pin connection to the display
 const int DIO = 25; //Set the DIO pin connection to the display
 //Segments for line of dashes on display
@@ -114,6 +116,12 @@ class SSD1306DisplayDevice : public DisplayDevice
       else
       {
         m_display->drawString(0, 0, String(value));
+      }
+      if(config.displayConfig & 0x01)
+      { 
+        m_display->setFont(ArialMT_Plain_10);
+        String satellitesString = String(gps.satellites.value()) + " sats";
+        m_display->drawString(64, 48, satellitesString);
       }
       m_display->display();
     }

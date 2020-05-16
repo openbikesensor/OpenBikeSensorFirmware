@@ -50,9 +50,11 @@ void loadConfiguration(const char *configFilename, Config &config) {
   }
   strlcpy(config.ssid, doc["ssid"] | "Freifunk", sizeof(config.ssid));
   strlcpy(config.password, doc["password"] | "Freifunk", sizeof(config.password));
+  strlcpy(config.obsUserID, doc["obsUserID"] | "5e8f2f43e7e3b3668ca13151", sizeof(config.obsUserID));
+  config.displayConfig = doc["displayConfig"] | 0;
   config.port = doc["port"] | 2731;
   strlcpy(config.hostname,                  // <- destination
-          doc["hostname"] | "example.com",  // <- source
+          doc["hostname"] | "openbikesensor.hlrs.de",  // <- source
           sizeof(config.hostname));         // <- destination's capacity
 
   // Close the file (Curiously, File's destructor doesn't close the file)
@@ -87,6 +89,8 @@ void saveConfiguration(const char *filename, const Config &config) {
   doc["port"] = config.port;
   doc["ssid"] = config.ssid;
   doc["password"] = config.password;
+  doc["obsUserID"] = config.obsUserID;
+  doc["displayConfig"] = config.displayConfig;
 
   // Serialize JSON to file
   if (serializeJson(doc, file) == 0) {
@@ -107,9 +111,9 @@ void printFile(const char *filename) {
   }
 
   // Extract each characters by one by one
-  while (file.available()) {
-    Serial.print((char)file.read());
-  }
+  //while (file.available()) {
+    // do not ptrint passwords, please it is bad enough that we save them as plain text anyway...Serial.print((char)file.read());
+  //}
   Serial.println();
 
   // Close the file

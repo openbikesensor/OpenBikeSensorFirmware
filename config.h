@@ -27,5 +27,8 @@ struct Config {
   char ssid[32];
   char password[64];
   char hostname[64];
+  char obsUserID[64];
+  int displayConfig;
+  
   int port;
 };
