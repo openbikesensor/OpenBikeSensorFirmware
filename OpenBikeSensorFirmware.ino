@@ -198,6 +198,11 @@ void setup() {
     displayTest->drawString(64, 36, "Wait for GPS");
     String satellitesString = String(gps.satellites.value()) + " sats";
     displayTest->drawString(64, 48, satellitesString);
+    buttonState = digitalRead(PushButton);
+    if (buttonState == HIGH)
+    {
+      break;
+    }
   }
   Serial.println("Got GPS Fix  \n");
   displayTest->drawString(64, 48, "Got GPS Fix");
