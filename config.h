@@ -19,6 +19,11 @@
 */
 
 class HCSR04SensorInfo;
+enum DisplayOptions {
+  DisplaySatelites=0x01,
+  DisplayBoth=0x02,
+  DisplayVelocity=0x04
+};
 
 struct Config {
   uint8_t numSensors;

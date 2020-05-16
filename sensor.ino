@@ -174,6 +174,19 @@ void HCSR04SensorManager::getDistances() {
       allEchoesIn = allEchoesIn && m_sensors[idx].echoReceived;
     }
   }
+  for (size_t idx = 0; idx < m_sensors.size(); ++idx)
+  {
+    unsigned long currentTime = millis();
+    if(currentTime > m_sensors[idx].lastMinUpdate +1000)
+    {
+      m_sensors[idx].minDistance = MAX_SENSOR_VALUE;
+    }
+    if(sensorValues[idx] < m_sensors[idx].minDistance)
+    {
+      m_sensors[idx].minDistance = sensorValues[idx];
+      m_sensors[idx].lastMinUpdate = currentTime;
+    }
+  }
   /*
     for (size_t idx = 0; idx < m_sensors.size(); ++idx)
     {

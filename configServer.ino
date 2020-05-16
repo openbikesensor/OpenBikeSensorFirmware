@@ -27,6 +27,8 @@ void handleForm() {
   String offsetS1 = server.arg("offsetS1");
   String offsetS2 = server.arg("offsetS2");
   String displayGPS = server.arg("displayGPS");
+  String displayB = server.arg("displayB");
+  String displayVELO = server.arg("displayVELO");
   String obsUserID = server.arg("obsUserID");
   String hostname = server.arg("hostname");
   //String confirmation = server.arg("confirmation");
@@ -35,9 +37,17 @@ void handleForm() {
     displayTest->drawString(64, 36, "displayConfig");
     displayTest->drawString(64, 48, displayGPS);*/
   if(displayGPS == "on")
-    config.displayConfig |= 0x01;
+    config.displayConfig |= DisplaySatelites;
   else
-    config.displayConfig &= ~0x01;
+    config.displayConfig &= ~DisplaySatelites;
+  if(displayB == "on")
+    config.displayConfig |= DisplayBoth;
+  else
+    config.displayConfig &= ~DisplayBoth;
+  if(displayVELO == "on")
+    config.displayConfig |= DisplayVelocity;
+  else
+    config.displayConfig &= ~DisplayVelocity;
     
   if(hostname.length()>0)
       strlcpy(config.hostname,hostname.c_str(),sizeof(config.hostname));
@@ -87,11 +97,23 @@ void createConfigPage()
   
   configPage +="Upload Host<input name='hostname' placeholder='hostname' value=" + String(config.hostname) +" >";
   configPage +="Upload UserID<input name='obsUserID' placeholder='API ID' value=" + String(config.obsUserID) +" >";
-  bool DisplayGPS = config.displayConfig & 0x01;
+  bool DisplayGPS = config.displayConfig & DisplaySatelites;
   if(DisplayGPS)
     configPage +="Display Satelites<input type='checkbox' name=displayGPS  checked=checked>";
   else
     configPage +="Display Satelites<input type='checkbox' name=displayGPS>";
+    
+  bool DisplayB = config.displayConfig & DisplayBoth;
+  if(DisplayB)
+    configPage +="Display Both<input type='checkbox' name=displayB  checked=checked>";
+  else
+    configPage +="Display Both<input type='checkbox' name=displayB>";
+    
+  bool DisplayVelo = config.displayConfig & DisplayVelocity;
+  if(DisplayVelo)
+    configPage +="Display Velocity<input type='checkbox' name=displayVELO  checked=checked>";
+  else
+    configPage +="Display Velocity<input type='checkbox' name=displayVELO>";
   configPage+=configIndexPostfix;
   server.send(200, "text/html", configPage);
 }

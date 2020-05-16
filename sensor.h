@@ -33,6 +33,8 @@ struct HCSR04SensorInfo
   uint32_t timeout_cycles;
   uint32_t start_cycle_count;
   char* sensorLocation;
+  uint8_t minDistance=MAX_SENSOR_VALUE;
+  unsigned long lastMinUpdate=0;
 };
 
 class HCSR04SensorManager

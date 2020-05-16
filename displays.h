@@ -105,24 +105,60 @@ class SSD1306DisplayDevice : public DisplayDevice
     ~SSD1306DisplayDevice() {
       delete m_display;
     }
-    void showValue(uint8_t value)
+    void showGPS()
     {
-      m_display->clear();
-      m_display->setFont(Dialog_plain_40);
-      if (value == 255)
-      {
-        m_display->drawString(0, 0, "---");
-      }
-      else
-      {
-        m_display->drawString(0, 0, String(value));
-      }
-      if(config.displayConfig & 0x01)
+      if(config.displayConfig & DisplaySatelites)
       { 
         m_display->setFont(ArialMT_Plain_10);
         String satellitesString = String(gps.satellites.value()) + " sats";
         m_display->drawString(64, 48, satellitesString);
       }
+    }
+    void showVelocity(double velocity)
+    {
+      if(config.displayConfig & DisplayVelocity)
+      { 
+        m_display->setFont(ArialMT_Plain_10);
+        String velotext = String(int(velocity)) + " km/h";
+        m_display->drawString(0, 48, velotext);
+      }
+
+    }
+    void showValue(uint8_t minDistanceToConfirm)
+    {
+      // not used any more
+    }
+    void showValues(uint8_t minDistanceToConfirm, uint8_t value1,uint8_t value2)
+    {
+      m_display->clear();
+      m_display->setFont(Dialog_plain_40);
+      
+      if(!(config.displayConfig&DisplayBoth))
+      {
+        value1 = minDistanceToConfirm;
+      }
+      if (value1 == 255)
+      {
+        m_display->drawString(0, 0, "---");
+      }
+      else
+      {
+        m_display->drawString(0, 0, String(value1));
+      }
+      if(config.displayConfig&DisplayBoth)
+      {
+        if (value2 == 255)
+        {
+          m_display->drawString(64, 0, "---");
+        }
+        else
+        {
+          m_display->drawString(64, 0, String(value2));
+        }
+      }
+      
+      showGPS();
+      showVelocity(gps.speed.kmph());
       m_display->display();
     }
     void invert() {

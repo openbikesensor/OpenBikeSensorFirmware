@@ -18,6 +18,8 @@
   the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#define MAX_SENSOR_VALUE 255
+
 #include "vector.h"
 #include <ArduinoJson.h>
 #include "config.h"
@@ -55,7 +57,6 @@ const char *OBSVersion = "v0.1.1";
 //#define EEPROM_SIZE 1
 #define EEPROM_SIZE 128
 
-#define MAX_SENSOR_VALUE 255
 
 // PINs
 const int triggerPin = 15;
@@ -98,7 +99,7 @@ uint32_t nextOledTaskTs = 0;
 
 uint8_t handleBarWidth = 0;
 
-DisplayDevice* displayTest;
+SSD1306DisplayDevice* displayTest;
 
 FileWriter* writer;
 
@@ -259,8 +260,8 @@ void loop() {
       minDistanceToConfirm = sensorManager->sensorValues[confirmationSensorID];
       timeOfMinimum = millis();
     }
-    displayTest->showValue(minDistanceToConfirm);
-
+    displayTest->showValues(minDistanceToConfirm,sensorManager->m_sensors[0].minDistance,sensorManager->m_sensors[1].minDistance);
+    
     if ((minDistanceToConfirm < MAX_SENSOR_VALUE) && !transmitConfirmedData)
     {
       buttonState = digitalRead(PushButton);
