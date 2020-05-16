@@ -67,10 +67,10 @@ String loginIndex =
 String navigationIndex =
   "<form name=navigationForm>"
   "<h1>OpenBikeSensor Navigation</h1>"
-  "<input type=button onclick=window.open('/configIndex') class=btn value=Config>"
-  "<input type=button onclick=window.open('/serverIndex') class=btn value=Update>"
-  "<input type=button onclick=window.open('/wifiSettingsIndex') class=btn value=Wifi_Settings>"
-  "<input type=button onclick=window.open('/reboot') class=btn value=Reboot></form>" + style;
+  "<input type=button onclick=window.location.href='/configIndex' class=btn value=Config>"
+  "<input type=button onclick=window.location.href='/serverIndex' class=btn value=Update>"
+  "<input type=button onclick=window.location.href='/wifiSettingsIndex' class=btn value=Wifi_Settings>"
+  "<input type=button onclick=window.location.href='/reboot' class=btn value=Reboot></form>" + style;
 
 
 /* Sensor Config page, note that S1 refers to m_sensors[0] */
@@ -80,7 +80,7 @@ String configIndexPrefix =
   
 
 String configIndexPostfix =
-  "<input type=submit onclick=window.open('/navigationIndex') class=btn value=Submit>"
+  "<input type=submit onclick=window.location.href='/navigationIndex' class=btn value=Save>"
   "</form>" + style;
 
 String wifiSettingsIndex =
@@ -88,7 +88,7 @@ String wifiSettingsIndex =
   "<h1>OpenBikeSensor WiFi Config</h1>"
   "<input name=ssid placeholder='ssid'>"
   "<input name=pass placeholder='password' type=Password> "
-  "<input type=submit onclick=window.open('/navigationIndex') class=btn value=Submit>"
+  "<input type=submit onclick=window.location.href='/navigationIndex' class=btn value=Save>"
   "</form>" + style;
 
 

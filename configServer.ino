@@ -31,9 +31,9 @@ void handleForm() {
   String hostname = server.arg("hostname");
   //String confirmation = server.arg("confirmation");
   
-    displayTest->clear();
+   /* displayTest->clear();
     displayTest->drawString(64, 36, "displayConfig");
-    displayTest->drawString(64, 48, displayGPS);
+    displayTest->drawString(64, 48, displayGPS);*/
   if(displayGPS == "on")
     config.displayConfig |= 0x01;
   else
@@ -61,7 +61,7 @@ void handleForm() {
   Serial.println(F("Saving configuration..."));
   saveConfiguration(configFilename, config);
 
-  String s = "<a href='/'> Go Back </a>";
+  String s = "<meta http-equiv='refresh' content='0; url=/navigationIndex'><a href='/'> Go Back </a>";
   server.send(200, "text/html", s); //Send web page
 }
 
@@ -114,7 +114,8 @@ void wifiAction() {
   Serial.println(F("Saving configuration..."));
   saveConfiguration(configFilename, config);
 
-  String s = "<a href='/'> Go Back </a>";
+
+  String s = "<meta http-equiv='refresh' content='0; url=/navigationIndex'><a href='/'> Go Back </a>";
   server.send(200, "text/html", s); //Send web page
 }
 
