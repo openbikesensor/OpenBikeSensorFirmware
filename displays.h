@@ -95,7 +95,6 @@ class SSD1306DisplayDevice : public DisplayDevice
       m_display = new SSD1306(0x3c, 21, 22);
       m_display->init();
       m_display->setBrightness(255);
-      m_display->setFont(Dialog_plain_50);
       m_display->drawXbm(0, 0, OBSLogo_width, OBSLogo_height, OBSLogo);
       m_display->display();
       m_display->setTextAlignment(TEXT_ALIGN_LEFT);
@@ -107,7 +106,7 @@ class SSD1306DisplayDevice : public DisplayDevice
     void showValue(uint8_t value)
     {
       m_display->clear();
-      m_display->setFont(Dialog_plain_50);
+      m_display->setFont(Dialog_plain_40);
       if (value == 255)
       {
         m_display->drawString(0, 0, "---");
@@ -138,7 +137,6 @@ class SSD1306DisplayDevice : public DisplayDevice
     {
       m_display->init();
       m_display->setBrightness(255);
-      m_display->setFont(Dialog_plain_50);
     }
     void setMaxBrightness() {
 

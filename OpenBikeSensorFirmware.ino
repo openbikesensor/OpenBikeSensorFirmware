@@ -52,7 +52,7 @@
 const char *OBSVersion = "v0.1.1";
 
 // define the number of bytes to store
-#define EEPROM_SIZE 1
+//#define EEPROM_SIZE 1
 #define EEPROM_SIZE 128
 
 #define MAX_SENSOR_VALUE 255
