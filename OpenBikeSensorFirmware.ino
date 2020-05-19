@@ -148,9 +148,7 @@ void setup() {
   Serial.println(F("Print config file..."));
   printConfig(config);
 
-  // Reset WIFI config
-  strlcpy(config.ssid, "Test" ,sizeof(config.ssid));
-  strlcpy(config.password, "Test" ,sizeof(config.password));
+  // Save the config. This ensures, that new options exist as well
   saveConfiguration(configFilename, config);
   
   delay(333); // Added for user experience

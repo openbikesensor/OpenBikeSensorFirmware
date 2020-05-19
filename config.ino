@@ -113,6 +113,10 @@ void printConfig(Config &config) {
     String offsetString = "Offset[" + String(idx) + "] = " + config.sensorOffsets[idx];
     Serial.println(offsetString);
   }
+
+  Serial.print(F("displayConfig = "));
+  Serial.println(String(config.displayConfig));
+
   Serial.print(F("hostname = "));
   Serial.println(String(config.hostname));
 
