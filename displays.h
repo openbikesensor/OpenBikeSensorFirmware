@@ -54,7 +54,6 @@ class SSD1306DisplayDevice : public DisplayDevice
       m_display = new SSD1306(0x3c, 21, 22);
       m_display->init();
       m_display->setBrightness(255);
-      m_display->drawXbm(0, 0, OBSLogo_width, OBSLogo_height, OBSLogo);
       m_display->display();
       m_display->setTextAlignment(TEXT_ALIGN_LEFT);
       m_display->setFont(ArialMT_Plain_10);
@@ -80,6 +79,10 @@ class SSD1306DisplayDevice : public DisplayDevice
         m_display->drawString(0, 48, velotext);
       }
 
+    }
+    void showLogo() {
+      m_display->drawXbm(0, 0, OBSLogo_width, OBSLogo_height, OBSLogo);
+      m_display->display();
     }
     void showValue(uint8_t minDistanceToConfirm)
     {
@@ -118,6 +121,49 @@ class SSD1306DisplayDevice : public DisplayDevice
       showVelocity(gps.speed.kmph());
       m_display->display();
     }
+    // For debug
+    void showGrid() {
+
+      // Horizontal lines
+      m_display->drawHorizontalLine(0, 2, 128);
+      m_display->drawHorizontalLine(0, 12, 128);
+      m_display->drawHorizontalLine(0, 22, 128);
+      m_display->drawHorizontalLine(0, 32, 128);
+      m_display->drawHorizontalLine(0, 42, 128);
+      m_display->drawHorizontalLine(0, 52, 128);
+      m_display->drawHorizontalLine(0, 62, 128);
+
+      // Vertical lines
+      m_display->drawVerticalLine(32, 0, 64);
+      m_display->drawVerticalLine(64, 0, 64);
+      m_display->drawVerticalLine(96, 0, 64);
+      m_display->display();
+    }
+    // ---------------------------------
+    // | (0,0) | (1,0) | (2,0) | (3,0) |
+    // ---------------------------------
+    // | (0,1) | (1,1) | (2,1) | (3,1) |
+    // ---------------------------------
+    // | (0,2) | (1,2) | (2,2) | (3,2) |
+    // ---------------------------------
+    // | (0,3) | (1,3) | (2,3) | (3,3) |
+    // ---------------------------------
+    // | (0,4) | (1,4) | (2,4) | (3,4) |
+    // ---------------------------------
+    // | (0,5) | (1,5) | (2,5) | (3,5) |
+    // ---------------------------------
+    void drawTextOnGrid(int16_t x, int16_t y, String text) {
+      m_display->drawString(x * 32 + 0, y*10 + 1, text);
+      m_display->display();
+    }
+    void showGridCells() {
+      for (int x = 0; x <= 3; x++) {
+        for (int y = 0; y <= 5; y++) {
+          String xy = "(" + String(x) + "/" + String(y) + ")";
+          this->drawTextOnGrid(x, y, xy);
+        }
+      }
+    }
     void invert() {
       m_display->invertDisplay();
       m_display->display();
@@ -128,6 +174,10 @@ class SSD1306DisplayDevice : public DisplayDevice
     }
     void drawString(int16_t x, int16_t y, String text) {
       m_display->drawString(x, y, text);
+      m_display->display();
+    }
+    void flipScreen() {
+      m_display->flipScreenVertically();
       m_display->display();
     }
     void clear() {

@@ -110,8 +110,15 @@ String esp_chipid;
 void setup() {
   Serial.begin(115200);
 
+  //Serial.println("setup()");
+
   displayTest = new SSD1306DisplayDevice;
-  displayTest->drawString(64, 0, OBSVersion);
+  displayTest->showLogo();
+  //displayTest->showGrid(); // Debug only
+  //displayTest->flipScreen(); // TODO: Make this configurable
+  displayTest->drawTextOnGrid(2, 0, OBSVersion);
+
+  //return;
 
   if (!SPIFFS.begin(true)) {
     Serial.println("An Error has occurred while mounting SPIFFS");
@@ -165,7 +172,7 @@ void setup() {
   }
 
   // readLastFixFromEEPROM();
-  displayTest->drawString(64, 12, "Mounting SD");
+  displayTest->drawTextOnGrid(2, 1, "Mounting SD");
   while (!SD.begin())
   {
     Serial.println("Card Mount Failed");
@@ -174,7 +181,7 @@ void setup() {
 
   {
     Serial.println("Card Mount Succeeded");
-    displayTest->drawString(64, 24, "...success");
+    displayTest->drawTextOnGrid(2, 2, "...success");
 
     writer = new CSVFileWriter;
     writer->setFileName();
@@ -188,6 +195,7 @@ void setup() {
   // PIN-Modes
   pinMode(PushButton, INPUT);
 
+  int s = 0;
   while (gps.satellites.value() < 4)
   {
     readGPSData();
@@ -195,9 +203,10 @@ void setup() {
     Serial.println("Waiting for GPS fix... \n");
     //ToDo: clear line
     //displayTest->clearRectangle(64,36,64,12);
-    displayTest->drawString(64, 36, "Wait for GPS");
-    String satellitesString = String(gps.satellites.value()) + " sats";
-    displayTest->drawString(64, 48, satellitesString);
+    displayTest->drawTextOnGrid(2, 3, "Wait for GPS");
+    //String satellitesString = String(gps.satellites.value()) + " sats";
+    String satellitesString = String(s++) + " sats";
+    displayTest->drawTextOnGrid(2, 4, satellitesString);
     buttonState = digitalRead(PushButton);
     if (buttonState == HIGH)
     {
@@ -232,6 +241,11 @@ template <class T> int EEPROM_readAnything(int ee, T& value)
 }
 
 void loop() {
+
+  //Serial.println("loop()");
+  //delay(1000);
+  //return;
+
   //ArduinoOTA.handle(); 
   DataSet* currentSet = new DataSet;
   uint8_t confirmationSensorID = 1;
