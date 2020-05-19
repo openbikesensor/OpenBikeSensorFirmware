@@ -70,7 +70,7 @@ void OtaInit(String esp_chipid) {
 
   ArduinoOTA.begin();
 
-  Serial.println("Ready");
+  Serial.println("OTA Ready");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 

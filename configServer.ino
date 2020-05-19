@@ -271,5 +271,5 @@ void startServer() {
     }
   });
   server.begin();
-  Serial.print("Ready");
+  Serial.println("Server Ready");
 }

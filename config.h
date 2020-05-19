@@ -18,7 +18,6 @@
   the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-class HCSR04SensorInfo;
 enum DisplayOptions {
   DisplaySatelites=0x01,
   DisplayBoth=0x02,
@@ -28,7 +27,6 @@ enum DisplayOptions {
 struct Config {
   uint8_t numSensors;
   Vector<uint8_t> sensorOffsets;
-  Vector<HCSR04SensorInfo> sensorInfos;
   char ssid[32];
   char password[64];
   char hostname[64];

@@ -19,7 +19,6 @@
 */
 
 
-//#include <TM1637Display.h>
 #include "SSD1306.h"
 #include "font.h"
 #include "logo.h"
@@ -44,51 +43,9 @@ class DisplayDevice
 
   protected:
     virtual void init() = 0;
-    virtual void setMaxBrightness() = 0;
-
-
-
-
 };
-/*
-  class TM1637DisplayDevice : public DisplayDevice
-  {
-  public:
-    TM1637DisplayDevice() : DisplayDevice() {
-      m_display = new TM1637Display(CLK, DIO);
-      m_display->setBrightness(0x07);
-    }
-    ~TM1637DisplayDevice() {
-      delete m_display;
-    }
-    void showValue(uint8_t value)
-    {
-      if (value == 255)
-      {
-        m_display->setSegments(segments);
-      }
-      else
-      {
-        m_display->showNumberDec(value);
-      }
-    }
-  protected:
-    void init()
-    {
-      m_display->setBrightness(0x07);
-    }
-    void clear() {
 
-    }
-    void setMaxBrightness() {
 
-    }
-
-  private:
-    TM1637Display* m_display;
-
-  };
-*/
 class SSD1306DisplayDevice : public DisplayDevice
 {
   public:
@@ -181,9 +138,6 @@ class SSD1306DisplayDevice : public DisplayDevice
     {
       m_display->init();
       m_display->setBrightness(255);
-    }
-    void setMaxBrightness() {
-
     }
   private:
     SSD1306* m_display;
