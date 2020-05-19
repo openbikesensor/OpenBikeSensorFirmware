@@ -113,10 +113,11 @@ void setup() {
   //Serial.println("setup()");
 
   displayTest = new SSD1306DisplayDevice;
-  displayTest->showLogo();
-  //displayTest->showGrid(); // Debug only
-  //displayTest->flipScreen(); // TODO: Make this configurable
-  displayTest->drawTextOnGrid(2, 0, OBSVersion);
+  displayTest->showLogo(true);
+  displayTest->showGrid(false); // Debug only
+  displayTest->flipScreen(); // TODO: Make this configurable
+  
+  displayTest->showTextOnGrid(2, 0, OBSVersion);
 
   //return;
 
@@ -172,7 +173,7 @@ void setup() {
   }
 
   // readLastFixFromEEPROM();
-  displayTest->drawTextOnGrid(2, 1, "Mounting SD");
+  displayTest->showTextOnGrid(2, 1, "Mounting SD");
   while (!SD.begin())
   {
     Serial.println("Card Mount Failed");
@@ -181,7 +182,7 @@ void setup() {
 
   {
     Serial.println("Card Mount Succeeded");
-    displayTest->drawTextOnGrid(2, 2, "...success");
+    displayTest->showTextOnGrid(2, 2, "...success");
 
     writer = new CSVFileWriter;
     writer->setFileName();
@@ -195,7 +196,8 @@ void setup() {
   // PIN-Modes
   pinMode(PushButton, INPUT);
 
-  int s = 0;
+  int s = -1;
+  displayTest->showTextOnGrid(2, 3, "Wait for GPS");  
   while (gps.satellites.value() < 4)
   {
     readGPSData();
@@ -203,10 +205,11 @@ void setup() {
     Serial.println("Waiting for GPS fix... \n");
     //ToDo: clear line
     //displayTest->clearRectangle(64,36,64,12);
-    displayTest->drawTextOnGrid(2, 3, "Wait for GPS");
-    //String satellitesString = String(gps.satellites.value()) + " sats";
-    String satellitesString = String(s++) + " sats";
-    displayTest->drawTextOnGrid(2, 4, satellitesString);
+    if(s != gps.satellites.value()) {
+      s = gps.satellites.value();
+      String satellitesString = String(gps.satellites.value()) + " sats";
+      displayTest->showTextOnGrid(2, 4, satellitesString);
+    }
     buttonState = digitalRead(PushButton);
     if (buttonState == HIGH)
     {
