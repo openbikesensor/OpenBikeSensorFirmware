@@ -163,7 +163,18 @@ class SSD1306DisplayDevice : public DisplayDevice
     // | (0,5) | (1,5) | (2,5) | (3,5) |
     // ---------------------------------
     void showTextOnGrid(int16_t x, int16_t y, String text) {
-      gridText[x][y] = text;
+      if(!text.equals(gridText[x][y])) {
+        gridText[x][y] = text;
+        this->rebuild();
+      }
+    }
+
+    void cleanGrid() {
+      for (int x = 0; x <= 3; x++) {
+        for (int y = 0; y <= 5; y++) {
+          gridText[x][y] = "";
+        }
+      }
       this->rebuild();
     }
     
@@ -171,7 +182,7 @@ class SSD1306DisplayDevice : public DisplayDevice
       for (int x = 0; x <= 3; x++) {
         for (int y = 0; y <= 5; y++) {
           String xy = String(x) + "/" + String(y) + " = " + gridText[x][y];
-          Serial.println(xy);
+          // Serial.println(xy);
           this->drawString(x * 32 + 0, y*10 + 1, gridText[x][y]);
         }
       }

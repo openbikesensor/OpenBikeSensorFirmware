@@ -32,7 +32,7 @@ void loadConfiguration(const char *configFilename, Config &config) {
   // Allocate a temporary JsonDocument
   // Don't forget to change the capacity to match your requirements.
   // Use arduinojson.org/v6/assistant to compute the capacity.
-  StaticJsonDocument<512> doc;
+  StaticJsonDocument<1024> doc;
 
   // Deserialize the JSON document
   DeserializationError error = deserializeJson(doc, file);
@@ -102,7 +102,44 @@ void saveConfiguration(const char *filename, const Config &config) {
 }
 
 // Prints the content of a file to the Serial
-void printFile(const char *filename) {
+void printConfig(Config &config) {
+
+  Serial.println(F("################################"));
+  Serial.print(F("numSensors = "));
+  Serial.println(String(config.numSensors));
+
+  for (size_t idx = 0; idx < config.numSensors; ++idx)
+  {
+    String offsetString = "Offset[" + String(idx) + "] = " + config.sensorOffsets[idx];
+    Serial.println(offsetString);
+  }
+  Serial.print(F("hostname = "));
+  Serial.println(String(config.hostname));
+
+  Serial.print(F("port = "));
+  Serial.println(String(config.port));
+
+  Serial.print(F("obsUserID = "));
+  Serial.println(String(config.obsUserID));
+
+  Serial.print(F("SSID = "));
+  Serial.println(String(config.ssid));
+
+  #ifdef dev
+    Serial.print(F("password = "));
+    Serial.println(String(config.password));
+  #endif
+
+  Serial.println(F("################################"));
+
+/*
+  doc["displayConfig"] = config.displayConfig;
+
+*/
+
+
+
+  /*
   // Open file for reading
   File file = SPIFFS.open(filename);
   if (!file) {
@@ -111,11 +148,13 @@ void printFile(const char *filename) {
   }
 
   // Extract each characters by one by one
-  //while (file.available()) {
-    // do not ptrint passwords, please it is bad enough that we save them as plain text anyway...Serial.print((char)file.read());
-  //}
+  while (file.available()) {
+    // do not ptrint passwords, please it is bad enough that we save them as plain text anyway...
+    Serial.print((char)file.read());
+  }
   Serial.println();
 
   // Close the file
   file.close();
+  */
 }

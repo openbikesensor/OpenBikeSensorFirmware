@@ -107,11 +107,19 @@ HCSR04SensorManager* sensorManager;
 
 String esp_chipid;
 
+// Enable develop mode.
+// Allows to prints more log messages to serial, like the WIFI password 
+// #define dev
+
 void setup() {
   Serial.begin(115200);
 
   //Serial.println("setup()");
 
+  //##############################################################
+  // Setup display
+  //##############################################################
+  
   displayTest = new SSD1306DisplayDevice;
   displayTest->showLogo(true);
   displayTest->showGrid(false); // Debug only
@@ -121,35 +129,69 @@ void setup() {
 
   //return;
 
+  //##############################################################
+  // Load config from SPIFFS
+  //##############################################################
+
+  displayTest->showTextOnGrid(2, 1, "Config... ");
+
   if (!SPIFFS.begin(true)) {
     Serial.println("An Error has occurred while mounting SPIFFS");
     return;
   }
 
   // Should load default config if run for the first time
-  Serial.println(F("Loading configuration..."));
+  Serial.println(F("Load config"));
   loadConfiguration(configFilename, config);
 
   // Dump config file
   Serial.println(F("Print config file..."));
-  printFile(configFilename);
+  printConfig(config);
 
-  //enter configuration mode and enable OTA if button is pressed,
+  // Reset WIFI config
+  strlcpy(config.ssid, "Test" ,sizeof(config.ssid));
+  strlcpy(config.password, "Test" ,sizeof(config.password));
+  saveConfiguration(configFilename, config);
+  
+  delay(333); // Added for user experience
+  displayTest->showTextOnGrid(2, 1, "Config... ok");
+
+  //##############################################################
+  // Check, if the button is pressed
+  // Enter configuration mode and enable OTA 
+  //##############################################################
+
   buttonState = digitalRead(PushButton);
   if (buttonState == HIGH)
   {
-    displayTest->clear();
+    displayTest->showTextOnGrid(2, 2, "Start Server");
+    delay(1000); // Added for user experience
+
+    displayTest->showLogo(false);
+    displayTest->cleanGrid();
+
+    displayTest->showTextOnGrid(0, 0, "Version:");
+    displayTest->showTextOnGrid(2, 0, OBSVersion);
+
+    /*
+    while (true) {
+      delay(1000);
+    }
+    */
+
     startServer();
     OtaInit(esp_chipid);
-    displayTest->drawString(0, 0, "OpenBikeSensor");
-    displayTest->drawString(0, 12, OBSVersion);
-
     while (true) {
       server.handleClient();
       delay(1);
       ArduinoOTA.handle();
     }
+
   }
+
+  //##############################################################
+  // Init HCSR04
+  //##############################################################
 
   sensorManager = new HCSR04SensorManager;
 
@@ -166,61 +208,91 @@ void setup() {
   sensorManager->setOffsets(config.sensorOffsets);
   sensorManager->setTimeouts();
 
-  //GPS
+  //##############################################################
+  // GPS
+  //##############################################################
+
   SerialGPS.begin(9600, SERIAL_8N1, 16, 17);
   while (!EEPROM.begin(EEPROM_SIZE)) {
     true;
   }
-
   // readLastFixFromEEPROM();
-  displayTest->showTextOnGrid(2, 1, "Mounting SD");
+
+  //##############################################################
+  // Handle SD
+  //##############################################################
+
+  displayTest->showTextOnGrid(2, 2, "SD...");
   while (!SD.begin())
   {
     Serial.println("Card Mount Failed");
     delay(20);
   }
+  delay(333); // Added for user experience
+  Serial.println("Card Mount Succeeded");
+  displayTest->showTextOnGrid(2, 2, "SD... ok");
 
-  {
-    Serial.println("Card Mount Succeeded");
-    displayTest->showTextOnGrid(2, 2, "...success");
+  //##############################################################
+  // Prepare CSV file
+  //##############################################################
+  
+  displayTest->showTextOnGrid(2, 3, "CSV file...");
 
-    writer = new CSVFileWriter;
-    writer->setFileName();
-    writer->writeHeader();
-  }
+  writer = new CSVFileWriter;
+  writer->setFileName();
+  writer->writeHeader();
   Serial.println("File initialised");
 
+  displayTest->showTextOnGrid(2, 3, "CSV file... ok");
+
+  //##############################################################
+  // ???
+  //##############################################################
+  
   // initialize EEPROM with predefined size
   EEPROM.begin(EEPROM_SIZE);
 
   // PIN-Modes
   pinMode(PushButton, INPUT);
 
-  int s = -1;
-  displayTest->showTextOnGrid(2, 3, "Wait for GPS");  
+  //##############################################################
+  // GPS
+  //##############################################################
+
+  displayTest->showTextOnGrid(2, 4, "Wait for GPS");  
   while (gps.satellites.value() < 4)
   {
+    Serial.println("Waiting for GPS fix...");
     readGPSData();
     delay(300);
-    Serial.println("Waiting for GPS fix... \n");
     //ToDo: clear line
     //displayTest->clearRectangle(64,36,64,12);
-    if(s != gps.satellites.value()) {
-      s = gps.satellites.value();
-      String satellitesString = String(gps.satellites.value()) + " sats";
-      displayTest->showTextOnGrid(2, 4, satellitesString);
-    }
+    String satellitesString = String(gps.satellites.value()) + " sats";
+    displayTest->showTextOnGrid(2, 5, satellitesString);
     buttonState = digitalRead(PushButton);
     if (buttonState == HIGH)
     {
+      Serial.println("Skipped get GPS...");
+      displayTest->showTextOnGrid(2, 5, "...skipped");
       break;
     }
   }
-  Serial.println("Got GPS Fix  \n");
-  displayTest->drawString(64, 48, "Got GPS Fix");
+
+  if(gps.satellites.value() == 4) {
+    Serial.print("Got GPS Fix: ");
+    Serial.println(String(gps.satellites.value()));
+    displayTest->showTextOnGrid(2, 5, "Got GPS Fix");
+  }
+  
+  delay(1000); // Added for user experience
+  
+  //##############################################################
+
   //heartRateBLEInit();
-  Serial.println("Waiting a client connection to notify...");
+  //Serial.println("Waiting a client connection to notify...");
 }
+
+
 
 /*
    easily read and write EEPROM

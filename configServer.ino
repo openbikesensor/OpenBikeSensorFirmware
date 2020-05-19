@@ -153,19 +153,28 @@ bool CreateWifiSoftAP(String chipID)
   /* Soft AP network parameters */
   IPAddress apIP(172, 20, 0, 1);
   IPAddress netMsk(255, 255, 255, 0);
+
+  displayTest->showTextOnGrid(0, 2, "Generate AP:");
+  displayTest->showTextOnGrid(2, 2, "");
+  displayTest->showTextOnGrid(0, 3, APName.c_str());
+
+  
   WiFi.softAPConfig(apIP, apIP, netMsk);
   if (SoftAccOK)
   {
     /* Setup the DNS server redirecting all the domains to the apIP */
     //dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
     //dnsServer.start(DNS_PORT, "*", apIP);
-    Serial.println(F("successful."));
-    displayTest->drawString(0, 30, APName.c_str());
-    String passwordString = "Password: " + APPassword;
-    displayTest->drawString(0, 40, passwordString.c_str());
-    String connectString = "open page:172.20.0.1";
-    displayTest->drawString(0, 50, connectString.c_str());
-  } else
+
+    Serial.println(F("AP successful."));
+
+    displayTest->showTextOnGrid(0, 4, "Password:");
+    displayTest->showTextOnGrid(2, 4, APPassword);
+    
+    displayTest->showTextOnGrid(0, 5, "Open page:");
+    displayTest->showTextOnGrid(2, 5, "172.20.0.1");
+  } 
+  else
   {
     Serial.println(F("Soft AP Error."));
     Serial.println(APName.c_str());
@@ -181,6 +190,11 @@ void startServer() {
   esp_chipid = String((uint16_t)(chipid_num >> 32), HEX);
   esp_chipid += String((uint32_t)chipid_num, HEX);
 #endif
+
+  displayTest->showTextOnGrid(0, 1, "Try SSID:");
+  displayTest->showTextOnGrid(2, 1, config.ssid);
+
+
   // Connect to WiFi network
   Serial.println("Trying to connect to");
   Serial.println(config.ssid);
@@ -189,7 +203,7 @@ void startServer() {
   Serial.println(esp_chipid.c_str());
   // Wait for connection
   uint16_t startTime = millis();
-  uint16_t timeout = 12000;
+  uint16_t timeout = 5000;
   Serial.printf("Timeout %u\n", timeout);
   Serial.printf("startTime %u\n", startTime);
   while ((WiFi.status() != WL_CONNECTED) && (( millis() - startTime) <= timeout)) {
