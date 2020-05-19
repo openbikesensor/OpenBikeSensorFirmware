@@ -237,6 +237,9 @@ void startServer() {
   /*return index page which is stored in serverIndex */
   server.on("/", HTTP_GET, []() {
     server.sendHeader("Connection", "close");
+
+    navigationIndex.replace("{version}", OBSVersion);
+
     server.send(200, "text/html", navigationIndex);
   });
   server.on("/serverIndex", HTTP_GET, []() {

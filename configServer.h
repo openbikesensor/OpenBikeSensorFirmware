@@ -67,6 +67,7 @@ String loginIndex =
 String navigationIndex =
   "<form name=navigationForm>"
   "<h1>OpenBikeSensor Navigation</h1>"
+  "<p>Firmware version: {version}</p>"
   "<input type=button onclick=window.location.href='/configIndex' class=btn value=Config>"
   "<input type=button onclick=window.location.href='/serverIndex' class=btn value=Update>"
   "<input type=button onclick=window.location.href='/wifiSettingsIndex' class=btn value=Wifi_Settings>"
