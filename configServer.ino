@@ -154,8 +154,8 @@ bool CreateWifiSoftAP(String chipID)
   IPAddress apIP(172, 20, 0, 1);
   IPAddress netMsk(255, 255, 255, 0);
 
-  displayTest->showTextOnGrid(0, 2, "Generate AP:");
-  displayTest->showTextOnGrid(2, 2, "");
+  displayTest->showTextOnGrid(0, 2, "AP:");
+  displayTest->showTextOnGrid(1, 2, "");
   displayTest->showTextOnGrid(0, 3, APName.c_str());
 
   
@@ -168,11 +168,11 @@ bool CreateWifiSoftAP(String chipID)
 
     Serial.println(F("AP successful."));
 
-    displayTest->showTextOnGrid(0, 4, "Password:");
-    displayTest->showTextOnGrid(2, 4, APPassword);
+    displayTest->showTextOnGrid(0, 4, "Pass:");
+    displayTest->showTextOnGrid(1, 4, APPassword);
     
-    displayTest->showTextOnGrid(0, 5, "Open page:");
-    displayTest->showTextOnGrid(2, 5, "172.20.0.1");
+    displayTest->showTextOnGrid(0, 5, "IP:");
+    displayTest->showTextOnGrid(1, 5, "172.20.0.1");
   } 
   else
   {
@@ -191,8 +191,8 @@ void startServer() {
   esp_chipid += String((uint32_t)chipid_num, HEX);
 #endif
 
-  displayTest->showTextOnGrid(0, 1, "Try SSID:");
-  displayTest->showTextOnGrid(2, 1, config.ssid);
+  displayTest->showTextOnGrid(0, 1, "SSID:");
+  displayTest->showTextOnGrid(1, 1, config.ssid);
 
 
   // Connect to WiFi network
@@ -221,9 +221,9 @@ void startServer() {
     Serial.println(config.ssid);
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
-    displayTest->drawString(0, 30, "connected to");
-    displayTest->drawString(0, 40, config.ssid);
-    displayTest->drawString(0, 50, WiFi.localIP().toString().c_str());
+
+    displayTest->showTextOnGrid(0, 2, "IP:");
+    displayTest->showTextOnGrid(1, 2, WiFi.localIP().toString().c_str());
   }
 
   /*use mdns for host name resolution*/

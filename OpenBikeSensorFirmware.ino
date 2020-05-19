@@ -107,8 +107,9 @@ HCSR04SensorManager* sensorManager;
 
 String esp_chipid;
 
-// Enable develop mode.
-// Allows to prints more log messages to serial, like the WIFI password 
+// Enable dev-mode. Allows to 
+// - set wifi config 
+// - prints more detailed log messages to serial (WIFI password)
 // #define dev
 
 void setup() {
@@ -130,7 +131,7 @@ void setup() {
   //return;
 
   //##############################################################
-  // Load config from SPIFFS
+  // Load, print and save config
   //##############################################################
 
   displayTest->showTextOnGrid(2, 1, "Config... ");
@@ -143,6 +144,14 @@ void setup() {
   // Should load default config if run for the first time
   Serial.println(F("Load config"));
   loadConfiguration(configFilename, config);
+
+  #ifdef dev
+    Serial.println(F("Set config"));
+    // Set WIFI config in dev mode
+    strlcpy(config.ssid, "" ,sizeof(config.ssid));
+    strlcpy(config.password, "" ,sizeof(config.password));
+    config.displayConfig = 0; // DisplayBoth DisplayVelocity DisplaySatelites
+  #endif
 
   // Dump config file
   Serial.println(F("Print config file..."));
@@ -168,8 +177,8 @@ void setup() {
     displayTest->showLogo(false);
     displayTest->cleanGrid();
 
-    displayTest->showTextOnGrid(0, 0, "Version:");
-    displayTest->showTextOnGrid(2, 0, OBSVersion);
+    displayTest->showTextOnGrid(0, 0, "Ver.:");
+    displayTest->showTextOnGrid(1, 0, OBSVersion);
 
     /*
     while (true) {
