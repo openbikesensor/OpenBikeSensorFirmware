@@ -126,11 +126,12 @@ void setup() {
   //##############################################################
   
   displayTest = new SSD1306DisplayDevice;
+  #ifdef dev
+    displayTest->showGrid(true);
+    displayTest->flipScreen(); // TODO: Make this configurable
+    //displayTest->invert(); // TODO: Make this configurable
+  #endif
   displayTest->showLogo(true);
-  //displayTest->showGrid(true); // Debug only
-  //displayTest->flipScreen(); // TODO: Make this configurable
-  //displayTest->invert(); // TODO: Make this configurable
-  
   displayTest->showTextOnGrid(2, 0, OBSVersion);
 
   //return;

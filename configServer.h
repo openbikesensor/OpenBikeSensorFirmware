@@ -49,11 +49,12 @@ String style =
   "form {background:#fff;max-width:258px;margin:75px auto;padding:30px;border-radius:5px;text-align:center}"
   ".btn {background:#3498db;color:#fff;cursor:pointer}"
   "h1,h2 {padding:0;margin:0;}"
+  "h1 a {color:#777}"
   "</style>";
 
 String header = 
   "<form action='{action}'>"
-  "<h1>OpenBikeSensor</h1>"
+  "<h1><a href='/'>OpenBikeSensor</a></h1>"
   "<h2>{subtitle}</h2>"
   "<p>Firmware version: {version}</p>";
 
@@ -69,6 +70,15 @@ String navigationIndex =
   "<input type=button onclick=window.location.href='/wifi' class=btn value='Wifi Settings'>"
   "<input type=button onclick=window.location.href='/update' class=btn value='Update Firmware'>"  
   "<input type=button onclick=window.location.href='/reboot' class=btn value='Reboot'>"
+  + footer;
+
+// #########################################
+// Reboot
+// #########################################
+
+String rebootIndex =
+  header +
+  "<div>Device reboots now.</div>"
   + footer;
 
 // #########################################
@@ -92,8 +102,8 @@ String configIndex =
   "Offset S2<input name='offsetS2' placeholder='Offset Sensor 2' value='{offset2}'>"
   "Upload Host<input name='hostname' placeholder='hostname' value='{hostname}'>"
   "Upload UserID<input name='obsUserID' placeholder='API ID' value='{userId}'>"
-  "Display Satelites<input type='checkbox' name='displayGPS' {displayGPS}>"
   "Display Both<input type='checkbox' name='displayBoth' {displayBoth}>"
+  "Display Satellites<input type='checkbox' name='displayGPS' {displayGPS}>"
   "Display Velocity<input type='checkbox' name='displayVELO' {displayVELO}>"
   "<input type=submit class=btn value=Save>"
   + footer;

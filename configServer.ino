@@ -23,10 +23,6 @@
 // remix, transform, build upon the material and distributed for any purposes
 // only if provided appropriate credit to the author and link to the original article.
 
-void handleReboot() {
-  ESP.restart();
-}
-
 void handle_NotFound(){
   server.send(404, "text/plain", "Not found");
 }
@@ -217,7 +213,19 @@ void startServer() {
 
   // ### Reboot ###
 
-  server.on("/reboot", handleReboot);  
+  server.on("/reboot", HTTP_GET, []() {
+
+    String html = rebootIndex;
+    // Header
+    html.replace("{action}", "");
+    html.replace("{version}", OBSVersion);
+    html.replace("{subtitle}", "Reboot");
+
+    server.send(200, "text/html", html);
+
+    delay(100);
+    ESP.restart();
+  });
 
   // ### Index ###
   
