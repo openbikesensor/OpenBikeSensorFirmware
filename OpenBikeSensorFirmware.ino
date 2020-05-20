@@ -115,7 +115,7 @@ String esp_chipid;
 void setup() {
   Serial.begin(115200);
 
-  //Serial.println("setup()");
+  // Serial.println("setup()");
 
   //##############################################################
   // Setup display
@@ -123,8 +123,9 @@ void setup() {
   
   displayTest = new SSD1306DisplayDevice;
   displayTest->showLogo(true);
-  displayTest->showGrid(false); // Debug only
+  //displayTest->showGrid(true); // Debug only
   displayTest->flipScreen(); // TODO: Make this configurable
+  //displayTest->invert(); // TODO: Make this configurable
   
   displayTest->showTextOnGrid(2, 0, OBSVersion);
 
@@ -174,8 +175,7 @@ void setup() {
     displayTest->showTextOnGrid(2, 2, "Start Server");
     delay(1000); // Added for user experience
 
-    displayTest->showLogo(false);
-    displayTest->cleanGrid();
+    displayTest->clear();
 
     displayTest->showTextOnGrid(0, 0, "Ver.:");
     displayTest->showTextOnGrid(1, 0, OBSVersion);
@@ -272,8 +272,6 @@ void setup() {
     Serial.println("Waiting for GPS fix...");
     readGPSData();
     delay(300);
-    //ToDo: clear line
-    //displayTest->clearRectangle(64,36,64,12);
     String satellitesString = String(gps.satellites.value()) + " sats";
     displayTest->showTextOnGrid(2, 5, satellitesString);
     buttonState = digitalRead(PushButton);

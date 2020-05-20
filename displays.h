@@ -49,15 +49,10 @@ class DisplayDevice
 class SSD1306DisplayDevice : public DisplayDevice
 {
   private:
-    bool isShowLogo;
-    bool isShowGrid;
     String gridText[ 4 ][ 6 ];
   public:
     //SSD1306  displayOLED(0x3c, 21, 22);
     SSD1306DisplayDevice() : DisplayDevice() {
-      isShowLogo = false;
-      isShowGrid = false;
-      
       m_display = new SSD1306(0x3c, 21, 22);
       m_display->init();
       m_display->setBrightness(255);
@@ -90,46 +85,19 @@ class SSD1306DisplayDevice : public DisplayDevice
     }    
 
     //##############################################################
-    // rebuild the display, e.g.,
-    // - show the logo
-    // - show the grid (for debug)
-    // - show the text on the grid
-    //##############################################################
-
-    void rebuild()
-    {
-      m_display->clear();
-      if(isShowLogo) {
-        this->drawLogo();
-      }
-      if(isShowGrid) {
-        this->drawGrid();
-      }
-      this->drawTextOnGrid();
-      m_display->display();
-    }
-    
-    //##############################################################
     // Handle Logo
     //##############################################################
     
     void showLogo(bool val) {
-      this->isShowLogo = val;
-      this->rebuild();
-    }
-    void drawLogo() {
       m_display->drawXbm(0, 0, OBSLogo_width, OBSLogo_height, OBSLogo);
+      m_display->display();
     }
 
     //##############################################################
-    // Draw Grid
+    // Draw the Grid
     //##############################################################
 
     void showGrid(bool val) {
-      isShowGrid = val;
-      this->rebuild();
-    }
-    void drawGrid() {
       // Horizontal lines
       m_display->drawHorizontalLine(0, 2, 128);
       m_display->drawHorizontalLine(0, 12, 128);
@@ -164,30 +132,33 @@ class SSD1306DisplayDevice : public DisplayDevice
     // ---------------------------------
     void showTextOnGrid(int16_t x, int16_t y, String text) {
       if(!text.equals(gridText[x][y])) {
+
+        // Override the existing text with the inverted color
+        this->cleanGridCell(x, y);
+
+        // Write the new text
         gridText[x][y] = text;
-        this->rebuild();
+        m_display->setColor(WHITE);
+        m_display->drawString(x * 32 + 0, y*10 + 1, gridText[x][y]);
+        m_display->display();
       }
     }
 
     void cleanGrid() {
       for (int x = 0; x <= 3; x++) {
         for (int y = 0; y <= 5; y++) {
-          gridText[x][y] = "";
+          this->cleanGridCell(x, y);
         }
       }
-      this->rebuild();
-    }
-    
-    void drawTextOnGrid() {
-      for (int x = 0; x <= 3; x++) {
-        for (int y = 0; y <= 5; y++) {
-          String xy = String(x) + "/" + String(y) + " = " + gridText[x][y];
-          // Serial.println(xy);
-          this->drawString(x * 32 + 0, y*10 + 1, gridText[x][y]);
-        }
-      }
+      m_display->display();
     }
 
+    // Override the existing text with the other color
+    void cleanGridCell(int16_t x, int16_t y) {
+      m_display->setColor(BLACK);
+      m_display->drawString(x * 32 + 0, y*10 + 1, gridText[x][y]);
+    }
+    
     void drawString(int16_t x, int16_t y, String text) {
       m_display->drawString(x, y, text);
       m_display->display();
