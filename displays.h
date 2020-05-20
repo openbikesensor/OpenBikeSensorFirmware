@@ -40,18 +40,16 @@ class DisplayDevice
     virtual void normalDisplay() = 0;
     //virtual void drawString(int16_t, int16_t, String) = 0;
     virtual void clear() = 0;
-
-  protected:
-    virtual void init() = 0;
 };
 
 
 class SSD1306DisplayDevice : public DisplayDevice
 {
   private:
+    SSD1306* m_display;  
     String gridText[ 4 ][ 6 ];
+
   public:
-    //SSD1306  displayOLED(0x3c, 21, 22);
     SSD1306DisplayDevice() : DisplayDevice() {
       m_display = new SSD1306(0x3c, 21, 22);
       m_display->init();
@@ -59,6 +57,7 @@ class SSD1306DisplayDevice : public DisplayDevice
       m_display->setTextAlignment(TEXT_ALIGN_LEFT);
       m_display->display();      
     }
+
     ~SSD1306DisplayDevice() {
       delete m_display;
     }
@@ -71,14 +70,17 @@ class SSD1306DisplayDevice : public DisplayDevice
       m_display->invertDisplay();
       m_display->display();
     }
+
     void normalDisplay() {
       m_display->normalDisplay();
       m_display->display();
     }
+
     void flipScreen() {
       m_display->flipScreenVertically();
       m_display->display();
     }
+
     void clear() {
       m_display->clear();
       this->cleanGrid();
@@ -136,17 +138,17 @@ class SSD1306DisplayDevice : public DisplayDevice
 
     void showTextOnGrid(int16_t x, int16_t y, String text, const uint8_t* font) {
       if(!text.equals(gridText[x][y])) {
+        m_display->setFont(font);
+
         // Override the existing text with the inverted color
         this->cleanGridCell(x, y);
 
         // Write the new text
         gridText[x][y] = text;
-        m_display->setFont(font);
         m_display->drawString(x * 32 + 0, y*10 + 1, gridText[x][y]);
         m_display->display();
       }
     } 
-
 
     void cleanGrid() {
       for (int x = 0; x <= 3; x++) {
@@ -158,23 +160,18 @@ class SSD1306DisplayDevice : public DisplayDevice
       m_display->display();
     }
 
-    // Override the existing text with the other color
+    // Override the existing WHITE text with BLACK
     void cleanGridCell(int16_t x, int16_t y) {
       m_display->setColor(BLACK);
       m_display->drawString(x * 32 + 0, y * 10 + 1, gridText[x][y]);
       m_display->setColor(WHITE);
     }
 
-    /*
-    void drawString(int16_t x, int16_t y, String text) {
-      m_display->drawString(x, y, text);
-      m_display->display();
-    }
-    */
-
     //##############################################################
     // Other
     //##############################################################
+
+    // TODO: Move to the logic, since this is only the basic "display" class
 
     void showGPS()
     {
@@ -197,6 +194,7 @@ class SSD1306DisplayDevice : public DisplayDevice
     {
       // not used any more
     }
+
     void showValues(uint8_t minDistanceToConfirm, uint8_t value1,uint8_t value2)
     {
       if(!(config.displayConfig&DisplayBoth))
@@ -228,20 +226,4 @@ class SSD1306DisplayDevice : public DisplayDevice
       m_display->display();
     }
 
-
-
-
-    
-
-
-    
-  protected:
-    void init()
-    {
-      m_display->init();
-      m_display->setBrightness(255);
-    }
-  private:
-    SSD1306* m_display;
-    uint8_t m_value;
 };
