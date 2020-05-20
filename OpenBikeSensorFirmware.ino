@@ -310,6 +310,7 @@ void loop() {
 
   //ArduinoOTA.handle(); 
   DataSet* currentSet = new DataSet;
+  //specify which sensors value can be confirmed by pressing the button
   uint8_t confirmationSensorID = 1;
   //writeLastFixToEEPROM();
   // Todo: proceed only if gps is valid and updated
@@ -325,37 +326,44 @@ void loop() {
   CurrentTime = millis();
   uint8_t minDistance = MAX_SENSOR_VALUE;
   int measurements = 0;
+
+  // if the detected minimum was measured more than 5s ago, it is discarded and cannot be confirmed
+  // TODO: make it a configurable timeout
   if ((CurrentTime - timeOfMinimum ) > 5000)
   {
     minDistanceToConfirm = MAX_SENSOR_VALUE;
   }
 
+  // do this for the time specified by measureInterval, e.g. 1s
   while ((CurrentTime - StartTime) < measureInterval)
   {
     CurrentTime = millis();
     sensorManager->getDistances();
 
     //displayTest->showValue(minDistance);
+    // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
     if (sensorManager->sensorValues[confirmationSensorID] < minDistanceToConfirm)
     {
       minDistanceToConfirm = sensorManager->sensorValues[confirmationSensorID];
       timeOfMinimum = millis();
     }
     displayTest->showValues(minDistanceToConfirm,sensorManager->m_sensors[0].minDistance,sensorManager->m_sensors[1].minDistance);
-    
+
+    // if there is a sensor value and confirmation was not already triggered
     if ((minDistanceToConfirm < MAX_SENSOR_VALUE) && !transmitConfirmedData)
     {
       buttonState = digitalRead(PushButton);
+      // detect state change
       if (buttonState != lastButtonState)
       {
-        if (buttonState == LOW)
+        if (buttonState == LOW) //after button was released
         {
           if (!handleBarWidthReset) transmitConfirmedData = true;
           else handleBarWidthReset = false;
         }
         else
         {
-          buttonPushedTime = CurrentTime;
+          buttonPushedTime = CurrentTime; // Time when buttonState changed to HIGH
         }
       }
       else
@@ -363,10 +371,12 @@ void loop() {
         if (buttonState == HIGH)
         {
           //Button state is high for longer than 5 seconds -> reset handlebar width
-          //Todo: do it for all connected sensors
+          //: do it for all connected sensors
           if ((CurrentTime - buttonPushedTime > 5000))
           {
-            setHandleBarWidth(minDistanceToConfirm);
+            // setHandleBarWidth is obsolete and doesnt do anything
+            // TODO: if wanted enter an offset setting mode, measure offsets and save them to config
+            setHandleBarWidth(minDistanceToConfirm); 
             displayTest->showValue(minDistanceToConfirm);
             //displayTest2->showValue(minDistanceToConfirm);
             delay(5000);
@@ -379,9 +389,11 @@ void loop() {
     }
     measurements++;
   }
+
+  // Write the minimum values of the while-loop to a set
   currentSet->sensorValues = sensorManager->sensorValues;
 
-  //if nothing was detected, write the dataset to file, otherwise write it to the buffer for confirmation
+  // if nothing was detected, write the dataset to file, otherwise write it to the buffer for confirmation
   if ((currentSet->sensorValues[confirmationSensorID] == MAX_SENSOR_VALUE) && dataBuffer.isEmpty())
   {
     Serial.write("Empty Buffer, writing directly ");
@@ -399,17 +411,21 @@ void loop() {
   Serial.print(measurements);
   Serial.write(" measurements  \n");
 
+  // Obsolete things from the BLE version
   uint8_t buffer[2];
   uint8_t isit8or16bit = 0;
   buffer[0] = isit8or16bit;
+
   if (transmitConfirmedData)
   {
+    //inverting the display until the data is saved TODO: add control over the time the display will be inverted so the user actually sees it.
     displayTest->invert();
     Serial.printf("Trying to transmit Confirmed data \n");
     buffer[1] = minDistanceToConfirm;
     // make sure the minimum distance is saved only once
     using index_t = decltype(dataBuffer)::index_t;
     index_t j;
+    //Search for the latest appearence of the confirmed minimum value
     for (index_t i = 0; i < dataBuffer.size(); i++)
     {
       if (dataBuffer[i]->sensorValues[confirmationSensorID] == minDistanceToConfirm)
@@ -421,11 +437,12 @@ void loop() {
     {
       if (i == j)
       {
-        dataBuffer[i]->confirmed = true;
+        dataBuffer[i]->confirmed = true; // set the confirmed tag of the set in the buffer containing the minimum
         Serial.printf("Found confirmed data in buffer \n");
       }
     }
 
+    // Empty buffer by writing it, after confirmation it will be written to SD card directly so no confirmed sets will be lost
     while (!dataBuffer.isEmpty())
     {
       DataSet* dataset = dataBuffer.shift();
@@ -444,6 +461,7 @@ void loop() {
     buffer[1] = MAX_SENSOR_VALUE;
   }
 
+  // If the circular buffer is full, write just one set to the writers buffer, will fail when the confirmation timeout (currently hardcoded 5000) is larger than measureInterval * dataBuffer.size() 
   if (dataBuffer.isFull())
   {
     DataSet* dataset = dataBuffer.shift();
@@ -454,6 +472,7 @@ void loop() {
     delete dataset;
   }
 
+  // write data to sd every now and then, hardcoded value assuming it will write every minute or so
   if ((writer->getDataLength() > 5000) && !(digitalRead(PushButton))) {
     writer->writeDataToSD();
   }
