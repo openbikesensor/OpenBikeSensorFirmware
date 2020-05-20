@@ -350,6 +350,7 @@ void loop() {
     displayTest->showValues(minDistanceToConfirm,sensorManager->m_sensors[0].minDistance,sensorManager->m_sensors[1].minDistance);
 
     // if there is a sensor value and confirmation was not already triggered
+    // bug: other data (smaller value) than the value shown on the display will be stored if a new minimum is detected after button release and still in the while loop.
     if ((minDistanceToConfirm < MAX_SENSOR_VALUE) && !transmitConfirmedData)
     {
       buttonState = digitalRead(PushButton);
