@@ -59,9 +59,6 @@ const char *OBSVersion = "v0.1.1";
 
 
 // PINs
-const int triggerPin = 15;
-const int echoPin = 4;
-
 const int PushButton = 2;
 
 
@@ -110,12 +107,19 @@ String esp_chipid;
 // Enable dev-mode. Allows to 
 // - set wifi config 
 // - prints more detailed log messages to serial (WIFI password)
-#define dev
+//#define dev
+
 
 void setup() {
   Serial.begin(115200);
 
   // Serial.println("setup()");
+
+  //##############################################################
+  // Configure button pin as INPUT
+  //##############################################################
+
+  pinMode(PushButton, INPUT);
 
   //##############################################################
   // Setup display
@@ -175,25 +179,14 @@ void setup() {
     displayTest->showTextOnGrid(2, 2, "Start Server");
     delay(1000); // Added for user experience
 
-    displayTest->clear();
-
-    displayTest->showTextOnGrid(0, 0, "Ver.:");
-    displayTest->showTextOnGrid(1, 0, OBSVersion);
-
-    /*
-    while (true) {
-      delay(1000);
-    }
-    */
-
     startServer();
     OtaInit(esp_chipid);
+
     while (true) {
       server.handleClient();
       delay(1);
       ArduinoOTA.handle();
     }
-
   }
 
   //##############################################################
@@ -203,13 +196,15 @@ void setup() {
   sensorManager = new HCSR04SensorManager;
 
   HCSR04SensorInfo sensorManaged1;
-  sensorManaged1.sensorLocation = "Lid";
+  sensorManaged1.triggerPin = 15;
+  sensorManaged1.echoPin = 4;
+  sensorManaged1.sensorLocation = "Lid"; // TODO
   sensorManager->registerSensor(sensorManaged1);
 
   HCSR04SensorInfo sensorManaged2;
   sensorManaged2.triggerPin = 25;
   sensorManaged2.echoPin = 26;
-  sensorManaged2.sensorLocation = "Case";
+  sensorManaged2.sensorLocation = "Case"; // TODO
   sensorManager->registerSensor(sensorManaged2);
 
   sensorManager->setOffsets(config.sensorOffsets);
@@ -259,8 +254,6 @@ void setup() {
   // initialize EEPROM with predefined size
   EEPROM.begin(EEPROM_SIZE);
 
-  // PIN-Modes
-  pinMode(PushButton, INPUT);
 
   //##############################################################
   // GPS

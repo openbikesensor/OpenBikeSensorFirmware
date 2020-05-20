@@ -191,6 +191,10 @@ void startServer() {
   esp_chipid += String((uint32_t)chipid_num, HEX);
 #endif
 
+  displayTest->clear();
+  displayTest->showTextOnGrid(0, 0, "Ver.:");
+  displayTest->showTextOnGrid(1, 0, OBSVersion);
+
   displayTest->showTextOnGrid(0, 1, "SSID:");
   displayTest->showTextOnGrid(1, 1, config.ssid);
 
