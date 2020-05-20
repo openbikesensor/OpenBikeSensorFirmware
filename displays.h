@@ -57,7 +57,6 @@ class SSD1306DisplayDevice : public DisplayDevice
       m_display->init();
       m_display->setBrightness(255);
       m_display->setTextAlignment(TEXT_ALIGN_LEFT);
-      m_display->setFont(ArialMT_Plain_10);
       m_display->display();      
     }
     ~SSD1306DisplayDevice() {
@@ -138,25 +137,33 @@ class SSD1306DisplayDevice : public DisplayDevice
 
         // Write the new text
         gridText[x][y] = text;
-        m_display->setColor(WHITE);
+        m_display->setFont(ArialMT_Plain_10);
         m_display->drawString(x * 32 + 0, y*10 + 1, gridText[x][y]);
         m_display->display();
       }
     }
 
-    void cleanGrid() {
-      for (int x = 0; x <= 3; x++) {
-        for (int y = 0; y <= 5; y++) {
-          this->cleanGridCell(x, y);
-        }
-      }
-      m_display->display();
-    }
+    void showTextOnGrid(int16_t x, int16_t y, String text, const uint8_t font) {
+      
+    }    
+
+    const uint8_t
+
+    //void cleanGrid() {
+    //  for (int x = 0; x <= 3; x++) {
+    //    for (int y = 0; y <= 5; y++) {
+    //      this->cleanGridCell(x, y);
+    //    }
+    //  }
+    //  m_display->display();
+    //}
 
     // Override the existing text with the other color
     void cleanGridCell(int16_t x, int16_t y) {
       m_display->setColor(BLACK);
-      m_display->drawString(x * 32 + 0, y*10 + 1, gridText[x][y]);
+      m_display->setFont(ArialMT_Plain_10);
+      m_display->drawString(x * 32 + 0, y * 10 + 1, gridText[x][y]);
+      m_display->setColor(WHITE);
     }
     
     void drawString(int16_t x, int16_t y, String text) {
@@ -167,27 +174,23 @@ class SSD1306DisplayDevice : public DisplayDevice
     //##############################################################
     // Other
     //##############################################################
-    
-
 
     void showGPS()
     {
       if(config.displayConfig & DisplaySatelites)
       { 
-        m_display->setFont(ArialMT_Plain_10);
+        Serial.println("showGPS");
         String satellitesString = String(gps.satellites.value()) + " sats";
-        m_display->drawString(64, 48, satellitesString);
+        this->showTextOnGrid(2, 5, satellitesString);
       }
     }
     void showVelocity(double velocity)
     {
       if(config.displayConfig & DisplayVelocity)
       { 
-        m_display->setFont(ArialMT_Plain_10);
         String velotext = String(int(velocity)) + " km/h";
-        m_display->drawString(0, 48, velotext);
+        this->showTextOnGrid(0, 5, velotext);
       }
-
     }
     
     void showValue(uint8_t minDistanceToConfirm)
@@ -196,7 +199,8 @@ class SSD1306DisplayDevice : public DisplayDevice
     }
     void showValues(uint8_t minDistanceToConfirm, uint8_t value1,uint8_t value2)
     {
-      m_display->clear();
+      //Serial.println("showValues");
+      //m_display->clear();
       m_display->setFont(Dialog_plain_40);
       
       if(!(config.displayConfig&DisplayBoth))
@@ -205,21 +209,25 @@ class SSD1306DisplayDevice : public DisplayDevice
       }
       if (value1 == 255)
       {
-        m_display->drawString(0, 0, "---");
+        //m_display->drawString(0, 0, "---");
+        this->showTextOnGrid(0, 0, "---");
       }
       else
       {
-        m_display->drawString(0, 0, String(value1));
+        //m_display->drawString(0, 0, String(value1));
+        this->showTextOnGrid(0, 0, String(value1));
       }
       if(config.displayConfig&DisplayBoth)
       {
         if (value2 == 255)
         {
-          m_display->drawString(64, 0, "---");
+          //m_display->drawString(64, 0, "---");
+          this->showTextOnGrid(2, 0, "---");
         }
         else
         {
-          m_display->drawString(64, 0, String(value2));
+          //m_display->drawString(64, 0, String(value2));
+          this->showTextOnGrid(2, 0, String(value2));
         }
       }
       
