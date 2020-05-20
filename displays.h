@@ -38,7 +38,7 @@ class DisplayDevice
     virtual void showValue(uint8_t) = 0;
     virtual void invert() = 0;
     virtual void normalDisplay() = 0;
-    virtual void drawString(int16_t, int16_t, String) = 0;
+    //virtual void drawString(int16_t, int16_t, String) = 0;
     virtual void clear() = 0;
 
   protected:
@@ -81,6 +81,7 @@ class SSD1306DisplayDevice : public DisplayDevice
     }
     void clear() {
       m_display->clear();
+      this->cleanGrid();
     }    
 
     //##############################################################
@@ -130,46 +131,46 @@ class SSD1306DisplayDevice : public DisplayDevice
     // | (0,5) | (1,5) | (2,5) | (3,5) |
     // ---------------------------------
     void showTextOnGrid(int16_t x, int16_t y, String text) {
-      if(!text.equals(gridText[x][y])) {
+      this->showTextOnGrid(x, y, text, ArialMT_Plain_10);
+    }
 
+    void showTextOnGrid(int16_t x, int16_t y, String text, const uint8_t* font) {
+      if(!text.equals(gridText[x][y])) {
         // Override the existing text with the inverted color
         this->cleanGridCell(x, y);
 
         // Write the new text
         gridText[x][y] = text;
-        m_display->setFont(ArialMT_Plain_10);
+        m_display->setFont(font);
         m_display->drawString(x * 32 + 0, y*10 + 1, gridText[x][y]);
         m_display->display();
       }
+    } 
+
+
+    void cleanGrid() {
+      for (int x = 0; x <= 3; x++) {
+        for (int y = 0; y <= 5; y++) {
+          this->cleanGridCell(x, y);
+          gridText[x][y] = "";
+        }
+      }
+      m_display->display();
     }
-
-    void showTextOnGrid(int16_t x, int16_t y, String text, const uint8_t font) {
-      
-    }    
-
-    const uint8_t
-
-    //void cleanGrid() {
-    //  for (int x = 0; x <= 3; x++) {
-    //    for (int y = 0; y <= 5; y++) {
-    //      this->cleanGridCell(x, y);
-    //    }
-    //  }
-    //  m_display->display();
-    //}
 
     // Override the existing text with the other color
     void cleanGridCell(int16_t x, int16_t y) {
       m_display->setColor(BLACK);
-      m_display->setFont(ArialMT_Plain_10);
       m_display->drawString(x * 32 + 0, y * 10 + 1, gridText[x][y]);
       m_display->setColor(WHITE);
     }
-    
+
+    /*
     void drawString(int16_t x, int16_t y, String text) {
       m_display->drawString(x, y, text);
       m_display->display();
     }
+    */
 
     //##############################################################
     // Other
@@ -199,35 +200,27 @@ class SSD1306DisplayDevice : public DisplayDevice
     }
     void showValues(uint8_t minDistanceToConfirm, uint8_t value1,uint8_t value2)
     {
-      //Serial.println("showValues");
-      //m_display->clear();
-      m_display->setFont(Dialog_plain_40);
-      
       if(!(config.displayConfig&DisplayBoth))
       {
         value1 = minDistanceToConfirm;
       }
       if (value1 == 255)
       {
-        //m_display->drawString(0, 0, "---");
-        this->showTextOnGrid(0, 0, "---");
+        this->showTextOnGrid(0, 0, "---", Dialog_plain_40);
       }
       else
       {
-        //m_display->drawString(0, 0, String(value1));
-        this->showTextOnGrid(0, 0, String(value1));
+        this->showTextOnGrid(0, 0, String(value1), Dialog_plain_40);
       }
       if(config.displayConfig&DisplayBoth)
       {
         if (value2 == 255)
         {
-          //m_display->drawString(64, 0, "---");
-          this->showTextOnGrid(2, 0, "---");
+          this->showTextOnGrid(2, 0, "---", Dialog_plain_40);
         }
         else
         {
-          //m_display->drawString(64, 0, String(value2));
-          this->showTextOnGrid(2, 0, String(value2));
+          this->showTextOnGrid(2, 0, String(value2), Dialog_plain_40);
         }
       }
       

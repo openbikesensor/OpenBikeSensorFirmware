@@ -123,8 +123,8 @@ void setup() {
   
   displayTest = new SSD1306DisplayDevice;
   displayTest->showLogo(true);
-  displayTest->showGrid(true); // Debug only
-  displayTest->flipScreen(); // TODO: Make this configurable
+  //displayTest->showGrid(true); // Debug only
+  //displayTest->flipScreen(); // TODO: Make this configurable
   //displayTest->invert(); // TODO: Make this configurable
   
   displayTest->showTextOnGrid(2, 0, OBSVersion);
@@ -151,7 +151,7 @@ void setup() {
     // Set WIFI config in dev mode
     strlcpy(config.ssid, "" ,sizeof(config.ssid));
     strlcpy(config.password, "" ,sizeof(config.password));
-    config.displayConfig = DisplayBoth; // DisplayBoth DisplayVelocity DisplaySatelites
+    config.displayConfig = 0; // DisplayBoth DisplayVelocity DisplaySatelites
   #endif
 
   // Dump config file
@@ -290,15 +290,10 @@ void setup() {
   }
   
   delay(1000); // Added for user experience
-  displayTest->clear();
-  
-  //##############################################################
 
-  //heartRateBLEInit();
-  //Serial.println("Waiting a client connection to notify...");
+  // Clear the display once!
+  displayTest->clear(); 
 }
-
-
 
 /*
    easily read and write EEPROM
