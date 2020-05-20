@@ -36,7 +36,6 @@ Screws and nuts:
 * [7x M3x45](https://www.amazon.de/gp/product/B07KTBYPFP)
 * [4x M2x12](https://www.amazon.de/gp/product/B078TQYZVX)
 * [1x M2x10](https://www.amazon.de/gp/product/B01GQX070W)
-
 * [1x M5 Mutter](https://www.amazon.de/gp/product/B07961ZH1B)
 * [2x M4 Mutter](https://www.amazon.de/gp/product/B07961ZH19)
 * [7x M3 Mutter](https://www.amazon.de/gp/product/B01H8XN99A)
