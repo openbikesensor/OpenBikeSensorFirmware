@@ -23,11 +23,20 @@
 // remix, transform, build upon the material and distributed for any purposes
 // only if provided appropriate credit to the author and link to the original article.
 
-void handleForm() {
+void handleReboot() {
+  ESP.restart();
+}
+
+void handle_NotFound(){
+  server.send(404, "text/plain", "Not found");
+}
+
+void configAction() {
+  
   String offsetS1 = server.arg("offsetS1");
   String offsetS2 = server.arg("offsetS2");
   String displayGPS = server.arg("displayGPS");
-  String displayB = server.arg("displayB");
+  String displayBoth = server.arg("displayBoth");
   String displayVELO = server.arg("displayVELO");
   String obsUserID = server.arg("obsUserID");
   String hostname = server.arg("hostname");
@@ -40,20 +49,19 @@ void handleForm() {
     config.displayConfig |= DisplaySatelites;
   else
     config.displayConfig &= ~DisplaySatelites;
-  if(displayB == "on")
+
+  if(displayBoth == "on")
     config.displayConfig |= DisplayBoth;
   else
     config.displayConfig &= ~DisplayBoth;
+
   if(displayVELO == "on")
     config.displayConfig |= DisplayVelocity;
   else
     config.displayConfig &= ~DisplayVelocity;
     
-  if(hostname.length()>0)
-      strlcpy(config.hostname,hostname.c_str(),sizeof(config.hostname));
-  if(obsUserID.length()>0)
-      strlcpy(config.obsUserID,obsUserID.c_str(),sizeof(config.obsUserID));
-  
+  strlcpy(config.hostname,hostname.c_str(),sizeof(config.hostname));
+  strlcpy(config.obsUserID,obsUserID.c_str(),sizeof(config.obsUserID));
     
   config.sensorOffsets[0] = atoi(offsetS1.c_str());
   config.sensorOffsets[1] = atoi(offsetS2.c_str());
@@ -67,59 +75,14 @@ void handleForm() {
   //Serial.print("confirmation:");
   //Serial.println(confirmation);
 
-  // Create configuration file
+  // Print and safe config
+  Serial.println(F("Print config file..."));
+  printConfig(config);
   Serial.println(F("Saving configuration..."));
   saveConfiguration(configFilename, config);
 
-  String s = "<meta http-equiv='refresh' content='0; url=/navigationIndex'><a href='/'> Go Back </a>";
+  String s = "<meta http-equiv='refresh' content='0; url=/'><a href='/'> Go Back </a>";
   server.send(200, "text/html", s); //Send web page
-}
-
-void createConfigPage()
-{
-  String configPage = configIndexPrefix;
-  configPage += "Offset S1<input name=offsetS1 placeholder='Offset Sensor 1' value=";
-  if(config.sensorOffsets.size()>0)
-  {
-    configPage += String(config.sensorOffsets[0]);
-  }
-  configPage += "> ";
-  configPage += "Offset S2<input name=offsetS2 placeholder='Offset Sensor 2' value=";
-  if(config.sensorOffsets.size()>1)
-  {
-    configPage += String(config.sensorOffsets[1]);
-  }
-  configPage += "> ";
-  // unused so far 
-  // configPage +="<p>Which sensor values should be confirmed?.</p>"
-  //"<input type=radio id=sensor1 name=confirmation value=0><label for=lid>Sensor 1</label><br>"
-  //"<input type=radio id=sensor2 name=confirmation value=1><label for=case>Sensor 2</label><br>";
-  
-  configPage +="Upload Host<input name='hostname' placeholder='hostname' value=" + String(config.hostname) +" >";
-  configPage +="Upload UserID<input name='obsUserID' placeholder='API ID' value=" + String(config.obsUserID) +" >";
-  bool DisplayGPS = config.displayConfig & DisplaySatelites;
-  if(DisplayGPS)
-    configPage +="Display Satelites<input type='checkbox' name=displayGPS  checked=checked>";
-  else
-    configPage +="Display Satelites<input type='checkbox' name=displayGPS>";
-    
-  bool DisplayB = config.displayConfig & DisplayBoth;
-  if(DisplayB)
-    configPage +="Display Both<input type='checkbox' name=displayB  checked=checked>";
-  else
-    configPage +="Display Both<input type='checkbox' name=displayB>";
-    
-  bool DisplayVelo = config.displayConfig & DisplayVelocity;
-  if(DisplayVelo)
-    configPage +="Display Velocity<input type='checkbox' name=displayVELO  checked=checked>";
-  else
-    configPage +="Display Velocity<input type='checkbox' name=displayVELO>";
-  configPage+=configIndexPostfix;
-  server.send(200, "text/html", configPage);
-}
-
-void handleReboot() {
-  ESP.restart();
 }
 
 void wifiAction() {
@@ -128,17 +91,24 @@ void wifiAction() {
 
   Serial.print("ssid:");
   Serial.println(ssid);
+
+  #ifdef dev
+    Serial.print(F("pass = "));
+    Serial.println(pass);
+  #endif
+
+  // Write always both data, thus the WIFI config can be overwritten
   strlcpy(config.ssid,ssid.c_str(),sizeof(config.ssid));
-  if(pass.length()>0)
-      strlcpy(config.password,pass.c_str(),sizeof(config.password));
-  
-  // Create configuration file
+  strlcpy(config.password,pass.c_str(),sizeof(config.password));
+
+  // Print and safe config
+  Serial.println(F("Print config file..."));
+  printConfig(config);
   Serial.println(F("Saving configuration..."));
   saveConfiguration(configFilename, config);
 
-
-  String s = "<meta http-equiv='refresh' content='0; url=/navigationIndex'><a href='/'> Go Back </a>";
-  server.send(200, "text/html", s); //Send web page
+  String s = "<meta http-equiv='refresh' content='0; url=/'><a href='/'> Go Back </a>";
+  server.send(200, "text/html", s);
 }
 
 bool CreateWifiSoftAP(String chipID)
@@ -239,39 +209,91 @@ void startServer() {
   }
   Serial.println("mDNS responder started");
   /*return index page which is stored in serverIndex */
+
+
+  // #############################################
+  // Handle web pages
+  // #############################################
+
+  // ### Reboot ###
+
+  server.on("/reboot", handleReboot);  
+
+  // ### Index ###
+  
   server.on("/", HTTP_GET, []() {
-    server.sendHeader("Connection", "close");
+    String html = navigationIndex;
+    // Header
+    html.replace("{action}", "");
+    html.replace("{version}", OBSVersion);
+    html.replace("{subtitle}", "Navigation");
+    
+    server.send(200, "text/html", html);
+  });
 
-    navigationIndex.replace("{version}", OBSVersion);
+  // ### Wifi ###
 
-    server.send(200, "text/html", navigationIndex);
-  });
-  server.on("/serverIndex", HTTP_GET, []() {
-    server.sendHeader("Connection", "close");
-    server.send(200, "text/html", serverIndex);
-  });
-  server.on("/navigationIndex", HTTP_GET, []() {
-    server.sendHeader("Connection", "close");
-    server.send(200, "text/html", navigationIndex);
-  });
-  server.on("/configIndex", HTTP_GET, []() {
-    server.sendHeader("Connection", "close");
-    createConfigPage();
-  });
-  server.on("/wifiSettingsIndex", HTTP_GET, []() {
-    server.sendHeader("Connection", "close");
-    server.send(200, "text/html", wifiSettingsIndex);
-  });
-  server.on("/wifi_action_page", wifiAction);
-  server.on("/action_page", handleForm);
-  server.on("/reboot", handleReboot);
+  server.on("/wifi_action", wifiAction);
 
-  /*handling uploading firmware file */
+  server.on("/wifi", HTTP_GET, []() {
+    String html = wifiSettingsIndex;
+    // Header
+    html.replace("{action}", "/wifi_action");
+    html.replace("{version}", OBSVersion);
+    html.replace("{subtitle}", "Wifi Config");
+    // Form data
+    html.replace("{ssid}", config.ssid);
+    
+    server.send(200, "text/html", html);
+  });
+
+  // ### Config ###
+
+  server.on("/config_action", configAction);
+
+  server.on("/config", HTTP_GET, []() {
+    String html = configIndex;
+    // Header
+    html.replace("{action}", "/config_action");
+    html.replace("{version}", OBSVersion);
+    html.replace("{subtitle}", "Config");
+    // Form data
+    html.replace("{offset1}", String(config.sensorOffsets[0]));
+    html.replace("{offset2}", String(config.sensorOffsets[1]));
+    html.replace("{hostname}", String(config.hostname));
+    html.replace("{userId}", String(config.obsUserID));
+
+    bool displayGPS = config.displayConfig & DisplaySatelites;
+    bool displayBoth = config.displayConfig & DisplayBoth;
+    bool displayVelo = config.displayConfig & DisplayVelocity;
+
+    html.replace("{displayGPS}", displayGPS ? "checked" : "");
+    html.replace("{displayBoth}", displayBoth ? "checked" : "");
+    html.replace("{displayVELO}", displayVelo ? "checked" : "");
+    
+    server.send(200, "text/html", html);
+  });
+
+  // ### Update Firmware ###
+
+  server.on("/update", HTTP_GET, []() {
+    String html = uploadIndex;
+    // Header
+    html.replace("{action}", ""); // Handled by XHR
+    html.replace("{version}", OBSVersion);
+    html.replace("{subtitle}", "Update Firmware");
+    
+    server.send(200, "text/html", html);
+  });
+
+  // Handling uploading firmware file
   server.on("/update", HTTP_POST, []() {
-    server.sendHeader("Connection", "close");
+    Serial.println("Send response...");
     server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
+    delay(250);
     ESP.restart();
   }, []() {
+    //Serial.println('Update Firmware...');
     HTTPUpload& upload = server.upload();
     if (upload.status == UPLOAD_FILE_START) {
       Serial.printf("Update: %s\n", upload.filename.c_str());
@@ -291,6 +313,9 @@ void startServer() {
       }
     }
   });
+
+  server.onNotFound(handle_NotFound);
+
   server.begin();
   Serial.println("Server Ready");
 }

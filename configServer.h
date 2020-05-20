@@ -39,79 +39,102 @@ WebServer server(80);
 
 /* Style */
 String style =
-  "<style>#file-input,input{width:100%;height:44px;border-radius:4px;margin:10px auto;font-size:15px}"
-  "input{background:#f1f1f1;border:0;padding:0 15px}body{background:#3498db;font-family:sans-serif;font-size:14px;color:#777}"
-  "#file-input{padding:0;border:1px solid #ddd;line-height:44px;text-align:left;display:block;cursor:pointer}"
-  "#bar,#prgbar{background-color:#f1f1f1;border-radius:10px}#bar{background-color:#3498db;width:0%;height:10px}"
-  "form{background:#fff;max-width:258px;margin:75px auto;padding:30px;border-radius:5px;text-align:center}"
-  ".btn{background:#3498db;color:#fff;cursor:pointer}</style>";
+  "<style>"
+  "#file-input,input {width:100%;height:44px;border-radius:4px;margin:10px auto;font-size:15px}"
+  "input {background:#f1f1f1;border:0;padding:0 15px}"
+  "body {background:#3498db;font-family:sans-serif;font-size:14px;color:#777}"
+  "#file-input {padding:0;border:1px solid #ddd;line-height:44px;text-align:left;display:block;cursor:pointer}"
+  "#bar,#prgbar {background-color:#f1f1f1;border-radius:10px}"
+  "#bar {background-color:#3498db;width:0%;height:10px}"
+  "form {background:#fff;max-width:258px;margin:75px auto;padding:30px;border-radius:5px;text-align:center}"
+  ".btn {background:#3498db;color:#fff;cursor:pointer}"
+  "h1,h2 {padding:0;margin:0;}"
+  "</style>";
 
-/* Login page */
-String loginIndex =
-  "<form name=loginForm>"
-  "<h1>OpenBikeSensor Login</h1>"
-  "<input name=userid placeholder='User ID'> "
-  "<input name=pwd placeholder=Password type=Password> "
-  "<input type=submit onclick=check(this.form) class=btn value=Login></form>"
-  "<script>"
-  "function check(form) {"
-  "if(form.userid.value=='admin' && form.pwd.value=='admin')"
-  "{window.open('/navigationIndex')}"
-  "else"
-  "{alert('Error Password or Username')}"
-  "}"
-  "</script>" + style;
+String header = 
+  "<form action='{action}'>"
+  "<h1>OpenBikeSensor</h1>"
+  "<h2>{subtitle}</h2>"
+  "<p>Firmware version: {version}</p>";
 
+String footer = "</form>" + style;
 
-/* Navigation page */
+// #########################################
+// Navigation
+// #########################################
+
 String navigationIndex =
-  "<form name=navigationForm>"
-  "<h1>OpenBikeSensor Navigation</h1>"
-  "<p>Firmware version: {version}</p>"
-  "<input type=button onclick=window.location.href='/configIndex' class=btn value=Config>"
-  "<input type=button onclick=window.location.href='/serverIndex' class=btn value=Update>"
-  "<input type=button onclick=window.location.href='/wifiSettingsIndex' class=btn value=Wifi_Settings>"
-  "<input type=button onclick=window.location.href='/reboot' class=btn value=Reboot></form>" + style;
+  header +
+  "<input type=button onclick=window.location.href='/config' class=btn value='Config'>"
+  "<input type=button onclick=window.location.href='/wifi' class=btn value='Wifi Settings'>"
+  "<input type=button onclick=window.location.href='/update' class=btn value='Update Firmware'>"  
+  "<input type=button onclick=window.location.href='/reboot' class=btn value='Reboot'>"
+  + footer;
 
-
-/* Sensor Config page, note that S1 refers to m_sensors[0] */
-String configIndexPrefix =
-  "<form name=configForm action=/action_page>"
-  "<h1>OpenBikeSensor Config</h1>";
-  
-
-String configIndexPostfix =
-  "<input type=submit onclick=window.location.href='/navigationIndex' class=btn value=Save>"
-  "</form>" + style;
+// #########################################
+// Wifi
+// #########################################
 
 String wifiSettingsIndex =
-  "<form name=configForm action=/wifi_action_page>"
-  "<h1>OpenBikeSensor WiFi Config</h1>"
-  "<input name=ssid placeholder='ssid'>"
-  "<input name=pass placeholder='password' type=Password> "
-  "<input type=submit onclick=window.location.href='/navigationIndex' class=btn value=Save>"
-  "</form>" + style;
+  header +
+  "<input name=ssid placeholder='ssid' value='{ssid}'>"
+  "<input name=pass placeholder='password' type='Password'>"
+  "<input type=submit class=btn value=Save>"
+  + footer;
 
+// #########################################
+// Config
+// #########################################
+
+String configIndex = 
+  header +
+  "Offset S1<input name='offsetS1' placeholder='Offset Sensor 1' value='{offset1}'>"
+  "Offset S2<input name='offsetS2' placeholder='Offset Sensor 2' value='{offset2}'>"
+  "Upload Host<input name='hostname' placeholder='hostname' value='{hostname}'>"
+  "Upload UserID<input name='obsUserID' placeholder='API ID' value='{userId}'>"
+  "Display Satelites<input type='checkbox' name='displayGPS' {displayGPS}>"
+  "Display Both<input type='checkbox' name='displayBoth' {displayBoth}>"
+  "Display Velocity<input type='checkbox' name='displayVELO' {displayVELO}>"
+  "<input type=submit class=btn value=Save>"
+  + footer;
+
+// #########################################
+// Upload
+// #########################################
 
 /* Server Index Page */
-String serverIndex =
+String uploadIndex =
   "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>"
-  "<form method='POST' action='#' enctype='multipart/form-data' id='upload_form'>"
+  + header +
   "<input type='file' name='update' id='file' onchange='sub(this)' style=display:none>"
   "<label id='file-input' for='file'>   Choose file...</label>"
-  "<input type='submit' class=btn value='Update'>"
+  "<input id='btn' type='submit' class=btn value='Update'>"
   "<br><br>"
   "<div id='prg'></div>"
   "<br><div id='prgbar'><div id='bar'></div></div><br></form>"
   "<script>"
+  ""
+  "$(document).ready(function() {"
+  "console.log('Document Ready');"
+  "$('#prgbar').hide();"
+  "$('#prg').hide();"
+  "});"
+  ""
+  "var fileName = '';"
   "function sub(obj){"
-  "var fileName = obj.value.split('\\\\');"
-  "document.getElementById('file-input').innerHTML = '   '+ fileName[fileName.length-1];"
+  "fileName = obj.value.split('\\\\');"
+  "$('#file-input').html(fileName[fileName.length-1]);"
   "};"
   "$('form').submit(function(e){"
   "e.preventDefault();"
-  "var form = $('#upload_form')[0];"
+  "console.log('Start upload...');"
+  "if (fileName == '') { alert('No file choosen'); return; }"
+  "var form = $('form')[0];"
   "var data = new FormData(form);"
+  "$('#file-input').hide();"
+  "$('#btn').hide();"
+  "$('#prgbar').show();"
+  "$('#prg').show();"
   "$.ajax({"
   "url: '/update',"
   "type: 'POST',"
@@ -119,21 +142,22 @@ String serverIndex =
   "contentType: false,"
   "processData:false,"
   "xhr: function() {"
-  "var xhr = new window.XMLHttpRequest();"
-  "xhr.upload.addEventListener('progress', function(evt) {"
+  "var xhr_inner = new window.XMLHttpRequest();"
+  "xhr_inner.upload.addEventListener('progress', function(evt) {"
   "if (evt.lengthComputable) {"
   "var per = evt.loaded / evt.total;"
-  "$('#prg').html('progress: ' + Math.round(per*100) + '%');"
+  "$('#prg').html('Progress: ' + Math.round(per*100) + '%');"
   "$('#bar').css('width',Math.round(per*100) + '%');"
-  "}"
-  "}, false);"
-  "return xhr;"
+  "}" // xhr
+  "}, false);" // ajax
+  "return xhr_inner;"
   "},"
   "success:function(d, s) {"
-  "console.log('success!') "
+  "console.log('success!');"
+  "$('#prg').html('Device reboots now!');"
   "},"
   "error: function (a, b, c) {"
   "}"
   "});"
   "});"
-  "</script>" + style;
+  "</script>" + footer;

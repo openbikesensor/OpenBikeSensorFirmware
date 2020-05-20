@@ -180,7 +180,6 @@ class SSD1306DisplayDevice : public DisplayDevice
     {
       if(config.displayConfig & DisplaySatelites)
       { 
-        Serial.println("showGPS");
         String satellitesString = String(gps.satellites.value()) + " sats";
         this->showTextOnGrid(2, 5, satellitesString);
       }

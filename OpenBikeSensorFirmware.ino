@@ -150,14 +150,6 @@ void setup() {
   Serial.println(F("Load config"));
   loadConfiguration(configFilename, config);
 
-  #ifdef dev
-    Serial.println(F("Set config"));
-    // Set WIFI config in dev mode
-    strlcpy(config.ssid, "" ,sizeof(config.ssid));
-    strlcpy(config.password, "" ,sizeof(config.password));
-    config.displayConfig = 0; // DisplayBoth DisplayVelocity DisplaySatelites
-  #endif
-
   // Dump config file
   Serial.println(F("Print config file..."));
   printConfig(config);
