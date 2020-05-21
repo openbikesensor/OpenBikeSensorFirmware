@@ -38,6 +38,20 @@ To install the required dependencies, run the follwoing bash script, which insta
 ./install/install_dependencies.sh
 ```
 
+## Add user to the group dialout
+
+Add the current user to the group *dialout*:
+
+```bash
+sudo usermod -a -G dialout $USER
+```
+
+Login and logout. Verify, that your user is a member of the group *dialout*:
+
+```
+groups
+```
+
 ## Arduino IDE
 
 Start the Arduino IDE.
