@@ -3,7 +3,7 @@
 ## Clone this Repository
 
 ```bash
-git clone git clone git@github.com:Friends-of-OpenBikeSensor/OpenBikeSensorFirmware.git
+git clone git@github.com:Friends-of-OpenBikeSensor/OpenBikeSensorFirmware.git
 ```
 
 ## Arduino IDE
