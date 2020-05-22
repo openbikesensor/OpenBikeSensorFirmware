@@ -35,7 +35,6 @@ class DisplayDevice
   public:
     DisplayDevice() {}
     virtual ~DisplayDevice() {}
-    virtual void showValue(uint8_t) = 0;
     virtual void invert() = 0;
     virtual void normalDisplay() = 0;
     //virtual void drawString(int16_t, int16_t, String) = 0;
@@ -51,7 +50,7 @@ class SSD1306DisplayDevice : public DisplayDevice
 
   public:
     SSD1306DisplayDevice() : DisplayDevice() {
-      m_display = new SSD1306(0x3c, 21, 22);
+      m_display = new SSD1306(0x3c, 21, 22); // ADDRESS, SDA, SCL
       m_display->init();
       m_display->setBrightness(255);
       m_display->setTextAlignment(TEXT_ALIGN_LEFT);
@@ -189,35 +188,39 @@ class SSD1306DisplayDevice : public DisplayDevice
         this->showTextOnGrid(0, 5, velotext);
       }
     }
-    
-    void showValue(uint8_t minDistanceToConfirm)
-    {
-      // not used any more
-    }
 
-    void showValues(uint8_t minDistanceToConfirm, uint8_t value1,uint8_t value2)
+    void showValues(HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2)
     {
-      if(!(config.displayConfig&DisplayBoth))
-      {
-        value1 = minDistanceToConfirm;
-      }
+
+      uint8_t value1 = sensor1.minDistance;
+      uint8_t value2 = sensor2.minDistance;
+      String loc1 = sensor1.sensorLocation;
+      String loc2 = sensor2.sensorLocation;
+  
+      // Show sensor1    
       if (value1 == 255)
       {
-        this->showTextOnGrid(0, 0, "---", Dialog_plain_40);
+        this->showTextOnGrid(0, 0, loc1);
+        this->showTextOnGrid(0, 1, "---", Dialog_plain_40);
       }
       else
       {
-        this->showTextOnGrid(0, 0, String(value1), Dialog_plain_40);
+        this->showTextOnGrid(0, 0, loc1);
+        this->showTextOnGrid(0, 1, String(value1), Dialog_plain_40);
       }
-      if(config.displayConfig&DisplayBoth)
+
+      // Show sensor2, when DisplayBoth is configured
+      if(config.displayConfig & DisplayBoth)
       {
         if (value2 == 255)
         {
-          this->showTextOnGrid(2, 0, "---", Dialog_plain_40);
+          this->showTextOnGrid(2, 0, loc2);
+          this->showTextOnGrid(2, 1, "---", Dialog_plain_40);
         }
         else
         {
-          this->showTextOnGrid(2, 0, String(value2), Dialog_plain_40);
+          this->showTextOnGrid(2, 0, loc2);
+          this->showTextOnGrid(2, 1, String(value2), Dialog_plain_40);
         }
       }
       

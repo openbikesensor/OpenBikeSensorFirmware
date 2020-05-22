@@ -28,6 +28,7 @@
 #define CIRCULAR_BUFFER_INT_SAFE
 #include <CircularBuffer.h>
 #include "gps.h"
+#include "sensor.h"
 #include "displays.h"
 #include "FS.h"
 #include "SD.h"
@@ -36,7 +37,7 @@
 
 
 #include "writer.h"
-#include "sensor.h"
+
 
 #include <WiFi.h>
 #include <WiFiClient.h>
@@ -126,7 +127,7 @@ void setup() {
   
   displayTest = new SSD1306DisplayDevice;
   #ifdef dev
-    displayTest->showGrid(true);
+    //displayTest->showGrid(true);
     displayTest->flipScreen(); // TODO: Make this configurable
     //displayTest->invert(); // TODO: Make this configurable
   #endif
@@ -190,13 +191,13 @@ void setup() {
   HCSR04SensorInfo sensorManaged1;
   sensorManaged1.triggerPin = 15;
   sensorManaged1.echoPin = 4;
-  sensorManaged1.sensorLocation = "Lid"; // TODO
+  sensorManaged1.sensorLocation = "Right"; // TODO
   sensorManager->registerSensor(sensorManaged1);
 
   HCSR04SensorInfo sensorManaged2;
   sensorManaged2.triggerPin = 25;
   sensorManaged2.echoPin = 26;
-  sensorManaged2.sensorLocation = "Case"; // TODO
+  sensorManaged2.sensorLocation = "Left"; // TODO
   sensorManager->registerSensor(sensorManaged2);
 
   sensorManager->setOffsets(config.sensorOffsets);
@@ -309,7 +310,7 @@ void loop() {
 
   DataSet* currentSet = new DataSet;
   //specify which sensors value can be confirmed by pressing the button, should be configurable
-  uint8_t confirmationSensorID = 1;
+  uint8_t confirmationSensorID = 1; // LEFT !!!
   //writeLastFixToEEPROM();
   // Todo: proceed only if gps is valid and updated
   readGPSData();
@@ -335,17 +336,31 @@ void loop() {
   // do this for the time specified by measureInterval, e.g. 1s
   while ((CurrentTime - StartTime) < measureInterval && !transmitConfirmedData)
   {
+    // #######################################################
+    // Display
+    // #######################################################
+
     CurrentTime = millis();
     sensorManager->getDistances();
 
-    //displayTest->showValue(minDistance);
+    // Show values on the display
+    displayTest->showValues(
+      sensorManager->m_sensors[1],
+      sensorManager->m_sensors[0]
+    );
+
+    // #######################################################
+    // Stoarge
+    // #######################################################
+
     // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
     if (sensorManager->sensorValues[confirmationSensorID] < minDistanceToConfirm)
     {
       minDistanceToConfirm = sensorManager->sensorValues[confirmationSensorID];
       timeOfMinimum = millis();
     }
-    displayTest->showValues(minDistanceToConfirm,sensorManager->m_sensors[0].minDistance,sensorManager->m_sensors[1].minDistance);
+
+
 
     // if there is a sensor value and confirmation was not already triggered
     if ((minDistanceToConfirm < MAX_SENSOR_VALUE) && !transmitConfirmedData)
