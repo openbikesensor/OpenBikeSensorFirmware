@@ -182,9 +182,12 @@ class SSD1306DisplayDevice : public DisplayDevice
     {
       if(config.displayConfig & DisplaySatelites)
       { 
-        String satellitesString = String(gps.satellites.value());
-        //String satellitesString =  "9";
-        this->showTextOnGrid(2, 4, satellitesString, Dialog_plain_20);
+        int sats = gps.satellites.value();
+        String val = String(sats);
+        if(sats <= 9) {
+          val = "0" + val;
+        }
+        this->showTextOnGrid(2, 4, val, Dialog_plain_20);
         this->showTextOnGrid(3, 5, "sats");
       }
     }
@@ -192,9 +195,13 @@ class SSD1306DisplayDevice : public DisplayDevice
     {
       if(config.displayConfig & DisplayVelocity)
       { 
-        String velotext = String(int(velocity));
+        int velo = int(velocity);
+        String val = String(velo);
+        if(velo <= 9) {
+          val = "0" + val;
+        }
         //String velotext = "99";
-        this->showTextOnGrid(0, 4, velotext, Dialog_plain_20);
+        this->showTextOnGrid(0, 4, val, Dialog_plain_20);
         this->showTextOnGrid(1, 5, "km/h");
       }
     }
@@ -216,7 +223,13 @@ class SSD1306DisplayDevice : public DisplayDevice
       else
       {
         this->showTextOnGrid(0, 0, loc1);
-        this->showTextOnGrid(0, 1, String(value1), Dialog_plain_30);
+        String val = String(value1);
+        if(value1 <= 9) {
+          val = "00" + val;
+        } else if(value1 >= 10 && value1 <= 99) {
+          val = "0" + val;
+        }
+        this->showTextOnGrid(0, 1, val, Dialog_plain_30);
         //this->showTextOnGrid(0, 1, "250", Dialog_plain_30);
       }
 
@@ -231,7 +244,13 @@ class SSD1306DisplayDevice : public DisplayDevice
         else
         {
           this->showTextOnGrid(2, 0, loc2);
-          this->showTextOnGrid(2, 1, String(value2), Dialog_plain_30);
+          String val = String(value2);
+          if(value2 <= 9) {
+            val = "00" + val;
+          } else if(value2 >= 10 && value2 <= 99) {
+            val = "0" + val;
+          } 
+          this->showTextOnGrid(2, 1, val, Dialog_plain_30);
           //this->showTextOnGrid(2, 1, "250", Dialog_plain_30);
         }
       }
