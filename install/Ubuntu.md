@@ -21,10 +21,20 @@ sudo ./install.sh
 
 The **arduino-esp32** compiler needs `pyserial`, thus install it:
 
+Python 2.7:
+
 ```bash
 sudo apt install python-pip
 pip install pyserial
 ```
+
+Python 3:
+
+```bash
+sudo apt install python3-pip
+pip3 install pyserial
+```
+
 
 Otherwise, [you will get the following error message](https://github.com/espressif/arduino-esp32/issues/13):
 
