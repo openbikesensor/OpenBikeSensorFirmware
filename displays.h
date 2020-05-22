@@ -144,7 +144,12 @@ class SSD1306DisplayDevice : public DisplayDevice
 
         // Write the new text
         gridText[x][y] = text;
-        m_display->drawString(x * 32 + 0, y*10 + 1, gridText[x][y]);
+        // 0 => 8 - (0*2) = 8
+        // 1 => 8 - (1*2) = 6
+        // 2 => 8 - (2*2) = 4
+        // 3 => 8 - (3*2) = 2
+        int x_offset = 8 - (x * 2);
+        m_display->drawString(x * 32 + x_offset, y*10 + 1, gridText[x][y]);
         m_display->display();
       }
     } 
@@ -162,7 +167,8 @@ class SSD1306DisplayDevice : public DisplayDevice
     // Override the existing WHITE text with BLACK
     void cleanGridCell(int16_t x, int16_t y) {
       m_display->setColor(BLACK);
-      m_display->drawString(x * 32 + 0, y * 10 + 1, gridText[x][y]);
+      int x_offset = 8 - (x * 2);
+      m_display->drawString(x * 32 + x_offset, y * 10 + 1, gridText[x][y]);
       m_display->setColor(WHITE);
     }
 
@@ -176,16 +182,20 @@ class SSD1306DisplayDevice : public DisplayDevice
     {
       if(config.displayConfig & DisplaySatelites)
       { 
-        String satellitesString = String(gps.satellites.value()) + " / " + String(config.satsForFix) +" sats";
-        this->showTextOnGrid(2, 5, satellitesString);
+        String satellitesString = String(gps.satellites.value());
+        //String satellitesString =  "9";
+        this->showTextOnGrid(2, 4, satellitesString, Dialog_plain_20);
+        this->showTextOnGrid(3, 5, "sats");
       }
     }
     void showVelocity(double velocity)
     {
       if(config.displayConfig & DisplayVelocity)
       { 
-        String velotext = String(int(velocity)) + " km/h";
-        this->showTextOnGrid(0, 5, velotext);
+        String velotext = String(int(velocity));
+        //String velotext = "99";
+        this->showTextOnGrid(0, 4, velotext, Dialog_plain_20);
+        this->showTextOnGrid(1, 5, "km/h");
       }
     }
 
@@ -201,12 +211,13 @@ class SSD1306DisplayDevice : public DisplayDevice
       if (value1 == 255)
       {
         this->showTextOnGrid(0, 0, loc1);
-        this->showTextOnGrid(0, 1, "---", Dialog_plain_40);
+        this->showTextOnGrid(0, 1, "---", Dialog_plain_30);
       }
       else
       {
         this->showTextOnGrid(0, 0, loc1);
-        this->showTextOnGrid(0, 1, String(value1), Dialog_plain_40);
+        this->showTextOnGrid(0, 1, String(value1), Dialog_plain_30);
+        //this->showTextOnGrid(0, 1, "250", Dialog_plain_30);
       }
 
       // Show sensor2, when DisplayBoth is configured
@@ -214,13 +225,14 @@ class SSD1306DisplayDevice : public DisplayDevice
       {
         if (value2 == 255)
         {
-          this->showTextOnGrid(2, 0, loc2);
-          this->showTextOnGrid(2, 1, "---", Dialog_plain_40);
+          //this->showTextOnGrid(2, 0, loc2);
+          this->showTextOnGrid(2, 1, "---", Dialog_plain_30);
         }
         else
         {
           this->showTextOnGrid(2, 0, loc2);
-          this->showTextOnGrid(2, 1, String(value2), Dialog_plain_40);
+          this->showTextOnGrid(2, 1, String(value2), Dialog_plain_30);
+          //this->showTextOnGrid(2, 1, "250", Dialog_plain_30);
         }
       }
       
