@@ -104,8 +104,10 @@ String configIndex =
   "Display Both<input type='checkbox' name='displayBoth' {displayBoth}>"
   "Display Satellites<input type='checkbox' name='displayGPS' {displayGPS}>"
   "Display Velocity<input type='checkbox' name='displayVELO' {displayVELO}>"
-  "Upload Host<input name='hostname' placeholder='hostname' value='{hostname}' style='display:none'>"
-  "Upload UserID<input name='obsUserID' placeholder='API ID' value='{userId}' style='display:none'>"
+  //"Upload Host"
+  "<input name='hostname' placeholder='hostname' value='{hostname}' style='display:none'>"
+  //"Upload UserID"
+  "<input name='obsUserID' placeholder='API ID' value='{userId}' style='display:none'>"
   "<input type=submit class=btn value=Save>"
   + footer;
 
