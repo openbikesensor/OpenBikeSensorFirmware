@@ -297,9 +297,13 @@ void startServer() {
   // Handling uploading firmware file
   server.on("/update", HTTP_POST, []() {
     Serial.println("Send response...");
-    server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
-    delay(250);
-    ESP.restart();
+    if(Update.hasError()) {
+      server.send(500, "text/plain", "Update fails!");
+    } else {
+      server.send(200, "text/plain", "Update successful!");
+      delay(250);
+      ESP.restart();      
+    }
   }, []() {
     //Serial.println('Update Firmware...');
     HTTPUpload& upload = server.upload();

@@ -114,7 +114,6 @@ String configIndex =
 
 /* Server Index Page */
 String uploadIndex =
-  "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>" +
   header +
   "<input type='file' name='update' id='file'>"
   "<label id='file-input' for='file'>Choose file...</label>"
@@ -154,36 +153,27 @@ String uploadIndex =
     "hide(document.getElementById('btn'));"
     "show(document.getElementById('prgbar'));"
     "show(document.getElementById('prg'));"
-  
-    "$.ajax({"
-      "url: '/update',"
-      "type: 'POST',"
-      "data: data,"
-      "contentType: false,"
-      "processData:false,"
-      "xhr: function() {"
-        "var xhr_inner = new window.XMLHttpRequest();"
-        "xhr_inner.upload.addEventListener('progress', function(evt) {"
-          "if (evt.lengthComputable) {"
-            "var per = evt.loaded / evt.total;"
-            "document.getElementById('prg').innerHTML = 'Progress: ' + Math.round(per*100) + '%';"
-            "document.getElementById('bar').style.width = Math.round(per*100) + '%';"
-          "}"
-        "}, false);" // ajax
-        "return xhr_inner;"
-      "},"
-      "success:function(d, s) {"
-        "console.log('success!');"
+    ""
+    "var xhr = new XMLHttpRequest();"
+    "xhr.open( 'POST', '/update', true );"
+    "xhr.onreadystatechange = function(s) {"
+      "console.log(xhr.responseText);"
+      "if (xhr.readyState == 4 && xhr.status == 200) {"
         "document.getElementById('prg').innerHTML = 'Device reboots now!';"
-      "},"
-      "error: function (a, b, c) {"
+      "} else if (xhr.readyState == 4 && xhr.status == 500) {"
+        "document.getElementById('prg').innerHTML = 'Update error:' + xhr.responseText;"
+      "} else {"
+        "document.getElementById('prg').innerHTML = 'Uknown error';"
       "}"
-    "});"
-    
+    "};"
+    "xhr.upload.addEventListener('progress', function(evt) {"
+      "if (evt.lengthComputable) {"
+        "var per = evt.loaded / evt.total;"
+        "document.getElementById('prg').innerHTML = 'Progress: ' + Math.round(per*100) + '%';"
+        "document.getElementById('bar').style.width = Math.round(per*100) + '%';"
+      "}"
+    "}, false);"    
+    "xhr.send( data );"
   "});" // btn click
   ""
-  
-
-
-
   "</script>" + footer;
