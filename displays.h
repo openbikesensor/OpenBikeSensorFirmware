@@ -176,7 +176,7 @@ class SSD1306DisplayDevice : public DisplayDevice
     {
       if(config.displayConfig & DisplaySatelites)
       { 
-        String satellitesString = String(gps.satellites.value()) + " sats";
+        String satellitesString = String(gps.satellites.value()) + " / " + String(config.satsForFix) +" sats";
         this->showTextOnGrid(2, 5, satellitesString);
       }
     }

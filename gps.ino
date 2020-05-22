@@ -23,10 +23,4 @@ void readGPSData() {
   while (SerialGPS.available() > 0) {
     gps.encode(SerialGPS.read());
   }
-
-  /*
-    if (gps.satellites.value() > 4) {
-
-      }
-  */
 }

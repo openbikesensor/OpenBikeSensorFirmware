@@ -32,6 +32,6 @@ struct Config {
   char hostname[64];
   char obsUserID[64];
   int displayConfig;
-  
+  int satsForFix;
   int port;
 };

@@ -253,13 +253,15 @@ void setup() {
   //##############################################################
 
   displayTest->showTextOnGrid(2, 4, "Wait for GPS");  
-  while (gps.satellites.value() < 4)
+  while (gps.satellites.value() < config.satsForFix)
   {
     Serial.println("Waiting for GPS fix...");
     readGPSData();
     delay(300);
-    String satellitesString = String(gps.satellites.value()) + " sats";
+
+    String satellitesString = String(gps.satellites.value()) + " / " + String(config.satsForFix) +" sats";
     displayTest->showTextOnGrid(2, 5, satellitesString);
+
     buttonState = digitalRead(PushButton);
     if (buttonState == HIGH)
     {
@@ -269,7 +271,7 @@ void setup() {
     }
   }
 
-  if(gps.satellites.value() == 4) {
+  if(gps.satellites.value() == config.satsForFix) {
     Serial.print("Got GPS Fix: ");
     Serial.println(String(gps.satellites.value()));
     displayTest->showTextOnGrid(2, 5, "Got GPS Fix");

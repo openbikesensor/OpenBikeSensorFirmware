@@ -56,6 +56,7 @@ void loadConfiguration(const char *configFilename, Config &config) {
   strlcpy(config.hostname,                  // <- destination
           doc["hostname"] | "openbikesensor.hlrs.de",  // <- source
           sizeof(config.hostname));         // <- destination's capacity
+  config.satsForFix = doc["satsForFix"] | 4;
 
   // Close the file (Curiously, File's destructor doesn't close the file)
   file.close();
@@ -85,6 +86,7 @@ void saveConfiguration(const char *filename, const Config &config) {
     String offsetString = "offsetInfo" + String(idx);
     doc[offsetString] = config.sensorOffsets[idx];
   }
+  doc["satsForFix"] = config.satsForFix;
   doc["hostname"] = config.hostname;
   doc["port"] = config.port;
   doc["ssid"] = config.ssid;
@@ -113,6 +115,9 @@ void printConfig(Config &config) {
     String offsetString = "Offset[" + String(idx) + "] = " + config.sensorOffsets[idx];
     Serial.println(offsetString);
   }
+
+  Serial.print(F("satsForFix = "));
+  Serial.println(String(config.satsForFix));
 
   Serial.print(F("displayConfig = "));
   Serial.println(String(config.displayConfig));

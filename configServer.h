@@ -98,13 +98,14 @@ String wifiSettingsIndex =
 
 String configIndex = 
   header +
-  "Offset S1<input name='offsetS1' placeholder='Offset Sensor 1' value='{offset1}'>"
-  "Offset S2<input name='offsetS2' placeholder='Offset Sensor 2' value='{offset2}'>"
-  "Upload Host<input name='hostname' placeholder='hostname' value='{hostname}'>"
-  "Upload UserID<input name='obsUserID' placeholder='API ID' value='{userId}'>"
+  "Offset Sensor 1<input name='offsetS1' placeholder='Offset Sensor 1' value='{offset1}'>"
+  "Offset Sensor 2<input name='offsetS2' placeholder='Offset Sensor 2' value='{offset2}'>"
+  "Number of Satellites for fix<input name='satsForFix' placeholder='Number of Satellites for fix' value='{satsForFix}'>"
   "Display Both<input type='checkbox' name='displayBoth' {displayBoth}>"
   "Display Satellites<input type='checkbox' name='displayGPS' {displayGPS}>"
   "Display Velocity<input type='checkbox' name='displayVELO' {displayVELO}>"
+  "Upload Host<input name='hostname' placeholder='hostname' value='{hostname}' style='display:none'>"
+  "Upload UserID<input name='obsUserID' placeholder='API ID' value='{userId}' style='display:none'>"
   "<input type=submit class=btn value=Save>"
   + footer;
 

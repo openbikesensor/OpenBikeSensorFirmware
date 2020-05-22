@@ -31,11 +31,13 @@ void configAction() {
   
   String offsetS1 = server.arg("offsetS1");
   String offsetS2 = server.arg("offsetS2");
+  String satsForFix = server.arg("satsForFix");
   String displayGPS = server.arg("displayGPS");
   String displayBoth = server.arg("displayBoth");
   String displayVELO = server.arg("displayVELO");
   String obsUserID = server.arg("obsUserID");
   String hostname = server.arg("hostname");
+  
   //String confirmation = server.arg("confirmation");
   
    /* displayTest->clear();
@@ -61,6 +63,7 @@ void configAction() {
     
   config.sensorOffsets[0] = atoi(offsetS1.c_str());
   config.sensorOffsets[1] = atoi(offsetS2.c_str());
+  config.satsForFix = atoi(satsForFix.c_str());
 
   Serial.print("Offset Sensor 1:");
   Serial.println(config.sensorOffsets[0]);
@@ -268,6 +271,7 @@ void startServer() {
     // Form data
     html.replace("{offset1}", String(config.sensorOffsets[0]));
     html.replace("{offset2}", String(config.sensorOffsets[1]));
+    html.replace("{satsForFix}", String(config.satsForFix));
     html.replace("{hostname}", String(config.hostname));
     html.replace("{userId}", String(config.obsUserID));
 
