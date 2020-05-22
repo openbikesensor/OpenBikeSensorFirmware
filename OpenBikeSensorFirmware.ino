@@ -440,6 +440,9 @@ void loop() {
     minDistanceToConfirm = MAX_SENSOR_VALUE;
     transmitConfirmedData = false;
     displayTest->normalDisplay();
+
+    // Lets clear the display again, so on the next cycle, it will be recreated
+    displayTest->clear();
   }
 
   // If the circular buffer is full, write just one set to the writers buffer, will fail when the confirmation timeout (currently hardcoded 5000) is larger than measureInterval * dataBuffer.size() 
