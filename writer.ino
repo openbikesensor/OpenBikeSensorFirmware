@@ -181,10 +181,10 @@ void CSVFileWriter::writeData(DataSet* set) {
   dataString = dataString + latitudeString + ";";
 
   String longitudeString = String(set->location.lng(), 6);
-  dataString = dataString + longitudeString;
+  dataString = dataString + longitudeString + ";";
 
   String courseString = String(set->course.deg(), 3);
-  dataString = dataString + courseString;
+  dataString = dataString + courseString + ";";
 
   String speedString = String(set->speed.kmph(), 4);
   dataString = dataString + speedString;
