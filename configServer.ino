@@ -35,6 +35,7 @@ void configAction() {
   String displayGPS = server.arg("displayGPS");
   String displayBoth = server.arg("displayBoth");
   String displayVELO = server.arg("displayVELO");
+  String swapSensors = server.arg("swapSensors");
   String obsUserID = server.arg("obsUserID");
   String hostname = server.arg("hostname");
   
@@ -57,12 +58,18 @@ void configAction() {
     config.displayConfig |= DisplayVelocity;
   else
     config.displayConfig &= ~DisplayVelocity;
+
+  if(swapSensors == "on")
+    config.swapSensors = 1;
+  else
+    config.swapSensors = 0;
     
   strlcpy(config.hostname,hostname.c_str(),sizeof(config.hostname));
   strlcpy(config.obsUserID,obsUserID.c_str(),sizeof(config.obsUserID));
     
   config.sensorOffsets[0] = atoi(offsetS1.c_str());
   config.sensorOffsets[1] = atoi(offsetS2.c_str());
+  config.satsForFix = atoi(satsForFix.c_str());
   config.satsForFix = atoi(satsForFix.c_str());
 
   Serial.print("Offset Sensor 1:");
@@ -278,10 +285,12 @@ void startServer() {
     bool displayGPS = config.displayConfig & DisplaySatelites;
     bool displayBoth = config.displayConfig & DisplayBoth;
     bool displayVelo = config.displayConfig & DisplayVelocity;
+    bool swapSensors = config.swapSensors;
 
     html.replace("{displayGPS}", displayGPS ? "checked" : "");
     html.replace("{displayBoth}", displayBoth ? "checked" : "");
     html.replace("{displayVELO}", displayVelo ? "checked" : "");
+    html.replace("{swapSensors}", swapSensors ? "checked" : "");
     
     server.send(200, "text/html", html);
   });

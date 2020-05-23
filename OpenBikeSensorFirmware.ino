@@ -189,14 +189,14 @@ void setup() {
   sensorManager = new HCSR04SensorManager;
 
   HCSR04SensorInfo sensorManaged1;
-  sensorManaged1.triggerPin = 15;
-  sensorManaged1.echoPin = 4;
+  sensorManaged1.triggerPin = config.swapSensors ? 25 : 15;
+  sensorManaged1.echoPin = config.swapSensors ? 26 : 4;
   sensorManaged1.sensorLocation = "Right"; // TODO
   sensorManager->registerSensor(sensorManaged1);
 
   HCSR04SensorInfo sensorManaged2;
-  sensorManaged2.triggerPin = 25;
-  sensorManaged2.echoPin = 26;
+  sensorManaged2.triggerPin = config.swapSensors ? 15 : 25;
+  sensorManaged2.echoPin = config.swapSensors ? 4 : 26;
   sensorManaged2.sensorLocation = "Left"; // TODO
   sensorManager->registerSensor(sensorManaged2);
 

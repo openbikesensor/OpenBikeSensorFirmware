@@ -98,9 +98,13 @@ String wifiSettingsIndex =
 
 String configIndex = 
   header +
+  "<h3>Sensor</h3>"
   "Offset Sensor 1<input name='offsetS1' placeholder='Offset Sensor 1' value='{offset1}'>"
   "Offset Sensor 2<input name='offsetS2' placeholder='Offset Sensor 2' value='{offset2}'>"
+  "Swap Sensors<input type='checkbox' name='swapSensors' {swapSensors}>"
+  "<h3>GPS</h3>"
   "Number of Satellites for fix<input name='satsForFix' placeholder='Number of Satellites for fix' value='{satsForFix}'>"
+  "<h3>Display</h3>"
   "Display Both<input type='checkbox' name='displayBoth' {displayBoth}>"
   "Display Satellites<input type='checkbox' name='displayGPS' {displayGPS}>"
   "Display Velocity<input type='checkbox' name='displayVELO' {displayVELO}>"
