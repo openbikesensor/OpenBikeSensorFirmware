@@ -41,7 +41,7 @@ WebServer server(80);
 String style =
   "<style>"
   "#file-input,input {width:100%;height:44px;border-radius:4px;margin:10px auto;font-size:15px;}"
-  "input {background:#f1f1f1;border:0;padding:0 15px}"
+  "input {background:#f1f1f1;border:0;padding:0 15px;text-align:center;}"
   "body {background:#3498db;font-family:sans-serif;font-size:14px;color:#777}"
   "#file-input {padding:0 5;border:1px solid #ddd;line-height:44px;text-align:left;display:block;cursor:pointer}"
   "#bar,#prgbar {background-color:#f1f1f1;border-radius:10px}"
@@ -49,6 +49,7 @@ String style =
   "form {background:#fff;max-width:258px;margin:75px auto;padding:30px;border-radius:5px;text-align:center}"
   ".btn {background:#3498db;color:#fff;cursor:pointer}"
   "h1,h2 {padding:0;margin:0;}"
+  "h3 {padding:10px 0;margin:0;}"
   "h1 a {color:#777}"
   "</style>";
 
@@ -99,15 +100,17 @@ String wifiSettingsIndex =
 String configIndex = 
   header +
   "<h3>Sensor</h3>"
-  "Offset Sensor 1<input name='offsetS1' placeholder='Offset Sensor 1' value='{offset1}'>"
-  "Offset Sensor 2<input name='offsetS2' placeholder='Offset Sensor 2' value='{offset2}'>"
-  "Swap Sensors<input type='checkbox' name='swapSensors' {swapSensors}>"
+  "Offset Sensor Left<input name='offsetS1' placeholder='Offset Sensor Left' value='{offset1}'>"
+  "Offset Sensor Right<input name='offsetS2' placeholder='Offset Sensor Right' value='{offset2}'>"
+  "Swap Sensors (Left <--> Right)<input type='checkbox' name='swapSensors' {swapSensors}>"
   "<h3>GPS</h3>"
   "Number of Satellites for fix<input name='satsForFix' placeholder='Number of Satellites for fix' value='{satsForFix}'>"
   "<h3>Display</h3>"
-  "Display Both<input type='checkbox' name='displayBoth' {displayBoth}>"
-  "Display Satellites<input type='checkbox' name='displayGPS' {displayGPS}>"
-  "Display Velocity<input type='checkbox' name='displayVELO' {displayVELO}>"
+  "Simple Mode<br>(all other display options are ignored)<input type='checkbox' name='displaySimple' {displaySimple}>"
+  "Show Left Measurement<input type='checkbox' name='displayLeft' {displayLeft}>"
+  "Show Right Measurement<input type='checkbox' name='displayRight' {displayRight}>"
+  "Show Satellites<input type='checkbox' name='displayGPS' {displayGPS}>"
+  "Show Velocity<input type='checkbox' name='displayVELO' {displayVELO}>"
   //"Upload Host"
   "<input name='hostname' placeholder='hostname' value='{hostname}' style='display:none'>"
   //"Upload UserID"

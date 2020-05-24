@@ -23,50 +23,85 @@
 // remix, transform, build upon the material and distributed for any purposes
 // only if provided appropriate credit to the author and link to the original article.
 
-void handle_NotFound(){
+void handle_NotFound() {
   server.send(404, "text/plain", "Not found");
 }
 
 void configAction() {
-  
+
   String offsetS1 = server.arg("offsetS1");
   String offsetS2 = server.arg("offsetS2");
   String satsForFix = server.arg("satsForFix");
-  String displayGPS = server.arg("displayGPS");
-  String displayBoth = server.arg("displayBoth");
-  String displayVELO = server.arg("displayVELO");
-  String swapSensors = server.arg("swapSensors");
+  String displaySimple = server.arg("displaySimple") == "on" ? "on" : "off";
+  String displayGPS = server.arg("displayGPS") == "on" ? "on" : "off";
+  String displayVELO = server.arg("displayVELO") == "on" ? "on" : "off";
+  String displayLeft = server.arg("displayLeft") == "on" ? "on" : "off";
+  String displayRight = server.arg("displayRight") == "on" ? "on" : "off";
+  String swapSensors = server.arg("swapSensors") == "on" ? "on" : "off";
   String obsUserID = server.arg("obsUserID");
   String hostname = server.arg("hostname");
-  
+
   //String confirmation = server.arg("confirmation");
-  
-   /* displayTest->clear();
+
+  /* displayTest->clear();
     displayTest->drawString(64, 36, "displayConfig");
     displayTest->drawString(64, 48, displayGPS);*/
-  if(displayGPS == "on")
+  if (displayGPS == "on")
     config.displayConfig |= DisplaySatelites;
   else
     config.displayConfig &= ~DisplaySatelites;
 
-  if(displayBoth == "on")
-    config.displayConfig |= DisplayBoth;
+  if (displaySimple == "on")
+    config.displayConfig |= DisplaySimple;
   else
-    config.displayConfig &= ~DisplayBoth;
+    config.displayConfig &= ~DisplaySimple;
 
-  if(displayVELO == "on")
+
+  if (displayVELO == "on")
     config.displayConfig |= DisplayVelocity;
   else
     config.displayConfig &= ~DisplayVelocity;
 
-  if(swapSensors == "on")
+  if (displayLeft == "on")
+    config.displayConfig |= DisplayLeft;
+  else
+    config.displayConfig &= ~DisplayLeft;
+
+  if (displayRight == "on")
+    config.displayConfig |= DisplayRight;
+  else
+    config.displayConfig &= ~DisplayRight;
+
+  if (swapSensors == "on")
     config.swapSensors = 1;
   else
     config.swapSensors = 0;
-    
-  strlcpy(config.hostname,hostname.c_str(),sizeof(config.hostname));
-  strlcpy(config.obsUserID,obsUserID.c_str(),sizeof(config.obsUserID));
-    
+
+
+  Serial.print("displayConfig:");
+  Serial.println(config.displayConfig);
+
+  Serial.print("displaySimple:");
+  Serial.println(displaySimple);
+
+  Serial.print("displayGPS:");
+  Serial.println(displayGPS);
+
+  Serial.print("displayVELO:");
+  Serial.println(displayVELO);
+
+  Serial.print("displayLeft:");
+  Serial.println(displayLeft);
+
+  Serial.print("displayRight:");
+  Serial.println(displayRight);
+
+  Serial.print("swapSensors:");
+  Serial.println(swapSensors);
+
+  strlcpy(config.hostname, hostname.c_str(), sizeof(config.hostname));
+  strlcpy(config.obsUserID, obsUserID.c_str(), sizeof(config.obsUserID));
+
   config.sensorOffsets[0] = atoi(offsetS1.c_str());
   config.sensorOffsets[1] = atoi(offsetS2.c_str());
   config.satsForFix = atoi(satsForFix.c_str());
@@ -98,14 +133,14 @@ void wifiAction() {
   Serial.print("ssid:");
   Serial.println(ssid);
 
-  #ifdef dev
-    Serial.print(F("pass = "));
-    Serial.println(pass);
-  #endif
+#ifdef dev
+  Serial.print(F("pass = "));
+  Serial.println(pass);
+#endif
 
   // Write always both data, thus the WIFI config can be overwritten
-  strlcpy(config.ssid,ssid.c_str(),sizeof(config.ssid));
-  strlcpy(config.password,pass.c_str(),sizeof(config.password));
+  strlcpy(config.ssid, ssid.c_str(), sizeof(config.ssid));
+  strlcpy(config.password, pass.c_str(), sizeof(config.password));
 
   // Print and safe config
   Serial.println(F("Print config file..."));
@@ -134,7 +169,7 @@ bool CreateWifiSoftAP(String chipID)
   displayTest->showTextOnGrid(1, 2, "");
   displayTest->showTextOnGrid(0, 3, APName.c_str());
 
-  
+
   WiFi.softAPConfig(apIP, apIP, netMsk);
   if (SoftAccOK)
   {
@@ -146,10 +181,10 @@ bool CreateWifiSoftAP(String chipID)
 
     displayTest->showTextOnGrid(0, 4, "Pass:");
     displayTest->showTextOnGrid(1, 4, APPassword);
-    
+
     displayTest->showTextOnGrid(0, 5, "IP:");
     displayTest->showTextOnGrid(1, 5, "172.20.0.1");
-  } 
+  }
   else
   {
     Serial.println(F("Soft AP Error."));
@@ -238,14 +273,14 @@ void startServer() {
   });
 
   // ### Index ###
-  
+
   server.on("/", HTTP_GET, []() {
     String html = navigationIndex;
     // Header
     html.replace("{action}", "");
     html.replace("{version}", OBSVersion);
     html.replace("{subtitle}", "Navigation");
-    
+
     server.send(200, "text/html", html);
   });
 
@@ -261,7 +296,7 @@ void startServer() {
     html.replace("{subtitle}", "Wifi Config");
     // Form data
     html.replace("{ssid}", config.ssid);
-    
+
     server.send(200, "text/html", html);
   });
 
@@ -282,16 +317,21 @@ void startServer() {
     html.replace("{hostname}", String(config.hostname));
     html.replace("{userId}", String(config.obsUserID));
 
+    bool displaySimple = config.displayConfig & DisplaySimple;
     bool displayGPS = config.displayConfig & DisplaySatelites;
-    bool displayBoth = config.displayConfig & DisplayBoth;
+    bool displayLeft = config.displayConfig & DisplayLeft;
+    bool displayRight = config.displayConfig & DisplayRight;
     bool displayVelo = config.displayConfig & DisplayVelocity;
     bool swapSensors = config.swapSensors;
 
+
+    html.replace("{displaySimple}", displaySimple ? "checked" : "");
     html.replace("{displayGPS}", displayGPS ? "checked" : "");
-    html.replace("{displayBoth}", displayBoth ? "checked" : "");
     html.replace("{displayVELO}", displayVelo ? "checked" : "");
+    html.replace("{displayLeft}", displayLeft ? "checked" : "");
+    html.replace("{displayRight}", displayRight ? "checked" : "");
     html.replace("{swapSensors}", swapSensors ? "checked" : "");
-    
+
     server.send(200, "text/html", html);
   });
 
@@ -303,19 +343,19 @@ void startServer() {
     html.replace("{action}", ""); // Handled by XHR
     html.replace("{version}", OBSVersion);
     html.replace("{subtitle}", "Update Firmware");
-    
+
     server.send(200, "text/html", html);
   });
 
   // Handling uploading firmware file
   server.on("/update", HTTP_POST, []() {
     Serial.println("Send response...");
-    if(Update.hasError()) {
+    if (Update.hasError()) {
       server.send(500, "text/plain", "Update fails!");
     } else {
       server.send(200, "text/plain", "Update successful!");
       delay(250);
-      ESP.restart();      
+      ESP.restart();
     }
   }, []() {
     //Serial.println('Update Firmware...');

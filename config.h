@@ -19,9 +19,11 @@
 */
 
 enum DisplayOptions {
-  DisplaySatelites=0x01,
-  DisplayBoth=0x02,
-  DisplayVelocity=0x04
+  DisplaySatelites=0x01,  // 1
+  DisplayVelocity=0x02,   // 2
+  DisplayLeft=0x04,       // 4
+  DisplayRight=0x08,      // 8
+  DisplaySimple=0x10      // 16
 };
 
 struct Config {
