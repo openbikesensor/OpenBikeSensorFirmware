@@ -244,10 +244,10 @@ class SSD1306DisplayDevice : public DisplayDevice
         // Show sensor2, when DisplayRight is configured
         if(config.displayConfig & DisplayRight)
         {
-            uint8_t value2 = sensor2.minDistance;
+          uint8_t value2 = sensor2.minDistance;
           String loc2 = sensor2.sensorLocation;
   
-          //this->showTextOnGrid(2, 0, loc2);
+          this->showTextOnGrid(2, 0, loc2);
           if (value2 == 255)
           {
             this->showTextOnGrid(2, 1, "---", Dialog_plain_30);
