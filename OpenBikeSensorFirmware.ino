@@ -331,8 +331,7 @@ void loop() {
   int timeDelta = CurrentTime - timeOfMinimum;
   if ((timeDelta ) > (config.confirmationTimeWindow * 1000))
   {
-    Serial.println(">>> CTW reached - minDistanceToConfirm=MAX_SENSOR_VALUE <<<");
-    Serial.println("Delta=" + String(timeDelta));
+    Serial.println(">>> CTW reached - reset() <<<");
     minDistanceToConfirm = MAX_SENSOR_VALUE;
     sensorManager->reset(true);
   }
@@ -443,9 +442,8 @@ void loop() {
       delete dataset;
     }
     writer->writeDataToSD();
-
-    Serial.printf("writeDataToSD - minDistanceToConfirm = MAX_SENSOR_VALUE");
     
+    Serial.printf(">>> writeDataToSD - reset <<<");
     minDistanceToConfirm = MAX_SENSOR_VALUE;
     sensorManager->reset(true);
     
