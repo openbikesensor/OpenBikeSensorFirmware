@@ -32,12 +32,16 @@ void configAction() {
   String offsetS1 = server.arg("offsetS1");
   String offsetS2 = server.arg("offsetS2");
   String satsForFix = server.arg("satsForFix");
+
   String displaySimple = server.arg("displaySimple") == "on" ? "on" : "off";
   String displayGPS = server.arg("displayGPS") == "on" ? "on" : "off";
   String displayVELO = server.arg("displayVELO") == "on" ? "on" : "off";
   String displayLeft = server.arg("displayLeft") == "on" ? "on" : "off";
   String displayRight = server.arg("displayRight") == "on" ? "on" : "off";
-  String swapSensors = server.arg("swapSensors") == "on" ? "on" : "off";
+  String displaySwapSensors = server.arg("displaySwapSensors") == "on" ? "on" : "off";
+  String displayInvert = server.arg("displayInvert") == "on" ? "on" : "off";
+  String displayFlip = server.arg("displayFlip") == "on" ? "on" : "off";
+  
   String obsUserID = server.arg("obsUserID");
   String hostname = server.arg("hostname");
 
@@ -56,7 +60,6 @@ void configAction() {
   else
     config.displayConfig &= ~DisplaySimple;
 
-
   if (displayVELO == "on")
     config.displayConfig |= DisplayVelocity;
   else
@@ -72,10 +75,20 @@ void configAction() {
   else
     config.displayConfig &= ~DisplayRight;
 
-  if (swapSensors == "on")
-    config.swapSensors = 1;
+  if (displaySwapSensors == "on")
+    config.displayConfig |= DisplaySwapSensors;
   else
-    config.swapSensors = 0;
+    config.displayConfig &= ~DisplaySwapSensors;
+
+  if (displayInvert == "on")
+    config.displayConfig |= DisplayInvert;
+  else
+    config.displayConfig &= ~DisplayInvert;
+
+  if (displayFlip == "on")
+    config.displayConfig |= DisplayFlip;
+  else
+    config.displayConfig &= ~DisplayFlip;
 
 
   Serial.print("displayConfig:");
@@ -96,8 +109,8 @@ void configAction() {
   Serial.print("displayRight:");
   Serial.println(displayRight);
 
-  Serial.print("swapSensors:");
-  Serial.println(swapSensors);
+  Serial.print("displaySwapSensors:");
+  Serial.println(displaySwapSensors);
 
   strlcpy(config.hostname, hostname.c_str(), sizeof(config.hostname));
   strlcpy(config.obsUserID, obsUserID.c_str(), sizeof(config.obsUserID));
@@ -322,15 +335,18 @@ void startServer() {
     bool displayLeft = config.displayConfig & DisplayLeft;
     bool displayRight = config.displayConfig & DisplayRight;
     bool displayVelo = config.displayConfig & DisplayVelocity;
-    bool swapSensors = config.swapSensors;
-
+    bool displaySwapSensors = config.displayConfig & DisplaySwapSensors;
+    bool displayInvert = config.displayConfig & DisplayInvert;
+    bool displayFlip = config.displayConfig & DisplayFlip;
 
     html.replace("{displaySimple}", displaySimple ? "checked" : "");
     html.replace("{displayGPS}", displayGPS ? "checked" : "");
     html.replace("{displayVELO}", displayVelo ? "checked" : "");
     html.replace("{displayLeft}", displayLeft ? "checked" : "");
     html.replace("{displayRight}", displayRight ? "checked" : "");
-    html.replace("{swapSensors}", swapSensors ? "checked" : "");
+    html.replace("{displaySwapSensors}", displaySwapSensors ? "checked" : "");
+    html.replace("{displayInvert}", displayInvert ? "checked" : "");
+    html.replace("{displayFlip}", displayFlip ? "checked" : "");
 
     server.send(200, "text/html", html);
   });

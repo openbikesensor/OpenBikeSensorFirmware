@@ -109,7 +109,6 @@ String esp_chipid;
 // - prints more detailed log messages to serial (WIFI password)
 //#define dev
 
-
 void setup() {
   Serial.begin(115200);
 
@@ -128,13 +127,10 @@ void setup() {
   displayTest = new SSD1306DisplayDevice;
   #ifdef dev
     //displayTest->showGrid(true);
-    displayTest->flipScreen(); // TODO: Make this configurable
-    //displayTest->invert(); // TODO: Make this configurable
   #endif
+  
   displayTest->showLogo(true);
   displayTest->showTextOnGrid(2, 0, OBSVersion);
-
-  //return;
 
   //##############################################################
   // Load, print and save config
@@ -157,6 +153,11 @@ void setup() {
 
   // Save the config. This ensures, that new options exist as well
   saveConfiguration(configFilename, config);
+
+  if(config.displayConfig & DisplayInvert) displayTest->invert(); 
+  else displayTest->normalDisplay();
+
+  if(config.displayConfig & DisplayFlip) displayTest->flipScreen();
   
   delay(333); // Added for user experience
   displayTest->showTextOnGrid(2, 1, "Config... ok");
@@ -189,14 +190,14 @@ void setup() {
   sensorManager = new HCSR04SensorManager;
 
   HCSR04SensorInfo sensorManaged1;
-  sensorManaged1.triggerPin = config.swapSensors ? 25 : 15;
-  sensorManaged1.echoPin = config.swapSensors ? 26 : 4;
+  sensorManaged1.triggerPin = (config.displayConfig & DisplaySwapSensors) ? 25 : 15;
+  sensorManaged1.echoPin = (config.displayConfig & DisplaySwapSensors) ? 26 : 4;
   sensorManaged1.sensorLocation = "Right"; // TODO
   sensorManager->registerSensor(sensorManaged1);
 
   HCSR04SensorInfo sensorManaged2;
-  sensorManaged2.triggerPin = config.swapSensors ? 15 : 25;
-  sensorManaged2.echoPin = config.swapSensors ? 4 : 26;
+  sensorManaged2.triggerPin = (config.displayConfig & DisplaySwapSensors) ? 15 : 25;
+  sensorManaged2.echoPin = (config.displayConfig & DisplaySwapSensors) ? 4 : 26;
   sensorManaged2.sensorLocation = "Left"; // TODO
   sensorManager->registerSensor(sensorManaged2);
 
@@ -253,9 +254,9 @@ void setup() {
   //##############################################################
 
   displayTest->showTextOnGrid(2, 4, "Wait for GPS");  
+  Serial.println("Waiting for GPS fix...");
   while (gps.satellites.value() < config.satsForFix)
   {
-    Serial.println("Waiting for GPS fix...");
     readGPSData();
     delay(300);
 
@@ -307,8 +308,6 @@ template <class T> int EEPROM_readAnything(int ee, T& value)
 void loop() {
 
   //Serial.println("loop()");
-  //delay(1000);
-  //return;
 
   DataSet* currentSet = new DataSet;
   //specify which sensors value can be confirmed by pressing the button, should be configurable
@@ -405,7 +404,9 @@ void loop() {
   if (transmitConfirmedData)
   {
     //inverting the display until the data is saved TODO: add control over the time the display will be inverted so the user actually sees it.
-    displayTest->invert();
+    if(config.displayConfig & DisplayInvert) displayTest->normalDisplay(); 
+    else displayTest->invert();
+    
     Serial.printf("Trying to transmit Confirmed data \n");
     // make sure the minimum distance is saved only once
     using index_t = decltype(dataBuffer)::index_t;
@@ -439,7 +440,9 @@ void loop() {
     writer->writeDataToSD();
     minDistanceToConfirm = MAX_SENSOR_VALUE;
     transmitConfirmedData = false;
-    displayTest->normalDisplay();
+
+    if(config.displayConfig & DisplayInvert) displayTest->invert(); 
+    else displayTest->normalDisplay();
 
     // Lets clear the display again, so on the next cycle, it will be recreated
     displayTest->clear();
