@@ -71,7 +71,7 @@ unsigned long StartTime = millis();
 unsigned long CurrentTime = millis();
 unsigned long buttonPushedTime = millis();
 
-int timeout = 15000;
+//int timeout = 15000; /// ???
 bool usingSD = false;
 String text = "";
 uint8_t minDistanceToConfirm = MAX_SENSOR_VALUE;
@@ -307,7 +307,7 @@ template <class T> int EEPROM_readAnything(int ee, T& value)
 
 void loop() {
 
-  //Serial.println("loop()");
+  Serial.println("loop()");
 
   DataSet* currentSet = new DataSet;
   //specify which sensors value can be confirmed by pressing the button, should be configurable
@@ -321,17 +321,20 @@ void loop() {
   currentSet->time = gps.time;
   currentSet->speed = gps.speed;
   currentSet->course = gps.course;
-  sensorManager->reset();
+  sensorManager->reset(false);
 
   CurrentTime = millis();
   uint8_t minDistance = MAX_SENSOR_VALUE;
   int measurements = 0;
 
   // if the detected minimum was measured more than 5s ago, it is discarded and cannot be confirmed
-  // TODO: make it a configurable timeout
-  if ((CurrentTime - timeOfMinimum ) > 5000)
+  int timeDelta = CurrentTime - timeOfMinimum;
+  if ((timeDelta ) > (config.confirmationTimeWindow * 1000))
   {
+    Serial.println(">>> CTW reached - minDistanceToConfirm=MAX_SENSOR_VALUE <<<");
+    Serial.println("Delta=" + String(timeDelta));
     minDistanceToConfirm = MAX_SENSOR_VALUE;
+    sensorManager->reset(true);
   }
 
   // do this for the time specified by measureInterval, e.g. 1s
@@ -358,6 +361,8 @@ void loop() {
     if (sensorManager->sensorValues[confirmationSensorID] < minDistanceToConfirm)
     {
       minDistanceToConfirm = sensorManager->sensorValues[confirmationSensorID];
+      Serial.print("New minDistanceToConfirm=");
+      Serial.println(minDistanceToConfirm);
       timeOfMinimum = millis();
     }
 
@@ -438,7 +443,12 @@ void loop() {
       delete dataset;
     }
     writer->writeDataToSD();
+
+    Serial.printf("writeDataToSD - minDistanceToConfirm = MAX_SENSOR_VALUE");
+    
     minDistanceToConfirm = MAX_SENSOR_VALUE;
+    sensorManager->reset(true);
+    
     transmitConfirmedData = false;
 
     if(config.displayConfig & DisplayInvert) displayTest->invert(); 
@@ -448,7 +458,7 @@ void loop() {
     displayTest->clear();
   }
 
-  // If the circular buffer is full, write just one set to the writers buffer, will fail when the confirmation timeout (currently hardcoded 5000) is larger than measureInterval * dataBuffer.size() 
+  // If the circular buffer is full, write just one set to the writers buffer, will fail when the confirmation timeout is larger than measureInterval * dataBuffer.size() 
   if (dataBuffer.isFull())
   {
     DataSet* dataset = dataBuffer.shift();

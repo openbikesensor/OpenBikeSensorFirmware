@@ -45,7 +45,7 @@ class HCSR04SensorManager
     Vector<HCSR04SensorInfo> m_sensors;
     Vector<uint8_t> sensorValues;
     void getDistances();
-    void reset();
+    void reset(bool resetMinDistance);
     void registerSensor(HCSR04SensorInfo);
     void setOffsets(Vector<uint8_t>);
     void setTimeouts();
@@ -53,6 +53,8 @@ class HCSR04SensorManager
   protected:
 
   private:
+    void getDistance(int idx);
+    
 };
 
 /*

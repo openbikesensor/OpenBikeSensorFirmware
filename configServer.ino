@@ -32,6 +32,7 @@ void configAction() {
   String offsetS1 = server.arg("offsetS1");
   String offsetS2 = server.arg("offsetS2");
   String satsForFix = server.arg("satsForFix");
+  String confirmationTimeWindow = server.arg("confirmationTimeWindow");
 
   String displaySimple = server.arg("displaySimple") == "on" ? "on" : "off";
   String displayGPS = server.arg("displayGPS") == "on" ? "on" : "off";
@@ -90,44 +91,13 @@ void configAction() {
   else
     config.displayConfig &= ~DisplayFlip;
 
-
-  Serial.print("displayConfig:");
-  Serial.println(config.displayConfig);
-
-  Serial.print("displaySimple:");
-  Serial.println(displaySimple);
-
-  Serial.print("displayGPS:");
-  Serial.println(displayGPS);
-
-  Serial.print("displayVELO:");
-  Serial.println(displayVELO);
-
-  Serial.print("displayLeft:");
-  Serial.println(displayLeft);
-
-  Serial.print("displayRight:");
-  Serial.println(displayRight);
-
-  Serial.print("displaySwapSensors:");
-  Serial.println(displaySwapSensors);
-
-  strlcpy(config.hostname, hostname.c_str(), sizeof(config.hostname));
-  strlcpy(config.obsUserID, obsUserID.c_str(), sizeof(config.obsUserID));
-
   config.sensorOffsets[0] = atoi(offsetS1.c_str());
   config.sensorOffsets[1] = atoi(offsetS2.c_str());
   config.satsForFix = atoi(satsForFix.c_str());
-  config.satsForFix = atoi(satsForFix.c_str());
+  config.confirmationTimeWindow = atoi(confirmationTimeWindow.c_str());
 
-  Serial.print("Offset Sensor 1:");
-  Serial.println(config.sensorOffsets[0]);
-
-  Serial.print("Offset Sensor 2:");
-  Serial.println(config.sensorOffsets[1]);
-
-  //Serial.print("confirmation:");
-  //Serial.println(confirmation);
+  strlcpy(config.hostname, hostname.c_str(), sizeof(config.hostname));
+  strlcpy(config.obsUserID, obsUserID.c_str(), sizeof(config.obsUserID));
 
   // Print and safe config
   Serial.println(F("Print config file..."));
@@ -329,6 +299,7 @@ void startServer() {
     html.replace("{satsForFix}", String(config.satsForFix));
     html.replace("{hostname}", String(config.hostname));
     html.replace("{userId}", String(config.obsUserID));
+    html.replace("{confirmationTimeWindow}", String(config.confirmationTimeWindow));
 
     bool displaySimple = config.displayConfig & DisplaySimple;
     bool displayGPS = config.displayConfig & DisplaySatelites;
@@ -347,6 +318,8 @@ void startServer() {
     html.replace("{displaySwapSensors}", displaySwapSensors ? "checked" : "");
     html.replace("{displayInvert}", displayInvert ? "checked" : "");
     html.replace("{displayFlip}", displayFlip ? "checked" : "");
+
+    
 
     server.send(200, "text/html", html);
   });

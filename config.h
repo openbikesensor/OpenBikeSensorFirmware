@@ -39,4 +39,5 @@ struct Config {
   int displayConfig;
   int satsForFix;
   int port;
+  int confirmationTimeWindow;
 };

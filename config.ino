@@ -18,12 +18,14 @@
   the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/*
 void setHandleBarWidth(int width) {
   handleBarWidth = width;
   timeout = 15000 + (int)(handleBarWidth * 29.1 * 2);
   EEPROM.write(0, handleBarWidth);
   EEPROM.commit();
 }
+*/
 
 void loadConfiguration(const char *configFilename, Config &config) {
   // Open file for reading
@@ -57,6 +59,7 @@ void loadConfiguration(const char *configFilename, Config &config) {
           doc["hostname"] | "openbikesensor.hlrs.de",  // <- source
           sizeof(config.hostname));         // <- destination's capacity
   config.satsForFix = doc["satsForFix"] | 4;
+  config.confirmationTimeWindow = doc["confirmationTimeWindow"] | 5000;
 
   // Close the file (Curiously, File's destructor doesn't close the file)
   file.close();
@@ -94,6 +97,7 @@ void saveConfiguration(const char *filename, const Config &config) {
   doc["password"] = config.password;
   doc["obsUserID"] = config.obsUserID;
   doc["displayConfig"] = config.displayConfig;
+  doc["confirmationTimeWindow"] = config.confirmationTimeWindow;
 
   // Serialize JSON to file
   if (serializeJson(doc, file) == 0) {
@@ -122,6 +126,9 @@ void printConfig(Config &config) {
 
   Serial.print(F("displayConfig = "));
   Serial.println(String(config.displayConfig));
+
+  Serial.print(F("confirmationTimeWindow = "));
+  Serial.println(String(config.confirmationTimeWindow));
 
   Serial.print(F("hostname = "));
   Serial.println(String(config.hostname));
