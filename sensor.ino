@@ -157,6 +157,7 @@ void HCSR04SensorManager::getDistance(int idx) {
       }
     }
   }
+  interrupts();
 
   if (sensorValues[idx] < m_sensors[idx].minDistance)
   {
