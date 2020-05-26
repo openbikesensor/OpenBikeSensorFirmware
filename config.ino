@@ -59,7 +59,7 @@ void loadConfiguration(const char *configFilename, Config &config) {
           doc["hostname"] | "openbikesensor.hlrs.de",  // <- source
           sizeof(config.hostname));         // <- destination's capacity
   config.satsForFix = doc["satsForFix"] | 4;
-  config.confirmationTimeWindow = doc["confirmationTimeWindow"] | 5000;
+  config.confirmationTimeWindow = doc["confirmationTimeWindow"] | 5;
 
   // Close the file (Curiously, File's destructor doesn't close the file)
   file.close();
