@@ -19,7 +19,7 @@
 */
 
 /*
-void DistanceSensor::getMinDistance(uint8_t& min_distance) {
+  void DistanceSensor::getMinDistance(uint8_t& min_distance) {
   float dist;
   dist = getDistance() - float(m_offset);
   if ((dist > 0.0) && (dist < float(min_distance)))
@@ -31,9 +31,9 @@ void DistanceSensor::getMinDistance(uint8_t& min_distance) {
     dist = 0.0;
   }
   delay(20);
-}
+  }
 
-float HCSR04DistanceSensor::getDistance() {
+  float HCSR04DistanceSensor::getDistance() {
   float duration = 0;
   float distance = 0;
 
@@ -48,7 +48,7 @@ float HCSR04DistanceSensor::getDistance() {
 
   distance = (duration / 2) / 29.1; // Distanz in CM
   return (distance);
-}*/
+  }*/
 
 void HCSR04SensorManager::registerSensor(HCSR04SensorInfo sensorInfo) {
   m_sensors.push_back(sensorInfo);
@@ -62,7 +62,7 @@ void HCSR04SensorManager::reset(bool resetMinDistance) {
   for (size_t idx = 0; idx < m_sensors.size(); ++idx)
   {
     sensorValues[idx] = MAX_SENSOR_VALUE;
-    if(resetMinDistance) m_sensors[idx].minDistance = MAX_SENSOR_VALUE;
+    if (resetMinDistance) m_sensors[idx].minDistance = MAX_SENSOR_VALUE;
   }
 }
 
@@ -157,8 +157,8 @@ void HCSR04SensorManager::getDistance(int idx) {
       }
     }
   }
-  
-  if(sensorValues[idx] < m_sensors[idx].minDistance)
+
+  if (sensorValues[idx] < m_sensors[idx].minDistance)
   {
     m_sensors[idx].minDistance = sensorValues[idx];
     m_sensors[idx].lastMinUpdate = millis();
@@ -171,7 +171,7 @@ void HCSR04SensorManager::getDistances() {
   // Loop all sensors, measure distance one after one
   for (size_t idx = 0; idx < m_sensors.size(); ++idx)
   {
-    getDistance(idx);  
+    getDistance(idx);
     delayMicroseconds(10);
   }
 }
