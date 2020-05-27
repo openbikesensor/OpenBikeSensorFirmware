@@ -368,7 +368,7 @@ void loop() {
 
 
     // if there is a sensor value and confirmation was not already triggered
-    if ((minDistanceToConfirm < MAX_SENSOR_VALUE) && !transmitConfirmedData)
+    if (!transmitConfirmedData)
     {
       buttonState = digitalRead(PushButton);
       // detect state change
