@@ -24,7 +24,6 @@
 #include <ArduinoJson.h>
 #include "config.h"
 #include <Wire.h>
-#include <EEPROM.h>
 #define CIRCULAR_BUFFER_INT_SAFE
 #include <CircularBuffer.h>
 #include "gps.h"
@@ -53,9 +52,6 @@
 
 //Version
 const char *OBSVersion = "v0.1.5";
-
-// define the number of bytes to store
-#define EEPROM_SIZE 128
 
 
 // PINs
@@ -209,10 +205,6 @@ void setup() {
   //##############################################################
 
   SerialGPS.begin(9600, SERIAL_8N1, 16, 17);
-  while (!EEPROM.begin(EEPROM_SIZE)) {
-    true;
-  }
-  // readLastFixFromEEPROM();
 
   //##############################################################
   // Handle SD
@@ -240,14 +232,6 @@ void setup() {
   Serial.println("File initialised");
 
   displayTest->showTextOnGrid(2, 3, "CSV file... ok");
-
-  //##############################################################
-  // ???
-  //##############################################################
-  
-  // initialize EEPROM with predefined size
-  EEPROM.begin(EEPROM_SIZE);
-
 
   //##############################################################
   // GPS
@@ -284,27 +268,6 @@ void setup() {
   displayTest->clear(); 
 }
 
-/*
-   easily read and write EEPROM
-*/
-template <class T> int EEPROM_writeAnything(int ee, const T& value)
-{
-  const byte* p = (const byte*)(const void*)&value;
-  int i;
-  for (i = 0; i < sizeof(value); i++)
-    EEPROM.write(ee++, *p++);
-  return i;
-}
-
-template <class T> int EEPROM_readAnything(int ee, T& value)
-{
-  byte* p = (byte*)(void*)&value;
-  int i;
-  for (i = 0; i < sizeof(value); i++)
-    *p++ = EEPROM.read(ee++);
-  return i;
-}
-
 void loop() {
 
   Serial.println("loop()");
@@ -312,8 +275,6 @@ void loop() {
   DataSet* currentSet = new DataSet;
   //specify which sensors value can be confirmed by pressing the button, should be configurable
   uint8_t confirmationSensorID = 1; // LEFT !!!
-  //writeLastFixToEEPROM();
-  // Todo: proceed only if gps is valid and updated
   readGPSData();
   currentSet->location = gps.location;
   currentSet->altitude = gps.altitude;
