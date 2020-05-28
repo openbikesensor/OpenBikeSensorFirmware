@@ -27,6 +27,7 @@ struct DataSet {
   TinyGPSSpeed speed;
   Vector<uint8_t> sensorValues;
   bool confirmed = false;
+  bool isInsidePrivacyArea;
 };
 
 

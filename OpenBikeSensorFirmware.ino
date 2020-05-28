@@ -282,6 +282,7 @@ void loop() {
   currentSet->time = gps.time;
   currentSet->speed = gps.speed;
   currentSet->course = gps.course;
+  currentSet->isInsidePrivacyArea = isInsidePrivacyArea(currentSet->location);
   sensorManager->reset(false);
 
   CurrentTime = millis();

@@ -24,3 +24,35 @@ void readGPSData() {
     gps.encode(SerialGPS.read());
   }
 }
+
+bool isInsidePrivacyArea(TinyGPSLocation location) {
+  // quite accurate haversine formula
+  // consider using simplified flat earth calculation to save time
+  for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx)
+  {
+    double distance = haversine(location.lat(), location.lng(), config.privacyAreas[idx].latitude, config.privacyAreas[idx].longitude);
+    if (distance < config.privacyAreas[idx].radius)
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
+double haversine(double lat1, double lon1, double lat2, double lon2)
+{
+  // https://www.geeksforgeeks.org/haversine-formula-to-find-distance-between-two-points-on-a-sphere/
+  // distance between latitudes and longitudes
+  double dLat = (lat2 - lat1) * M_PI / 180.0;
+  double dLon = (lon2 - lon1) * M_PI / 180.0;
+
+  // convert to radians
+  lat1 = (lat1) * M_PI / 180.0;
+  lat2 = (lat2) * M_PI / 180.0;
+
+  // apply formulae
+  double a = pow(sin(dLat / 2), 2) + pow(sin(dLon / 2), 2) * cos(lat1) * cos(lat2);
+  double rad = 6371000;
+  double c = 2 * asin(sqrt(a));
+  return rad * c;
+}

@@ -52,6 +52,18 @@ void loadConfiguration(const char *configFilename, Config &config) {
   config.satsForFix = doc["satsForFix"] | 4;
   config.confirmationTimeWindow = doc["confirmationTimeWindow"] | 5;
 
+  config.numPrivacyAreas = doc["numPrivacyAreas"] | 0;
+  for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx)
+  {
+    PrivacyArea pricacyAreaTemp;
+    String latitudeString = "privacyLatitude" + String(idx);
+    pricacyAreaTemp.latitude = doc[latitudeString] | 51.0;
+    String longitudeString = "privacyLongitude" + String(idx);
+    pricacyAreaTemp.longitude = doc[longitudeString] | 9.0;
+    String radiusString = "privacyRadius" + String(idx);
+    pricacyAreaTemp.radius = doc[radiusString] | 500.0;
+    config.privacyAreas.push_back(pricacyAreaTemp);
+  }
   // Close the file (Curiously, File's destructor doesn't close the file)
   file.close();
 }
@@ -81,7 +93,7 @@ void saveConfiguration(const char *filename, const Config &config) {
     doc[offsetString] = config.sensorOffsets[idx];
   }
   doc["satsForFix"] = config.satsForFix;
-  
+
   doc["hostname"] = config.hostname;
   doc["port"] = config.port;
   doc["ssid"] = config.ssid;
@@ -89,6 +101,17 @@ void saveConfiguration(const char *filename, const Config &config) {
   doc["obsUserID"] = config.obsUserID;
   doc["displayConfig"] = config.displayConfig;
   doc["confirmationTimeWindow"] = config.confirmationTimeWindow;
+
+  doc["numPrivacyAreas"] = config.numPrivacyAreas;
+  for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx)
+  {
+    String latitudeString = "privacyLatitude" + String(idx);
+    doc[latitudeString] = config.privacyAreas[idx].latitude;
+    String longitudeString = "privacyLongitude" + String(idx);
+    doc[longitudeString] = config.privacyAreas[idx].longitude;
+    String radiusString = "privacyRadius" + String(idx);
+    doc[radiusString] = config.privacyAreas[idx].radius;
+  }
 
   // Serialize JSON to file
   if (serializeJson(doc, file) == 0) {
@@ -133,36 +156,36 @@ void printConfig(Config &config) {
   Serial.print(F("SSID = "));
   Serial.println(String(config.ssid));
 
-  #ifdef dev
-    Serial.print(F("password = "));
-    Serial.println(String(config.password));
-  #endif
+#ifdef dev
+  Serial.print(F("password = "));
+  Serial.println(String(config.password));
+#endif
 
   Serial.println(F("################################"));
 
-/*
-  doc["displayConfig"] = config.displayConfig;
+  /*
+    doc["displayConfig"] = config.displayConfig;
 
-*/
+  */
 
 
 
   /*
-  // Open file for reading
-  File file = SPIFFS.open(filename);
-  if (!file) {
+    // Open file for reading
+    File file = SPIFFS.open(filename);
+    if (!file) {
     Serial.println(F("Failed to read file"));
     return;
-  }
+    }
 
-  // Extract each characters by one by one
-  while (file.available()) {
+    // Extract each characters by one by one
+    while (file.available()) {
     // do not ptrint passwords, please it is bad enough that we save them as plain text anyway...
     Serial.print((char)file.read());
-  }
-  Serial.println();
+    }
+    Serial.println();
 
-  // Close the file
-  file.close();
+    // Close the file
+    file.close();
   */
 }

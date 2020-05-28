@@ -162,6 +162,7 @@ void CSVFileWriter::writeHeader() {
     headerString += sensorManager->m_sensors[idx].sensorLocation;
   }
   headerString += ";Confirmed";
+  headerString += ";insidePrivacyArea";
   headerString += "\n";
   this->appendFile(SD, m_filename.c_str(), headerString.c_str() );
 }
@@ -194,6 +195,7 @@ void CSVFileWriter::writeData(DataSet* set) {
     dataString = dataString + ";" + String(set->sensorValues[idx]);
   }
   dataString = dataString + ";" + String(set->confirmed);
+  dataString = dataString + ";" + String(set->isInsidePrivacyArea);
   dataString = dataString + "\n";
 
 }
