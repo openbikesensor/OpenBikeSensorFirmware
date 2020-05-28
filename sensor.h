@@ -54,6 +54,7 @@ class HCSR04SensorManager
 
   private:
     void getDistance(int idx);
+    void getDistanceSimple(int idx);
     
 };
 

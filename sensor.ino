@@ -88,6 +88,27 @@ void HCSR04SensorManager::setTimeouts() {
   }
 }
 
+void HCSR04SensorManager::getDistanceSimple(int idx) {
+  float duration = 0;
+  float distance = 0;
+
+  digitalWrite(m_sensors[idx].triggerPin, LOW);
+  delayMicroseconds(2);
+  noInterrupts();
+  digitalWrite(m_sensors[idx].triggerPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(m_sensors[idx].triggerPin, LOW);
+  duration = pulseIn(m_sensors[idx].echoPin, HIGH, m_sensors[idx].timeout); // Erfassung - Dauer in Mikrosekunden
+  interrupts();
+
+  distance = (duration / 2) / 29.1; // Distanz in CM
+  if (distance < m_sensors[idx].minDistance)
+  {
+    m_sensors[idx].minDistance = distance;
+    m_sensors[idx].lastMinUpdate = millis();
+  }
+}
+
 void HCSR04SensorManager::getDistance(int idx) {
   const uint32_t max_timeout_us = clockCyclesToMicroseconds(UINT_MAX);
   m_sensors[idx].timeout_cycles = microsecondsToClockCycles(m_sensors[idx].timeout);
@@ -179,7 +200,7 @@ void HCSR04SensorManager::getDistances() {
 
 
 /*
-void HCSR04SensorManager::getDistancesParallel() {
+  void HCSR04SensorManager::getDistancesParallel() {
   const uint32_t max_timeout_us = clockCyclesToMicroseconds(UINT_MAX);
   for (size_t idx = 0; idx < m_sensors.size(); ++idx)
   {
@@ -278,5 +299,5 @@ void HCSR04SensorManager::getDistancesParallel() {
       m_sensors[idx].lastMinUpdate = currentTime;
     }
   }
-}
+  }
 */
