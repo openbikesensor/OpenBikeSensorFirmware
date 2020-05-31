@@ -68,6 +68,7 @@ String footer = "</form>" + style;
 String navigationIndex =
   header +
   "<input type=button onclick=window.location.href='/config' class=btn value='Config'>"
+  "<input type=button onclick=window.location.href='/privacy' class=btn value='Privacy'>"
   "<input type=button onclick=window.location.href='/wifi' class=btn value='Wifi Settings'>"
   "<input type=button onclick=window.location.href='/update' class=btn value='Update Firmware'>"
   "<input type=button onclick=window.location.href='/reboot' class=btn value='Reboot'>"
@@ -192,3 +193,15 @@ String uploadIndex =
   "});" // btn click
   ""
   "</script>" + footer;
+
+// #########################################
+// Privacy
+// #########################################
+String privacyIndexPrefix =
+  "<form name=privacyForm action=/privacy_action>"
+  "<h1>OpenBikeSensor Privacy Settings</h1>";
+
+
+String privacyIndexPostfix =
+  "<input type=submit onclick=window.location.href='/' class=btn value=Save>"
+  "</form>" + style;

@@ -32,6 +32,8 @@ enum DisplayOptions {
 struct PrivacyArea {
   double latitude;
   double longitude;
+  double transformedLatitude;
+  double transformedLongitude;
   double radius;
 };
 

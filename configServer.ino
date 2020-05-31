@@ -135,6 +135,31 @@ void wifiAction() {
   server.send(200, "text/html", s);
 }
 
+void privacyAction() {
+  String latitude = server.arg("newlatitude");
+  String longitude = server.arg("newlongitude");
+  String radius = server.arg("newradius");
+  if ( (latitude != "") && (longitude != "") && (radius != ""))
+  {
+    Serial.println(F("Valid privacyArea!"));
+    PrivacyArea newPrivacyArea;
+    newPrivacyArea.latitude = atof(latitude.c_str());
+    newPrivacyArea.longitude = atof(longitude.c_str());
+    newPrivacyArea.radius = atoi(radius.c_str());
+    randomOffset(newPrivacyArea);
+
+    config.privacyAreas.push_back(newPrivacyArea);
+    config.numPrivacyAreas = config.privacyAreas.size();
+    Serial.println(F("Print config file..."));
+    printConfig(config);
+    Serial.println(F("Saving configuration..."));
+    saveConfiguration(configFilename, config);
+  }
+
+  String s = "<meta http-equiv='refresh' content='0; url=/'><a href='/'> Go Back </a>";
+  server.send(200, "text/html", s);
+}
+
 bool CreateWifiSoftAP(String chipID)
 {
   bool SoftAccOK;
@@ -370,6 +395,33 @@ void startServer() {
 
   server.onNotFound(handle_NotFound);
 
+  // ### Privacy ###
+
+  server.on("/privacy", HTTP_GET, []() {
+    createPrivacyPage();
+  });
+
+  server.on("/privacy_action", privacyAction);
+
   server.begin();
   Serial.println("Server Ready");
+
+}
+void createPrivacyPage()
+{
+  String privacyPage = privacyIndexPrefix;
+
+  for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx)
+  {
+    privacyPage += "Latitude " + String(idx) + "<input name=latitude" + String(idx) + " placeholder='latitude' value='" + String(config.privacyAreas[idx].latitude, 7) + "'>";
+    privacyPage += "Longitude " + String(idx) + "<input name=longitude" + String(idx) + "placeholder='longitude' value='" + String(config.privacyAreas[idx].longitude, 7) + "'>";
+    privacyPage += "Radius " + String(idx) + "<input name=radius" + String(idx) + "placeholder='radius' value='" + String(config.privacyAreas[idx].radius) + "'>";
+  }
+
+  privacyPage += "New Latitude<input name=newlatitude placeholder='latitude'>";
+  privacyPage += "New Longitude<input name=newlongitude placeholder='longitude'>";
+  privacyPage += "New Radius<input name=newradius placeholder='radius'>";
+
+  privacyPage += privacyIndexPostfix;
+  server.send(200, "text/html", privacyPage);
 }

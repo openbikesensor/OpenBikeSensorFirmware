@@ -25,7 +25,7 @@ void loadConfiguration(const char *configFilename, Config &config) {
   // Allocate a temporary JsonDocument
   // Don't forget to change the capacity to match your requirements.
   // Use arduinojson.org/v6/assistant to compute the capacity.
-  StaticJsonDocument<1024> doc;
+  StaticJsonDocument<4096> doc;
 
   // Deserialize the JSON document
   DeserializationError error = deserializeJson(doc, file);
@@ -56,10 +56,19 @@ void loadConfiguration(const char *configFilename, Config &config) {
   for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx)
   {
     PrivacyArea pricacyAreaTemp;
+    // Original coordinates
     String latitudeString = "privacyLatitude" + String(idx);
     pricacyAreaTemp.latitude = doc[latitudeString] | 51.0;
     String longitudeString = "privacyLongitude" + String(idx);
     pricacyAreaTemp.longitude = doc[longitudeString] | 9.0;
+
+    // randomly transformed coordinates
+    String transformedLatitudeString = "privacyTransformedLatitude" + String(idx);
+    pricacyAreaTemp.transformedLatitude = doc[transformedLatitudeString] | 51.0;
+    String transformedLongitudeString = "privacyTransformedLongitude" + String(idx);
+    pricacyAreaTemp.transformedLongitude = doc[transformedLongitudeString] | 9.0;
+
+    // Radius
     String radiusString = "privacyRadius" + String(idx);
     pricacyAreaTemp.radius = doc[radiusString] | 500.0;
     config.privacyAreas.push_back(pricacyAreaTemp);
@@ -83,7 +92,7 @@ void saveConfiguration(const char *filename, const Config &config) {
   // Allocate a temporary JsonDocument
   // Don't forget to change the capacity to match your requirements.
   // Use arduinojson.org/assistant to compute the capacity.
-  StaticJsonDocument<256> doc;
+  StaticJsonDocument<4096> doc;
 
   // Set the values in the document
   doc["numSensors"] = config.numSensors;
@@ -105,10 +114,19 @@ void saveConfiguration(const char *filename, const Config &config) {
   doc["numPrivacyAreas"] = config.numPrivacyAreas;
   for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx)
   {
+    //String latitudeString = "privacyLatitude" + String(idx);
+    //JsonArray data = doc.createNestedArray(latitudeString);
+
     String latitudeString = "privacyLatitude" + String(idx);
-    doc[latitudeString] = config.privacyAreas[idx].latitude;
+    doc[latitudeString] = String(config.privacyAreas[idx].latitude, 7);
     String longitudeString = "privacyLongitude" + String(idx);
-    doc[longitudeString] = config.privacyAreas[idx].longitude;
+    doc[longitudeString] = String(config.privacyAreas[idx].longitude, 7);
+
+    String transformdedLatitudeString = "privacyTransformedLatitude" + String(idx);
+    doc[transformdedLatitudeString] = String(config.privacyAreas[idx].transformedLatitude, 7);
+    String transformdedLongitudeString = "privacyTransformedLongitude" + String(idx);
+    doc[transformdedLongitudeString] = String(config.privacyAreas[idx].transformedLongitude, 7);
+
     String radiusString = "privacyRadius" + String(idx);
     doc[radiusString] = config.privacyAreas[idx].radius;
   }
@@ -156,6 +174,27 @@ void printConfig(Config &config) {
   Serial.print(F("SSID = "));
   Serial.println(String(config.ssid));
 
+  Serial.print(F("numPrivacyAreas = "));
+  Serial.println(String(config.numPrivacyAreas));
+
+  for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx)
+  {
+    String latitudeString = "privacyLatitude[" + String(idx) + "] = " + String(config.privacyAreas[idx].latitude, 7);
+    Serial.println(latitudeString);
+
+    String longitudeString = "privacyLongitude[" + String(idx) + "] = " + String(config.privacyAreas[idx].longitude, 7);
+    Serial.println(longitudeString);
+
+    String transformdedLatitudeString = "privacyTransformedLatitude[" + String(idx) + "] = " + String(config.privacyAreas[idx].transformedLatitude, 7);
+    Serial.println(transformdedLatitudeString);
+
+    String transformdedLongitudeString = "privacyTransformedLongitude[" + String(idx) + "] = " + String(config.privacyAreas[idx].transformedLongitude, 7);
+    Serial.println(transformdedLongitudeString);
+
+    String radiusString = "privacyRadius[" + String(idx) + "] = " + config.privacyAreas[idx].radius;
+    Serial.println(radiusString);
+  }
+
 #ifdef dev
   Serial.print(F("password = "));
   Serial.println(String(config.password));
@@ -172,7 +211,7 @@ void printConfig(Config &config) {
 
   /*
     // Open file for reading
-    File file = SPIFFS.open(filename);
+    File file = SPIFFS.open(configFilename);
     if (!file) {
     Serial.println(F("Failed to read file"));
     return;
