@@ -42,7 +42,7 @@ void configAction() {
   String displaySwapSensors = server.arg("displaySwapSensors") == "on" ? "on" : "off";
   String displayInvert = server.arg("displayInvert") == "on" ? "on" : "off";
   String displayFlip = server.arg("displayFlip") == "on" ? "on" : "off";
-  
+
   String obsUserID = server.arg("obsUserID");
   String hostname = server.arg("hostname");
 
@@ -319,7 +319,7 @@ void startServer() {
     html.replace("{displayInvert}", displayInvert ? "checked" : "");
     html.replace("{displayFlip}", displayFlip ? "checked" : "");
 
-    
+
 
     server.send(200, "text/html", html);
   });
