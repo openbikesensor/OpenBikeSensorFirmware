@@ -36,6 +36,9 @@ class Vector {
     Data &operator[](size_t idx) {
       return d_data[idx];
     }; // Changeable getter
+    void erase(size_t idx) {
+      d_data[idx]=d_data[d_size--];
+    }
   private:
     void resize() {
       d_capacity = d_capacity ? d_capacity * 2 : 1;

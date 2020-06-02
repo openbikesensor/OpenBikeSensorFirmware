@@ -137,8 +137,21 @@ void wifiAction() {
 
 void privacyAction() {
   String latitude = server.arg("newlatitude");
+  latitude.replace(",",".");
   String longitude = server.arg("newlongitude");
+  longitude.replace(",",".");
   String radius = server.arg("newradius");
+  String erase = server.arg("erase");
+
+  if (erase != "")
+  {
+    if (atoi(erase.c_str()) < config.privacyAreas.size())
+    {
+      config.privacyAreas.erase(atoi(erase.c_str()));
+    }
+    config.numPrivacyAreas = config.privacyAreas.size();
+  }
+
   if ( (latitude != "") && (longitude != "") && (radius != ""))
   {
     Serial.println(F("Valid privacyArea!"));
@@ -415,12 +428,14 @@ void createPrivacyPage()
   {
     privacyPage += "Latitude " + String(idx) + "<input name=latitude" + String(idx) + " placeholder='latitude' value='" + String(config.privacyAreas[idx].latitude, 7) + "'>";
     privacyPage += "Longitude " + String(idx) + "<input name=longitude" + String(idx) + "placeholder='longitude' value='" + String(config.privacyAreas[idx].longitude, 7) + "'>";
-    privacyPage += "Radius " + String(idx) + "<input name=radius" + String(idx) + "placeholder='radius' value='" + String(config.privacyAreas[idx].radius) + "'>";
+    privacyPage += "Radius " + String(idx) + " (m)"+ "<input name=radius" + String(idx) + "placeholder='radius' value='" + String(config.privacyAreas[idx].radius) + "'>";
   }
 
   privacyPage += "New Latitude<input name=newlatitude placeholder='latitude'>";
   privacyPage += "New Longitude<input name=newlongitude placeholder='longitude'>";
-  privacyPage += "New Radius<input name=newradius placeholder='radius'>";
+  privacyPage += "New Radius (m)<input name=newradius placeholder='radius'>";
+
+  privacyPage += "Erase Area<input name=erase placeholder='0'>";
 
   privacyPage += privacyIndexPostfix;
   server.send(200, "text/html", privacyPage);

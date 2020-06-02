@@ -118,14 +118,14 @@ void saveConfiguration(const char *filename, const Config &config) {
     //JsonArray data = doc.createNestedArray(latitudeString);
 
     String latitudeString = "privacyLatitude" + String(idx);
-    doc[latitudeString] = String(config.privacyAreas[idx].latitude, 7);
+    doc[latitudeString] = config.privacyAreas[idx].latitude;
     String longitudeString = "privacyLongitude" + String(idx);
-    doc[longitudeString] = String(config.privacyAreas[idx].longitude, 7);
+    doc[longitudeString] = config.privacyAreas[idx].longitude;
 
     String transformdedLatitudeString = "privacyTransformedLatitude" + String(idx);
-    doc[transformdedLatitudeString] = String(config.privacyAreas[idx].transformedLatitude, 7);
+    doc[transformdedLatitudeString] = config.privacyAreas[idx].transformedLatitude;
     String transformdedLongitudeString = "privacyTransformedLongitude" + String(idx);
-    doc[transformdedLongitudeString] = String(config.privacyAreas[idx].transformedLongitude, 7);
+    doc[transformdedLongitudeString] = config.privacyAreas[idx].transformedLongitude;
 
     String radiusString = "privacyRadius" + String(idx);
     doc[radiusString] = config.privacyAreas[idx].radius;
