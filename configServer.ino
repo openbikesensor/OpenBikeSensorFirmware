@@ -316,7 +316,7 @@ void startServer() {
     html.replace("{subtitle}", "MakeLocationPrivate");
 
     server.send(200, "text/html", html);
-    bool validGPSData = false;  
+    bool validGPSData = false;
     buttonState = digitalRead(PushButton);
     while (!validGPSData && (buttonState == LOW))
     {
