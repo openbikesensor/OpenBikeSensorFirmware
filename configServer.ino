@@ -166,18 +166,20 @@ void privacyAction() {
   if ( (latitude != "") && (longitude != "") && (radius != ""))
   {
     Serial.println(F("Valid privacyArea!"));
-    PrivacyArea newPrivacyArea;
-    newPrivacyArea.latitude = atof(latitude.c_str());
-    newPrivacyArea.longitude = atof(longitude.c_str());
-    newPrivacyArea.radius = atoi(radius.c_str());
-    randomOffset(newPrivacyArea);
+    addNewPrivacyArea(atof(latitude.c_str()), atof(longitude.c_str()), atoi(radius.c_str()));
+    /*PrivacyArea newPrivacyArea;
+      newPrivacyArea.latitude = atof(latitude.c_str());
+      newPrivacyArea.longitude = atof(longitude.c_str());
+      newPrivacyArea.radius = atoi(radius.c_str());
+      randomOffset(newPrivacyArea);
 
-    config.privacyAreas.push_back(newPrivacyArea);
-    config.numPrivacyAreas = config.privacyAreas.size();
-    Serial.println(F("Print config file..."));
-    printConfig(config);
-    Serial.println(F("Saving configuration..."));
-    saveConfiguration(configFilename, config);
+      config.privacyAreas.push_back(newPrivacyArea);
+      config.numPrivacyAreas = config.privacyAreas.size();
+      Serial.println(F("Print config file..."));
+      printConfig(config);
+      Serial.println(F("Saving configuration..."));
+      saveConfiguration(configFilename, config);
+    */
   }
 
   String s = "<meta http-equiv='refresh' content='0; url=/'><a href='/'> Go Back </a>";
@@ -303,6 +305,34 @@ void startServer() {
     delay(100);
     ESP.restart();
   });
+
+  // ### Make current location private ###
+  server.on("/makecurrentlocationprivate", HTTP_GET, []() {
+
+    String html = makeCurrentLocationPrivateIndex;
+    // Header
+    html.replace("{action}", "");
+    html.replace("{version}", OBSVersion);
+    html.replace("{subtitle}", "MakeLocationPrivate");
+
+    server.send(200, "text/html", html);
+    bool validGPSData = false;  
+    buttonState = digitalRead(PushButton);
+    while (!validGPSData && (buttonState == LOW))
+    {
+      readGPSData();
+      validGPSData = gps.location.isValid();
+      if (validGPSData) {
+        addNewPrivacyArea(gps.location.lat(), gps.location.lng(), 500);
+      }
+      delay(300);
+    }
+
+    String s = "<meta http-equiv='refresh' content='0; url=/'><a href='/'> Go Back </a>";
+    server.send(200, "text/html", s); //Send web page
+
+  });
+
 
   // ### Index ###
 
@@ -444,13 +474,21 @@ void createPrivacyPage()
 
   for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx)
   {
-    privacyPage += "Latitude " + String(idx) + "<input name=latitude" + String(idx) + " placeholder='latitude' value='" + String(config.privacyAreas[idx].latitude, 7) + "'>";
-    privacyPage += "Longitude " + String(idx) + "<input name=longitude" + String(idx) + "placeholder='longitude' value='" + String(config.privacyAreas[idx].longitude, 7) + "'>";
-    privacyPage += "Radius " + String(idx) + " (m)" + "<input name=radius" + String(idx) + "placeholder='radius' value='" + String(config.privacyAreas[idx].radius) + "'>";
+    privacyPage += "Latitude " + String(idx) + "<input name=latitude" + String(idx) + " placeholder='latitude' value='" + String(config.privacyAreas[idx].latitude, 7) + "'disabled>";
+    privacyPage += "Longitude " + String(idx) + "<input name=longitude" + String(idx) + "placeholder='longitude' value='" + String(config.privacyAreas[idx].longitude, 7) + "'disabled>";
+    privacyPage += "Radius " + String(idx) + " (m)" + "<input name=radius" + String(idx) + "placeholder='radius' value='" + String(config.privacyAreas[idx].radius) + "'disabled>";
   }
-
-  privacyPage += "New Latitude<input name=newlatitude placeholder='48.12345'>";
-  privacyPage += "New Longitude<input name=newlongitude placeholder='9.12345'>";
+  readGPSData();
+  bool validGPSData = gps.location.isValid();
+  if (validGPSData) {
+    privacyPage += "New Latitude<input name=newlatitude placeholder='" + String(gps.location.lat()) + "'>";
+    privacyPage += "New Longitude<input name=newlongitude placeholder='" + String(gps.location.lng()) + "'>";
+  }
+  else
+  {
+    privacyPage += "New Latitude<input name=newlatitude placeholder='48.12345'>";
+    privacyPage += "New Longitude<input name=newlongitude placeholder='9.12345'>";
+  }
   privacyPage += "New Radius (m)<input name=newradius placeholder='radius' value='500'>";
 
   privacyPage += "Erase Area<input name=erase placeholder='0'>";

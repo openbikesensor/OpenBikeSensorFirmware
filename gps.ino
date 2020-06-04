@@ -93,3 +93,18 @@ void randomOffset(PrivacyArea &p) {
   Serial.println(String(p.transformedLongitude, 5));
 #endif
 }
+
+void addNewPrivacyArea(double latitude, double longitude, int radius) {
+  PrivacyArea newPrivacyArea;
+  newPrivacyArea.latitude = latitude;
+  newPrivacyArea.longitude = longitude;
+  newPrivacyArea.radius = radius;
+  randomOffset(newPrivacyArea);
+
+  config.privacyAreas.push_back(newPrivacyArea);
+  config.numPrivacyAreas = config.privacyAreas.size();
+  Serial.println(F("Print config file..."));
+  printConfig(config);
+  Serial.println(F("Saving configuration..."));
+  saveConfiguration(configFilename, config);
+}

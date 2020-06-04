@@ -210,4 +210,12 @@ String privacyIndexPrefix =
 
 String privacyIndexPostfix =
   "<input type=submit onclick=window.location.href='/' class=btn value=Save>"
-  "</form>" + style;
+  "<input type=button onclick=window.location.href='/makecurrentlocationprivate' class=btn value='Make current location private'>"
+  "</form>"
+  + style;
+
+
+String makeCurrentLocationPrivateIndex =
+  header +
+  "<div>Making current location private, waiting for fix.</div>"
+  + footer;
