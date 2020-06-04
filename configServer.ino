@@ -481,8 +481,8 @@ void createPrivacyPage()
   readGPSData();
   bool validGPSData = gps.location.isValid();
   if (validGPSData) {
-    privacyPage += "New Latitude<input name=newlatitude placeholder='" + String(gps.location.lat()) + "'>";
-    privacyPage += "New Longitude<input name=newlongitude placeholder='" + String(gps.location.lng()) + "'>";
+    privacyPage += "New Latitude<input name=newlatitude value='" + String(gps.location.lat(),7) + "'>";
+    privacyPage += "New Longitude<input name=newlongitude value='" + String(gps.location.lng(),7) + "'>";
   }
   else
   {
