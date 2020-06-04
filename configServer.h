@@ -217,5 +217,5 @@ String privacyIndexPostfix =
 
 String makeCurrentLocationPrivateIndex =
   header +
-  "<div>Making current location private, waiting for fix.</div>"
+  "<div>Making current location private, waiting for fix. Press device button to cancel.</div>"
   + footer;
