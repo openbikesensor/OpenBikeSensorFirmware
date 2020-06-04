@@ -43,6 +43,8 @@ void configAction() {
   String displayInvert = server.arg("displayInvert") == "on" ? "on" : "off";
   String displayFlip = server.arg("displayFlip") == "on" ? "on" : "off";
 
+  String validGPS = server.arg("validGPS");
+
   String obsUserID = server.arg("obsUserID");
   String hostname = server.arg("hostname");
 
@@ -91,6 +93,15 @@ void configAction() {
   else
     config.displayConfig &= ~DisplayFlip;
 
+  if (validGPS == "validLocation")
+    config.GPSConfig = ValidLocation;
+
+  if (validGPS == "validTime")
+    config.GPSConfig = ValidTime;
+
+  if (validGPS == "numberSatellites")
+    config.GPSConfig = NumberSatellites;
+
   config.sensorOffsets[0] = atoi(offsetS1.c_str());
   config.sensorOffsets[1] = atoi(offsetS2.c_str());
   config.satsForFix = atoi(satsForFix.c_str());
@@ -137,9 +148,9 @@ void wifiAction() {
 
 void privacyAction() {
   String latitude = server.arg("newlatitude");
-  latitude.replace(",",".");
+  latitude.replace(",", ".");
   String longitude = server.arg("newlongitude");
-  longitude.replace(",",".");
+  longitude.replace(",", ".");
   String radius = server.arg("newradius");
   String erase = server.arg("erase");
 
@@ -357,6 +368,13 @@ void startServer() {
     html.replace("{displayInvert}", displayInvert ? "checked" : "");
     html.replace("{displayFlip}", displayFlip ? "checked" : "");
 
+    bool validLocation = config.GPSConfig & ValidLocation;
+    bool validTime = config.GPSConfig & ValidTime;
+    bool numberSatellites = config.GPSConfig & NumberSatellites;
+
+    html.replace("{validLocation}", validLocation ? "checked" : "");
+    html.replace("{validTime}", validTime ? "checked" : "");
+    html.replace("{numberSatellites}", numberSatellites ? "checked" : "");
 
 
     server.send(200, "text/html", html);
@@ -428,7 +446,7 @@ void createPrivacyPage()
   {
     privacyPage += "Latitude " + String(idx) + "<input name=latitude" + String(idx) + " placeholder='latitude' value='" + String(config.privacyAreas[idx].latitude, 7) + "'>";
     privacyPage += "Longitude " + String(idx) + "<input name=longitude" + String(idx) + "placeholder='longitude' value='" + String(config.privacyAreas[idx].longitude, 7) + "'>";
-    privacyPage += "Radius " + String(idx) + " (m)"+ "<input name=radius" + String(idx) + "placeholder='radius' value='" + String(config.privacyAreas[idx].radius) + "'>";
+    privacyPage += "Radius " + String(idx) + " (m)" + "<input name=radius" + String(idx) + "placeholder='radius' value='" + String(config.privacyAreas[idx].radius) + "'>";
   }
 
   privacyPage += "New Latitude<input name=newlatitude placeholder='48.12345'>";

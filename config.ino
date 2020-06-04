@@ -45,6 +45,7 @@ void loadConfiguration(const char *configFilename, Config &config) {
   strlcpy(config.password, doc["password"] | "Freifunk", sizeof(config.password));
   strlcpy(config.obsUserID, doc["obsUserID"] | "5e8f2f43e7e3b3668ca13151", sizeof(config.obsUserID));
   config.displayConfig = doc["displayConfig"] | 0;
+  config.GPSConfig = doc["GPSConfig"] | 0;
   config.port = doc["port"] | 2731;
   strlcpy(config.hostname,                  // <- destination
           doc["hostname"] | "openbikesensor.hlrs.de",  // <- source
@@ -109,6 +110,7 @@ void saveConfiguration(const char *filename, const Config &config) {
   doc["password"] = config.password;
   doc["obsUserID"] = config.obsUserID;
   doc["displayConfig"] = config.displayConfig;
+  doc["GPSConfig"] = config.GPSConfig;
   doc["confirmationTimeWindow"] = config.confirmationTimeWindow;
 
   doc["numPrivacyAreas"] = config.numPrivacyAreas;
@@ -158,6 +160,9 @@ void printConfig(Config &config) {
 
   Serial.print(F("displayConfig = "));
   Serial.println(String(config.displayConfig));
+
+  Serial.print(F("GPSConfig = "));
+  Serial.println(String(config.GPSConfig));
 
   Serial.print(F("confirmationTimeWindow = "));
   Serial.println(String(config.confirmationTimeWindow));

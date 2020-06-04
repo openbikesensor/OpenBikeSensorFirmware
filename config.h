@@ -29,6 +29,12 @@ enum DisplayOptions {
   DisplayFlip = 0x80       // 128
 };
 
+enum GPSOptions {
+  ValidLocation = 0x01, //1
+  ValidTime = 0x02, //2
+  NumberSatellites = 0x04 //4
+};
+
 struct PrivacyArea {
   double latitude;
   double longitude;
@@ -45,6 +51,7 @@ struct Config {
   char hostname[64];
   char obsUserID[64];
   int displayConfig;
+  int GPSConfig;
   int satsForFix;
   int port;
   int confirmationTimeWindow;

@@ -100,8 +100,8 @@ HCSR04SensorManager* sensorManager;
 
 String esp_chipid;
 
-// Enable dev-mode. Allows to 
-// - set wifi config 
+// Enable dev-mode. Allows to
+// - set wifi config
 // - prints more detailed log messages to serial (WIFI password)
 //#define dev
 
@@ -119,12 +119,12 @@ void setup() {
   //##############################################################
   // Setup display
   //##############################################################
-  
+
   displayTest = new SSD1306DisplayDevice;
-  #ifdef dev
-    //displayTest->showGrid(true);
-  #endif
-  
+#ifdef dev
+  //displayTest->showGrid(true);
+#endif
+
   displayTest->showLogo(true);
   displayTest->showTextOnGrid(2, 0, OBSVersion);
 
@@ -150,17 +150,17 @@ void setup() {
   // Save the config. This ensures, that new options exist as well
   saveConfiguration(configFilename, config);
 
-  if(config.displayConfig & DisplayInvert) displayTest->invert(); 
+  if (config.displayConfig & DisplayInvert) displayTest->invert();
   else displayTest->normalDisplay();
 
-  if(config.displayConfig & DisplayFlip) displayTest->flipScreen();
-  
+  if (config.displayConfig & DisplayFlip) displayTest->flipScreen();
+
   delay(333); // Added for user experience
   displayTest->showTextOnGrid(2, 1, "Config... ok");
 
   //##############################################################
   // Check, if the button is pressed
-  // Enter configuration mode and enable OTA 
+  // Enter configuration mode and enable OTA
   //##############################################################
 
   buttonState = digitalRead(PushButton);
@@ -223,7 +223,7 @@ void setup() {
   //##############################################################
   // Prepare CSV file
   //##############################################################
-  
+
   displayTest->showTextOnGrid(2, 3, "CSV file...");
 
   writer = new CSVFileWriter;
@@ -237,14 +237,40 @@ void setup() {
   // GPS
   //##############################################################
 
-  displayTest->showTextOnGrid(2, 4, "Wait for GPS");  
+  displayTest->showTextOnGrid(2, 4, "Wait for GPS");
   Serial.println("Waiting for GPS fix...");
-  while (gps.satellites.value() < config.satsForFix)
+  bool validGPSData = false;
+  while (!validGPSData)
   {
     readGPSData();
+    switch (config.GPSConfig)
+    {
+      case ValidLocation: {
+          validGPSData = gps.location.isValid();
+          if (validGPSData)
+            Serial.println("Got location...");
+          break;
+        }
+      case ValidTime: {
+          validGPSData = gps.time.isValid();
+          if (validGPSData)
+            Serial.println("Got time...");
+          break;
+        }
+      case NumberSatellites: {
+          validGPSData = gps.satellites.value() < config.satsForFix ? false : true;
+          if (validGPSData)
+            Serial.println("Got required number of satellites...");
+          break;
+        }
+      default: {
+          validGPSData = false;
+        }
+
+    }
     delay(300);
 
-    String satellitesString = String(gps.satellites.value()) + " / " + String(config.satsForFix) +" sats";
+    String satellitesString = String(gps.satellites.value()) + " / " + String(config.satsForFix) + " sats";
     displayTest->showTextOnGrid(2, 5, satellitesString);
 
     buttonState = digitalRead(PushButton);
@@ -256,16 +282,16 @@ void setup() {
     }
   }
 
-  if(gps.satellites.value() == config.satsForFix) {
+  if (gps.satellites.value() == config.satsForFix) {
     Serial.print("Got GPS Fix: ");
     Serial.println(String(gps.satellites.value()));
     displayTest->showTextOnGrid(2, 5, "Got GPS Fix");
   }
-  
+
   delay(1000); // Added for user experience
 
   // Clear the display once!
-  displayTest->clear(); 
+  displayTest->clear();
 }
 
 void loop() {
@@ -370,9 +396,9 @@ void loop() {
   if (transmitConfirmedData)
   {
     //inverting the display until the data is saved TODO: add control over the time the display will be inverted so the user actually sees it.
-    if(config.displayConfig & DisplayInvert) displayTest->normalDisplay(); 
+    if (config.displayConfig & DisplayInvert) displayTest->normalDisplay();
     else displayTest->invert();
-    
+
     Serial.printf("Trying to transmit Confirmed data \n");
     // make sure the minimum distance is saved only once
     using index_t = decltype(dataBuffer)::index_t;
@@ -404,21 +430,21 @@ void loop() {
       delete dataset;
     }
     writer->writeDataToSD();
-    
+
     Serial.printf(">>> writeDataToSD - reset <<<");
     minDistanceToConfirm = MAX_SENSOR_VALUE;
     sensorManager->reset(true);
-    
+
     transmitConfirmedData = false;
 
-    if(config.displayConfig & DisplayInvert) displayTest->invert(); 
+    if (config.displayConfig & DisplayInvert) displayTest->invert();
     else displayTest->normalDisplay();
 
     // Lets clear the display again, so on the next cycle, it will be recreated
     displayTest->clear();
   }
 
-  // If the circular buffer is full, write just one set to the writers buffer, will fail when the confirmation timeout is larger than measureInterval * dataBuffer.size() 
+  // If the circular buffer is full, write just one set to the writers buffer, will fail when the confirmation timeout is larger than measureInterval * dataBuffer.size()
   if (dataBuffer.isFull())
   {
     DataSet* dataset = dataBuffer.shift();
