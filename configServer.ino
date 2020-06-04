@@ -431,9 +431,9 @@ void createPrivacyPage()
     privacyPage += "Radius " + String(idx) + " (m)"+ "<input name=radius" + String(idx) + "placeholder='radius' value='" + String(config.privacyAreas[idx].radius) + "'>";
   }
 
-  privacyPage += "New Latitude<input name=newlatitude placeholder='latitude'>";
-  privacyPage += "New Longitude<input name=newlongitude placeholder='longitude'>";
-  privacyPage += "New Radius (m)<input name=newradius placeholder='radius'>";
+  privacyPage += "New Latitude<input name=newlatitude placeholder='48.12345'>";
+  privacyPage += "New Longitude<input name=newlongitude placeholder='9.12345'>";
+  privacyPage += "New Radius (m)<input name=newradius placeholder='radius' value='500'>";
 
   privacyPage += "Erase Area<input name=erase placeholder='0'>";
 
