@@ -25,7 +25,7 @@ To power the sensor you have a choice of Lithium-Iron or Lithium-Ion batteries
 * [LiIon battery](https://www.akkuparts24.de/Samsung-INR18650-25R-36V-2500mAh-Li-Ion-Zelle)
 or
 * [Battery-Protection-Board](https://www.ebay.de/itm/202033076322)
-* [LiFePo charging module](https://www.ebay.de/itm/MicroUSB-TP5000-3-6v-1A-Charger-Module-3-2v-LiFePO4-Lithium-Battery-Charging-/122164745507)
+* [LiFePo charging module](https://www.ebay.de/itm/MicroUSB-TP5000-3-6v-1A-Charger-Module-3-2v-LiFePO4-Lithium-Battery-Charging-/122164745507) or [alternative](https://de.aliexpress.com/item/4000310107151.html)
 * [LiFePo-Battery](https://www.akkuteile.de/lifepo-akkus/18650/a123-apr18650m-a1-1100mah-3-2v-3-3v-lifepo4-akku/a-1006861/)
 
 Li-Ion batteries are usually cheaper and have higher capacity at the same size. Lithiom-Iron batteries are considered quite safe.
