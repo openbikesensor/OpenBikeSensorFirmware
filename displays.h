@@ -287,7 +287,8 @@ class SSD1306DisplayDevice : public DisplayDevice
         }
         if (config.displayConfig & DisplayNumConfirmed)
         {
-
+          showNumButtonPressed();
+          showNumConfirmed();
         }
         else
         {
