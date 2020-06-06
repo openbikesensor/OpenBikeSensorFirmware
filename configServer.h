@@ -122,6 +122,7 @@ String configIndex =
   "Show Right Measurement<input type='checkbox' name='displayRight' {displayRight}>"
   "Show Satellites<input type='checkbox' name='displayGPS' {displayGPS}>"
   "Show Velocity<input type='checkbox' name='displayVELO' {displayVELO}>"
+  "Show Confirmation Stats<input type='checkbox' name='displayNumConfirmed' {displayNumConfirmed}>"
   //"Upload Host"
   "<input name='hostname' placeholder='hostname' value='{hostname}' style='display:none'>"
   //"Upload UserID"

@@ -42,6 +42,7 @@ void configAction() {
   String displaySwapSensors = server.arg("displaySwapSensors") == "on" ? "on" : "off";
   String displayInvert = server.arg("displayInvert") == "on" ? "on" : "off";
   String displayFlip = server.arg("displayFlip") == "on" ? "on" : "off";
+  String displayNumConfirmed = server.arg("displayNumConfirmed") == "on" ? "on" : "off";
 
   String validGPS = server.arg("validGPS");
 
@@ -92,6 +93,11 @@ void configAction() {
     config.displayConfig |= DisplayFlip;
   else
     config.displayConfig &= ~DisplayFlip;
+
+  if (displayNumConfirmed == "on")
+    config.displayConfig |= DisplayNumConfirmed;
+  else
+    config.displayConfig &= ~DisplayNumConfirmed;
 
   if (validGPS == "validLocation")
     config.GPSConfig = ValidLocation;
@@ -388,6 +394,7 @@ void startServer() {
     bool displaySwapSensors = config.displayConfig & DisplaySwapSensors;
     bool displayInvert = config.displayConfig & DisplayInvert;
     bool displayFlip = config.displayConfig & DisplayFlip;
+    bool displayNumConfirmed = config.displayConfig & DisplayNumConfirmed;
 
     html.replace("{displaySimple}", displaySimple ? "checked" : "");
     html.replace("{displayGPS}", displayGPS ? "checked" : "");
@@ -397,6 +404,7 @@ void startServer() {
     html.replace("{displaySwapSensors}", displaySwapSensors ? "checked" : "");
     html.replace("{displayInvert}", displayInvert ? "checked" : "");
     html.replace("{displayFlip}", displayFlip ? "checked" : "");
+    html.replace("{displayNumConfirmed}", displayNumConfirmed ? "checked" : "");
 
     bool validLocation = config.GPSConfig & ValidLocation;
     bool validTime = config.GPSConfig & ValidTime;
@@ -481,8 +489,8 @@ void createPrivacyPage()
   readGPSData();
   bool validGPSData = gps.location.isValid();
   if (validGPSData) {
-    privacyPage += "New Latitude<input name=newlatitude value='" + String(gps.location.lat(),7) + "'>";
-    privacyPage += "New Longitude<input name=newlongitude value='" + String(gps.location.lng(),7) + "'>";
+    privacyPage += "New Latitude<input name=newlatitude value='" + String(gps.location.lat(), 7) + "'>";
+    privacyPage += "New Longitude<input name=newlongitude value='" + String(gps.location.lng(), 7) + "'>";
   }
   else
   {

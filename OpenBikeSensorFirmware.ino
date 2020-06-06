@@ -66,6 +66,8 @@ unsigned long timeOfMinimum = millis();
 unsigned long StartTime = millis();
 unsigned long CurrentTime = millis();
 unsigned long buttonPushedTime = millis();
+int confirmedMeasurements = 0;
+int numButtonReleased = 0;
 
 //int timeout = 15000; /// ???
 bool usingSD = false;
@@ -365,6 +367,7 @@ void loop() {
         if (buttonState == LOW) //after button was released
         {
           transmitConfirmedData = true;
+          numButtonReleased++;
         }
       }
       lastButtonState = buttonState;
@@ -417,6 +420,7 @@ void loop() {
       {
         dataBuffer[i]->confirmed = true; // set the confirmed tag of the set in the buffer containing the minimum
         Serial.printf("Found confirmed data in buffer \n");
+        confirmedMeasurements++;
       }
     }
 

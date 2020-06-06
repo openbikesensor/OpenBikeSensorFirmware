@@ -26,7 +26,8 @@ enum DisplayOptions {
   DisplaySimple = 0x10,     // 16
   DisplaySwapSensors = 0x20, // 32
   DisplayInvert = 0x40,     // 64
-  DisplayFlip = 0x80       // 128
+  DisplayFlip = 0x80,       // 128
+  DisplayNumConfirmed = 0x100 //256
 };
 
 enum GPSOptions {
