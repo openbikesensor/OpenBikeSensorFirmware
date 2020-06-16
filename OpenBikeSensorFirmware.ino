@@ -51,7 +51,7 @@
 //GPS
 
 //Version
-const char *OBSVersion = "v0.1.5";
+const char *OBSVersion = "v0.1.6";
 
 
 // PINs
