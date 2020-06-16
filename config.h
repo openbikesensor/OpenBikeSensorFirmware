@@ -36,6 +36,13 @@ enum GPSOptions {
   NumberSatellites = 0x04 //4
 };
 
+enum PrivacyOptions {
+  AbsolutePrivacy = 0x01, //1
+  NoPosition = 0x02, //2
+  NoPrivacy = 0x04, //4
+  OverridePrivacy = 0x08 //8
+};
+
 struct PrivacyArea {
   double latitude;
   double longitude;
@@ -53,6 +60,7 @@ struct Config {
   char obsUserID[64];
   int displayConfig;
   int GPSConfig;
+  int privacyConfig;
   int satsForFix;
   int port;
   int confirmationTimeWindow;

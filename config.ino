@@ -52,6 +52,7 @@ void loadConfiguration(const char *configFilename, Config &config) {
           sizeof(config.hostname));         // <- destination's capacity
   config.satsForFix = doc["satsForFix"] | 4;
   config.confirmationTimeWindow = doc["confirmationTimeWindow"] | 5;
+  config.privacyConfig = doc["privacyConfig"] | 0;
 
   config.numPrivacyAreas = doc["numPrivacyAreas"] | 0;
   for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx)
@@ -112,6 +113,7 @@ void saveConfiguration(const char *filename, const Config &config) {
   doc["displayConfig"] = config.displayConfig;
   doc["GPSConfig"] = config.GPSConfig;
   doc["confirmationTimeWindow"] = config.confirmationTimeWindow;
+  doc["privacyConfig"] = config.privacyConfig;
 
   doc["numPrivacyAreas"] = config.numPrivacyAreas;
   for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx)

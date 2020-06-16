@@ -46,6 +46,9 @@ void configAction() {
 
   String validGPS = server.arg("validGPS");
 
+  String privacyOptions = server.arg("privacyOptions");
+  String overridePrivacy = server.arg("overridePrivacy");
+
   String obsUserID = server.arg("obsUserID");
   String hostname = server.arg("hostname");
 
@@ -107,6 +110,31 @@ void configAction() {
 
   if (validGPS == "numberSatellites")
     config.GPSConfig = NumberSatellites;
+
+  if (privacyOptions == "absolutePrivacy")
+    config.privacyConfig |= AbsolutePrivacy;
+  else
+    config.privacyConfig &= ~AbsolutePrivacy;
+
+  if (privacyOptions == "noPosition")
+    config.privacyConfig |= NoPosition;
+  else
+    config.privacyConfig &= ~NoPosition;
+
+  if (privacyOptions == "noPrivacy")
+    config.privacyConfig |= NoPrivacy;
+  else
+    config.privacyConfig &= ~NoPrivacy;
+
+  if (privacyOptions == "noPrivacy")
+    config.privacyConfig |= NoPrivacy;
+  else
+    config.privacyConfig &= ~NoPrivacy;
+
+  if (overridePrivacy == "on")
+    config.privacyConfig |= OverridePrivacy;
+  else
+    config.privacyConfig &= ~OverridePrivacy;
 
   config.sensorOffsets[0] = atoi(offsetS1.c_str());
   config.sensorOffsets[1] = atoi(offsetS2.c_str());
@@ -326,9 +354,12 @@ void startServer() {
     buttonState = digitalRead(PushButton);
     while (!validGPSData && (buttonState == LOW))
     {
+      Serial.println("GPSData not valid");
+      buttonState = digitalRead(PushButton);
       readGPSData();
       validGPSData = gps.location.isValid();
       if (validGPSData) {
+        Serial.println("GPSData valid");
         addNewPrivacyArea(gps.location.lat(), gps.location.lng(), 500);
       }
       delay(300);
@@ -414,6 +445,15 @@ void startServer() {
     html.replace("{validTime}", validTime ? "checked" : "");
     html.replace("{numberSatellites}", numberSatellites ? "checked" : "");
 
+    bool absolutePrivacy = config.privacyConfig & AbsolutePrivacy;
+    bool noPosition = config.privacyConfig & NoPosition;
+    bool noPrivacy = config.privacyConfig & NoPrivacy;
+    bool overridePrivacy = config.privacyConfig & OverridePrivacy;
+
+    html.replace("{absolutePrivacy}", absolutePrivacy ? "checked" : "");
+    html.replace("{noPosition}", noPosition ? "checked" : "");
+    html.replace("{noPrivacy}", noPrivacy ? "checked" : "");
+    html.replace("{overridePrivacy}", overridePrivacy ? "checked" : "");
 
     server.send(200, "text/html", html);
   });

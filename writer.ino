@@ -170,34 +170,49 @@ void CSVFileWriter::writeHeader() {
 void CSVFileWriter::writeData(DataSet* set) {
   //String dataString = "";
 
-  char dateString[12];
-  sprintf(dateString, "%02d.%02d.%04d;", set->date.day(), set->date.month(), set->date.year());
-  dataString = dataString + dateString;
-
-  char timeString[12];
-  sprintf(timeString, "%02d:%02d:%02d;", set->time.hour(), set->time.minute(), set->time.second());
-  dataString = dataString + timeString;
-
-  String latitudeString = String(set->location.lat(), 6);
-  dataString = dataString + latitudeString + ";";
-
-  String longitudeString = String(set->location.lng(), 6);
-  dataString = dataString + longitudeString + ";";
-
-  String courseString = String(set->course.deg(), 3);
-  dataString = dataString + courseString + ";";
-
-  String speedString = String(set->speed.kmph(), 4);
-  dataString = dataString + speedString;
-
-  for (size_t idx = 0; idx < set->sensorValues.size(); ++idx)
+  /*
+    AbsolutePrivacy = 0x01, //1
+    NoPosition = 0x02, //2
+    NoPrivacy = 0x04, //4
+    OverridePrivacy = 0x08 //8
+  */
+  if (!((config.privacyConfig & AbsolutePrivacy) && set->isInsidePrivacyArea) || ((config.privacyConfig & OverridePrivacy) && set->confirmed))
   {
-    dataString = dataString + ";" + String(set->sensorValues[idx]);
-  }
-  dataString = dataString + ";" + String(set->confirmed);
-  dataString = dataString + ";" + String(set->isInsidePrivacyArea);
-  dataString = dataString + "\n";
+    char dateString[12];
+    sprintf(dateString, "%02d.%02d.%04d;", set->date.day(), set->date.month(), set->date.year());
+    dataString = dataString + dateString;
 
+    char timeString[12];
+    sprintf(timeString, "%02d:%02d:%02d;", set->time.hour(), set->time.minute(), set->time.second());
+    dataString = dataString + timeString;
+
+    if (config.privacyConfig & NoPosition)
+    {
+      dataString = dataString + "NaN;NaN;";
+    }
+    else
+    {
+      String latitudeString = String(set->location.lat(), 6);
+      dataString = dataString + latitudeString + ";";
+
+      String longitudeString = String(set->location.lng(), 6);
+      dataString = dataString + longitudeString + ";";
+    }
+
+    String courseString = String(set->course.deg(), 3);
+    dataString = dataString + courseString + ";";
+
+    String speedString = String(set->speed.kmph(), 4);
+    dataString = dataString + speedString;
+
+    for (size_t idx = 0; idx < set->sensorValues.size(); ++idx)
+    {
+      dataString = dataString + ";" + String(set->sensorValues[idx]);
+    }
+    dataString = dataString + ";" + String(set->confirmed);
+    dataString = dataString + ";" + String(set->isInsidePrivacyArea);
+    dataString = dataString + "\n";
+  }
 }
 
 
