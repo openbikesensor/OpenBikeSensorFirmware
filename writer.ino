@@ -171,11 +171,12 @@ void CSVFileWriter::writeData(DataSet* set) {
   //String dataString = "";
 
   /*
-    AbsolutePrivacy = 0x01, //1
-    NoPosition = 0x02, //2
-    NoPrivacy = 0x04, //4
-    OverridePrivacy = 0x08 //8
+    AbsolutePrivacy : When inside privacy area, the writer does noting, unless overriding is selected and the current set is confirmed
+    NoPosition : When inside privacy area, the writer will replace latitude and longitude with NaNs
+    NoPrivacy : Privacy areas are ignored, but the value "insidePrivacyArea" will be 1 inside
+    OverridePrivacy : When selected, a full set is written, when a value was confirmed, even inside the privacy area
   */
+  
   if (!((config.privacyConfig & AbsolutePrivacy) && set->isInsidePrivacyArea) || ((config.privacyConfig & OverridePrivacy) && set->confirmed))
   {
     char dateString[12];
@@ -186,7 +187,7 @@ void CSVFileWriter::writeData(DataSet* set) {
     sprintf(timeString, "%02d:%02d:%02d;", set->time.hour(), set->time.minute(), set->time.second());
     dataString = dataString + timeString;
 
-    if ((config.privacyConfig & NoPosition) && set->isInsidePrivacyArea)
+    if ((config.privacyConfig & NoPosition) && set->isInsidePrivacyArea && !((config.privacyConfig & OverridePrivacy) && set->confirmed))
     {
       dataString = dataString + "NaN;NaN;";
     }
