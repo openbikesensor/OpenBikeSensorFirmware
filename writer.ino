@@ -186,7 +186,7 @@ void CSVFileWriter::writeData(DataSet* set) {
     sprintf(timeString, "%02d:%02d:%02d;", set->time.hour(), set->time.minute(), set->time.second());
     dataString = dataString + timeString;
 
-    if (config.privacyConfig & NoPosition)
+    if ((config.privacyConfig & NoPosition) && set->isInsidePrivacyArea)
     {
       dataString = dataString + "NaN;NaN;";
     }
