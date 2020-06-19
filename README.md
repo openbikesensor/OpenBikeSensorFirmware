@@ -80,7 +80,7 @@ Don't put too much attention on the OpenBikeSensor, always take care about the t
 
 ### Configuration
 
-You can enter the configuration mode by pushing the button while turning on the device. Then it will open a unique WiFi access point, including the device's MAC address named "OpenBikeSensor-xxxxxxxxxxxx" with the initial password "12345678". The configuration page can be found on "http://openbikesensor.local" or "172.20.0.1". It might be neccessary to de-activate the mobile data on your mobile phone to access this page.  
+You can enter the configuration mode by pushing the button while turning on the device. Then it will either open a unique WiFi access point, including the device's MAC address named "OpenBikeSensor-xxxxxxxxxxxx" with the initial password "12345678" or try to connect to an existing WiFi if credentials were entered in a previous configuration. The configuration page can be found on "http://openbikesensor.local" or "172.20.0.1" on the AP or on IP adress shown on the device's display. It might be neccessary to de-activate the mobile data on your mobile phone to access this page.  
 You can directly upload a precompiled binary; the latest release can always be found [here](https://github.com/Friends-of-OpenBikeSensor/OpenBikeSensorFirmware/releases).  
 There are several chapters in the configuration.
 
@@ -116,7 +116,7 @@ To keep some privacy, you could tell your device to stop recording near your hom
 
 #### WiFi Settings
 
-For future features, you might save a valid WiFi connection.
+The OpenBikeSensor can also connect to available WiFis if you supply credentials. This is convenient when you want to stay connected to your local WiFi when configuring the sensor. It will tell you the IP adress to connect to on the display.
 
 #### Reboot
 
