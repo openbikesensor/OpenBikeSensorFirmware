@@ -1,10 +1,10 @@
 # OpenBikeSensor
 
-Distance Measurement HC-SR04 ultrasonic sensors connected to ESP32
+Distance Measurement HC-SR04 ultrasonic sensors connected to an ESP32
 
 ## Description
 
-Inspired by the Berlin project Radmesser. This version uses a simple push button to confirm distances measures were actually overtaking vehicles. It has its own GPS and SD card for logging, so it does not require additional hardware like a smartphone.
+Inspired by the Berlin project Radmesser. This version uses a simple push button at the handle bar to confirm distance-measures were actually overtaking vehicles. It has its own GPS and a SD card for logging, so it does not require any additional hardware (like a smartphone).
 
 ## Getting Started
 
@@ -30,7 +30,7 @@ or
 * [LiFePo charging module](https://www.ebay.de/itm/MicroUSB-TP5000-3-6v-1A-Charger-Module-3-2v-LiFePO4-Lithium-Battery-Charging-/122164745507) or [alternative](https://de.aliexpress.com/item/4000310107151.html)
 * [LiFePo-Battery](https://www.akkuteile.de/lifepo-akkus/18650/a123-apr18650m-a1-1100mah-3-2v-3-3v-lifepo4-akku/a-1006861/)
 
-Li-Ion batteries are usually cheaper and have higher capacity at the same size. Lithiom-Iron batteries are considered quite safe.
+Li-Ion batteries are usually cheaper and have higher capacity at the same size. Lithium-Iron batteries are considered quite safe.
 
 Screws and nuts:
 * [1x M5x35](https://www.amazon.de/gp/product/B078TNC9H1)
@@ -38,12 +38,12 @@ Screws and nuts:
 * [7x M3x45](https://www.amazon.de/gp/product/B07KTBYPFP)
 * [4x M2x12](https://www.amazon.de/gp/product/B078TQYZVX)
 * [1x M2x10](https://www.amazon.de/gp/product/B01GQX070W)
-* [1x M5 Mutter](https://www.amazon.de/gp/product/B07961ZH1B)
-* [2x M4 Mutter](https://www.amazon.de/gp/product/B07961ZH19)
-* [7x M3 Mutter](https://www.amazon.de/gp/product/B01H8XN99A)
-* [5x M2 Mutter](https://www.amazon.de/gp/product/B01H8XN7VK)
+* [1x M5 Nut](https://www.amazon.de/gp/product/B07961ZH1B)
+* [2x M4 Nut](https://www.amazon.de/gp/product/B07961ZH19)
+* [7x M3 Nut](https://www.amazon.de/gp/product/B01H8XN99A)
+* [5x M2 Nut](https://www.amazon.de/gp/product/B01H8XN7VK)
 
-You can consider getting slotted-head screws for the M2 ones if you are worried about damaging the tiny Allen screws.
+You can consider getting slotted-head screws for the M2 ones, if you're worried about damaging the tiny Allen screws.
 
 ### Dependencies
 
@@ -73,13 +73,54 @@ A detailed description for Ubuntu can be found in the [install/Ubuntu.md](./inst
 
 ### Use
 
-* Power up the device
-* Push the button each time there is a value shown in the display and you want to confirm it was a vehicle overtaking you
-* Power down
+Don't put too much attention on the OpenBikeSensor, always take care about the traffic around you!  
+* Power on the device and - if possible - wait until the device has a GPS fix, i.e. your GPS location. Since it's not using the location services, you know from your mobile phone, this might take some time. The display will exit the status screen, as soon as your location is known. In case you can't wait due to some reasons, you could skip the wait with a push of the button. While moving, it might take up to 15mins, until the devices knows where you are.
+* Ride your bike and push the button every time you're passed (no matter if it's a car or truck or bus or motorbike). To get some idea, how often close passes occur, it's important to confirm every pass, not only the close ones. 
+* Power off. Keep in mind to always keep the button pushed, when you switch off the device!
 
 ### Configuration
 
-Most of the configuration is a stub and needs further development. But uploading new firmware works. You can enter the configuration mode by pushing the button while turning the device on. Then it will open a unique WiFi including the devices Macadress named "OpenBikeSensor-xxxxxxxxxxxx". Initial password is "12345678". The configuration page can be found on "http://openbikesensor.local" or "172.20.0.1". You can directly upload a precompiled binary.
+You can enter the configuration mode by pushing the button while turning on the device. Then it will open a unique WiFi access point, including the device's MAC address named "OpenBikeSensor-xxxxxxxxxxxx" with the initial password "12345678". The configuration page can be found on "http://openbikesensor.local" or "172.20.0.1". It might be neccessary to de-activate the mobile data on your mobile phone to access this page.  
+You can directly upload a precompiled binary; the latest release can always be found [here](https://github.com/Friends-of-OpenBikeSensor/OpenBikeSensorFirmware/releases).  
+There are several chapters in the configuration.
+
+#### Update Firmware
+
+After downloading the latest release (or any other version, in case you need a special setup), just click on "Update" in the options. Select the downloaded file and click update. The device will automatically reboot after a successful update.
+
+#### Privacy Zones
+
+You could set as many privacy zones, as you like, including their own radius. In the options you could define, how the OpenBikeSensor behaves in these zone(s).
+
+#### Config
+
+##### Sensor
+
+Here you can define the offset between the end of your handle bar and the outer edge of the OpenBikeSensor. These values will automatically get substracted from the current measurement. Additionally you could "swap" the left and right measurement, in case you mounted the device different.
+
+##### GPS
+
+You could define, in which way your device will acknowledge a valid GPS fix.
+
+##### Generic Display
+
+You could flip the display, if you need to mount it upside down or invert it, which might help in bright sunlight.
+
+##### Measurement Display
+
+Here are several options, which values you might want to see on your display. It includes a "simple mode", where you only see the measurement to the left.
+
+##### Privacy Options
+
+To keep some privacy, you could tell your device to stop recording near your home or any other privacy zone. This could be no recording at all or just no GPS-tracking any more, but still storing all confirmed passes.
+
+#### WiFi Settings
+
+For future features, you might save a valid WiFi connection.
+
+#### Reboot
+
+This button restarts the device into the regular measurement mode and leaves the options.
 
 ## Acknowledgments
 
