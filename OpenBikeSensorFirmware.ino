@@ -102,6 +102,8 @@ HCSR04SensorManager* sensorManager;
 
 String esp_chipid;
 
+uint8_t displayAddress = 0x3c;
+
 // Enable dev-mode. Allows to
 // - set wifi config
 // - prints more detailed log messages to serial (WIFI password)
@@ -121,7 +123,13 @@ void setup() {
   //##############################################################
   // Setup display
   //##############################################################
-
+  Wire.begin();
+  Wire.beginTransmission(displayAddress);
+  byte displayError = Wire.endTransmission();
+  if (displayError != 0)
+  {
+    Serial.println("Display not found");
+  }
   displayTest = new SSD1306DisplayDevice;
 #ifdef dev
   //displayTest->showGrid(true);
@@ -172,7 +180,8 @@ void setup() {
   //##############################################################
 
   buttonState = digitalRead(PushButton);
-  if (buttonState == HIGH)
+
+  if (buttonState == HIGH || displayError != 0)
   {
     displayTest->showTextOnGrid(2, 2, "Start Server");
     delay(1000); // Added for user experience
