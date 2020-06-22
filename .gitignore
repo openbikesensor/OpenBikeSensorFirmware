@@ -5,3 +5,5 @@
 .vscode/launch.json
 .vscode/ipch
 .vscode/extensions.json
+CMakeListsPrivate.txt
+cmake-build-*/

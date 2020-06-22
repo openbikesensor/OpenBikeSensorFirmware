@@ -53,6 +53,7 @@ You can consider getting slotted-head screws for the M2 ones, if you're worried 
 * Compile and upload to your ESP32
 * Connect sensor
 
+Other IDEs that support the PlatformIO plugin like [CLion](https://www.jetbrains.com/de-de/clion/) can also be used.
 Alternatively you can also download the dependencies yourself and install it with the Arduino IDE.
 
 ### Dependencies
