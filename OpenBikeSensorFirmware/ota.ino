@@ -18,8 +18,7 @@
   the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <Arduino.h>
-#include <ArduinoOTA.h>
+#include "ota.h"
 
 void OtaInit(String esp_chipid) {
   /* omitted due to new configServer

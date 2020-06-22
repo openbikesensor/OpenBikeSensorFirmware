@@ -40,11 +40,12 @@
 
 #include "config.h"
 #include "configServer.h"
-#include "writer.h"
-#include "gps.h"
-#include "sensor.h"
 #include "displays.h"
+#include "gps.h"
+#include "ota.h"
+#include "sensor.h"
 #include "vector.h"
+#include "writer.h"
 
 //GPS
 

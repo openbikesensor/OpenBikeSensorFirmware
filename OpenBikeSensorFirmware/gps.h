@@ -30,4 +30,8 @@
 TinyGPSPlus gps;
 HardwareSerial SerialGPS(1);
 
+void readGPSData();
+bool isInsidePrivacyArea(TinyGPSLocation location);
+void addNewPrivacyArea(double latitude, double longitude, int radius);
+
 #endif

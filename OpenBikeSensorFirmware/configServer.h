@@ -34,6 +34,7 @@
 #include <Update.h>
 
 #include "config.h"
+#include "gps.h"
 
 const char* host = "openbikesensor";
 
@@ -42,6 +43,8 @@ const byte DNS_PORT = 53;
 //DNSServer dnsServer;
 
 WebServer server(80);
+void startServer();
+void createPrivacyPage();
 
 /* Style */
 String style =

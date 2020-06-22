@@ -77,4 +77,8 @@ struct Config {
   Vector<PrivacyArea> privacyAreas;
 };
 
+void loadConfiguration(const char *configFilename, Config &config);
+void printConfig(Config &config);
+void saveConfiguration(const char *filename, const Config &config);
+
 #endif
