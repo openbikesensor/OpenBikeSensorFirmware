@@ -26,6 +26,7 @@
 #include <HardwareSerial.h>
 
 #include "config.h"
+#include "globals.h"
 
 TinyGPSPlus gps;
 HardwareSerial SerialGPS(1);
@@ -33,5 +34,6 @@ HardwareSerial SerialGPS(1);
 void readGPSData();
 bool isInsidePrivacyArea(TinyGPSLocation location);
 void addNewPrivacyArea(double latitude, double longitude, int radius);
+double haversine(double lat1, double lon1, double lat2, double lon2);
 
 #endif

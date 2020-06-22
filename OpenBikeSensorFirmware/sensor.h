@@ -23,7 +23,7 @@
 
 #include <Arduino.h>
 
-#include "OpenBikeSensorFirmware.h"
+#include "globals.h"
 #include "vector.h"
 
 struct HCSR04SensorInfo

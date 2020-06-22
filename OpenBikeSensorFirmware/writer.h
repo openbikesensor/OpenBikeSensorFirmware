@@ -27,6 +27,7 @@
 #include <TinyGPS++.h>
 
 #include "config.h"
+#include "globals.h"
 #include "vector.h"
 
 struct DataSet {

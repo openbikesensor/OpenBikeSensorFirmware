@@ -20,44 +20,28 @@
 
 #include "OpenBikeSensorFirmware.h"
 
-// TODO: move these to the header file and decide which includes are even needed (in this file).
-#include <ArduinoJson.h>
-#define CIRCULAR_BUFFER_INT_SAFE
-#include <CircularBuffer.h>
-#include <FS.h>
-#include <SD.h>
-#include <SPI.h>
-#include <SPIFFS.h>
-#include <Wire.h>
-
-#include <WiFi.h>
-#include <WiFiClient.h>
-#include <WebServer.h>
-#include <ESPmDNS.h>
-#include <Update.h>
-#include <WiFiUdp.h>
-#include <ArduinoOTA.h>
-
-#include "config.h"
-#include "configServer.h"
-#include "displays.h"
-#include "gps.h"
-#include "ota.h"
-#include "sensor.h"
-#include "vector.h"
-#include "writer.h"
-
-//GPS
-
-//Version
+// --- Global variables ---
+// Version
 const char *OBSVersion = "v0.1.8";
-
 
 // PINs
 const int PushButton = 2;
 
+int confirmedMeasurements = 0;
+int numButtonReleased = 0;
 
-// VARs
+int buttonState = 0;
+
+const char *configFilename = "/config.txt";  // <- SD library uses 8.3 filenames
+Config config;
+
+SSD1306DisplayDevice* displayTest;
+
+HCSR04SensorManager* sensorManager;
+
+String esp_chipid;
+
+// --- Local variables ---
 const int runs = 20;
 unsigned long measureInterval = 1000;
 unsigned long timeOfLastNotificationAttempt = millis();
@@ -65,8 +49,6 @@ unsigned long timeOfMinimum = millis();
 unsigned long StartTime = millis();
 unsigned long CurrentTime = millis();
 unsigned long buttonPushedTime = millis();
-int confirmedMeasurements = 0;
-int numButtonReleased = 0;
 
 //int timeout = 15000; /// ???
 bool usingSD = false;
@@ -75,13 +57,9 @@ uint8_t minDistanceToConfirm = MAX_SENSOR_VALUE;
 uint8_t confirmedMinDistance = MAX_SENSOR_VALUE;
 bool transmitConfirmedData = false;
 int lastButtonState = 0;
-int buttonState = 0;
 bool handleBarWidthReset = false;
 
 String filename;
-
-const char *configFilename = "/config.txt";  // <- SD library uses 8.3 filenames
-Config config;
 
 CircularBuffer<DataSet*, 10> dataBuffer;
 Vector<String> sensorNames;
@@ -93,13 +71,7 @@ uint32_t nextOledTaskTs = 0;
 
 uint8_t handleBarWidth = 0;
 
-SSD1306DisplayDevice* displayTest;
-
 FileWriter* writer;
-
-HCSR04SensorManager* sensorManager;
-
-String esp_chipid;
 
 uint8_t displayAddress = 0x3c;
 

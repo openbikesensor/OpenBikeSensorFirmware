@@ -34,6 +34,7 @@
 #include <Update.h>
 
 #include "config.h"
+#include "globals.h"
 #include "gps.h"
 
 const char* host = "openbikesensor";
