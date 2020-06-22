@@ -18,8 +18,13 @@
   the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef OBS_GPS_H
+#define OBS_GPS_H
+
 #include <TinyGPS++.h> // http://arduiniana.org/libraries/tinygpsplus/ 
 #include <HardwareSerial.h>
 
 TinyGPSPlus gps;
 HardwareSerial SerialGPS(1);
+
+#endif

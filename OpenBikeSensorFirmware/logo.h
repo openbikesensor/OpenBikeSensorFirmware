@@ -1,3 +1,6 @@
+#ifndef OBS_LOGO_H
+#define OBS_LOGO_H
+
 #define OBSLogo_width 128
 #define OBSLogo_height 64
 const unsigned char OBSLogo [] PROGMEM = {
@@ -89,3 +92,5 @@ const unsigned char OBSLogo [] PROGMEM = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00
 };
+
+#endif

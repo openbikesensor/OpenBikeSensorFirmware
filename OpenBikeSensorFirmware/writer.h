@@ -18,6 +18,9 @@
   the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef OBS_WRITER_H
+#define OBS_WRITER_H
+
 struct DataSet {
   TinyGPSLocation location;
   TinyGPSAltitude altitude;
@@ -87,3 +90,5 @@ class GPXFileWriter : public FileWriter
   protected:
   private:
 };
+
+#endif

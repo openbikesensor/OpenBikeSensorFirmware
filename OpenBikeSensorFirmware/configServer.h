@@ -23,6 +23,9 @@
 // remix, transform, build upon the material and distributed for any purposes
 // only if provided appropriate credit to the author and link to the original article.
 
+#ifndef OBS_CONFIG_SERVER_H
+#define OBS_CONFIG_SERVER_H
+
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <WebServer.h>
@@ -248,3 +251,5 @@ String makeCurrentLocationPrivateIndex =
   header +
   "<div>Making current location private, waiting for fix. Press device button to cancel.</div>"
   + footer;
+
+#endif

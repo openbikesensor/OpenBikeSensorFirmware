@@ -18,6 +18,8 @@
   the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef OBS_DISPLAYS_H
+#define OBS_DISPLAYS_H
 
 #include "SSD1306.h"
 #include "font.h"
@@ -304,3 +306,5 @@ class SSD1306DisplayDevice : public DisplayDevice
     }
 
 };
+
+#endif

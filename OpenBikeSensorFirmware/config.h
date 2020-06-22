@@ -18,6 +18,9 @@
   the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef OBS_CONFIG_H
+#define OBS_CONFIG_H
+
 enum DisplayOptions {
   DisplaySatelites = 0x01,  // 1
   DisplayVelocity = 0x02,   // 2
@@ -67,3 +70,5 @@ struct Config {
   uint8_t numPrivacyAreas;
   Vector<PrivacyArea> privacyAreas;
 };
+
+#endif

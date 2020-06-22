@@ -18,6 +18,9 @@
   the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef OBS_SENSOR_H
+#define OBS_SENSOR_H
+
 struct HCSR04SensorInfo
 {
   int triggerPin = 15;
@@ -121,3 +124,5 @@ class HCSR04DistanceSensor : public DistanceSensor
     int m_echoPin = 4;
     int m_timeout = 15000;
 };*/
+
+#endif

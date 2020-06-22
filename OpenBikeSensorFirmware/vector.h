@@ -1,6 +1,9 @@
 // Minimal class to replace std::vector by Gido
 // https://forum.arduino.cc/index.php?topic=45626.0
 
+#ifndef OBS_VECTOR_H
+#define OBS_VECTOR_H
+
 template<typename Data>
 class Vector {
     size_t d_size; // Stores no. of actually stored objects
@@ -48,3 +51,5 @@ class Vector {
       d_data = newdata;
     };// Allocates double the old space
 };
+
+#endif
