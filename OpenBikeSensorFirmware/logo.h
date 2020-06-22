@@ -1,6 +1,8 @@
 #ifndef OBS_LOGO_H
 #define OBS_LOGO_H
 
+#include <Arduino.h>
+
 #define OBSLogo_width 128
 #define OBSLogo_height 64
 const unsigned char OBSLogo [] PROGMEM = {

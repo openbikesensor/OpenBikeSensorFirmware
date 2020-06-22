@@ -21,8 +21,11 @@
 #ifndef OBS_GPS_H
 #define OBS_GPS_H
 
+#include <Arduino.h>
 #include <TinyGPS++.h> // http://arduiniana.org/libraries/tinygpsplus/ 
 #include <HardwareSerial.h>
+
+#include "config.h"
 
 TinyGPSPlus gps;
 HardwareSerial SerialGPS(1);

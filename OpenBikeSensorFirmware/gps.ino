@@ -18,6 +18,7 @@
   the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "gps.h"
 
 void readGPSData() {
   while (SerialGPS.available() > 0) {

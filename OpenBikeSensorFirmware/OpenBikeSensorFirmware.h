@@ -1,0 +1,8 @@
+#ifndef OBS_OPENBIKESENSORFIRMWARE_H
+#define OBS_OPENBIKESENSORFIRMWARE_H
+
+#include <Arduino.h>
+
+#define MAX_SENSOR_VALUE 255
+
+#endif

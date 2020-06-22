@@ -21,6 +21,12 @@
 #ifndef OBS_CONFIG_H
 #define OBS_CONFIG_H
 
+#include <Arduino.h>
+#include <ArduinoJson.h>
+#include <SPIFFS.h>
+
+#include "vector.h"
+
 enum DisplayOptions {
   DisplaySatelites = 0x01,  // 1
   DisplayVelocity = 0x02,   // 2

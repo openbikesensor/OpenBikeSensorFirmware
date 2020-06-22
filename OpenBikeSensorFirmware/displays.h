@@ -21,10 +21,13 @@
 #ifndef OBS_DISPLAYS_H
 #define OBS_DISPLAYS_H
 
-#include "SSD1306.h"
+#include <Arduino.h>
+#include <SSD1306.h>
+
+#include "config.h"
 #include "font.h"
 #include "logo.h"
-
+#include "sensor.h"
 
 extern Config config;
 extern int confirmedMeasurements;

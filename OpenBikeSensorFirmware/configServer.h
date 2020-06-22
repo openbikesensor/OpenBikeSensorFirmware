@@ -26,11 +26,14 @@
 #ifndef OBS_CONFIG_SERVER_H
 #define OBS_CONFIG_SERVER_H
 
+#include <Arduino.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <WebServer.h>
 #include <ESPmDNS.h>
 #include <Update.h>
+
+#include "config.h"
 
 const char* host = "openbikesensor";
 

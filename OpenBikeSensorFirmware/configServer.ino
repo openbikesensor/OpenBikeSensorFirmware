@@ -23,6 +23,8 @@
 // remix, transform, build upon the material and distributed for any purposes
 // only if provided appropriate credit to the author and link to the original article.
 
+#include "configServer.h"
+
 void handle_NotFound() {
   server.send(404, "text/plain", "Not found");
 }

@@ -18,6 +18,8 @@
   the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "writer.h"
+
 void FileWriter::listDir(fs::FS &fs, const char * dirname, uint8_t levels) {
   Serial.printf("Listing directory: %s\n", dirname);
 

@@ -4,6 +4,8 @@
 #ifndef OBS_VECTOR_H
 #define OBS_VECTOR_H
 
+#include <Arduino.h>
+
 template<typename Data>
 class Vector {
     size_t d_size; // Stores no. of actually stored objects

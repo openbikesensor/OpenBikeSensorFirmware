@@ -21,6 +21,8 @@
 #ifndef OBS_FONT_H
 #define OBS_FONT_H
 
+#include <Arduino.h>
+
 // Created by http://oleddisplay.squix.ch/ Consider a donation
 // In case of problems make sure that you are using the font file with the correct version!
 const uint8_t Dialog_plain_16[] PROGMEM = {

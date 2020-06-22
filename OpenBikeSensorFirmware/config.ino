@@ -18,6 +18,8 @@
   the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "config.h"
+
 void loadConfiguration(const char *configFilename, Config &config) {
   // Open file for reading
   File file = SPIFFS.open(configFilename);

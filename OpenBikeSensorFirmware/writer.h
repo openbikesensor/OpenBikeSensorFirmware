@@ -21,6 +21,14 @@
 #ifndef OBS_WRITER_H
 #define OBS_WRITER_H
 
+#include <Arduino.h>
+#include <FS.h>
+#include <SD.h>
+#include <TinyGPS++.h>
+
+#include "config.h"
+#include "vector.h"
+
 struct DataSet {
   TinyGPSLocation location;
   TinyGPSAltitude altitude;

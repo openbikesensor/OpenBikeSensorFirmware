@@ -21,6 +21,11 @@
 #ifndef OBS_SENSOR_H
 #define OBS_SENSOR_H
 
+#include <Arduino.h>
+
+#include "OpenBikeSensorFirmware.h"
+#include "vector.h"
+
 struct HCSR04SensorInfo
 {
   int triggerPin = 15;

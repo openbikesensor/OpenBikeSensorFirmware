@@ -18,6 +18,8 @@
   the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "sensor.h"
+
 /*
   void DistanceSensor::getMinDistance(uint8_t& min_distance) {
   float dist;

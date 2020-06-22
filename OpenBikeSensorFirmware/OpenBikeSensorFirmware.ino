@@ -18,25 +18,17 @@
   the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#define MAX_SENSOR_VALUE 255
+#include "OpenBikeSensorFirmware.h"
 
-#include "vector.h"
+// TODO: move these to the header file and decide which includes are even needed (in this file).
 #include <ArduinoJson.h>
-#include "config.h"
-#include <Wire.h>
 #define CIRCULAR_BUFFER_INT_SAFE
 #include <CircularBuffer.h>
-#include "gps.h"
-#include "sensor.h"
-#include "displays.h"
-#include "FS.h"
-#include "SD.h"
-#include "SPI.h"
-#include "SPIFFS.h"
-
-
-#include "writer.h"
-
+#include <FS.h>
+#include <SD.h>
+#include <SPI.h>
+#include <SPIFFS.h>
+#include <Wire.h>
 
 #include <WiFi.h>
 #include <WiFiClient.h>
@@ -46,7 +38,13 @@
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 
+#include "config.h"
 #include "configServer.h"
+#include "writer.h"
+#include "gps.h"
+#include "sensor.h"
+#include "displays.h"
+#include "vector.h"
 
 //GPS
 
