@@ -45,6 +45,16 @@ Screws and nuts:
 
 You can consider getting slotted-head screws for the M2 ones, if you're worried about damaging the tiny Allen screws.
 
+### Install with Visual Studio Code and PlatformIO
+
+* Download and install [Visual Studio Code](https://code.visualstudio.com/) and [PlatformIO](https://platformio.org/install/ide?install=vscode)
+* Clone this repository
+* Open this directory in VS Code
+* Compile and upload to your ESP32
+* Connect sensor
+
+Alternatively you can also download the dependencies yourself and install it with the Arduino IDE.
+
 ### Dependencies
 
 * [Arduino IDE](https://www.arduino.cc/en/main/software)
@@ -60,7 +70,7 @@ Libraries:
 * [TinyGPSPlus by Mikal Hart](https://github.com/mikalhart/TinyGPSPlus)
 * [SSD1306 by ThingPulse](https://github.com/ThingPulse/esp8266-oled-ssd1306) 
 
-### Install
+### Install with Arduino IDE
 
 * Clone this repository
 * Install board
