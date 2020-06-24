@@ -6,6 +6,7 @@ mkdir -p ~/Arduino/libraries
 
 # Configure the package versions
 
+# TODO: Update to read from platformio.ini
 VERSION_ArduinoJson=v6.15.1
 VERSION_CircularBuffer=1.3.3
 VERSION_Ssd1306=4.1.0

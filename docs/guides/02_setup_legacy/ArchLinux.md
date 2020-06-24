@@ -1,12 +1,7 @@
-# Install on Arch Linux
+# Setup Arduino IDE on Arch Linux
 
-## Clone this Repository
+> ⚠️ This guide might be outdated. We recommend switching to VSCode. 
 
-```bash
-git clone https://github.com/Friends-of-OpenBikeSensor/OpenBikeSensorFirmware
-```
-
-## Arduino IDE
 
 Run the folling commands as root to install the [Arduino IDE](https://www.arduino.cc/en/Main/Software) from the Arch Linux Community Repo:
 
@@ -30,7 +25,7 @@ Otherwise, [you will get the following error message](https://github.com/espress
 To install the required dependencies, run the follwoing bash script (located in OpenBikeSensorFirmware directory), which installs the dependencies directly from Github into `~/Arduino/libraries/`:
 
 ```bash
-./install/install_dependencies.sh
+./docs/guides/02_setup_legacy/install_dependencies.sh
 ```
 
 ## Arduino IDE

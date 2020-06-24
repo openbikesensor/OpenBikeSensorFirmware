@@ -1,12 +1,6 @@
-# Install on Ubuntu
+# Setup Arduino IDE on Ubuntu
 
-## Clone this Repository
-
-```bash
-git clone git@github.com:Friends-of-OpenBikeSensor/OpenBikeSensorFirmware.git
-```
-
-## Arduino IDE
+> ⚠️ This guide might be outdated. We recommend switching to VSCode. 
 
 Run the folling commands to install the [Arduino IDE](https://www.arduino.cc/en/Main/Software):
 
@@ -45,7 +39,7 @@ Otherwise, [you will get the following error message](https://github.com/espress
 To install the required dependencies, run the follwoing bash script, which installs the dependencies directly from github into `~/Arduino/libraries/`:
 
 ```bash
-./install/install_dependencies.sh
+./docs/guides/02_setup_legacy
 ```
 
 ## Add user to the group dialout
