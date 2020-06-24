@@ -7,3 +7,5 @@
 .vscode/extensions.json
 CMakeListsPrivate.txt
 cmake-build-*/
+custom_config.ini
+!custom_config.ini.example

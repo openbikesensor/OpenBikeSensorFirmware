@@ -12,7 +12,15 @@
 * Connect sensor
 
 
-Alternatively you can also download the dependencies yourself and install it with the Arduino IDE.
+Alternatively you can also download the dependencies yourself and install it with the Arduino IDE (see below).
+
+
+### Troubleshooting
+* Can't upload to device  
+You can specify the device port that VS Code should upload to. Duplicate the `custom_config.ini.example` file to `custom_config.ini` and set the `upload_port` there manually. If this option is not set, the upload port will be autodetected which can fail on some systems or might select the wrong device if other devices are plugged in.
+
+* Compiling the code fails  
+Use the `Clean` command and delete the `.pio` directory. Compiling the code again should work now. If any errors persist, please create a new issue!
 
 
 ## [CLion](https://www.jetbrains.com/de-de/clion/)
