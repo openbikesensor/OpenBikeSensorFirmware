@@ -23,7 +23,7 @@ Alternatively you can also download the dependencies yourself and install it wit
 > TODO: Write guide for CLion
 
 ## Arduino IDE
-<a name="vscode"></a>
+<a name="arduino"></a>
 
 * Install board
 * Install dependencies
