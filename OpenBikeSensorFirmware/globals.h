@@ -24,6 +24,10 @@ extern int buttonState;
 extern const char *configFilename;  // <- SD library uses 8.3 filenames
 extern Config config;
 
+// Forward declare classes to build (because there is a cyclic dependency between sensor.h and displays.h)
+class SSD1306DisplayDevice;
+class HCSR04SensorManager;
+
 extern SSD1306DisplayDevice* displayTest;
 
 extern HCSR04SensorManager* sensorManager;
