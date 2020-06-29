@@ -37,7 +37,7 @@ class HCSR04SensorInfo;
 const int CLK = 33; //Set the CLK pin connection to the display
 const int DIO = 25; //Set the DIO pin connection to the display
 //Segments for line of dashes on display
-uint8_t segments[] = {64, 64, 64, 64};
+//uint8_t segments[] = {64, 64, 64, 64};
 
 class DisplayDevice
 {

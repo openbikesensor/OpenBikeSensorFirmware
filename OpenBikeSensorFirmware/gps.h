@@ -22,14 +22,14 @@
 #define OBS_GPS_H
 
 #include <Arduino.h>
-#include <TinyGPS++.h> // http://arduiniana.org/libraries/tinygpsplus/ 
+#include <TinyGPS++.h> // http://arduiniana.org/libraries/tinygpsplus/
 #include <HardwareSerial.h>
 
 #include "config.h"
 #include "globals.h"
 
-TinyGPSPlus gps;
-HardwareSerial SerialGPS(1);
+extern TinyGPSPlus gps;
+extern HardwareSerial SerialGPS;
 
 void readGPSData();
 bool isInsidePrivacyArea(TinyGPSLocation location);

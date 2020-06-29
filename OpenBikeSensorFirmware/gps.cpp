@@ -20,6 +20,9 @@
 
 #include "gps.h"
 
+HardwareSerial SerialGPS(1);
+TinyGPSPlus gps;
+
 void readGPSData() {
   while (SerialGPS.available() > 0) {
     gps.encode(SerialGPS.read());
