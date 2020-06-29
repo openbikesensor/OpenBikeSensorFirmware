@@ -14,7 +14,6 @@ Inspired by the Berlin project Radmesser. This version uses a simple push button
 2. Choose between developing with recommended [VSCode](/docs/guides/02_setup.md#vscode) or [Clion](/docs/guides/02_setup.md#clion), respectively [Arduino IDE](/docs/guides/02_setup.md#arduino).
 3. Happy Coding! 
 
-
 ## Acknowledgments
 
 Inspiration, code snippets, etc.
