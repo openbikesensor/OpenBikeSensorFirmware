@@ -8,6 +8,7 @@ The prototype by [Zweirat](https://zweirat-stuttgart.de/projekte/openbikesensor/
 * [0.96 inch OLED Display](https://www.aliexpress.com/item/32896971385.html)
 * [USB-C Charging Module](https://www.ebay.de/itm/173893903484)
 * [GPS Module](https://www.ebay.de/itm/GPS-NEO-6M-7M-8M-GY-GPS6MV2-Module-Aircraft-Flight-Controller-For-Arduino/272373338855)
+* [Push Button 12mm](https://de.aliexpress.com/item/4000295670163.html)
 * Plenty of wires (0.25mm^2) and heat-shrink tubing
 
 To power the sensor you have a choice of Lithium-Iron or Lithium-Ion batteries
@@ -21,6 +22,7 @@ or
 * [LiFePo-Battery](https://www.akkuteile.de/lifepo-akkus/18650/a123-apr18650m-a1-1100mah-3-2v-3-3v-lifepo4-akku/a-1006861/)
 
 Li-Ion batteries are usually cheaper and have higher capacity at the same size. Lithium-Iron batteries are considered quite safe.
+NOTE: It looks like most people are prefering the Li-Ion variant now. So do we in the next couple of sensors being built for testing.
 
 Screws and nuts:
 * [1x M5x35](https://www.amazon.de/gp/product/B078TNC9H1)
