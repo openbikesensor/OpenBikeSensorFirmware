@@ -6,8 +6,9 @@
 1. Download and install [Visual Studio Code](https://code.visualstudio.com/).
 2. Open the `open-bike-sensor.code-workspace` in the project root.
 3. Install the recommended extensions (this might take a while, because [Platform.io]() gets installed) and restart VSCode when required.
-4. Compile the code (Sidebar: `👽 > Build`; Bottom bar: `✅`)
-5. Connect your ESP and upload the code (Sidebar: `👽 > Upload`; Bottom bar: ➡️)
+4. Linux only: Install `platformio-udev.rules` by [following this guide](https://docs.platformio.org/en/latest/faq.html#platformio-udev-rules). 
+5. Compile the code (Sidebar: `👽 > Build`; Bottom bar: `✅`)
+6. Connect your ESP and upload the code (Sidebar: `👽 > Upload`; Bottom bar: ➡️)
 
 Alternatively you can also download the dependencies yourself and install it with the Arduino IDE (see below).
 
