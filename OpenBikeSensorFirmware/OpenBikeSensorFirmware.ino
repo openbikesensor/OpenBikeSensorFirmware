@@ -176,13 +176,13 @@ void setup() {
   HCSR04SensorInfo sensorManaged1;
   sensorManaged1.triggerPin = (config.displayConfig & DisplaySwapSensors) ? 25 : 15;
   sensorManaged1.echoPin = (config.displayConfig & DisplaySwapSensors) ? 26 : 4;
-  sensorManaged1.sensorLocation = "Right"; // TODO
+  sensorManaged1.sensorLocation = (char*) "Right"; // TODO
   sensorManager->registerSensor(sensorManaged1);
 
   HCSR04SensorInfo sensorManaged2;
   sensorManaged2.triggerPin = (config.displayConfig & DisplaySwapSensors) ? 15 : 25;
   sensorManaged2.echoPin = (config.displayConfig & DisplaySwapSensors) ? 4 : 26;
-  sensorManaged2.sensorLocation = "Left"; // TODO
+  sensorManaged2.sensorLocation = (char*) "Left"; // TODO
   sensorManager->registerSensor(sensorManaged2);
 
   sensorManager->setOffsets(config.sensorOffsets);
@@ -294,7 +294,6 @@ void loop() {
   sensorManager->reset(false);
 
   CurrentTime = millis();
-  uint8_t minDistance = MAX_SENSOR_VALUE;
   int measurements = 0;
 
   // if the detected minimum was measured more than 5s ago, it is discarded and cannot be confirmed
@@ -385,7 +384,7 @@ void loop() {
     Serial.printf("Trying to transmit Confirmed data \n");
     // make sure the minimum distance is saved only once
     using index_t = decltype(dataBuffer)::index_t;
-    index_t j;
+    index_t j = -1;
     //Search for the latest appearence of the confirmed minimum value
     for (index_t i = 0; i < dataBuffer.size(); i++)
     {
