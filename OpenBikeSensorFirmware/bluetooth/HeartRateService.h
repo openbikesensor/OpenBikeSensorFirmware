@@ -1,21 +1,32 @@
-#ifndef HEARTRATESERVICE_H
-#define HEARTRATESERVICE_H
+#ifndef OBS_BLUETOOTH_HEARTRATESERVICE_H
+#define OBS_BLUETOOTH_HEARTRATESERVICE_H
 
 #include <CircularBuffer.h>
-#include "_IService.h"
-#include "ble.h"
-#include "sensor.h"
+#include "_IBluetoothService.h"
 
-class HeartRateService : public IService {
+#define SERVICE_HEARTRATE_UUID "0000180D-0000-1000-8000-00805F9B34FB"
+#define SERVICE_HEARTRATE_DESCRIPTOR_UUID "00002902-0000-1000-8000-00805f9b34fb"
+#define SERVICE_HEARTRATE_CHAR_HEARTRATE_UUID "00002a37-0000-1000-8000-00805f9b34fb"
+#define SERVICE_HEARTRATE_CHAR_SENSORLOCATION_UUID "00002a38-0000-1000-8000-00805f9b34fb"
+#define SERVICE_HEARTRATE_CHAR_SENSORLOCATION_VALUE 1
+
+class HeartRateService : public IBluetoothService {
 public:
-    void setup() override;
-    void newSensorValue(float value) override;
-    void deviceConnected() override {};
-    void deviceDisconnected() override {};
+  void setup(BLEServer *pServer) override;
+  virtual bool hasService() override;
+  virtual bool shouldAdvertise() override;
+  virtual BLEService* getService() override;
+
+  void newSensorValue(float value) override;
+  void deviceConnected() override {};
+  void deviceDisconnected() override {};
 
 private:
-    unsigned long mCollectionStartTime;
-    CircularBuffer<float, 20> mDistances;
+  BLEService *mService;
+  BLECharacteristic *mCharacteristic;
+
+  unsigned long mCollectionStartTime;
+  CircularBuffer<float, 20> mDistances;
 };
 
 #endif
