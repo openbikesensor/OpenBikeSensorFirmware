@@ -13,13 +13,10 @@
 class HeartRateService : public IBluetoothService {
 public:
   void setup(BLEServer *pServer) override;
-  virtual bool hasService() override;
   virtual bool shouldAdvertise() override;
   virtual BLEService* getService() override;
 
   void newSensorValue(float value) override;
-  void deviceConnected() override {};
-  void deviceDisconnected() override {};
 
 private:
   BLEService *mService;
