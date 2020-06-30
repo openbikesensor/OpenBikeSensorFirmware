@@ -44,6 +44,10 @@ SSD1306DisplayDevice* displayTest;
 
 HCSR04SensorManager* sensorManager;
 
+#ifdef BLUETOOTH_ACTIVATED
+BluetoothManager* bluetoothManager;
+#endif
+
 String esp_chipid;
 
 // --- Local variables ---
@@ -180,6 +184,14 @@ void setup() {
   delay(333); // Added for user experience
   Serial.println("Card Mount Succeeded");
   displayTest->showTextOnGrid(2, 2, "SD... ok");
+
+  //##############################################################
+  // Bluetooth
+  //##############################################################
+#ifdef BLUETOOTH_ACTIVATED
+  bluetoothManager->init();
+  bluetoothManager->activateBluetooth();
+#endif
 
   //##############################################################
   // Check, if the button is pressed
@@ -354,6 +366,10 @@ void loop() {
       sensorManager->m_sensors[0],
       lastMeasurements
     );
+
+#ifdef BLUETOOTH_ACTIVATED
+    bluetoothManager->newSensorValue(sensorManager->sensorValues[confirmationSensorID]);
+#endif
 
     // #######################################################
     // Stoarge

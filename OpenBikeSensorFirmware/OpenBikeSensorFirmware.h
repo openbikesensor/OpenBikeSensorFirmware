@@ -15,4 +15,8 @@
 #include "vector.h"
 #include "writer.h"
 
+#ifdef BLUETOOTH_ACTIVATED
+#include "bluetooth/BluetoothManager.h"
+#endif
+
 #endif

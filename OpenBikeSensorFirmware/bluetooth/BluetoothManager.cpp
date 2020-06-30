@@ -39,7 +39,7 @@ void BluetoothManager::disconnectDevice() {
   pServer->disconnect(pServer->getConnId());
 }
 
-void BluetoothManager::newSensorValue(float value) {
+void BluetoothManager::newSensorValue(uint8_t value) {
   for (auto &service : services) {
     service->newSensorValue(value);
   }

@@ -16,7 +16,7 @@ public:
   virtual bool shouldAdvertise() override;
   virtual BLEService* getService() override;
 
-  void newSensorValue(float value) override;
+  void newSensorValue(uint8_t value) override;
 
 private:
   BLEService *mService;
