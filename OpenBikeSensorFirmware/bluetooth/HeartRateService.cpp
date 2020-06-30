@@ -27,7 +27,7 @@ BLEService* HeartRateService::getService() {
   return mService;
 }
 
-void HeartRateService::newSensorValue(float value) {
+void HeartRateService::newSensorValue(uint8_t value) {
   mDistances.push(value);
 
   if ((millis() - mCollectionStartTime) < measurementInterval) {

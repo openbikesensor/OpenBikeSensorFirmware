@@ -10,7 +10,7 @@ public:
   virtual bool shouldAdvertise() = 0;
   virtual BLEService* getService() = 0;
 
-  virtual void newSensorValue(float value) = 0;
+  virtual void newSensorValue(uint8_t value) = 0;
 };
 
 #endif

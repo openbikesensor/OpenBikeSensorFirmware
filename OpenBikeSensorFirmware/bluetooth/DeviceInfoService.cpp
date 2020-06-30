@@ -34,5 +34,5 @@ BLEService* DeviceInfoService::getService() {
   return mService;
 }
 
-void DeviceInfoService::newSensorValue(float value) {
+void DeviceInfoService::newSensorValue(uint8_t value) {
 }

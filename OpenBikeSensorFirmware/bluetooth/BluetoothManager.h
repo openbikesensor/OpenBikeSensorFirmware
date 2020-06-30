@@ -20,7 +20,7 @@ public:
   void activateBluetooth();
   void deactivateBluetooth();
   void disconnectDevice();
-  void newSensorValue(float value);
+  void newSensorValue(uint8_t value);
 
 private:
   std::list<IBluetoothService*> services;
