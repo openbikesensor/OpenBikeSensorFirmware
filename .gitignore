@@ -19,3 +19,4 @@ docs/.jekyll-cache
 docs/.jekyll-metadata
 docs/vendor
 
+.DS_Store
