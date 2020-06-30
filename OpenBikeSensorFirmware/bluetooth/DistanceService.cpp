@@ -5,10 +5,6 @@ void DistanceService::setup(BLEServer *pServer) {
   mCharacteristic = mService->createCharacteristic(SERVICE_DISTANCE_CHAR_50MS_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
 }
 
-bool DistanceService::hasService() {
-  return true;
-}
-
 bool DistanceService::shouldAdvertise() {
   return true;
 }

@@ -19,10 +19,6 @@ void HeartRateService::setup(BLEServer *pServer) {
   mCollectionStartTime = millis();
 }
 
-bool HeartRateService::hasService() {
-  return true;
-}
-
 bool HeartRateService::shouldAdvertise() {
   return true;
 }
