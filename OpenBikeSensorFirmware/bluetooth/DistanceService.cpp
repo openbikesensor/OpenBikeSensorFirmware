@@ -14,7 +14,7 @@ BLEService* DistanceService::getService() {
 }
 
 void DistanceService::newSensorValue(uint8_t value) {
-  String transmitValue = String(value) + "," + String(millis());
+  String transmitValue = String(millis()) + "," + String(value);
 
   mCharacteristic->setValue(transmitValue.c_str());
   mCharacteristic->notify();
