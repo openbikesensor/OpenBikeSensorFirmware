@@ -1,0 +1,7 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Z_DUMMY_TARGET" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="OpenBikeSensorFirmware" TARGET_NAME="Z_DUMMY_TARGET" CONFIG_NAME="esp32dev" RUN_TARGET_PROJECT_NAME="OpenBikeSensorFirmware" RUN_TARGET_NAME="Z_DUMMY_TARGET">
+    <method v="2">
+      <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+    </method>
+  </configuration>
+</component>
