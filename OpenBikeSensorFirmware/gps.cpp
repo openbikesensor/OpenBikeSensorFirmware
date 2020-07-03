@@ -63,10 +63,19 @@ double haversine(double lat1, double lon1, double lat2, double lon2)
 
 void randomOffset(PrivacyArea &p) {
   randomSeed(analogRead(0));
+  // Offset in degree and distance
+  int offsetAngle = random(0, 360);
+  int offsetDistance = random(p.radius / 10.0 , p.radius / 10.0 * 9.0);
   //Offset in m
-  int dLatM = random(-p.radius / 2.0, p.radius / 2.0);
-  int dLongM = random(-p.radius / 2.0, p.radius / 2.0);
+  int dLatM = sin(offsetAngle / 180.0 * M_PI ) * offsetDistance;
+  int dLongM = cos(offsetAngle / 180.0 * M_PI ) * offsetDistance;
 #ifdef dev
+  Serial.print(F("offsetAngle = "));
+  Serial.println(String(offsetAngle));
+
+  Serial.print(F("offsetDistance = "));
+  Serial.println(String(offsetDistance));
+
   Serial.print(F("dLatM = "));
   Serial.println(String(dLatM));
 
