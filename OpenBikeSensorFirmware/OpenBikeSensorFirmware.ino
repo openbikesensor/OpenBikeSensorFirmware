@@ -78,7 +78,7 @@ uint8_t displayAddress = 0x3c;
 // Enable dev-mode. Allows to
 // - set wifi config
 // - prints more detailed log messages to serial (WIFI password)
-//#define dev
+//#define DEVELOP
 
 void setup() {
   Serial.begin(115200);
@@ -102,7 +102,7 @@ void setup() {
     Serial.println("Display not found");
   }
   displayTest = new SSD1306DisplayDevice;
-#ifdef dev
+#ifdef DEVELOP
   //displayTest->showGrid(true);
 #endif
 
@@ -144,6 +144,20 @@ void setup() {
   //##############################################################
 
   SerialGPS.begin(9600, SERIAL_8N1, 16, 17);
+
+  //##############################################################
+  // Handle SD
+  //##############################################################
+
+  displayTest->showTextOnGrid(2, 2, "SD...");
+  while (!SD.begin())
+  {
+    Serial.println("Card Mount Failed");
+    delay(20);
+  }
+  delay(333); // Added for user experience
+  Serial.println("Card Mount Succeeded");
+  displayTest->showTextOnGrid(2, 2, "SD... ok");
 
   //##############################################################
   // Check, if the button is pressed
@@ -188,19 +202,6 @@ void setup() {
   sensorManager->setOffsets(config.sensorOffsets);
   sensorManager->setTimeouts();
 
-  //##############################################################
-  // Handle SD
-  //##############################################################
-
-  displayTest->showTextOnGrid(2, 2, "SD...");
-  while (!SD.begin())
-  {
-    Serial.println("Card Mount Failed");
-    delay(20);
-  }
-  delay(333); // Added for user experience
-  Serial.println("Card Mount Succeeded");
-  displayTest->showTextOnGrid(2, 2, "SD... ok");
 
   //##############################################################
   // Prepare CSV file
