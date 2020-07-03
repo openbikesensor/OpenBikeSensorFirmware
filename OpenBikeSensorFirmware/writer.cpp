@@ -137,6 +137,10 @@ void FileWriter::deleteFile(fs::FS &fs, const char * path) {
 
 void FileWriter::setFileName() {
   int fileSuffix = 0;
+  File numberFile = SD.open("tracknumber.txt","r");
+  fileSuffix = numberFile.readString().toInt();
+  numberFile.close();
+  fileSuffix++; // use next file number
   String base_filename = "/sensorData";
   m_filename = base_filename + String(fileSuffix) + m_fileExtension;
   while (SD.exists(m_filename.c_str()))
@@ -144,6 +148,9 @@ void FileWriter::setFileName() {
     fileSuffix++;
     m_filename = base_filename + String(fileSuffix) + m_fileExtension;
   }
+  numberFile = SD.open("tracknumber.txt","w");
+  numberFile.println(fileSuffix);
+  numberFile.close();
 }
 
 uint16_t FileWriter::getDataLength() {
@@ -178,7 +185,7 @@ void CSVFileWriter::writeData(DataSet* set) {
     NoPrivacy : Privacy areas are ignored, but the value "insidePrivacyArea" will be 1 inside
     OverridePrivacy : When selected, a full set is written, when a value was confirmed, even inside the privacy area
   */
-  
+
   if (!((config.privacyConfig & AbsolutePrivacy) && set->isInsidePrivacyArea) || ((config.privacyConfig & OverridePrivacy) && set->confirmed))
   {
     char dateString[12];
