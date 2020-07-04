@@ -9,4 +9,4 @@
 ; upload_protocol = espota
 ; upload_flags = -p someportnumber
 ; build with development option
-; build_flags = -D dev
+; build_flags = -D DEVELOP
