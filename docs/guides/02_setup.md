@@ -1,4 +1,11 @@
-# Setup your Development Environment
+---
+layout: default
+title: Setup Development Environment
+parent: Guide
+nav_order: 2
+---
+
+# Setup Development Environment
 
 ## [VSCode](https://code.visualstudio.com/)
 <a name="vscode"></a>

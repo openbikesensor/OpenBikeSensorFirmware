@@ -26,6 +26,7 @@ description: >- # this means to ignore newlines until "baseurl:"
   Google search results) and in your feed.xml site description.
 baseurl: "" # the subpath of your site, e.g. /blog
 url: "" # the base hostname & protocol for your site, e.g. http://example.com
+
 twitter_username: OpenBikeSensor
 github_username: Friends-of-OpenBikeSensor
 
@@ -33,8 +34,8 @@ github_username: Friends-of-OpenBikeSensor
 #theme: minima
 theme: just-the-docs
 
-plugins:
-  - jekyll-feed
+# plugins:
+#  - jekyll-feed
 
 # Exclude from processing.
 # The following items will not be processed, by default.
@@ -55,3 +56,27 @@ plugins:
 #   - vendor/cache/
 #   - vendor/gems/
 #   - vendor/ruby/
+
+# Theme
+logo: "/assets/Logo_400x400.jpg"
+search_enabled: true
+
+aux_links:
+  "GitHub":
+    - "//github.com/Friends-of-OpenBikeSensor"
+  "Twitter":
+    - "//twitter.com/openbikesensor?lang=de"
+
+aux_links_new_tab: true
+heading_anchors: true
+
+## Footer
+
+last_edit_timestamp: true
+last_edit_time_format: "%b %e %Y at %I:%M %p" 
+
+## Color
+# color_scheme: dark
+
+# Github config
+markdown: GFM

@@ -1,3 +1,10 @@
+---
+layout: default
+title: Hardware
+parent: Guide
+nav_order: 2
+---
+
 # Hardware 
 
 The prototype by [Zweirat](https://zweirat-stuttgart.de/projekte/openbikesensor/) used the following:

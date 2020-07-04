@@ -1,3 +1,11 @@
+---
+layout: default
+title: Usage
+parent: Guide
+nav_order: 2
+---
+
+
 # Use the OpenBikeSensor
 
 ## Quick start guide
