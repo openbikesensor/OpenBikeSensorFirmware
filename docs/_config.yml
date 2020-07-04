@@ -30,7 +30,9 @@ twitter_username: OpenBikeSensor
 github_username: Friends-of-OpenBikeSensor
 
 # Build settings
-theme: minima
+#theme: minima
+theme: just-the-docs
+
 plugins:
   - jekyll-feed
 
