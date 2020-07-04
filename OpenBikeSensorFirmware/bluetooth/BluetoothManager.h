@@ -21,10 +21,6 @@ public:
   void deactivateBluetooth();
   void disconnectDevice();
   void newSensorValue(uint8_t value);
-
-private:
-  std::list<IBluetoothService*> services;
-  BLEServer *pServer;
 };
 
 #endif

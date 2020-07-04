@@ -1,5 +1,8 @@
 #include "BluetoothManager.h"
 
+std::list<IBluetoothService*> services;
+BLEServer *pServer;
+
 void BluetoothManager::init() {
   BLEDevice::init("OpenBikeSensor");
   pServer = BLEDevice::createServer();
