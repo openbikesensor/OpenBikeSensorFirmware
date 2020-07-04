@@ -4,3 +4,9 @@
 ; upload_port: Optional. If not set, PlatformIO will try to autodetect the port.
 ; (for example for macOS:)
 ; upload_port = /dev/cu.SLAB_USBtoUART
+; upload via network:
+; upload_port = 192.168.0.1
+; upload_protocol = espota
+; upload_flags = -p someportnumber
+; build with development option
+; build_flags = -D dev

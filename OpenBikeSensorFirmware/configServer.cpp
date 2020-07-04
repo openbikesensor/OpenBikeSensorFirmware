@@ -24,6 +24,9 @@
 // only if provided appropriate credit to the author and link to the original article.
 
 #include "configServer.h"
+#include <SD.h>
+#include <FS.h>
+#include <uploader.h>
 
 const char* host = "openbikesensor";
 
@@ -65,6 +68,7 @@ String navigationIndex =
   "<input type=button onclick=window.location.href='/wifi' class=btn value='Wifi Settings'>"
   "<input type=button onclick=window.location.href='/update' class=btn value='Update Firmware'>"
   "<input type=button onclick=window.location.href='/reboot' class=btn value='Reboot'>"
+  "<input type=button onclick=window.location.href='/upload' class=btn value='Upload'>"
   + footer;
 
 // #########################################
@@ -504,11 +508,11 @@ void startServer() {
   Serial.println(esp_chipid.c_str());
   // Wait for connection
   uint16_t startTime = millis();
-  uint16_t timeout = 5000;
+  uint16_t timeout = 10000;
   Serial.printf("Timeout %u\n", timeout);
   Serial.printf("startTime %u\n", startTime);
   while ((WiFi.status() != WL_CONNECTED) && (( millis() - startTime) <= timeout)) {
-    delay(500);
+    delay(1000);
     Serial.print(".");
   }
   if (WiFi.status() != WL_CONNECTED)
@@ -556,6 +560,49 @@ void startServer() {
 
     delay(100);
     ESP.restart();
+  });
+
+  server.on("/upload", HTTP_GET, []() {
+
+    String html = header+"<div>";
+
+    html.replace("{action}", "");
+    html.replace("{version}", OBSVersion);
+    html.replace("{subtitle}", "Upload");
+
+    File root = SDFileSystem.open("/");
+    if (!root)
+    {
+      Serial.println("Failed to open directory");
+      return;
+    }
+    if (!root.isDirectory())
+    {
+      Serial.println("Not a directory");
+      return;
+    }
+
+    File file = root.openNextFile();
+    while (file)
+    {
+      if (!file.isDirectory())
+      {
+        if(uploader::instance()->upload(file.name()))
+        {
+
+        SDFileSystem.mkdir("/uploaded");
+        SDFileSystem.rename(file.name(),String("/uploaded")+file.name());
+        html += String(file.name());
+        html += "<br>";
+        }
+      }
+      file = root.openNextFile();
+    }
+    root.close();
+
+    html += "</div>" + footer;
+
+    server.send(200, "text/html", html);
   });
 
   // ### Make current location private ###
