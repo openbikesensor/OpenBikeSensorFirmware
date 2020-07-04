@@ -1,8 +1,8 @@
 ---
 layout: default
-title: Development
-parent: Guide
-nav_order: 2
+title: Architecture
+parent: Firmware
+grand_parent: Software
 ---
 
 > TODO: Describe broad architecture of the code

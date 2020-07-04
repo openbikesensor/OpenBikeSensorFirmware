@@ -1,8 +1,8 @@
 ---
 layout: default
 title: Setup Development Environment
-parent: Guide
-nav_order: 2
+parent: Firmware
+grand_parent: Software
 ---
 
 # Setup Development Environment

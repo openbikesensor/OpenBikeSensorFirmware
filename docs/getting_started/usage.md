@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Usage
-parent: Guide
+parent: Getting Started
 nav_order: 2
 ---
 

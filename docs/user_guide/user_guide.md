@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Guide
-nav_order: 2
+title: User Guide
 has_children: true
+nav_order: 3
 ---
