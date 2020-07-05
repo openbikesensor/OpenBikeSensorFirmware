@@ -1,5 +1,5 @@
 # OpenBikeSensor
-![OpenBikeSensor - CI](https://github.com/Friends-of-OpenBikeSensor/OpenBikeSensorFirmware/workflows/OpenBikeSensor%20-%20CI/badge.svg)
+![OpenBikeSensor - CI](https://github.com/Friends-of-OpenBikeSensor/OpenBikeSensorFirmware/workflows/OpenBikeSensor%20-%20CI/badge.svg) [![GitHub version](https://badge.fury.io/gh/Friends-of-openbikesensor%2FOpenBikeSensorFirmware.svg)](https://badge.fury.io/gh/Friends-of-openbikesensor%2FOpenBikeSensorFirmware)
 
 Platform for measuring data on a bicyle and collecting it.
 Currently we measure the distance with HC-SR04 ultrasonic sensors connected to an ESP32.
