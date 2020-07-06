@@ -43,18 +43,20 @@ void loadConfiguration(const char *configFilename, Config &config) {
     offsetTemp = doc[offsetString] | 35;
     config.sensorOffsets.push_back(offsetTemp);
   }
+
   strlcpy(config.ssid, doc["ssid"] | "Freifunk", sizeof(config.ssid));
   strlcpy(config.password, doc["password"] | "Freifunk", sizeof(config.password));
   strlcpy(config.obsUserID, doc["obsUserID"] | "5e8f2f43e7e3b3668ca13151", sizeof(config.obsUserID));
-  config.displayConfig = doc["displayConfig"] | 0;
-  config.GPSConfig = doc["GPSConfig"] | 0;
+  config.displayConfig = doc["displayConfig"] | DisplaySimple;
+  config.GPSConfig = doc["GPSConfig"] | NumberSatellites;
   config.port = doc["port"] | 2731;
-  strlcpy(config.hostname,                  // <- destination
-          doc["hostname"] | "openbikesensor.hlrs.de",  // <- source
-          sizeof(config.hostname));         // <- destination's capacity
+  strlcpy(config.hostname,                              // <- destination
+          doc["hostname"] | "openbikesensor.hlrs.de",   // <- source
+          sizeof(config.hostname)                       // <- destination's capacity
+  );
   config.satsForFix = doc["satsForFix"] | 4;
   config.confirmationTimeWindow = doc["confirmationTimeWindow"] | 5;
-  config.privacyConfig = doc["privacyConfig"] | 0;
+  config.privacyConfig = doc["privacyConfig"] | AbsolutePrivacy;
 
   config.numPrivacyAreas = doc["numPrivacyAreas"] | 0;
   for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx)
@@ -77,6 +79,12 @@ void loadConfiguration(const char *configFilename, Config &config) {
     pricacyAreaTemp.radius = doc[radiusString] | 500.0;
     config.privacyAreas.push_back(pricacyAreaTemp);
   }
+
+  // Fix invalid "old" broken configurations, where the default value was 0
+  if(config.privacyConfig == 0) config.privacyConfig = AbsolutePrivacy;
+  if(config.displayConfig == 0) config.displayConfig = DisplaySimple;
+  if(config.GPSConfig == 0) config.GPSConfig = NumberSatellites;
+
   // Close the file (Curiously, File's destructor doesn't close the file)
   file.close();
 }

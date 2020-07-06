@@ -224,7 +224,9 @@ void setup() {
   bool validGPSData = false;
   while (!validGPSData)
   {
+    Serial.println("readGPSData()");
     readGPSData();
+
     switch (config.GPSConfig)
     {
       case ValidLocation: {
