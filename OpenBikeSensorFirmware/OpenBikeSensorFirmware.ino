@@ -22,7 +22,7 @@
 
 // --- Global variables ---
 // Version
-const char *OBSVersion = "v0.1.8";
+const char *OBSVersion = "v0.1.9-dev";
 
 // PINs
 const int PushButton = 2;
