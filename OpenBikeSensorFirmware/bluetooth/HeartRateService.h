@@ -13,10 +13,11 @@
 class HeartRateService : public IBluetoothService {
 public:
   void setup(BLEServer *pServer) override;
-  virtual bool shouldAdvertise() override;
-  virtual BLEService* getService() override;
+  bool shouldAdvertise() override;
+  BLEService* getService() override;
 
-  void newSensorValue(uint8_t value) override;
+  void newSensorValues(const std::list<uint8_t>& leftValues, const std::list<uint8_t>& rightValues) override;
+  void buttonPressed() override;
 
 private:
   BLEService *mService;
