@@ -3,6 +3,7 @@
 BLEServer *pServer;
 std::list<IBluetoothService*> services;
 
+unsigned long lastValueTimestamp = millis();
 boolean buttonWasPressed = false;
 unsigned long buttonPressTimestamp = -1;
 
@@ -58,6 +59,10 @@ void BluetoothManager::disconnectDevice() {
 }
 
 void BluetoothManager::newSensorValues(const std::list<uint8_t>& leftValues, const std::list<uint8_t>& rightValues) {
+  // Discarding values if they are more recent than 50 ms
+  if (millis() - lastValueTimestamp < 50) return;
+  lastValueTimestamp = millis();
+
   for (auto &service : services) {
     service->newSensorValues(leftValues, rightValues);
   }

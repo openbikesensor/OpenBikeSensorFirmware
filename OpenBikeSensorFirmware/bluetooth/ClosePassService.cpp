@@ -104,7 +104,6 @@ void ClosePassService::processValuesForEventChar(const std::list<uint8_t>& leftV
     payload->push_back((uint8_t) distanceAvg);
     payload->push_back(distanceMin);
 
-    // TODO: temp!
-//    writeToEventCharacteristic("avg2s", payload);
+    writeToEventCharacteristic("avg2s", payload);
   }
 }
