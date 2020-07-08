@@ -27,7 +27,8 @@ BLEService* HeartRateService::getService() {
   return mService;
 }
 
-void HeartRateService::newSensorValue(uint8_t value) {
+void HeartRateService::newSensorValues(const std::list<uint8_t>& leftValues, const std::list<uint8_t>& rightValues) {
+  auto value = leftValues.front();
   mDistances.push(value);
 
   if ((millis() - mCollectionStartTime) < measurementInterval) {
@@ -52,4 +53,7 @@ void HeartRateService::newSensorValue(uint8_t value) {
   // Reset values
   mDistances.clear();
   mCollectionStartTime = millis();
+}
+
+void HeartRateService::buttonPressed() {
 }

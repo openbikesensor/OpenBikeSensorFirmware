@@ -368,7 +368,13 @@ void loop() {
     );
 
 #ifdef BLUETOOTH_ACTIVATED
-    bluetoothManager->newSensorValue(sensorManager->sensorValues[confirmationSensorID]);
+    auto leftValues = std::list<uint8_t>();
+    auto rightValues = std::list<uint8_t>();
+
+    leftValues.push_back(sensorManager->sensorValues[0]);
+    bluetoothManager->newSensorValues(leftValues, rightValues);
+
+    bluetoothManager->processButtonState(digitalRead(PushButton));
 #endif
 
     // #######################################################
