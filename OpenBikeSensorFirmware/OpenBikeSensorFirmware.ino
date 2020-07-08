@@ -164,28 +164,6 @@ void setup() {
   SerialGPS.setRxBufferSize(512);
 
   //##############################################################
-  // Handle SD
-  //##############################################################
-
-  // Counter, how often the SD card will be read before writing an error on the display
-  int8_t sdCount = 25;
-
-  displayTest->showTextOnGrid(2, 2, "SD...");
-  while (!SD.begin())
-  {
-    if(sdCount > 0) {
-      sdCount--;
-    } else {
-      displayTest->showTextOnGrid(2, 2, "SD... error");
-    }
-    Serial.println("Card Mount Failed");
-    //delay(100);
-  }
-  delay(333); // Added for user experience
-  Serial.println("Card Mount Succeeded");
-  displayTest->showTextOnGrid(2, 2, "SD... ok");
-
-  //##############################################################
   // Bluetooth
   //##############################################################
 #ifdef BLUETOOTH_ACTIVATED
@@ -200,7 +178,11 @@ void setup() {
 
   buttonState = digitalRead(PushButton);
 
-  if (buttonState == HIGH || displayError != 0)
+  bool requiresDisplayConnection = true;
+#ifdef RADMESSER_S_COMPATIBILITY_MODE
+  requiresDisplayConnection = false;
+#endif
+  if (buttonState == HIGH || (requiresDisplayConnection && displayError != 0))
   {
     displayTest->showTextOnGrid(2, 2, "Start Server");
     delay(1000); // Added for user experience
@@ -237,6 +219,31 @@ void setup() {
 
   sensorManager->setPrimarySensor(1); // LEFT !!!
 
+  //##############################################################
+  // Handle SD
+  //##############################################################
+
+  // Counter, how often the SD card will be read before writing an error on the display
+  int8_t sdCount = 25;
+
+  displayTest->showTextOnGrid(2, 2, "SD...");
+  boolean requiresSdCardMount = true;
+#ifdef RADMESSER_S_COMPATIBILITY_MODE
+  requiresSdCardMount = false;
+#endif
+  while (requiresSdCardMount && !SD.begin())
+  {
+    if(sdCount > 0) {
+      sdCount--;
+    } else {
+      displayTest->showTextOnGrid(2, 2, "SD... error");
+    }
+    Serial.println("Card Mount Failed");
+    //delay(100);
+  }
+  delay(333); // Added for user experience
+  Serial.println("Card Mount Succeeded");
+  displayTest->showTextOnGrid(2, 2, "SD... ok");
 
   //##############################################################
   // Prepare CSV file
@@ -258,7 +265,11 @@ void setup() {
   displayTest->showTextOnGrid(2, 4, "Wait for GPS");
   Serial.println("Waiting for GPS fix...");
   bool validGPSData = false;
-  while (!validGPSData)
+  bool requiresGpsConnection = true;
+#ifdef RADMESSER_S_COMPATIBILITY_MODE
+  requiresGpsConnection = false;
+#endif
+  while (requiresGpsConnection && !validGPSData)
   {
     Serial.println("readGPSData()");
     readGPSData();
