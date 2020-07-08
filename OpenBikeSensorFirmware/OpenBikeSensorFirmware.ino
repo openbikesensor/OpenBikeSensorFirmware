@@ -382,7 +382,7 @@ void loop() {
     auto leftValues = std::list<uint8_t>();
     auto rightValues = std::list<uint8_t>();
 
-    leftValues.push_back(sensorManager->sensorValues[0]);
+    leftValues.push_back(sensorManager->m_sensors[0].distance);
     bluetoothManager->newSensorValues(leftValues, rightValues);
 
     bluetoothManager->processButtonState(digitalRead(PushButton));
