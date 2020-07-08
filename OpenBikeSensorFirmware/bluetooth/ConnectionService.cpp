@@ -1,5 +1,13 @@
 #include "ConnectionService.h"
 
+// This code was developed to let the ESP be interactively paired with a client.
+// Once a client tries to pair with this ESP, the user needs to cover the sensor
+// for at least three seconds (see isSensorCovered()). Otherwise the connection
+// is refused and the client device disconnected. This feature was once
+// implemented using an LED to show the current pairing status (RadmesserS).
+// For backwards compatibility with the SimRa Android App, this service always
+// responds with the value "1" meaning that the device was successfully paired.
+
 unsigned const long maxConnectionTimeMs = 15 * 1000L;
 unsigned const long minCoveredTimeMs = 3 * 1000L;
 const float maxCoveredDistanceCm = 4.0f;

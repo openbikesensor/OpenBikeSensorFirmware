@@ -1,5 +1,6 @@
 <component name="ProjectCodeStyleConfiguration">
   <code_scheme name="Project" version="173">
+    <option name="SOFT_MARGINS" value="80" />
     <Objective-C>
       <option name="INDENT_NAMESPACE_MEMBERS" value="2" />
       <option name="INDENT_C_STRUCT_MEMBERS" value="2" />
