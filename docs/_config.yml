@@ -60,7 +60,7 @@ remote_theme: pmarsceill/just-the-docs
 #   - vendor/ruby/
 
 # Theme
-logo: "/assets/Logo_400x400.jpg"
+logo: "/data/Logo_400x400.jpg"
 search_enabled: true
 
 aux_links:
