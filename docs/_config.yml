@@ -32,7 +32,7 @@ github_username: Friends-of-OpenBikeSensor
 
 # Build settings
 #theme: minima
-theme: just-the-docs
+theme: jekyll-theme-slate
 
 # plugins:
 #  - jekyll-feed
