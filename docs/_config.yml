@@ -35,6 +35,7 @@ github_username: Friends-of-OpenBikeSensor
 #theme: jekyll-theme-cayman
 #theme: jekyll-theme-minimal
 remote_theme: pmarsceill/just-the-docs
+baseurl: /OpenBikeSensorFirmware
 
 # plugins:
 #  - jekyll-feed
