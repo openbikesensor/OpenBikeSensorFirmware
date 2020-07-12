@@ -9,7 +9,7 @@ Inspired by the Berlin project Radmesser. This version uses a simple push button
 
 ## Find the documentation
 
-You can find the already build documentation under: 
+You can find the documentation under: 
 * https://Friends-of-OpenBikeSensor.github.io
 
 ## Getting Started
