@@ -48,6 +48,7 @@ void BluetoothManager::activateBluetooth() {
   }
 
   pServer->getAdvertising()->start();
+  digitalWrite(13, HIGH);
 }
 
 void BluetoothManager::deactivateBluetooth() {
