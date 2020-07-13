@@ -55,6 +55,21 @@ protected:
 
     return s;
   }
+
+  /**
+   * Joins a list of integers by placing the `glue` string between the members.
+   */
+  static String joinList16(const std::list<uint16_t>& list, const String& glue) {
+    String s = "";
+
+    boolean firstValue = true;
+    for (auto value : list) {
+      s += (firstValue ? "" : glue) + String(value);
+      firstValue = false;
+    }
+
+    return s;
+  }
 };
 
 #endif
