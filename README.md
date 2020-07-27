@@ -9,13 +9,8 @@ Inspired by the Berlin project Radmesser. This version uses a simple push button
 
 ## Getting Started
 
-1. You need a OpenBikeSensor in order to try work on the Firmware. [Head over to our Hardware Guide to build one.](/docs/guides/01_hardware.md)
-2. Clone the repo: `git clone https://github.com/Friends-of-OpenBikeSensor/OpenBikeSensorFirmware.git` and `cd` into it.
-2. Choose between developing with recommended [VSCode](/docs/guides/02_setup.md#vscode) (easiest setup) or [CLion](/docs/guides/02_setup.md#clion) (license required), respectively [Arduino IDE](/docs/guides/02_setup.md#arduino) (discouraged).
+1. You need a OpenBikeSensor in order to try work on the Firmware. [Head over to our Hardware Guide to assemble one](https://friends-of-openbikesensor.github.io/hardware/hardware.html).
+2. Clone this repo: `git clone https://github.com/Friends-of-OpenBikeSensor/OpenBikeSensorFirmware.git` and `cd` into it.
+2. Choose between developing with recommended [VSCode](https://friends-of-openbikesensor.github.io/software/firmware/setup.html#vscode) (easiest setup) or [CLion](https://friends-of-openbikesensor.github.io/software/firmware/setup.html#clion) (license required), respectively [Arduino IDE](https://friends-of-openbikesensor.github.io/software/firmware/setup.html#arduino-ide) (discouraged).
 3. Happy Coding! 🎉
 
-## Acknowledgments
-
-Inspiration, code snippets, etc.
-* [Use of ArduinoJson Library](https://arduinojson.org/v6/example/config/)
-* [Interface for OTA Web Updates by LastMinuteEngineers.com](https://lastminuteengineers.com/esp32-ota-web-updater-arduino-ide/)
