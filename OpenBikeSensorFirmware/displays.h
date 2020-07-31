@@ -200,12 +200,19 @@ class SSD1306DisplayDevice : public DisplayDevice
       this->showTextOnGrid(0, 4, val, Dialog_plain_20);
       this->showTextOnGrid(1, 5, "km/h");
     }
+	
+	void showBatterieValue(int16_t input_val){
+		if(input_val >= 0){
+			String val = String(input_val);
+			this->showTextOnGrid(3, 0, val, Dialog_plain_8);
+		}
+	}
 
     void showNumConfirmed();
 
     void showNumButtonPressed();
 
-    void showValues(HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2);
+    void showValues(HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2, int16_t BatterieVolt);
 
 };
 

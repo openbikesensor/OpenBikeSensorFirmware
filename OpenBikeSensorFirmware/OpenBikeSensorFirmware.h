@@ -15,4 +15,6 @@
 #include "vector.h"
 #include "writer.h"
 
+#include <VL53L0X.h>
+
 #endif

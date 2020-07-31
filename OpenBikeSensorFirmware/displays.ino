@@ -18,7 +18,7 @@ void SSD1306DisplayDevice::showNumButtonPressed() {
   this->showTextOnGrid(1, 5, "press");
 }
 
-void SSD1306DisplayDevice::showValues(HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2) {
+void SSD1306DisplayDevice::showValues(HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2, int16_t BatterieVolt) {
   // Show sensor1, when DisplaySimple or DisplayLeft is configured
   if (config.displayConfig & DisplaySimple || config.displayConfig & DisplayLeft) {
     uint8_t value1 = sensor1.minDistance;
@@ -78,6 +78,8 @@ void SSD1306DisplayDevice::showValues(HCSR04SensorInfo sensor1, HCSR04SensorInfo
 
       // Show velocity, when DisplayVelocity is configured
       if (config.displayConfig & DisplayVelocity) showVelocity(gps.speed.kmph());
+	  // Show Batterie voltage
+	  if(BatterieVolt >=0) showBatterieValue(BatterieVolt);
     }
   }
 

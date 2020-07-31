@@ -26,6 +26,8 @@ const char *OBSVersion = "v0.1.9-dev";
 
 // PINs
 const int PushButton = 2;
+const uint8_t BatterieVoltage = 34;
+const uint8_t VoltageReference = 35;
 
 int confirmedMeasurements = 0;
 int numButtonReleased = 0;
@@ -79,6 +81,51 @@ uint8_t displayAddress = 0x3c;
 // - set wifi config
 // - prints more detailed log messages to serial (WIFI password)
 //#define dev
+
+#define MOVAV_LENGTH 800
+CircularBuffer<uint16_t,MOVAV_LENGTH> voltageBuffer;
+CircularBuffer<uint16_t,MOVAV_LENGTH> refvoltageBuffer;
+float BatterieVoltage_value = 0;
+float BatterieVoltage_movav = 0;
+float ReferenceVoltage_value = 0;
+float ReferenceVoltage_movav = 0;
+
+VL53L0X laser_sensor;
+uint8_t laser_sensor_init = 0;
+
+
+uint16_t movingaverage(CircularBuffer<uint16_t,MOVAV_LENGTH> *buffer,float *movav,int16_t input){
+	int64_t value = 0;
+	uint16_t numberofelements = 0;
+	numberofelements = (*buffer).capacity - (*buffer).available();
+
+	if ((*buffer).available() > 0)
+	{
+		(*buffer).push(input);
+		*movav = *movav + (float) input;
+		value = (int64_t) (*movav / (float)numberofelements);
+	}
+	else{
+		*movav = *movav - (float) (*buffer).first();
+		(*buffer).push(input);
+		*movav = *movav + (float)input;
+		value = (int64_t) (*movav / (float)numberofelements);
+	}
+	
+	//for (uint16_t i = 0; i< numberofelements;i++)
+	//{
+	//value += voltageBuffer[i];
+	//}
+	//value = value / numberofelements;
+	return (uint16_t)value;
+}
+
+void switch_wire_speed_to_VL53(){
+	Wire.setClock(400000);
+}
+void switch_wire_speed_to_SSD1306(){
+	Wire.setClock(700000);
+}
 
 void setup() {
   Serial.begin(115200);
@@ -187,6 +234,34 @@ void setup() {
 
   sensorManager->setOffsets(config.sensorOffsets);
   sensorManager->setTimeouts();
+  
+      //##############################################################
+      // Init VL53L1X
+      //##############################################################
+      
+      switch_wire_speed_to_VL53();
+      laser_sensor.setTimeout(500);
+      if (!laser_sensor.init())
+      {
+	      Serial.println("Failed to detect and initialize sensor!");
+	      //while (1);
+	      }else{
+	      laser_sensor_init = 1;
+	      // Use long distance mode and allow up to 50000 us (50 ms) for a measurement.
+	      // You can change these settings to adjust the performance of the sensor, but
+	      // the minimum timing budget is 20 ms for short distance mode and 33 ms for
+	      // medium and long distance modes. See the VL53L1X datasheet for more
+	      // information on range and timing limits.
+	      //laser_sensor.setDistanceMode(VL53L1X::Long);
+	      //laser_sensor.setMeasurementTimingBudget(50000);
+
+	      // Start continuous readings at a rate of one measurement every 50 ms (the
+	      // inter-measurement period). This period should be at least as long as the
+	      // timing budget.
+	      laser_sensor.startContinuous(50);
+      }
+      
+      switch_wire_speed_to_SSD1306();
 
   //##############################################################
   // Handle SD
@@ -284,6 +359,9 @@ void loop() {
 
   DataSet* currentSet = new DataSet;
   //specify which sensors value can be confirmed by pressing the button, should be configurable
+  currentSet->BatterieVoltage = -1;
+  currentSet->ReferenceVoltage = -1;
+  
   uint8_t confirmationSensorID = 1; // LEFT !!!
   readGPSData();
   currentSet->location = gps.location;
@@ -316,11 +394,19 @@ void loop() {
 
     CurrentTime = millis();
     sensorManager->getDistances();
+	if(laser_sensor_init == 1){
+		switch_wire_speed_to_VL53();
+		sensorManager->m_sensors[1].minDistance = laser_sensor.readRangeContinuousMillimeters() / 10;//read();
+		switch_wire_speed_to_SSD1306();
+	}
+	
+	
 
     // Show values on the display
     displayTest->showValues(
       sensorManager->m_sensors[1],
-      sensorManager->m_sensors[0]
+      sensorManager->m_sensors[0],
+	  currentSet->BatterieVoltage
     );
 
     // #######################################################
@@ -353,6 +439,45 @@ void loop() {
       }
       lastButtonState = buttonState;
     }
+	
+	// #######################################################
+	// Batterievoltage
+	// #######################################################
+	//try to reduce noise
+	for (uint8_t i = 0; i<255;i++)
+	{
+		
+		BatterieVoltage_value += (float)analogRead(BatterieVoltage);
+		ReferenceVoltage_value += (float)analogRead(VoltageReference);
+	}
+	//voltageBuffer.push((uint16_t) (BatterieVoltage_value / 255));
+	BatterieVoltage_value = (uint16_t) (BatterieVoltage_value / 255);
+	ReferenceVoltage_value  = (uint16_t) (ReferenceVoltage_value / 255);
+	//refvoltageBuffer.push((uint16_t) (ReferenceVoltage_value / 255));
+	if (voltageBuffer.available() == 0)
+	{
+		currentSet->BatterieVoltage = (float) movingaverage(&voltageBuffer,&BatterieVoltage_movav,BatterieVoltage_value);
+		}else{
+		(float) movingaverage(&voltageBuffer,&BatterieVoltage_movav,BatterieVoltage_value);
+		currentSet->BatterieVoltage = -1;
+	}
+	
+	if(refvoltageBuffer.available() == 0){
+		currentSet->ReferenceVoltage = (float) movingaverage(&refvoltageBuffer,&ReferenceVoltage_movav,ReferenceVoltage_value);
+		}else{
+		(float) movingaverage(&refvoltageBuffer,&ReferenceVoltage_movav,ReferenceVoltage_value);
+		currentSet->ReferenceVoltage = -1;
+	}
+
+	Serial.println("batvolt");
+	Serial.println(currentSet->BatterieVoltage);
+	Serial.println("refVolt");
+	Serial.println(currentSet->ReferenceVoltage);
+	Serial.println("Buffer Restplatz");
+	Serial.println(voltageBuffer.available());
+
+
+	//currentSet->BatterieVoltage = 1.235 * currentSet->BatterieVoltage / 0.66*1000 / (currentSet->ReferenceVoltage+200);
     measurements++;
   }
 

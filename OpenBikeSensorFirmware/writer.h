@@ -40,6 +40,8 @@ struct DataSet {
   Vector<uint8_t> sensorValues;
   bool confirmed = false;
   bool isInsidePrivacyArea;
+  float BatterieVoltage;
+  float ReferenceVoltage;
 };
 
 

@@ -165,6 +165,8 @@ void CSVFileWriter::writeHeader() {
   }
   headerString += ";Confirmed";
   headerString += ";insidePrivacyArea";
+  headerString += ";Reference Voltage";
+  headerString += ";Batterie Voltage";
   headerString += "\n";
   this->appendFile(SD, m_filename.c_str(), headerString.c_str() );
 }
@@ -214,6 +216,8 @@ void CSVFileWriter::writeData(DataSet* set) {
     }
     dataString = dataString + ";" + String(set->confirmed);
     dataString = dataString + ";" + String(set->isInsidePrivacyArea);
+	dataString = dataString + ";" + String(set->ReferenceVoltage);
+	dataString = dataString + ";" + String(set->BatterieVoltage);
     dataString = dataString + "\n";
   }
 }
