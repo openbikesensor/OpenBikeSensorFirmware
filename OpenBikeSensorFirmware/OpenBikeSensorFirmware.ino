@@ -74,6 +74,7 @@ uint32_t nextOledTaskTs = 0;
 uint8_t handleBarWidth = 0;
 
 FileWriter* writer;
+FileWriter* batteriedata;
 
 uint8_t displayAddress = 0x3c;
 
@@ -137,6 +138,8 @@ void setup() {
   //##############################################################
 
   pinMode(PushButton, INPUT);
+  pinMode(BatterieVoltage, INPUT);
+  pinMode(VoltageReference, INPUT);
 
   //##############################################################
   // Setup display
@@ -287,6 +290,10 @@ void setup() {
   writer->setFileName();
   writer->writeHeader();
   Serial.println("File initialised");
+  
+  batteriedata = new CSVFileWriter;
+  batteriedata->setFileName("/batteriedata");
+  batteriedata->writeHeaderBatterie();
 
   displayTest->showTextOnGrid(2, 3, "CSV file... ok");
 
@@ -372,6 +379,8 @@ void loop() {
   currentSet->course = gps.course;
   currentSet->isInsidePrivacyArea = isInsidePrivacyArea(currentSet->location);
   sensorManager->reset(false);
+  
+  currentSet->satellites = gps.satellites;
 
   CurrentTime = millis();
   int measurements = 0;
@@ -489,6 +498,7 @@ void loop() {
   {
     Serial.write("Empty Buffer, writing directly ");
     if (writer) writer->writeData(currentSet);
+	if(batteriedata) batteriedata->writeDataBatterie(currentSet);
     delete currentSet;
   }
   else
@@ -536,10 +546,12 @@ void loop() {
       DataSet* dataset = dataBuffer.shift();
       Serial.printf("Trying to write set to file\n");
       if (writer) writer->writeData(dataset);
+	  if(batteriedata) batteriedata->writeDataBatterie(currentSet);
       Serial.printf("Wrote set to file\n");
       delete dataset;
     }
     writer->writeDataToSD();
+	batteriedata->writeDataToSD();
 
     Serial.printf(">>> writeDataToSD - reset <<<");
     minDistanceToConfirm = MAX_SENSOR_VALUE;
@@ -561,13 +573,18 @@ void loop() {
     dataset->sensorValues[0] = MAX_SENSOR_VALUE;
     Serial.printf("Buffer full, writing set to file\n");
     if (writer) writer->writeData(dataset);
+	if(batteriedata) batteriedata->writeDataBatterie(currentSet);
     delete dataset;
   }
 
   // write data to sd every now and then, hardcoded value assuming it will write every minute or so
-  if ((writer->getDataLength() > 5000) && !(digitalRead(PushButton))) {
+  uint8_t buttonstate_l = (digitalRead(PushButton));
+  if ((writer->getDataLength() > 5000) && !buttonstate_l) {
     writer->writeDataToSD();
   }
+    if ((batteriedata->getDataLength() > 5000) && !buttonstate_l) {
+	    batteriedata->writeDataToSD();
+    }
 
   unsigned long ElapsedTime = CurrentTime - StartTime;
   StartTime = CurrentTime;

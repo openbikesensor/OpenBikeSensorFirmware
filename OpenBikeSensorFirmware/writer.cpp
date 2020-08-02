@@ -146,6 +146,16 @@ void FileWriter::setFileName() {
   }
 }
 
+void FileWriter::setFileName(String base_filename_input) {
+	int fileSuffix = 0;
+	String base_filename = base_filename_input;
+	m_filename = base_filename + String(fileSuffix) + m_fileExtension;
+	while (SD.exists(m_filename.c_str()))
+	{
+		fileSuffix++;
+		m_filename = base_filename + String(fileSuffix) + m_fileExtension;
+	}
+}
 uint16_t FileWriter::getDataLength() {
   return dataString.length();
 }
@@ -167,8 +177,26 @@ void CSVFileWriter::writeHeader() {
   headerString += ";insidePrivacyArea";
   headerString += ";Reference Voltage";
   headerString += ";Batterie Voltage";
+  headerString += ";Satellites";
   headerString += "\n";
   this->appendFile(SD, m_filename.c_str(), headerString.c_str() );
+}
+
+void CSVFileWriter::writeHeaderBatterie() {
+	String headerString;
+	headerString += "Date;Time;Latitude;Longitude;Course;Speed";
+	for (size_t idx = 0; idx < sensorManager->m_sensors.size(); ++idx)
+	{
+		headerString += ";";
+		headerString += sensorManager->m_sensors[idx].sensorLocation;
+	}
+	headerString += ";Confirmed";
+	headerString += ";insidePrivacyArea";
+	headerString += ";Reference Voltage";
+	headerString += ";Batterie Voltage";
+	headerString += ";Satellites";
+	headerString += "\n";
+	this->appendFile(SD, m_filename.c_str(), headerString.c_str() );
 }
 
 void CSVFileWriter::writeData(DataSet* set) {
@@ -218,8 +246,13 @@ void CSVFileWriter::writeData(DataSet* set) {
     dataString = dataString + ";" + String(set->isInsidePrivacyArea);
 	dataString = dataString + ";" + String(set->ReferenceVoltage);
 	dataString = dataString + ";" + String(set->BatterieVoltage);
+	dataString = dataString + ";" + String(set->satellites.value());
     dataString = dataString + "\n";
   }
+}
+
+void CSVFileWriter::writeDataBatterie(DataSet* set) {
+	return;
 }
 
 

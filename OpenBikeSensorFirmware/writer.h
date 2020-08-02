@@ -42,6 +42,7 @@ struct DataSet {
   bool isInsidePrivacyArea;
   float BatterieVoltage;
   float ReferenceVoltage;
+  TinyGPSInteger satellites;
 };
 
 
@@ -59,9 +60,12 @@ class FileWriter
     void renameFile(fs::FS &fs, const char * path1, const char * path2);
     void deleteFile(fs::FS &fs, const char * path);
     void setFileName();
+	void setFileName(String base_filename_input);
     virtual void init() = 0;
     virtual void writeHeader() = 0;
+	virtual void writeHeaderBatterie() = 0;
     virtual void writeData(DataSet*) = 0;
+	virtual void writeDataBatterie(DataSet*) = 0;
     void writeDataToSD();
     uint16_t getDataLength();
 
@@ -85,7 +89,9 @@ class CSVFileWriter : public FileWriter
     {
     }
     void writeHeader();
+	void writeHeaderBatterie();
     void writeData(DataSet*);
+	void writeDataBatterie(DataSet*);
   protected:
 };
 
