@@ -137,7 +137,7 @@ void FileWriter::deleteFile(fs::FS &fs, const char * path) {
 
 void FileWriter::setFileName() {
   int fileSuffix = 0;
-  File numberFile = SD.open("tracknumber.txt","r");
+  File numberFile = SD.open("/tracknumber.txt","r");
   fileSuffix = numberFile.readString().toInt();
   numberFile.close();
   fileSuffix++; // use next file number
@@ -148,7 +148,7 @@ void FileWriter::setFileName() {
     fileSuffix++;
     m_filename = base_filename + String(fileSuffix) + m_fileExtension;
   }
-  numberFile = SD.open("tracknumber.txt","w");
+  numberFile = SD.open("/tracknumber.txt","w");
   numberFile.println(fileSuffix);
   numberFile.close();
 }

@@ -147,10 +147,10 @@ String configIndex =
   "<input type='radio' id='noPrivacy' name='privacyOptions' value='noPrivacy' {noPrivacy}>"
   "<hr>"
   "Override Privacy when Pushing the Button<input type='checkbox' name='overridePrivacy' {overridePrivacy}>"
-  //  "<h3>Upload User Data</h3>"
-  //  "<input name='hostname' placeholder='hostname' value='{hostname}' style='display:none'>"
-  //  "<hr>"
-  //  "<input name='obsUserID' placeholder='API ID' value='{userId}' style='display:none'>"
+  "<h3>Upload User Data</h3>"
+  "<input name='hostname' placeholder='hostname' value='{hostname}'>"
+  "<hr>"
+  "<input name='obsUserID' placeholder='API ID' value='{userId}' >"
   "<input type=submit class=btn value=Save>"
   + footer;
 
