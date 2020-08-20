@@ -174,7 +174,7 @@ void setup() {
   displayTest->showTextOnGrid(2, 2, "SD... ok");
 
   //##############################################################
-  // Check, if the button is pressed
+  // Check, if the button is pressed or the display is disconnected
   // Enter configuration mode and enable OTA
   //##############################################################
 
