@@ -184,17 +184,8 @@ void CSVFileWriter::writeHeader() {
 
 void CSVFileWriter::writeHeaderBatterie() {
 	String headerString;
-	headerString += "Date;Time;Latitude;Longitude;Course;Speed";
-	for (size_t idx = 0; idx < sensorManager->m_sensors.size(); ++idx)
-	{
-		headerString += ";";
-		headerString += sensorManager->m_sensors[idx].sensorLocation;
-	}
-	headerString += ";Confirmed";
-	headerString += ";insidePrivacyArea";
-	headerString += ";Reference Voltage";
+	headerString += "Date;Time";
 	headerString += ";Batterie Voltage";
-	headerString += ";Satellites";
 	headerString += "\n";
 	this->appendFile(SD, m_filename.c_str(), headerString.c_str() );
 }
@@ -252,7 +243,15 @@ void CSVFileWriter::writeData(DataSet* set) {
 }
 
 void CSVFileWriter::writeDataBatterie(DataSet* set) {
-	return;
+	    char dateString[12];
+	    sprintf(dateString, "%02d.%02d.%04d;", set->date.day(), set->date.month(), set->date.year());
+	    dataString = dataString + dateString;
+
+	    char timeString[12];
+	    sprintf(timeString, "%02d:%02d:%02d;", set->time.hour(), set->time.minute(), set->time.second());
+	    dataString = dataString + timeString;
+		dataString = dataString + String(set->BatterieVoltage);
+		dataString = dataString + "\n";
 }
 
 
