@@ -47,6 +47,8 @@ String style =
   "h3 {padding:10px 0;margin-top:10px;margin-bottom:10px;border-top:3px solid #3498db;border-bottom:3px solid #3498db;}"
   "h1 a {color:#777}"
   "hr { border-top:1px solid #CCC;margin-left:10px;margin-right:10px;}"
+  ".deletePrivacyArea {color: black; text-decoration: none; font-size: x-large;}"
+  ".deletePrivacyArea:hover {color: red;}"
   "</style>";
 
 String header =
@@ -408,37 +410,14 @@ void privacyAction() {
   String longitude = server.arg("newlongitude");
   longitude.replace(",", ".");
   String radius = server.arg("newradius");
-  String erase = server.arg("erase");
-
-  if (erase != "")
-  {
-    if (atoi(erase.c_str()) < config.privacyAreas.size())
-    {
-      config.privacyAreas.erase(atoi(erase.c_str()));
-    }
-    config.numPrivacyAreas = config.privacyAreas.size();
-  }
 
   if ( (latitude != "") && (longitude != "") && (radius != ""))
   {
     Serial.println(F("Valid privacyArea!"));
     addNewPrivacyArea(atof(latitude.c_str()), atof(longitude.c_str()), atoi(radius.c_str()));
-    /*PrivacyArea newPrivacyArea;
-      newPrivacyArea.latitude = atof(latitude.c_str());
-      newPrivacyArea.longitude = atof(longitude.c_str());
-      newPrivacyArea.radius = atoi(radius.c_str());
-      randomOffset(newPrivacyArea);
-
-      config.privacyAreas.push_back(newPrivacyArea);
-      config.numPrivacyAreas = config.privacyAreas.size();
-      Serial.println(F("Print config file..."));
-      printConfig(config);
-      Serial.println(F("Saving configuration..."));
-      saveConfiguration(configFilename, config);
-    */
   }
 
-  String s = "<meta http-equiv='refresh' content='0; url=/'><a href='/'> Go Back </a>";
+  String s = "<meta http-equiv='refresh' content='0; url=/privacy'><a href='/privacy'> Go Back </a>";
   server.send(200, "text/html", s);
 }
 
@@ -605,38 +584,9 @@ void startServer() {
     server.send(200, "text/html", html);
   });
 
-  // ### Make current location private ###
-  server.on("/makecurrentlocationprivate", HTTP_GET, []() {
-
-    String html = makeCurrentLocationPrivateIndex;
-    // Header
-    html.replace("{action}", "");
-    html.replace("{version}", OBSVersion);
-    html.replace("{subtitle}", "MakeLocationPrivate");
-
-    server.send(200, "text/html", html);
-    bool validGPSData = false;
-    buttonState = digitalRead(PushButton);
-    while (!validGPSData && (buttonState == LOW))
-    {
-      Serial.println("GPSData not valid");
-      buttonState = digitalRead(PushButton);
-      readGPSData();
-      validGPSData = gps.location.isValid();
-      if (validGPSData) {
-        Serial.println("GPSData valid");
-        addNewPrivacyArea(gps.location.lat(), gps.location.lng(), 500);
-      }
-      delay(300);
-    }
-
-    String s = "<meta http-equiv='refresh' content='0; url=/'><a href='/'> Go Back </a>";
-    server.send(200, "text/html", s); //Send web page
-
-  });
-
-
+  // ###############################################################
   // ### Index ###
+  // ###############################################################
 
   server.on("/", HTTP_GET, []() {
     String html = navigationIndex;
@@ -648,7 +598,9 @@ void startServer() {
     server.send(200, "text/html", html);
   });
 
+  // ###############################################################
   // ### Wifi ###
+  // ###############################################################
 
   server.on("/wifi_action", wifiAction);
 
@@ -664,7 +616,9 @@ void startServer() {
     server.send(200, "text/html", html);
   });
 
+  // ###############################################################
   // ### Config ###
+  // ###############################################################
 
   server.on("/config_action", configAction);
 
@@ -723,7 +677,9 @@ void startServer() {
     server.send(200, "text/html", html);
   });
 
+  // ###############################################################
   // ### Update Firmware ###
+  // ###############################################################
 
   server.on("/update", HTTP_GET, []() {
     String html = uploadIndex;
@@ -767,45 +723,112 @@ void startServer() {
     }
   });
 
-  server.onNotFound(handle_NotFound);
-
+  // ###############################################################
   // ### Privacy ###
+  // ###############################################################
+
+  // Make current location private
+  server.on("/makecurrentlocationprivate", HTTP_GET, []() {
+
+    String html = makeCurrentLocationPrivateIndex;
+    // Header
+    html.replace("{action}", "");
+    html.replace("{version}", OBSVersion);
+    html.replace("{subtitle}", "MakeLocationPrivate");
+
+    server.send(200, "text/html", html);
+    bool validGPSData = false;
+    buttonState = digitalRead(PushButton);
+    while (!validGPSData && (buttonState == LOW))
+    {
+      Serial.println("GPSData not valid");
+      buttonState = digitalRead(PushButton);
+      readGPSData();
+      validGPSData = gps.location.isValid();
+      if (validGPSData) {
+        Serial.println("GPSData valid");
+        addNewPrivacyArea(gps.location.lat(), gps.location.lng(), 500);
+      }
+      delay(300);
+    }
+
+    String s = "<meta http-equiv='refresh' content='0; url=/'><a href='/'> Go Back </a>";
+    server.send(200, "text/html", s); //Send web page
+
+  });
 
   server.on("/privacy", HTTP_GET, []() {
-    createPrivacyPage();
+    String privacyPage = privacyIndexPrefix;
+
+    for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx)
+    {
+      privacyPage += "<h3>Privacy Area #" + String(idx) + "</h3>";
+      privacyPage += "Latitude <input name=latitude" + String(idx) + " placeholder='latitude' value='" + String(config.privacyAreas[idx].latitude, 7) + "'disabled>";
+      privacyPage += "Longitude <input name=longitude" + String(idx) + "placeholder='longitude' value='" + String(config.privacyAreas[idx].longitude, 7) + "'disabled>";
+      privacyPage += "Radius (m) <input name=radius" + String(idx) + "placeholder='radius' value='" + String(config.privacyAreas[idx].radius) + "'disabled>";
+      privacyPage += "<a class=\"deletePrivacyArea\" href=\"privacy_delete?erase=" + String(idx) + "\">&#x2716;</a>";
+    }
+
+    privacyPage += "<h3>New Privacy Area</h3>";
+
+    readGPSData();
+    bool validGPSData = gps.location.isValid();
+    if (validGPSData) {
+      privacyPage += "Latitude<input name=newlatitude value='" + String(gps.location.lat(), 7) + "'>";
+      privacyPage += "Longitude<input name=newlongitude value='" + String(gps.location.lng(), 7) + "'>";
+    }
+    else
+    {
+      privacyPage += "Latitude<input name=newlatitude placeholder='48.12345'>";
+      privacyPage += "Longitude<input name=newlongitude placeholder='9.12345'>";
+    }
+    privacyPage += "Radius (m)<input name=newradius placeholder='radius' value='500'>";
+
+    // privacyPage += "Erase Area<input name=erase placeholder='0'>";
+
+    privacyPage += privacyIndexPostfix;
+    server.send(200, "text/html", privacyPage);
+  });
+
+  server.on("/privacy_delete", HTTP_GET, [](){
+
+    String erase = server.arg("erase");
+    if (erase != "")
+    {
+      int idx = atoi(erase.c_str());
+      Serial.print(F("Erase idx="));
+      Serial.println(idx);
+      if (idx < config.privacyAreas.size())
+      {
+        config.privacyAreas.erase(idx);
+      }
+      config.numPrivacyAreas = config.privacyAreas.size();
+    }
+
+    // DEBUG #104 !!!
+    Serial.print(F("VECTOR SIZE:"));
+    Serial.println(config.privacyAreas.size());
+    printConfig(config); // This crashes the ESP
+
+    // Print and save configuration
+    //Serial.println(F("Print config file..."));
+    //printConfig(config);
+    //Serial.println(F("Saving configuration..."));
+    //saveConfiguration(configFilename, config);
+
+    String s = "<meta http-equiv='refresh' content='0; url=/privacy'><a href='/privacy'> Go Back </a>";
+    server.send(200, "text/html", s);
   });
 
   server.on("/privacy_action", privacyAction);
 
+  // ###############################################################
+  // Default, send 404
+  // ###############################################################
+
+  server.onNotFound(handle_NotFound);
+
   server.begin();
   Serial.println("Server Ready");
 
-}
-void createPrivacyPage()
-{
-  String privacyPage = privacyIndexPrefix;
-
-  for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx)
-  {
-    privacyPage += "Latitude " + String(idx) + "<input name=latitude" + String(idx) + " placeholder='latitude' value='" + String(config.privacyAreas[idx].latitude, 7) + "'disabled>";
-    privacyPage += "Longitude " + String(idx) + "<input name=longitude" + String(idx) + "placeholder='longitude' value='" + String(config.privacyAreas[idx].longitude, 7) + "'disabled>";
-    privacyPage += "Radius " + String(idx) + " (m)" + "<input name=radius" + String(idx) + "placeholder='radius' value='" + String(config.privacyAreas[idx].radius) + "'disabled>";
-  }
-  readGPSData();
-  bool validGPSData = gps.location.isValid();
-  if (validGPSData) {
-    privacyPage += "New Latitude<input name=newlatitude value='" + String(gps.location.lat(), 7) + "'>";
-    privacyPage += "New Longitude<input name=newlongitude value='" + String(gps.location.lng(), 7) + "'>";
-  }
-  else
-  {
-    privacyPage += "New Latitude<input name=newlatitude placeholder='48.12345'>";
-    privacyPage += "New Longitude<input name=newlongitude placeholder='9.12345'>";
-  }
-  privacyPage += "New Radius (m)<input name=newradius placeholder='radius' value='500'>";
-
-  privacyPage += "Erase Area<input name=erase placeholder='0'>";
-
-  privacyPage += privacyIndexPostfix;
-  server.send(200, "text/html", privacyPage);
 }

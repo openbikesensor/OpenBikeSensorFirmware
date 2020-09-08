@@ -194,7 +194,7 @@ void printConfig(Config &config) {
   Serial.print(F("numPrivacyAreas = "));
   Serial.println(String(config.numPrivacyAreas));
 
-  for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx)
+  for (size_t idx = 0; idx < config.numPrivacyAreas; idx++)
   {
     String latitudeString = "privacyLatitude[" + String(idx) + "] = " + String(config.privacyAreas[idx].latitude, 7);
     Serial.println(latitudeString);
