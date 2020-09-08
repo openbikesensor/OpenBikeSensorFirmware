@@ -21,7 +21,7 @@
 #include "config.h"
 
 // Helper: StaticJsonDocument --> Config
-void jsonDocumentToConfig(StaticJsonDocument<4096> doc, Config &config)
+void jsonDocumentToConfig(DynamicJsonDocument &doc, Config &config)
 {
   // Copy values from the JsonDocument to the Config
   config.numSensors = doc["numSensors"] | 2;
@@ -76,11 +76,11 @@ void jsonDocumentToConfig(StaticJsonDocument<4096> doc, Config &config)
 }
 
 // Helper: Config -> StaticJsonDocument
-StaticJsonDocument<4096> configToJsonDocument(const Config &config) {
+DynamicJsonDocument configToJsonDocument(const Config &config) {
   // Allocate a temporary JsonDocument
   // Don't forget to change the capacity to match your requirements.
   // Use arduinojson.org/assistant to compute the capacity.
-  StaticJsonDocument<4096> doc;
+  DynamicJsonDocument doc(2048);
 
   // Set the values in the document
   doc["numSensors"] = config.numSensors;
@@ -127,7 +127,7 @@ StaticJsonDocument<4096> configToJsonDocument(const Config &config) {
 // Config -> StaticJsonDocument --> String
 String configToJson(Config &config)
 {
-  StaticJsonDocument<4096> doc = configToJsonDocument(config);
+  DynamicJsonDocument doc = configToJsonDocument(config);
   String s;
   serializeJson(doc, s);
   return s;
@@ -136,7 +136,7 @@ String configToJson(Config &config)
 // String -> StaticJsonDocument --> Config
 void jsonToConfig(String json, Config &config)
 {
-  StaticJsonDocument<4096> doc;
+  DynamicJsonDocument doc(2048);
 
   // Deserialize the JSON string
   DeserializationError error = deserializeJson(doc, json);
@@ -160,7 +160,7 @@ void loadConfiguration(const char *configFilename, Config &config) {
   // Allocate a temporary JsonDocument
   // Don't forget to change the capacity to match your requirements.
   // Use arduinojson.org/v6/assistant to compute the capacity.
-  StaticJsonDocument<4096> doc;
+  DynamicJsonDocument doc(2048);
 
   Serial.println("C");
   // Deserialize the JSON document
@@ -188,7 +188,7 @@ void saveConfiguration(const char *filename, const Config &config) {
     return;
   }
 
-  StaticJsonDocument<4096> doc = configToJsonDocument(config);
+  DynamicJsonDocument doc = configToJsonDocument(config);
 
   // Serialize JSON to file
   if (serializeJson(doc, file) == 0) {
