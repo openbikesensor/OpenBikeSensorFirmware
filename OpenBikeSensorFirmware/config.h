@@ -77,8 +77,13 @@ struct Config {
   Vector<PrivacyArea> privacyAreas;
 };
 
-void loadConfiguration(const char *configFilename, Config &config);
 void printConfig(Config &config);
+
+// SPIFFS
+void loadConfiguration(const char *configFilename, Config &config);
 void saveConfiguration(const char *filename, const Config &config);
+
+String configToJson(Config &config);
+void jsonToConfig(String json, Config &config);
 
 #endif

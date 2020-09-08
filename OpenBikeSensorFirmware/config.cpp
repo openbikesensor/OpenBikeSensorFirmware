@@ -20,20 +20,9 @@
 
 #include "config.h"
 
-void loadConfiguration(const char *configFilename, Config &config) {
-  // Open file for reading
-  File file = SPIFFS.open(configFilename);
-
-  // Allocate a temporary JsonDocument
-  // Don't forget to change the capacity to match your requirements.
-  // Use arduinojson.org/v6/assistant to compute the capacity.
-  StaticJsonDocument<4096> doc;
-
-  // Deserialize the JSON document
-  DeserializationError error = deserializeJson(doc, file);
-  if (error)
-    Serial.println(F("Failed to read file, using default configuration"));
-
+// Helper: StaticJsonDocument --> Config
+void jsonDocumentToConfig(StaticJsonDocument<4096> doc, Config &config)
+{
   // Copy values from the JsonDocument to the Config
   config.numSensors = doc["numSensors"] | 2;
   for (size_t idx = 0; idx < config.numSensors; ++idx)
@@ -84,23 +73,10 @@ void loadConfiguration(const char *configFilename, Config &config) {
   if(config.privacyConfig == 0) config.privacyConfig = AbsolutePrivacy;
   if(config.displayConfig == 0) config.displayConfig = DisplaySimple;
   if(config.GPSConfig == 0) config.GPSConfig = NumberSatellites;
-
-  // Close the file (Curiously, File's destructor doesn't close the file)
-  file.close();
 }
 
-// Saves the configuration to a file
-void saveConfiguration(const char *filename, const Config &config) {
-  // Delete existing file, otherwise the configuration is appended to the file
-  SPIFFS.remove(filename);
-
-  // Open file for writing
-  File file = SPIFFS.open(filename, FILE_WRITE);
-  if (!file) {
-    Serial.println(F("Failed to create file"));
-    return;
-  }
-
+// Helper: Config -> StaticJsonDocument
+StaticJsonDocument<4096> configToJsonDocument(const Config &config) {
   // Allocate a temporary JsonDocument
   // Don't forget to change the capacity to match your requirements.
   // Use arduinojson.org/assistant to compute the capacity.
@@ -144,6 +120,75 @@ void saveConfiguration(const char *filename, const Config &config) {
     String radiusString = "privacyRadius" + String(idx);
     doc[radiusString] = config.privacyAreas[idx].radius;
   }
+
+  return doc;
+}
+
+// Config -> StaticJsonDocument --> String
+String configToJson(Config &config)
+{
+  StaticJsonDocument<4096> doc = configToJsonDocument(config);
+  String s;
+  serializeJson(doc, s);
+  return s;
+}
+
+// String -> StaticJsonDocument --> Config
+void jsonToConfig(String json, Config &config)
+{
+  StaticJsonDocument<4096> doc;
+
+  // Deserialize the JSON string
+  DeserializationError error = deserializeJson(doc, json);
+  if (error)
+    Serial.println(F("Failed to read file, using default configuration"));
+
+  jsonDocumentToConfig(doc, config);
+}
+
+void loadConfiguration(const char *configFilename, Config &config) {
+
+  Serial.println("A");
+
+  SPIFFS.remove(configFilename);
+
+  Serial.println("B");
+
+  // Open file for reading
+  File file = SPIFFS.open(configFilename);
+
+  // Allocate a temporary JsonDocument
+  // Don't forget to change the capacity to match your requirements.
+  // Use arduinojson.org/v6/assistant to compute the capacity.
+  StaticJsonDocument<4096> doc;
+
+  Serial.println("C");
+  // Deserialize the JSON document
+  DeserializationError error = deserializeJson(doc, file);
+  if (error)
+    Serial.println(F("Failed to read file, using default configuration"));
+
+  // Close the file (Curiously, File's destructor doesn't close the file)
+  file.close();
+
+  Serial.println("D");
+
+  jsonDocumentToConfig(doc, config);
+}
+
+// Saves the configuration to a file
+void saveConfiguration(const char *filename, const Config &config) {
+  // Delete existing file, otherwise the configuration is appended to the file
+  SPIFFS.remove(filename);
+
+  // Open file for writing
+  File file = SPIFFS.open(filename, FILE_WRITE);
+  if (!file) {
+    Serial.println(F("Failed to create file"));
+    return;
+  }
+
+  StaticJsonDocument<4096> doc = configToJsonDocument(config);
 
   // Serialize JSON to file
   if (serializeJson(doc, file) == 0) {

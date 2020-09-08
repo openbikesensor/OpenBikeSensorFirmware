@@ -29,14 +29,14 @@
 #include <uploader.h>
 
 const char* host = "openbikesensor";
-
 WebServer server(80);
+String json_buffer;
 
 /* Style */
 String style =
   "<style>"
-  "#file-input,input {width:100%;height:44px;border-radius:4px;margin:10px auto;font-size:15px;}"
-  "input {background:#f1f1f1;border:0;padding:0 15px;text-align:center;}"
+  "#file-input,input, button {width:100%;height:44px;border-radius:4px;margin:10px auto;font-size:15px;}"
+  "input, button {background:#f1f1f1;border:0;padding:0 15px;text-align:center;}"
   "body {background:#3498db;font-family:sans-serif;font-size:14px;color:#777}"
   "#file-input {padding:0 5;border:1px solid #ddd;line-height:44px;text-align:left;display:block;cursor:pointer}"
   "#bar,#prgbar {background-color:#f1f1f1;border-radius:10px}"
@@ -69,6 +69,7 @@ String navigationIndex =
   "<input type=button onclick=window.location.href='/update' class=btn value='Update Firmware'>"
   "<input type=button onclick=window.location.href='/reboot' class=btn value='Reboot'>"
   "<input type=button onclick=window.location.href='/upload' class=btn value='Upload'>"
+  "<input type=button onclick=window.location.href='/backup' class=btn value='Backup and Restore'>"
   + footer;
 
 // #########################################
@@ -94,6 +95,18 @@ String wifiSettingsIndex =
   "Password"
   "<input id=pass name=pass placeholder='password' type='Password' value='{password}' onclick='resetPassword()'>"
   "<input type=submit class=btn value=Save>"
+  + footer;
+
+// #########################################
+// Backup and Restore
+// #########################################
+
+String backupIndex =
+  header +
+  "<h3>Backup</h3>"
+  "<a href='/backup.json'><button type='button' class='btn'>Download JSON</button></a>"
+  "<h3>Restore</h3>"
+  "TODO"
   + footer;
 
 // #########################################
@@ -206,7 +219,7 @@ String uploadIndex =
   "show(document.getElementById('prg'));"
   ""
   "var xhr = new XMLHttpRequest();"
-  "xhr.open( 'POST', '/update', true );"
+  "xhr.open( 'POST', '/recover', true );"
   "xhr.onreadystatechange = function(s) {"
   "console.log(xhr.responseText);"
   "if (xhr.readyState == 4 && xhr.status == 200) {"
@@ -654,6 +667,51 @@ void startServer() {
 
     server.send(200, "text/html", html);
   });
+  // ### Backup ###
+
+  server.on("/backup", HTTP_GET, []() {
+    String html = backupIndex;
+    // Header
+    html.replace("{action}", "");
+    html.replace("{version}", OBSVersion);
+    html.replace("{subtitle}", "Backup & Restore");
+
+    server.send(200, "text/html", html);
+  });
+
+  server.on("/backup.json", HTTP_GET, []() {
+    String json = configToJson(config);
+    String version = (String) OBSVersion;
+
+    // Add Header https://stackoverflow.com/a/11545741/605890
+    server.sendHeader("Content-disposition", "attachment; filename=OpenBikeSensorConfig-" + version + ".json", false);
+    server.sendHeader("Content-type", "application/json", false);
+    server.send(200, "text/html", json);
+  });
+
+  // Handling uploading firmware file
+  server.on("/recover", HTTP_POST, []() {
+    Serial.println("Send response...");
+    server.send(200, "text/plain", "Update successful!");
+  }, []() {
+    //Serial.println("Recover Config...");
+    HTTPUpload& upload = server.upload();
+    if (upload.status == UPLOAD_FILE_START) {
+      Serial.printf("Recover: %s\n", upload.filename.c_str());
+      json_buffer = "";
+    } else if (upload.status == UPLOAD_FILE_WRITE) {
+      // Convert all uint8_t elements until currentSize to String
+      for(int i = 0; i<upload.currentSize; i++) {
+        json_buffer += (char) upload.buf[i];
+      }
+
+    } else if (upload.status == UPLOAD_FILE_END) {
+      jsonToConfig(json_buffer, config);
+      //printConfig(config);
+    }
+  });
+
+
 
   // ### Wifi ###
 
