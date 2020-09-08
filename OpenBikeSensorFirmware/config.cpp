@@ -148,12 +148,6 @@ void jsonToConfig(String json, Config &config)
 
 void loadConfiguration(const char *configFilename, Config &config) {
 
-  Serial.println("A");
-
-  SPIFFS.remove(configFilename);
-
-  Serial.println("B");
-
   // Open file for reading
   File file = SPIFFS.open(configFilename);
 
@@ -162,7 +156,6 @@ void loadConfiguration(const char *configFilename, Config &config) {
   // Use arduinojson.org/v6/assistant to compute the capacity.
   DynamicJsonDocument doc(2048);
 
-  Serial.println("C");
   // Deserialize the JSON document
   DeserializationError error = deserializeJson(doc, file);
   if (error)
@@ -170,8 +163,6 @@ void loadConfiguration(const char *configFilename, Config &config) {
 
   // Close the file (Curiously, File's destructor doesn't close the file)
   file.close();
-
-  Serial.println("D");
 
   jsonDocumentToConfig(doc, config);
 }

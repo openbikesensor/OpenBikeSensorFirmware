@@ -58,6 +58,74 @@ String header =
 String footer = "</form>" + style;
 
 // #########################################
+// Upload form
+// #########################################
+
+String xhrUpload =   "<input type='file' name='upload' id='file'>"
+  "<label id='file-input' for='file'>Choose file...</label>"
+  "<input id='btn' type='submit' class=btn value='Upload'>"
+  "<br><br>"
+  "<div id='prg'></div>"
+  "<br><div id='prgbar'><div id='bar'></div></div><br></form>"
+  "<script>"
+  ""
+  "function hide(x) { x.style.display = 'none'; }"
+  "function show(x) { x.style.display = 'block'; }"
+  ""
+  "hide(document.getElementById('file'));"
+  "hide(document.getElementById('prgbar'));"
+  "hide(document.getElementById('prg'));"
+  ""
+  "var fileName = '';"
+  "document.getElementById('file').addEventListener('change', function(e){"
+  "fileNameParts = e.target.value.split('\\\\');"
+  "fileName = fileNameParts[fileNameParts.length-1];"
+  "console.log(fileName);"
+  "document.getElementById('file-input').innerHTML = fileName;"
+  "});"
+  ""
+  "document.getElementById('btn').addEventListener('click', function(e){"
+  "e.preventDefault();"
+  "if (fileName == '') { alert('No file choosen'); return; }"
+  "console.log('Start upload...');"
+  ""
+  "var form = document.getElementsByTagName('form')[0];"
+  "var data = new FormData(form);"
+  "console.log(data);"
+  //https://developer.mozilla.org/en-US/docs/Web/API/FormData/values
+  "for (var v of data.values()) { console.log(v); }"
+  ""
+  "hide(document.getElementById('file-input'));"
+  "hide(document.getElementById('btn'));"
+  "show(document.getElementById('prgbar'));"
+  "show(document.getElementById('prg'));"
+  ""
+  "var xhr = new XMLHttpRequest();"
+  "xhr.open( 'POST', '{method}', true );"
+  "xhr.onreadystatechange = function(s) {"
+  "console.log(xhr.responseText);"
+  "if (xhr.readyState == 4 && xhr.status == 200) {"
+  "document.getElementById('prg').innerHTML = xhr.responseText;"
+  "} else if (xhr.readyState == 4 && xhr.status == 500) {"
+  "document.getElementById('prg').innerHTML = 'Upload error:' + xhr.responseText;"
+  "} else {"
+  "document.getElementById('prg').innerHTML = 'Unknown error';"
+  "}"
+  "};"
+  "xhr.upload.addEventListener('progress', function(evt) {"
+  "if (evt.lengthComputable) {"
+  "var per = Math.round(evt.loaded / evt.total * 100);"
+  "if(per == 100) document.getElementById('prg').innerHTML = 'Updating...';"
+  "else document.getElementById('prg').innerHTML = 'Upload progress: ' + per + '%';"
+  "document.getElementById('bar').style.width = per + '%';"
+  "}"
+  "}, false);"
+  "xhr.send( data );"
+  "});" // btn click
+  ""
+  "</script>";
+
+// #########################################
 // Navigation
 // #########################################
 
@@ -106,7 +174,7 @@ String backupIndex =
   "<h3>Backup</h3>"
   "<a href='/backup.json'><button type='button' class='btn'>Download JSON</button></a>"
   "<h3>Restore</h3>"
-  "TODO"
+  + xhrUpload
   + footer;
 
 // #########################################
@@ -179,69 +247,8 @@ String configIndex =
 /* Server Index Page */
 String uploadIndex =
   header +
-  "<input type='file' name='update' id='file'>"
-  "<label id='file-input' for='file'>Choose file...</label>"
-  "<input id='btn' type='submit' class=btn value='Update'>"
-  "<br><br>"
-  "<div id='prg'></div>"
-  "<br><div id='prgbar'><div id='bar'></div></div><br></form>"
-  "<script>"
-  ""
-  "function hide(x) { x.style.display = 'none'; }"
-  "function show(x) { x.style.display = 'block'; }"
-  ""
-  "hide(document.getElementById('file'));"
-  "hide(document.getElementById('prgbar'));"
-  "hide(document.getElementById('prg'));"
-  ""
-  "var fileName = '';"
-  "document.getElementById('file').addEventListener('change', function(e){"
-  "fileNameParts = e.target.value.split('\\\\');"
-  "fileName = fileNameParts[fileNameParts.length-1];"
-  "console.log(fileName);"
-  "document.getElementById('file-input').innerHTML = fileName;"
-  "});"
-  ""
-  "document.getElementById('btn').addEventListener('click', function(e){"
-  "e.preventDefault();"
-  "if (fileName == '') { alert('No file choosen'); return; }"
-  "console.log('Start upload...');"
-  ""
-  "var form = document.getElementsByTagName('form')[0];"
-  "var data = new FormData(form);"
-  "console.log(data);"
-  //https://developer.mozilla.org/en-US/docs/Web/API/FormData/values
-  "for (var v of data.values()) { console.log(v); }"
-  ""
-  "hide(document.getElementById('file-input'));"
-  "hide(document.getElementById('btn'));"
-  "show(document.getElementById('prgbar'));"
-  "show(document.getElementById('prg'));"
-  ""
-  "var xhr = new XMLHttpRequest();"
-  "xhr.open( 'POST', '/recover', true );"
-  "xhr.onreadystatechange = function(s) {"
-  "console.log(xhr.responseText);"
-  "if (xhr.readyState == 4 && xhr.status == 200) {"
-  "document.getElementById('prg').innerHTML = 'Device reboots now!';"
-  "} else if (xhr.readyState == 4 && xhr.status == 500) {"
-  "document.getElementById('prg').innerHTML = 'Update error:' + xhr.responseText;"
-  "} else {"
-  "document.getElementById('prg').innerHTML = 'Uknown error';"
-  "}"
-  "};"
-  "xhr.upload.addEventListener('progress', function(evt) {"
-  "if (evt.lengthComputable) {"
-  "var per = Math.round(evt.loaded / evt.total * 100);"
-  "if(per == 100) document.getElementById('prg').innerHTML = 'Flashing...';"
-  "else document.getElementById('prg').innerHTML = 'Upload progress: ' + per + '%';"
-  "document.getElementById('bar').style.width = per + '%';"
-  "}"
-  "}, false);"
-  "xhr.send( data );"
-  "});" // btn click
-  ""
-  "</script>" + footer;
+  xhrUpload +
+  footer;
 
 // #########################################
 // Privacy
@@ -675,6 +682,7 @@ void startServer() {
     html.replace("{action}", "");
     html.replace("{version}", OBSVersion);
     html.replace("{subtitle}", "Backup & Restore");
+    html.replace("{method}", "/restore");
 
     server.send(200, "text/html", html);
   });
@@ -690,9 +698,9 @@ void startServer() {
   });
 
   // Handling uploading firmware file
-  server.on("/recover", HTTP_POST, []() {
+  server.on("/restore", HTTP_POST, []() {
     Serial.println("Send response...");
-    server.send(200, "text/plain", "Update successful!");
+    server.send(200, "text/plain", "Restore successful!");
   }, []() {
     //Serial.println("Recover Config...");
     HTTPUpload& upload = server.upload();
@@ -707,11 +715,14 @@ void startServer() {
 
     } else if (upload.status == UPLOAD_FILE_END) {
       jsonToConfig(json_buffer, config);
-      //printConfig(config);
+
+      Serial.println(F("Print config file..."));
+      printConfig(config);
+
+      Serial.println(F("Saving configuration..."));
+      saveConfiguration(configFilename, config);
     }
   });
-
-
 
   // ### Wifi ###
 
@@ -801,6 +812,7 @@ void startServer() {
     html.replace("{action}", ""); // Handled by XHR
     html.replace("{version}", OBSVersion);
     html.replace("{subtitle}", "Update Firmware");
+    html.replace("{method}", "/update");
 
     server.send(200, "text/html", html);
   });
@@ -811,7 +823,7 @@ void startServer() {
     if (Update.hasError()) {
       server.send(500, "text/plain", "Update fails!");
     } else {
-      server.send(200, "text/plain", "Update successful!");
+      server.send(200, "text/plain", "Update successful! Device reboots now!");
       delay(250);
       ESP.restart();
     }
