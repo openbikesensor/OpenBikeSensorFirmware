@@ -86,8 +86,13 @@ String rebootIndex =
 
 String wifiSettingsIndex =
   header +
+  "<script>"
+  "function resetPassword() { document.getElementById('pass').value = ''; }"
+  "</script>"
+  "SSID"
   "<input name=ssid placeholder='ssid' value='{ssid}'>"
-  "<input name=pass placeholder='password' type='Password'>"
+  "Password"
+  "<input id=pass name=pass placeholder='password' type='Password' value='{password}' onclick='resetPassword()'>"
   "<input type=submit class=btn value=Save>"
   + footer;
 
@@ -390,7 +395,9 @@ void wifiAction() {
 
   // Write always both data, thus the WIFI config can be overwritten
   strlcpy(config.ssid, ssid.c_str(), sizeof(config.ssid));
-  strlcpy(config.password, pass.c_str(), sizeof(config.password));
+  if(strcmp(pass.c_str(), "******") != 0) {
+    strlcpy(config.password, pass.c_str(), sizeof(config.password));
+  }
 
   // Print and safe config
   Serial.println(F("Print config file..."));
@@ -660,6 +667,11 @@ void startServer() {
     html.replace("{subtitle}", "Wifi Config");
     // Form data
     html.replace("{ssid}", config.ssid);
+    if(sizeof(config.password) > 0) {
+      html.replace("{password}", "******");
+    } else {
+      html.replace("{password}", "");
+    }
 
     server.send(200, "text/html", html);
   });
