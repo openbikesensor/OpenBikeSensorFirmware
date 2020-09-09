@@ -23,8 +23,19 @@
 // Helper: StaticJsonDocument --> Config
 void jsonDocumentToConfig(DynamicJsonDocument &doc, Config &config)
 {
+
   // Copy values from the JsonDocument to the Config
   config.numSensors = doc["numSensors"] | 2;
+
+  // Removes all elements from the offset-vector
+  int vector_size = config.sensorOffsets.size();
+  for (size_t idx = 0; idx < vector_size; idx++)
+  {
+    // Rease always from the beginning of the vector
+    config.sensorOffsets.erase(0);
+  }
+
+  // Append new values to the offset-vector
   for (size_t idx = 0; idx < config.numSensors; ++idx)
   {
     uint8_t offsetTemp;
@@ -32,6 +43,10 @@ void jsonDocumentToConfig(DynamicJsonDocument &doc, Config &config)
     offsetTemp = doc[offsetString] | 35;
     config.sensorOffsets.push_back(offsetTemp);
   }
+
+  //Serial.println(">>>");
+  //Serial.println(config.sensorOffsets.size());
+  //Serial.println("<<<");
 
   strlcpy(config.ssid, doc["ssid"] | "Freifunk", sizeof(config.ssid));
   strlcpy(config.password, doc["password"] | "Freifunk", sizeof(config.password));

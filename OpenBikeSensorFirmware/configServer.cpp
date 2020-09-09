@@ -172,7 +172,7 @@ String wifiSettingsIndex =
 String backupIndex =
   header +
   "<h3>Backup</h3>"
-  "<a href='/backup.json'><button type='button' class='btn'>Download JSON</button></a>"
+  "<a href='/backup.json'><button type='button' class='btn'>Download</button></a>"
   "<h3>Restore</h3>"
   + xhrUpload
   + footer;
