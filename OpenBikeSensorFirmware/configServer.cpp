@@ -886,6 +886,9 @@ void startServer() {
       //{
       //  config.privacyAreas.erase(idx);
       //}
+      // DEBUG #104 !!!
+      //Serial.print(F("VECTOR SIZE:"));
+      //Serial.println(config.privacyAreas.size());
 
       // Workaround for #104: Create a new vector and add existing elements
       Vector<PrivacyArea> privacyAreas;
@@ -900,16 +903,11 @@ void startServer() {
       config.numPrivacyAreas = config.privacyAreas.size();
     }
 
-    // DEBUG #104 !!!
-    Serial.print(F("VECTOR SIZE:"));
-    Serial.println(config.privacyAreas.size());
-    printConfig(config); // This crashes the ESP
-
     // Print and save configuration
-    //Serial.println(F("Print config file..."));
-    //printConfig(config);
-    //Serial.println(F("Saving configuration..."));
-    //saveConfiguration(configFilename, config);
+    Serial.println(F("Print config file..."));
+    printConfig(config); // This crashes the ESP
+    Serial.println(F("Saving configuration..."));
+    saveConfiguration(configFilename, config);
 
     String s = "<meta http-equiv='refresh' content='0; url=/privacy'><a href='/privacy'> Go Back </a>";
     server.send(200, "text/html", s);
