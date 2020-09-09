@@ -157,7 +157,7 @@ String navigationIndex =
   "<input type=button onclick=window.location.href='/settings/general' class=btn value='General'>"
   "<input type=button onclick=window.location.href='/settings/privacy' class=btn value='Privacy Zones'>"
   "<input type=button onclick=window.location.href='/settings/wifi' class=btn value='Wifi'>"
-  "<input type=button onclick=window.location.href='/backup' class=btn value='Backup &amp; Restore'>"
+  "<input type=button onclick=window.location.href='/settings/backup' class=btn value='Backup &amp; Restore'>"
   "<h3>Maintenance</h3>"
   "<input type=button onclick=window.location.href='/update' class=btn value='Update Firmware'>"
   "<input type=button onclick=window.location.href='/upload' class=btn value='Upload Tracks'>"
@@ -198,7 +198,7 @@ String backupIndex =
   header +
   "<p>This backups and restores the device configration incl. the Basic Config, Privacy Zones and Wifi Settings.</p>"
   "<h3>Backup</h3>"
-  "<a href='/backup.json'><button type='button' class='btn'>Download</button></a>"
+  "<a href='/settings/backup.json'><button type='button' class='btn'>Download</button></a>"
   "<h3>Restore</h3>"
   + xhrUpload
   + footer;
@@ -286,7 +286,7 @@ String privacyIndexPrefix =
 
 String privacyIndexPostfix =
   "<input type=submit onclick=window.location.href='/' class=btn value=Save>"
-  "<input type=button onclick=window.location.href='/makecurrentlocationprivate' class=btn value='Make current location private'>"
+  "<input type=button onclick=window.location.href='' class=btn value='Make current location private'>"
   "</form>"
   + style;
 
@@ -652,18 +652,18 @@ void startServer() {
   });
   // ### Backup ###
 
-  server.on("/backup", HTTP_GET, []() {
+  server.on("/settings/backup", HTTP_GET, []() {
     String html = backupIndex;
     // Header
     html.replace("{action}", "");
     html.replace("{version}", OBSVersion);
     html.replace("{subtitle}", "Backup & Restore");
-    html.replace("{method}", "/restore");
+    html.replace("{method}", "/settings/restore");
 
     server.send(200, "text/html", html);
   });
 
-  server.on("/backup.json", HTTP_GET, []() {
+  server.on("/settings/backup.json", HTTP_GET, []() {
     String json = configToJson(config);
     String version = (String) OBSVersion;
 
@@ -674,7 +674,7 @@ void startServer() {
   });
 
   // Handling uploading firmware file
-  server.on("/restore", HTTP_POST, []() {
+  server.on("/settings/restore", HTTP_POST, []() {
     Serial.println("Send response...");
     server.send(200, "text/plain", "Restore successful!");
   }, []() {
@@ -704,12 +704,12 @@ void startServer() {
   // ### Wifi ###
   // ###############################################################
 
-  server.on("/wifi_action", wifiAction);
+  server.on("/settings/wifi/action", wifiAction);
 
   server.on("/settings/wifi", HTTP_GET, []() {
     String html = wifiSettingsIndex;
     // Header
-    html.replace("{action}", "/wifi_action");
+    html.replace("{action}", "/settings/wifi/action");
     html.replace("{version}", OBSVersion);
     html.replace("{subtitle}", "Wifi");
     // Form data
@@ -727,12 +727,12 @@ void startServer() {
   // ### Config ###
   // ###############################################################
 
-  server.on("/config_action", configAction);
+  server.on("/settings/general/action", configAction);
 
   server.on("/settings/general", HTTP_GET, []() {
     String html = configIndex;
     // Header
-    html.replace("{action}", "/config_action");
+    html.replace("{action}", "/settings/general/action");
     html.replace("{version}", OBSVersion);
     html.replace("{subtitle}", "General");
     // Form data
@@ -836,7 +836,7 @@ void startServer() {
   // ###############################################################
 
   // Make current location private
-  server.on("/makecurrentlocationprivate", HTTP_GET, []() {
+  server.on("", HTTP_GET, []() {
 
     String html = makeCurrentLocationPrivateIndex;
     // Header
