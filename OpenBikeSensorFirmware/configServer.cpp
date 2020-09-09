@@ -137,9 +137,9 @@ String navigationIndex =
   "<input type=button onclick=window.location.href='/privacy' class=btn value='Privacy Zones'>"
   "<input type=button onclick=window.location.href='/wifi' class=btn value='Wifi Settings'>"
   "<input type=button onclick=window.location.href='/update' class=btn value='Update Firmware'>"
-  "<input type=button onclick=window.location.href='/reboot' class=btn value='Reboot'>"
-  "<input type=button onclick=window.location.href='/upload' class=btn value='Upload'>"
+  "<input type=button onclick=window.location.href='/upload' class=btn value='Upload Tracks'>"
   "<input type=button onclick=window.location.href='/backup' class=btn value='Backup and Restore'>"
+  "<input type=button onclick=window.location.href='/reboot' class=btn value='Reboot'>"
   + footer;
 
 // #########################################
