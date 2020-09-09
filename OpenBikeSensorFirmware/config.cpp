@@ -28,8 +28,8 @@ void jsonDocumentToConfig(DynamicJsonDocument &doc, Config &config)
   config.numSensors = doc["numSensors"] | 2;
 
   // Removes all elements from the offset-vector
-  int vector_size = config.sensorOffsets.size();
-  for (size_t idx = 0; idx < vector_size; idx++)
+  int vector_size_offset = config.sensorOffsets.size();
+  for (size_t idx = 0; idx < vector_size_offset; idx++)
   {
     // Rease always from the beginning of the vector
     config.sensorOffsets.erase(0);
@@ -63,6 +63,18 @@ void jsonDocumentToConfig(DynamicJsonDocument &doc, Config &config)
   config.privacyConfig = doc["privacyConfig"] | AbsolutePrivacy;
 
   config.numPrivacyAreas = doc["numPrivacyAreas"] | 0;
+
+
+
+  // Removes all elements from the privacy-vector
+  int vector_size_privacy = config.privacyAreas.size();
+  for (size_t idx = 0; idx < vector_size_privacy; idx++)
+  {
+    // Rease always from the beginning of the vector
+    config.privacyAreas.erase(0);
+  }
+
+  // Append new values to the privacy-vector
   for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx)
   {
     PrivacyArea pricacyAreaTemp;
@@ -81,6 +93,7 @@ void jsonDocumentToConfig(DynamicJsonDocument &doc, Config &config)
     // Radius
     String radiusString = "privacyRadius" + String(idx);
     pricacyAreaTemp.radius = doc[radiusString] | 500.0;
+
     config.privacyAreas.push_back(pricacyAreaTemp);
   }
 
