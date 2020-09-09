@@ -255,10 +255,9 @@ String uploadIndex =
 // #########################################
 // Privacy
 // #########################################
-String privacyIndexPrefix =
-  "<form name=privacyForm action=/privacy_action>"
-  "<h1>OpenBikeSensor Privacy Settings</h1>";
 
+String privacyIndexPrefix =
+  header;
 
 String privacyIndexPostfix =
   "<input type=submit onclick=window.location.href='/' class=btn value=Save>"
@@ -271,6 +270,8 @@ String makeCurrentLocationPrivateIndex =
   header +
   "<div>Making current location private, waiting for fix. Press device button to cancel.</div>"
   + footer;
+
+// #########################################
 
 void handle_NotFound() {
   server.send(404, "text/plain", "Not found");
@@ -840,7 +841,16 @@ void startServer() {
   });
 
   server.on("/privacy", HTTP_GET, []() {
-    String privacyPage = privacyIndexPrefix;
+
+    String html = privacyIndexPrefix;
+
+    // Header
+    html.replace("{action}", "/privacy_action");
+    html.replace("{version}", OBSVersion);
+    html.replace("{subtitle}", "Privacy Settings");
+
+    String privacyPage = html;
+
 
     for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx)
     {
@@ -865,8 +875,6 @@ void startServer() {
       privacyPage += "Longitude<input name=newlongitude placeholder='9.12345'>";
     }
     privacyPage += "Radius (m)<input name=newradius placeholder='radius' value='500'>";
-
-    // privacyPage += "Erase Area<input name=erase placeholder='0'>";
 
     privacyPage += privacyIndexPostfix;
     server.send(200, "text/html", privacyPage);
