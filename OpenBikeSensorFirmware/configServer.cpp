@@ -36,7 +36,7 @@ String json_buffer;
 String style =
   "<style>"
   "#file-input,input, button {width:100%;height:44px;border-radius:4px;margin:10px auto;font-size:15px;}"
-  "input, button {background:#f1f1f1;border:0;padding:0 15px;text-align:center;}"
+  "input, button, a.back {background:#f1f1f1;border:0;padding:0 15px;text-align:center;}"
   "body {background:#3498db;font-family:sans-serif;font-size:14px;color:#777}"
   "#file-input {padding:0 5;border:1px solid #ddd;line-height:44px;text-align:left;display:block;cursor:pointer}"
   "#bar,#prgbar {background-color:#f1f1f1;border-radius:10px}"
@@ -47,17 +47,36 @@ String style =
   "h3 {padding:10px 0;margin-top:10px;margin-bottom:10px;border-top:3px solid #3498db;border-bottom:3px solid #3498db;}"
   "h1 a {color:#777}"
   "hr { border-top:1px solid #CCC;margin-left:10px;margin-right:10px;}"
-  ".deletePrivacyArea {color: black; text-decoration: none; font-size: x-large;}"
+  ".deletePrivacyArea, a.back {color: black; text-decoration: none; font-size: x-large;}"
   ".deletePrivacyArea:hover {color: red;}"
+  "a.previous {text-decoration: none; display: inline-block; padding: 8px 16px;background-color: #f1f1f1; color: black;border-radius: 50%; font-family: Verdana, sans-serif; font-size: 18px}"
+  "a.previous:hover {background-color: #ddd; color: black;}"
   "</style>";
 
+String previous = "<a href='/' class='previous'>&#8249;</a>";
+
 String header =
+  "<script>"
+  "window.onload = function() {"
+  "  console.log(window.location.pathname);"
+  "  if (window.location.pathname == '/') {"
+  "    console.log('Hide previous');"
+  "    document.querySelectorAll('.previous')[0].style.display = 'none';"
+  "  } else {"
+  "    console.log('Show previous');"
+  "    document.querySelectorAll('.previous')[0].style.display = '';"
+  "  }"
+  "}"
+  "</script>"
+  ""
   "<form action='{action}'>"
   "<h1><a href='/'>OpenBikeSensor</a></h1>"
   "<h2>{subtitle}</h2>"
-  "<p>Firmware version: {version}</p>";
+  "<p>Firmware version: {version}</p>"
+  + previous;
 
-String footer = "</form>" + style;
+String footer = "</form>"
+  + style;
 
 // #########################################
 // Upload form
@@ -138,7 +157,7 @@ String navigationIndex =
   "<input type=button onclick=window.location.href='/wifi' class=btn value='Wifi Settings'>"
   "<input type=button onclick=window.location.href='/update' class=btn value='Update Firmware'>"
   "<input type=button onclick=window.location.href='/upload' class=btn value='Upload Tracks'>"
-  "<input type=button onclick=window.location.href='/backup' class=btn value='Backup and Restore'>"
+  "<input type=button onclick=window.location.href='/backup' class=btn value='Backup &amp; Restore Config'>"
   "<input type=button onclick=window.location.href='/reboot' class=btn value='Reboot'>"
   + footer;
 
@@ -160,6 +179,7 @@ String wifiSettingsIndex =
   "<script>"
   "function resetPassword() { document.getElementById('pass').value = ''; }"
   "</script>"
+  "<h3>Settings</h3>"
   "SSID"
   "<input name=ssid placeholder='ssid' value='{ssid}'>"
   "Password"
@@ -173,6 +193,7 @@ String wifiSettingsIndex =
 
 String backupIndex =
   header +
+  "<p>This backups and restores the device configration incl. the Config, Privacy Zones and Wifi Settings.</p>"
   "<h3>Backup</h3>"
   "<a href='/backup.json'><button type='button' class='btn'>Download</button></a>"
   "<h3>Restore</h3>"
@@ -249,6 +270,7 @@ String configIndex =
 /* Server Index Page */
 String uploadIndex =
   header +
+  "<h3>Update</h3>" +
   xhrUpload +
   footer;
 
