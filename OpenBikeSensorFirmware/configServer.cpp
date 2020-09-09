@@ -46,6 +46,7 @@ String style =
   "h1,h2, h3 {padding:0;margin:0;}"
   "h3 {padding:10px 0;margin-top:10px;margin-bottom:10px;border-top:3px solid #3498db;border-bottom:3px solid #3498db;}"
   "h1 a {color:#777}"
+  "h2 {margin-top:5px}"
   "hr { border-top:1px solid #CCC;margin-left:10px;margin-right:10px;}"
   ".deletePrivacyArea, a.back {color: black; text-decoration: none; font-size: x-large;}"
   ".deletePrivacyArea:hover {color: red;}"
@@ -152,12 +153,14 @@ String xhrUpload =   "<input type='file' name='upload' id='file'>"
 
 String navigationIndex =
   header +
-  "<input type=button onclick=window.location.href='/config' class=btn value='Config'>"
-  "<input type=button onclick=window.location.href='/privacy' class=btn value='Privacy Zones'>"
-  "<input type=button onclick=window.location.href='/wifi' class=btn value='Wifi Settings'>"
+  "<h3>Settings</h3>"
+  "<input type=button onclick=window.location.href='/settings/general' class=btn value='General'>"
+  "<input type=button onclick=window.location.href='/settings/privacy' class=btn value='Privacy Zones'>"
+  "<input type=button onclick=window.location.href='/settings/wifi' class=btn value='Wifi'>"
+  "<input type=button onclick=window.location.href='/backup' class=btn value='Backup &amp; Restore'>"
+  "<h3>Maintenance</h3>"
   "<input type=button onclick=window.location.href='/update' class=btn value='Update Firmware'>"
   "<input type=button onclick=window.location.href='/upload' class=btn value='Upload Tracks'>"
-  "<input type=button onclick=window.location.href='/backup' class=btn value='Backup &amp; Restore Config'>"
   "<input type=button onclick=window.location.href='/reboot' class=btn value='Reboot'>"
   + footer;
 
@@ -193,7 +196,7 @@ String wifiSettingsIndex =
 
 String backupIndex =
   header +
-  "<p>This backups and restores the device configration incl. the Config, Privacy Zones and Wifi Settings.</p>"
+  "<p>This backups and restores the device configration incl. the Basic Config, Privacy Zones and Wifi Settings.</p>"
   "<h3>Backup</h3>"
   "<a href='/backup.json'><button type='button' class='btn'>Download</button></a>"
   "<h3>Restore</h3>"
@@ -422,7 +425,7 @@ void configAction() {
   Serial.println(F("Saving configuration..."));
   saveConfiguration(configFilename, config);
 
-  String s = "<meta http-equiv='refresh' content='0; url=/'><a href='/'> Go Back </a>";
+  String s = "<meta http-equiv='refresh' content='0; url=/settings/general'><a href='/settings/general'>Go Back</a>";
   server.send(200, "text/html", s); //Send web page
 }
 
@@ -450,7 +453,7 @@ void wifiAction() {
   Serial.println(F("Saving configuration..."));
   saveConfiguration(configFilename, config);
 
-  String s = "<meta http-equiv='refresh' content='0; url=/'><a href='/'> Go Back </a>";
+  String s = "<meta http-equiv='refresh' content='0; url=/settings/wifi'><a href='/settings/wifi'>Go Back</a>";
   server.send(200, "text/html", s);
 }
 
@@ -467,7 +470,7 @@ void privacyAction() {
     addNewPrivacyArea(atof(latitude.c_str()), atof(longitude.c_str()), atoi(radius.c_str()));
   }
 
-  String s = "<meta http-equiv='refresh' content='0; url=/privacy'><a href='/privacy'> Go Back </a>";
+  String s = "<meta http-equiv='refresh' content='0; url=/settings/privacy'><a href='/settings/privacy'>Go Back</a>";
   server.send(200, "text/html", s);
 }
 
@@ -597,7 +600,7 @@ void startServer() {
 
     html.replace("{action}", "");
     html.replace("{version}", OBSVersion);
-    html.replace("{subtitle}", "Upload");
+    html.replace("{subtitle}", "Upload Tracks");
 
     File root = SDFileSystem.open("/");
     if (!root)
@@ -703,12 +706,12 @@ void startServer() {
 
   server.on("/wifi_action", wifiAction);
 
-  server.on("/wifi", HTTP_GET, []() {
+  server.on("/settings/wifi", HTTP_GET, []() {
     String html = wifiSettingsIndex;
     // Header
     html.replace("{action}", "/wifi_action");
     html.replace("{version}", OBSVersion);
-    html.replace("{subtitle}", "Wifi Config");
+    html.replace("{subtitle}", "Wifi");
     // Form data
     html.replace("{ssid}", config.ssid);
     if(sizeof(config.password) > 0) {
@@ -726,12 +729,12 @@ void startServer() {
 
   server.on("/config_action", configAction);
 
-  server.on("/config", HTTP_GET, []() {
+  server.on("/settings/general", HTTP_GET, []() {
     String html = configIndex;
     // Header
     html.replace("{action}", "/config_action");
     html.replace("{version}", OBSVersion);
-    html.replace("{subtitle}", "Config");
+    html.replace("{subtitle}", "General");
     // Form data
     html.replace("{offset1}", String(config.sensorOffsets[0]));
     html.replace("{offset2}", String(config.sensorOffsets[1]));
@@ -857,19 +860,19 @@ void startServer() {
       delay(300);
     }
 
-    String s = "<meta http-equiv='refresh' content='0; url=/'><a href='/'> Go Back </a>";
+    String s = "<meta http-equiv='refresh' content='0; url=/settings/privacy'><a href='/settings/privacy'>Go Back</a>";
     server.send(200, "text/html", s); //Send web page
 
   });
 
-  server.on("/privacy", HTTP_GET, []() {
+  server.on("/settings/privacy", HTTP_GET, []() {
 
     String html = privacyIndexPrefix;
 
     // Header
     html.replace("{action}", "/privacy_action");
     html.replace("{version}", OBSVersion);
-    html.replace("{subtitle}", "Privacy Settings");
+    html.replace("{subtitle}", "Privacy Zones");
 
     String privacyPage = html;
 
@@ -880,7 +883,7 @@ void startServer() {
       privacyPage += "Latitude <input name=latitude" + String(idx) + " placeholder='latitude' value='" + String(config.privacyAreas[idx].latitude, 7) + "'disabled>";
       privacyPage += "Longitude <input name=longitude" + String(idx) + "placeholder='longitude' value='" + String(config.privacyAreas[idx].longitude, 7) + "'disabled>";
       privacyPage += "Radius (m) <input name=radius" + String(idx) + "placeholder='radius' value='" + String(config.privacyAreas[idx].radius) + "'disabled>";
-      privacyPage += "<a class=\"deletePrivacyArea\" href=\"privacy_delete?erase=" + String(idx) + "\">&#x2716;</a>";
+      privacyPage += "<a class=\"deletePrivacyArea\" href=\"/privacy_delete?erase=" + String(idx) + "\">&#x2716;</a>";
     }
 
     privacyPage += "<h3>New Privacy Area</h3>";
@@ -939,7 +942,7 @@ void startServer() {
     Serial.println(F("Saving configuration..."));
     saveConfiguration(configFilename, config);
 
-    String s = "<meta http-equiv='refresh' content='0; url=/privacy'><a href='/privacy'> Go Back </a>";
+    String s = "<meta http-equiv='refresh' content='0; url=/settings/privacy'><a href='/settings/privacy'>Go Back</a>";
     server.send(200, "text/html", s);
   });
 
