@@ -83,7 +83,7 @@ String footer = "</form>"
 // Upload form
 // #########################################
 
-String xhrUpload =   "<input type='file' name='upload' id='file'>"
+String xhrUpload =   "<input type='file' name='upload' id='file' accept='{accept}'>"
   "<label id='file-input' for='file'>Choose file...</label>"
   "<input id='btn' type='submit' class=btn value='Upload'>"
   "<br><br>"
@@ -659,6 +659,7 @@ void startServer() {
     html.replace("{version}", OBSVersion);
     html.replace("{subtitle}", "Backup & Restore");
     html.replace("{method}", "/settings/restore");
+    html.replace("{accept}", ".json");
 
     server.send(200, "text/html", html);
   });
@@ -795,6 +796,7 @@ void startServer() {
     html.replace("{version}", OBSVersion);
     html.replace("{subtitle}", "Update Firmware");
     html.replace("{method}", "/update");
+    html.replace("{accept}", ".bin");
 
     server.send(200, "text/html", html);
   });
