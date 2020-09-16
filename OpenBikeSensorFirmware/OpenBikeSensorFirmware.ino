@@ -149,11 +149,19 @@ void setup() {
   // Handle SD
   //##############################################################
 
+  // Counter, how often the SD card will be read before writing an error on the display
+  int8_t sdCount = 25;
+
   displayTest->showTextOnGrid(2, 2, "SD...");
   while (!SD.begin())
   {
+    if(sdCount > 0) {
+      sdCount--;
+    } else {
+      displayTest->showTextOnGrid(2, 2, "SD... error");
+    }
     Serial.println("Card Mount Failed");
-    delay(20);
+    //delay(100);
   }
   delay(333); // Added for user experience
   Serial.println("Card Mount Succeeded");
