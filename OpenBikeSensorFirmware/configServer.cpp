@@ -286,7 +286,7 @@ String privacyIndexPrefix =
 
 String privacyIndexPostfix =
   "<input type=submit onclick=window.location.href='/' class=btn value=Save>"
-  "<input type=button onclick=window.location.href='' class=btn value='Make current location private'>"
+  "<input type=button onclick=window.location.href='/settings/privacy/makeCurrentLocationPrivate' class=btn value='Make current location private'>"
   "</form>"
   + style;
 
@@ -838,7 +838,7 @@ void startServer() {
   // ###############################################################
 
   // Make current location private
-  server.on("", HTTP_GET, []() {
+  server.on("/settings/privacy/makeCurrentLocationPrivate", HTTP_GET, []() {
 
     String html = makeCurrentLocationPrivateIndex;
     // Header
@@ -847,6 +847,7 @@ void startServer() {
     html.replace("{subtitle}", "MakeLocationPrivate");
 
     server.send(200, "text/html", html);
+
     bool validGPSData = false;
     buttonState = digitalRead(PushButton);
     while (!validGPSData && (buttonState == LOW))
@@ -862,8 +863,9 @@ void startServer() {
       delay(300);
     }
 
-    String s = "<meta http-equiv='refresh' content='0; url=/settings/privacy'><a href='/settings/privacy'>Go Back</a>";
-    server.send(200, "text/html", s); //Send web page
+    // #77 - 200 cannot be send twice via HTTP
+    //String s = "<meta http-equiv='refresh' content='0; url=/settings/privacy'><a href='/settings/privacy'>Go Back</a>";
+    //server.send(200, "text/html", s); //Send web page
 
   });
 
