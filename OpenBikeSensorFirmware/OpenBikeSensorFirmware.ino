@@ -26,6 +26,7 @@ const char *OBSVersion = "v0.1.9-dev";
 
 // PINs
 const int PushButton = 2;
+const uint8_t GPS_POWER = 12;
 
 int confirmedMeasurements = 0;
 int numButtonReleased = 0;
@@ -90,6 +91,8 @@ void setup() {
   //##############################################################
 
   pinMode(PushButton, INPUT);
+  pinMode(GPS_POWER, OUTPUT);
+  digitalWrite(GPS_POWER,HIGH);
 
   //##############################################################
   // Setup display
