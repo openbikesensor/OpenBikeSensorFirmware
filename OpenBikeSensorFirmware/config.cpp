@@ -62,8 +62,10 @@ void jsonDocumentToConfig(DynamicJsonDocument &doc, Config &config)
   config.confirmationTimeWindow = doc["confirmationTimeWindow"] | 5;
   config.privacyConfig = doc["privacyConfig"] | AbsolutePrivacy;
 
-  config.numPrivacyAreas = doc["numPrivacyAreas"] | 0;
-
+  config.privacyConfig = doc["privacyConfig"] | AbsolutePrivacy;
+#ifdef DEVELOP
+  config.devConfig = doc["devConfig"] | 0;
+#endif
 
 
   // Removes all elements from the privacy-vector
@@ -128,7 +130,9 @@ DynamicJsonDocument configToJsonDocument(const Config &config) {
   doc["GPSConfig"] = config.GPSConfig;
   doc["confirmationTimeWindow"] = config.confirmationTimeWindow;
   doc["privacyConfig"] = config.privacyConfig;
-
+#ifdef DEVELOP
+  doc["devConfig"] = config.devConfig;
+#endif
   doc["numPrivacyAreas"] = config.numPrivacyAreas;
   for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx)
   {
@@ -237,6 +241,11 @@ void printConfig(Config &config) {
   Serial.print(F("displayConfig = "));
   Serial.println(String(config.displayConfig));
 
+#ifdef DEVELOP
+  Serial.print(F("devConfig = "));
+  Serial.println(String(config.devConfig));
+#endif
+
   Serial.print(F("GPSConfig = "));
   Serial.println(String(config.GPSConfig));
 
@@ -254,6 +263,13 @@ void printConfig(Config &config) {
 
   Serial.print(F("SSID = "));
   Serial.println(String(config.ssid));
+
+#ifdef DEVELOP
+  if(config.devConfig & PrintWifiPassword) {
+    Serial.print(F("password = "));
+    Serial.println(String(config.password));
+  }
+#endif
 
   Serial.print(F("numPrivacyAreas = "));
   Serial.println(String(config.numPrivacyAreas));
@@ -276,18 +292,7 @@ void printConfig(Config &config) {
     Serial.println(radiusString);
   }
 
-#ifdef dev
-  Serial.print(F("password = "));
-  Serial.println(String(config.password));
-#endif
-
   Serial.println(F("################################"));
-
-  /*
-    doc["displayConfig"] = config.displayConfig;
-
-  */
-
 
 
   /*

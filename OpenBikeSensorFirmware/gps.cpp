@@ -69,7 +69,7 @@ void randomOffset(PrivacyArea &p) {
   //Offset in m
   int dLatM = sin(offsetAngle / 180.0 * M_PI ) * offsetDistance;
   int dLongM = cos(offsetAngle / 180.0 * M_PI ) * offsetDistance;
-#ifdef dev
+#ifdef DEVELOP
   Serial.print(F("offsetAngle = "));
   Serial.println(String(offsetAngle));
 
@@ -88,7 +88,7 @@ void randomOffset(PrivacyArea &p) {
   //Coordinate offsets in radians
   double dLat = dLatM / R;
   double dLon = dLongM / (R * cos(M_PI * p.latitude / 180.0));
-#ifdef dev
+#ifdef DEVELOP
   Serial.print(F("dLat = "));
   Serial.println(String(dLat, 5));
 
@@ -98,7 +98,7 @@ void randomOffset(PrivacyArea &p) {
   //OffsetPosition, decimal degrees
   p.transformedLatitude = p.latitude + dLat * 180.0 / M_PI;
   p.transformedLongitude = p.longitude + dLon * 180.0 / M_PI ;
-#ifdef dev
+#ifdef DEVELOP
   Serial.print(F("p.transformedLatitude = "));
   Serial.println(String(p.transformedLatitude, 5));
 

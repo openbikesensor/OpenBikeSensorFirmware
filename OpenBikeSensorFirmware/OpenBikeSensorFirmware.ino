@@ -105,9 +105,6 @@ void setup() {
     Serial.println("Display not found");
   }
   displayTest = new SSD1306DisplayDevice;
-#ifdef DEVELOP
-  //displayTest->showGrid(true);
-#endif
 
   displayTest->showLogo(true);
   displayTest->showTextOnGrid(2, 0, OBSVersion);
@@ -133,6 +130,12 @@ void setup() {
 
   // Save the config. This ensures, that new options exist as well
   saveConfiguration(configFilename, config);
+
+#ifdef DEVELOP
+  if(config.devConfig & ShowGrid) {
+    displayTest->showGrid(true);
+  }
+#endif
 
   if (config.displayConfig & DisplayInvert) displayTest->invert();
   else displayTest->normalDisplay();

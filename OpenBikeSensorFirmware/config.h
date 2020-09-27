@@ -68,6 +68,9 @@ struct Config {
   char hostname[64];
   char obsUserID[64];
   int displayConfig;
+#ifdef DEVELOP
+  int devConfig;
+#endif
   int GPSConfig;
   int privacyConfig;
   int satsForFix;
@@ -76,6 +79,13 @@ struct Config {
   uint8_t numPrivacyAreas;
   Vector<PrivacyArea> privacyAreas;
 };
+
+#ifdef DEVELOP
+enum DevOptions {
+  ShowGrid = 0x01,
+  PrintWifiPassword = 0x02
+};
+#endif
 
 void printConfig(Config &config);
 

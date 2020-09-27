@@ -162,6 +162,16 @@ String navigationIndex =
   "<input type=button onclick=window.location.href='/update' class=btn value='Update Firmware'>"
   "<input type=button onclick=window.location.href='/upload' class=btn value='Upload Tracks'>"
   "<input type=button onclick=window.location.href='/reboot' class=btn value='Reboot'>"
+  "{dev}"
+  + footer;
+
+// #########################################
+// Development
+// #########################################
+
+String development =
+  "<h3>Development</h3>"
+  "<input type=button onclick=window.location.href='/settings/development' class=btn value='Development'>"
   + footer;
 
 // #########################################
@@ -201,6 +211,19 @@ String backupIndex =
   "<a href='/settings/backup.json'><button type='button' class='btn'>Download</button></a>"
   "<h3>Restore</h3>"
   + xhrUpload
+  + footer;
+
+// #########################################
+// Development Index
+// #########################################
+
+String devIndex =
+  header +
+  "<h3>Display</h3>"
+  "Show Grid<br><input type='checkbox' name='showGrid' {showGrid}>"
+  "Print WLAN password to serial<br><input type='checkbox' name='printWifiPassword' {printWifiPassword}>"
+  "<input type=submit class=btn value=Save>"
+  "<hr>"
   + footer;
 
 // #########################################
@@ -301,6 +324,36 @@ String makeCurrentLocationPrivateIndex =
 void handle_NotFound() {
   server.send(404, "text/plain", "Not found");
 }
+
+// #########################################
+
+#ifdef DEVELOP
+
+void devAction() {
+
+  String showGrid = server.arg("showGrid");
+  if (showGrid == "on")
+    config.devConfig |= ShowGrid;
+  else
+    config.devConfig &= ~ShowGrid;
+
+  String printWifiPassword = server.arg("printWifiPassword");
+  if (printWifiPassword == "on")
+    config.devConfig |= PrintWifiPassword;
+  else
+    config.devConfig &= ~PrintWifiPassword;
+
+  // Print and safe config
+  Serial.println(F("Print config file..."));
+  printConfig(config);
+  Serial.println(F("Saving configuration..."));
+  saveConfiguration(configFilename, config);
+
+  String s = "<meta http-equiv='refresh' content='0; url=/settings/development'><a href='/settings/development'>Go Back</a>";
+  server.send(200, "text/html", s); //Send web page
+}
+
+#endif
 
 void configAction() {
 
@@ -431,20 +484,22 @@ void configAction() {
 
 void wifiAction() {
   String ssid = server.arg("ssid");
-  String pass = server.arg("pass");
+  String password = server.arg("pass");
 
   Serial.print("ssid:");
   Serial.println(ssid);
 
-#ifdef dev
-  Serial.print(F("pass = "));
-  Serial.println(pass);
+#ifdef DEVELOP
+  if(config.devConfig & PrintWifiPassword) {
+    Serial.print(F("password = "));
+    Serial.println(password);
+  }
 #endif
 
   // Write always both data, thus the WIFI config can be overwritten
   strlcpy(config.ssid, ssid.c_str(), sizeof(config.ssid));
-  if(strcmp(pass.c_str(), "******") != 0) {
-    strlcpy(config.password, pass.c_str(), sizeof(config.password));
+  if(strcmp(password.c_str(), "******") != 0) {
+    strlcpy(config.password, password.c_str(), sizeof(config.password));
   }
 
   // Print and safe config
@@ -458,13 +513,14 @@ void wifiAction() {
 }
 
 void privacyAction() {
+
   String latitude = server.arg("newlatitude");
   latitude.replace(",", ".");
   String longitude = server.arg("newlongitude");
   longitude.replace(",", ".");
   String radius = server.arg("newradius");
 
-  if ( (latitude != "") && (longitude != "") && (radius != ""))
+  if ( (latitude != "") && (longitude != "") && (radius != "") )
   {
     Serial.println(F("Valid privacyArea!"));
     addNewPrivacyArea(atof(latitude.c_str()), atof(longitude.c_str()), atoi(radius.c_str()));
@@ -643,14 +699,23 @@ void startServer() {
 
   server.on("/", HTTP_GET, []() {
     String html = navigationIndex;
+
     // Header
     html.replace("{action}", "");
     html.replace("{version}", OBSVersion);
     html.replace("{subtitle}", "Navigation");
+#ifdef DEVELOP
+    html.replace("{dev}", development);
+#else
+    html.replace("{dev}", "");
+#endif
 
     server.send(200, "text/html", html);
   });
+
+  // ###############################################################
   // ### Backup ###
+  // ###############################################################
 
   server.on("/settings/backup", HTTP_GET, []() {
     String html = backupIndex;
@@ -723,6 +788,32 @@ void startServer() {
 
     server.send(200, "text/html", html);
   });
+
+  // ###############################################################
+  // ### Development Options ###
+  // ###############################################################
+
+#ifdef DEVELOP
+  server.on("/settings/development/action", devAction);
+
+  server.on("/settings/development", HTTP_GET, []() {
+    String html = devIndex;
+    // Header
+    html.replace("{action}", "/settings/development/action"); // Handled by XHR
+    html.replace("{version}", OBSVersion);
+    html.replace("{subtitle}", "Development Settings");
+
+    // SHOWGRID
+    bool showGrid = config.devConfig & ShowGrid;
+    html.replace("{showGrid}", showGrid ? "checked" : "");
+
+    bool printWifiPassword = config.devConfig & PrintWifiPassword;
+    html.replace("{printWifiPassword}", printWifiPassword ? "checked" : "");
+
+    server.send(200, "text/html", html);
+  });
+
+#endif
 
   // ###############################################################
   // ### Config ###
