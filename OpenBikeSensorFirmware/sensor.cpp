@@ -20,37 +20,7 @@
 
 #include "sensor.h"
 
-/*
-  void DistanceSensor::getMinDistance(uint8_t& min_distance) {
-  float dist;
-  dist = getDistance() - float(m_offset);
-  if ((dist > 0.0) && (dist < float(min_distance)))
-  {
-    min_distance = uint8_t(dist);
-  }
-  else
-  {
-    dist = 0.0;
-  }
-  delay(20);
-  }
-
-  float HCSR04DistanceSensor::getDistance() {
-  float duration = 0;
-  float distance = 0;
-
-  digitalWrite(m_triggerPin, LOW);
-  delayMicroseconds(2);
-  noInterrupts();
-  digitalWrite(m_triggerPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(m_triggerPin, LOW);
-  duration = pulseIn(m_echoPin, HIGH, m_timeout); // Erfassung - Dauer in Mikrosekunden
-  interrupts();
-
-  distance = (duration / 2) / 29.1; // Distanz in CM
-  return (distance);
-  }*/
+const uint8_t MICRO_SEC_TO_CM_DIVIDER = 58; // sound speed 340M/S, 2 times back and forward
 
 void HCSR04SensorManager::registerSensor(HCSR04SensorInfo sensorInfo) {
   m_sensors.push_back(sensorInfo);
@@ -112,82 +82,44 @@ void HCSR04SensorManager::getDistanceSimple(int idx) {
 }
 
 void HCSR04SensorManager::getDistance(int idx) {
-  const uint32_t max_timeout_us = clockCyclesToMicroseconds(UINT_MAX);
-  m_sensors[idx].timeout_cycles = microsecondsToClockCycles(m_sensors[idx].timeout);
-  if (m_sensors[idx].timeout > max_timeout_us)
-  {
-    m_sensors[idx].timeout = max_timeout_us;
-    //Serial.write(" Setting timeout to max value");
-  }
+  HCSR04SensorInfo sensor = m_sensors[idx];
 
-  digitalWrite(m_sensors[idx].triggerPin, LOW);
-
+  digitalWrite(sensor.triggerPin, LOW);
   delayMicroseconds(2);
+
   noInterrupts();
-
-  digitalWrite(m_sensors[idx].triggerPin, HIGH);
-  m_sensors[idx].awaitingEcho = false;
-  m_sensors[idx].echoBegins = false;
-  m_sensors[idx].echoReceived = false;
-  m_sensors[idx].duration = 0;
-
+  digitalWrite(sensor.triggerPin, HIGH);
   delayMicroseconds(10);
-
-  digitalWrite(m_sensors[idx].triggerPin, LOW);
-  m_sensors[idx].start_cycle_count = xthal_get_ccount();
-
-  bool state = HIGH;
-  while (!(m_sensors[idx].echoReceived))
-  {
-    if (xthal_get_ccount() - m_sensors[idx].start_cycle_count > m_sensors[idx].timeout_cycles)
-    {
-      m_sensors[idx].awaitingEcho = true;
-      m_sensors[idx].echoBegins = true;
-      m_sensors[idx].echoReceived = true;
-      m_sensors[idx].duration = 0;
-    }
-    if (m_sensors[idx].awaitingEcho == false)
-    {
-      if (digitalRead(m_sensors[idx].echoPin) != (state))
-      {
-        m_sensors[idx].awaitingEcho = true;
-        //Serial.write(" awaiting Echo ! ");
-      }
-    }
-    else if ( (m_sensors[idx].awaitingEcho == true) && (m_sensors[idx].echoBegins == false))
-    {
-      if (digitalRead(m_sensors[idx].echoPin) == (state))
-      {
-        m_sensors[idx].pulse_start_cycle_count = xthal_get_ccount();
-        m_sensors[idx].echoBegins = true;
-        //Serial.write(" Echo begins! ");
-      }
-    }
-    else if ( (m_sensors[idx].awaitingEcho == true) && (m_sensors[idx].echoBegins == true) && (m_sensors[idx].echoReceived == false) )
-    {
-      if (digitalRead(m_sensors[idx].echoPin) != (state))
-      {
-        m_sensors[idx].duration = clockCyclesToMicroseconds(xthal_get_ccount() - m_sensors[idx].pulse_start_cycle_count);
-        m_sensors[idx].distance = (m_sensors[idx].duration / 2) / 29.1; // Distanz in CM
-        float dist;
-        dist = m_sensors[idx].distance - float(m_sensors[idx].offset);
-        if ((dist > 0.0) && (dist < float(sensorValues[idx])))
-        {
-          sensorValues[idx] = uint8_t(dist);
-        }
-        m_sensors[idx].echoReceived = true;
-        //Serial.write(" Echo received! ");
-      }
-    }
-  }
+  digitalWrite(sensor.triggerPin, LOW);
+  unsigned long durationMicroSec = pulseIn(sensor.echoPin, HIGH, sensor.timeout);
   interrupts();
 
-  if (sensorValues[idx] < m_sensors[idx].minDistance)
-  {
-    m_sensors[idx].minDistance = sensorValues[idx];
-    m_sensors[idx].lastMinUpdate = millis();
+  if (durationMicroSec > 0) {
+    sensor.duration = durationMicroSec;
+    sensor.distance = durationMicroSec / MICRO_SEC_TO_CM_DIVIDER;
+    if (sensor.distance > sensor.offset)
+    {
+      sensorValues[idx] = sensor.distance - sensor.offset;
+    }
+    else
+    {
+      sensorValues[idx] = 0; // would be negative if corrected
+    }
+    Serial.printf("Raw sensor[%d] distance read %3d cm -> %3d cm\n", idx, sensor.distance, sensorValues[idx]);
+  }
+  else
+  { // timeout
+    sensor.duration = 0;
+    sensor.distance = MAX_SENSOR_VALUE;
+    sensorValues[idx] = MAX_SENSOR_VALUE;
+    Serial.printf("Raw sensor[%d] distance timeout -> %3d cm\n", idx, sensor.distance);
   }
 
+  if (sensorValues[idx] < sensor.minDistance)
+  {
+    sensor.minDistance = sensorValues[idx];
+    sensor.lastMinUpdate = millis();
+  }
 }
 
 
@@ -195,111 +127,10 @@ void HCSR04SensorManager::getDistances() {
   // Loop all sensors, measure distance one after one
   for (size_t idx = 0; idx < m_sensors.size(); ++idx)
   {
+    if (idx != 0) {
+      // should be added elsewhere?
+      delayMicroseconds(60); // avoid reverberation signals
+    }
     getDistance(idx);
-    delayMicroseconds(10);
   }
 }
-
-
-/*
-  void HCSR04SensorManager::getDistancesParallel() {
-  const uint32_t max_timeout_us = clockCyclesToMicroseconds(UINT_MAX);
-  for (size_t idx = 0; idx < m_sensors.size(); ++idx)
-  {
-    m_sensors[idx].timeout_cycles = microsecondsToClockCycles(m_sensors[idx].timeout);
-    if (m_sensors[idx].timeout > max_timeout_us)
-    {
-      m_sensors[idx].timeout = max_timeout_us;
-      //Serial.write(" Setting timeout to max value");
-    }
-  }
-  for (size_t idx = 0; idx < m_sensors.size(); ++idx)
-  {
-    digitalWrite(m_sensors[idx].triggerPin, LOW);
-  }
-  delayMicroseconds(2);
-  noInterrupts();
-  for (size_t idx = 0; idx < m_sensors.size(); ++idx)
-  {
-    digitalWrite(m_sensors[idx].triggerPin, HIGH);
-    m_sensors[idx].awaitingEcho = false;
-    m_sensors[idx].echoBegins = false;
-    m_sensors[idx].echoReceived = false;
-    m_sensors[idx].duration = 0;
-  }
-  //Serial.write(" Sensors triggered ");
-  delayMicroseconds(10);
-  for (size_t idx = 0; idx < m_sensors.size(); ++idx)
-  {
-    digitalWrite(m_sensors[idx].triggerPin, LOW);
-    m_sensors[idx].start_cycle_count = xthal_get_ccount();
-  }
-  bool allEchoesIn = false;
-  bool state = HIGH;
-  while (!(allEchoesIn))
-  {
-    for (size_t idx = 0; idx < m_sensors.size(); ++idx)
-    {
-      if (xthal_get_ccount() - m_sensors[idx].start_cycle_count > m_sensors[idx].timeout_cycles)
-      {
-        m_sensors[idx].awaitingEcho = true;
-        m_sensors[idx].echoBegins = true;
-        m_sensors[idx].echoReceived = true;
-        m_sensors[idx].duration = 0;
-      }
-      if (m_sensors[idx].awaitingEcho == false)
-      {
-        if (digitalRead(m_sensors[idx].echoPin) != (state))
-        {
-          m_sensors[idx].awaitingEcho = true;
-          //Serial.write(" awaiting Echo ! ");
-        }
-      }
-      else if ( (m_sensors[idx].awaitingEcho == true) && (m_sensors[idx].echoBegins == false))
-      {
-        if (digitalRead(m_sensors[idx].echoPin) == (state))
-        {
-          m_sensors[idx].pulse_start_cycle_count = xthal_get_ccount();
-          m_sensors[idx].echoBegins = true;
-          //Serial.write(" Echo begins! ");
-        }
-      }
-      else if ( (m_sensors[idx].awaitingEcho == true) && (m_sensors[idx].echoBegins == true) && (m_sensors[idx].echoReceived == false) )
-      {
-        if (digitalRead(m_sensors[idx].echoPin) != (state))
-        {
-          m_sensors[idx].duration = clockCyclesToMicroseconds(xthal_get_ccount() - m_sensors[idx].pulse_start_cycle_count);
-          m_sensors[idx].distance = (m_sensors[idx].duration / 2) / 29.1; // Distanz in CM
-          float dist;
-          dist = m_sensors[idx].distance - float(m_sensors[idx].offset);
-          if ((dist > 0.0) && (dist < float(sensorValues[idx])))
-          {
-            sensorValues[idx] = uint8_t(dist);
-          }
-          m_sensors[idx].echoReceived = true;
-          //Serial.write(" Echo received! ");
-        }
-      }
-    }
-
-    allEchoesIn = true;
-    for (size_t idx = 0; idx < m_sensors.size(); ++idx)
-    {
-      allEchoesIn = allEchoesIn && m_sensors[idx].echoReceived;
-    }
-  }
-  for (size_t idx = 0; idx < m_sensors.size(); ++idx)
-  {
-    unsigned long currentTime = millis();
-    if(currentTime > m_sensors[idx].lastMinUpdate +1000)
-    {
-      m_sensors[idx].minDistance = MAX_SENSOR_VALUE;
-    }
-    if(sensorValues[idx] < m_sensors[idx].minDistance)
-    {
-      m_sensors[idx].minDistance = sensorValues[idx];
-      m_sensors[idx].lastMinUpdate = currentTime;
-    }
-  }
-  }
-*/
