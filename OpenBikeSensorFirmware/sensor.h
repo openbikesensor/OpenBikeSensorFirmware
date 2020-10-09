@@ -34,12 +34,6 @@ struct HCSR04SensorInfo
   uint8_t offset = 0;
   uint8_t distance = 0;
   uint32_t duration;
-  bool awaitingEcho = false;
-  bool echoBegins = false;
-  bool echoReceived = false;
-  uint32_t pulse_start_cycle_count;
-  uint32_t timeout_cycles;
-  uint32_t start_cycle_count;
   char* sensorLocation;
   uint8_t minDistance=MAX_SENSOR_VALUE;
   unsigned long lastMinUpdate=0;
