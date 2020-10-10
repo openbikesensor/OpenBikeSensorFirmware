@@ -20,6 +20,29 @@
 
 #include "sensor.h"
 
+/*
+   See also http://www.sengpielaudio.com/Rechner-schallgeschw.htm (german)
+    - ignord all deltas after 3 digits, there are different sources
+    - speed of sound depends on ambient temperature
+      temp, Celsius  speed, m/sec    int factor     dist error introduced with fix int factor of 58
+                     (331.5+(0.6*t)) (2000/speed)   (seed@58 / spped) - 1
+       35            352.1           (57)           -2.1% (-3.2cm bei 150cm)
+       30            349.2
+       25            346.3
+	     22.4          344.82           58             0
+       20            343.4
+       15            340.5
+	     12.5          338.98           (59)          +1.7% (2.6cm bei 150)
+       10            337.5
+       5             334.5
+       0             331.5            (60)          +4%  (6cm bei 150cm)
+      −5             328.5
+      −10            325.4
+      −15            322.3
+
+      can so confirm that my math is correct?
+      can so confirm that we accept this error rate?
+*/
 const uint8_t MICRO_SEC_TO_CM_DIVIDER = 58; // sound speed 340M/S, 2 times back and forward
 
 void HCSR04SensorManager::registerSensor(HCSR04SensorInfo sensorInfo) {
