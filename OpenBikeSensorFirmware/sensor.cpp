@@ -105,43 +105,42 @@ void HCSR04SensorManager::getDistanceSimple(int idx) {
 }
 
 void HCSR04SensorManager::getDistance(int idx) {
-  HCSR04SensorInfo sensor = m_sensors[idx];
-
-  digitalWrite(sensor.triggerPin, LOW);
+  digitalWrite(m_sensors[idx].triggerPin, LOW);
   delayMicroseconds(2);
 
   noInterrupts();
-  digitalWrite(sensor.triggerPin, HIGH);
+  digitalWrite(m_sensors[idx].triggerPin, HIGH);
   delayMicroseconds(10);
-  digitalWrite(sensor.triggerPin, LOW);
-  unsigned long durationMicroSec = pulseIn(sensor.echoPin, HIGH, sensor.timeout);
+  digitalWrite(m_sensors[idx].triggerPin, LOW);
+  // if we stop due to timeout the distance meassurement might still be in progress!
+  unsigned long durationMicroSec = pulseIn(m_sensors[idx].echoPin, HIGH, m_sensors[idx].timeout);
   interrupts();
 
   if (durationMicroSec > 0) {
-    sensor.duration = durationMicroSec;
-    sensor.distance = durationMicroSec / MICRO_SEC_TO_CM_DIVIDER;
-    if (sensor.distance > sensor.offset)
+    m_sensors[idx].duration = durationMicroSec;
+    m_sensors[idx].distance = durationMicroSec / MICRO_SEC_TO_CM_DIVIDER;
+    if (m_sensors[idx].distance > m_sensors[idx].offset)
     {
-      sensorValues[idx] = sensor.distance - sensor.offset;
+      sensorValues[idx] = m_sensors[idx].distance - m_sensors[idx].offset;
     }
     else
     {
       sensorValues[idx] = 0; // would be negative if corrected
     }
-    Serial.printf("Raw sensor[%d] distance read %3d cm -> %3d cm\n", idx, sensor.distance, sensorValues[idx]);
+    Serial.printf("Raw sensor[%d] distance read %3d cm -> %3d cm\n", idx, m_sensors[idx].distance, sensorValues[idx]);
   }
   else
   { // timeout
-    sensor.duration = 0;
-    sensor.distance = MAX_SENSOR_VALUE;
+    m_sensors[idx].duration = 0;
+    m_sensors[idx].distance = MAX_SENSOR_VALUE;
     sensorValues[idx] = MAX_SENSOR_VALUE;
-    Serial.printf("Raw sensor[%d] distance timeout -> %3d cm\n", idx, sensor.distance);
+    Serial.printf("Raw sensor[%d] distance timeout -> %3d cm\n", idx, m_sensors[idx].distance);
   }
 
-  if (sensorValues[idx] < sensor.minDistance)
+  if (sensorValues[idx] <= m_sensors[idx].minDistance)
   {
-    sensor.minDistance = sensorValues[idx];
-    sensor.lastMinUpdate = millis();
+    m_sensors[idx].minDistance = sensorValues[idx];
+    m_sensors[idx].lastMinUpdate = millis();
   }
 }
 
@@ -152,7 +151,7 @@ void HCSR04SensorManager::getDistances() {
   {
     if (idx != 0) {
       // should be added elsewhere?
-      delayMicroseconds(60); // avoid reverberation signals
+      delayMicroseconds(60 * 1000); // avoid reverberation signals (60ms as in https://de.aliexpress.com/item/32737648330.html )
     }
     getDistance(idx);
   }
