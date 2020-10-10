@@ -19,6 +19,7 @@
 */
 
 #include "sensor.h"
+#include "FunctionalInterrupt.h"
 
 /*
    See also http://www.sengpielaudio.com/Rechner-schallgeschw.htm (german)
@@ -45,12 +46,23 @@
 */
 const uint8_t MICRO_SEC_TO_CM_DIVIDER = 58; // sound speed 340M/S, 2 times back and forward
 
+const uint32_t MAX_DURATION_MICRO_SEC = 255 * 58;
+
+/*
+  https://de.aliexpress.com/item/32737648330.html and other sources give 60ms here
+  I've seen durations in 70ms area with the elder sensors so I use 75 here might be
+  room to tune this to 60 back if needed.
+  See comment below in getDistances how to tune.
+*/
+const long SENSOR_QUIET_PERIOD_MICROS = 75 * 1000;
+
 void HCSR04SensorManager::registerSensor(HCSR04SensorInfo sensorInfo) {
   m_sensors.push_back(sensorInfo);
   pinMode(sensorInfo.triggerPin, OUTPUT);
   pinMode(sensorInfo.echoPin, INPUT);
   sensorValues.push_back(0); //make sure sensorValues has same size as m_sensors
   assert(sensorValues.size() == m_sensors.size());
+  attachInterrupt(sensorInfo.echoPin, std::bind(&HCSR04SensorManager::isr, this, m_sensors.size() - 1), CHANGE);
 }
 
 void HCSR04SensorManager::reset(bool resetMinDistance) {
@@ -73,86 +85,134 @@ void HCSR04SensorManager::setOffsets(Vector<uint8_t> offsets) {
       m_sensors[idx].offset = 0;
     }
   }
-  setTimeouts();
 }
 
 void HCSR04SensorManager::setTimeouts() {
+  long maxTimeout = 0;
   for (size_t idx = 0; idx < m_sensors.size(); ++idx)
   {
-    m_sensors[idx].timeout = 15000 + (int)(m_sensors[idx].offset * 29.1 * 2);
+    m_sensors[idx].timeout = 15000 + (int)(m_sensors[idx].offset * MICRO_SEC_TO_CM_DIVIDER);
+    if (m_sensors[idx].timeout > maxTimeout) {
+      maxTimeout = m_sensors[idx].timeout;
+    }
   }
+  timeout = maxTimeout;
 }
 
-void HCSR04SensorManager::getDistanceSimple(int idx) {
-  float duration = 0;
-  float distance = 0;
+void HCSR04SensorManager::getDistances() {
+  // should be already low
+  setSensorTriggersToLow();
 
-  digitalWrite(m_sensors[idx].triggerPin, LOW);
-  delayMicroseconds(2);
-  noInterrupts();
-  digitalWrite(m_sensors[idx].triggerPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(m_sensors[idx].triggerPin, LOW);
-  duration = pulseIn(m_sensors[idx].echoPin, HIGH, m_sensors[idx].timeout); // Erfassung - Dauer in Mikrosekunden
-  interrupts();
+  sensorQuietPeriod();
 
-  distance = (duration / 2) / 29.1; // Distanz in CM
-  if (distance < m_sensors[idx].minDistance)
+  // send "trigger"
+  for (size_t idx = 0; idx < m_sensors.size(); ++idx)
   {
-    m_sensors[idx].minDistance = distance;
-    m_sensors[idx].lastMinUpdate = millis();
+    /* you can tune SENSOR_QUIET_PERIOD_MICROS here:
+    if (m_sensors[idx].duration == 0) {
+      Serial.printf("Raw sensor[%d] duration still 0! increase SENSOR_QUIET_PERIOD_MICROS, there might be still measurements ongoing.", idx);
+    }
+    */
+    digitalWrite(m_sensors[idx].triggerPin, HIGH);
+    m_sensors[idx].duration = 0;
   }
+  delayMicroseconds(10);
+  setSensorTriggersToLow();
+
+  waitForEchosOrTimeout();
+
+  // collect results take care for overflows
+  collectSensorResults();
 }
 
-void HCSR04SensorManager::getDistance(int idx) {
-  digitalWrite(m_sensors[idx].triggerPin, LOW);
-  delayMicroseconds(2);
+void HCSR04SensorManager::collectSensorResults() {
+  for (size_t idx = 0; idx < m_sensors.size(); ++idx)
+  {
+    const uint32_t duration = m_sensors[idx].duration;
 
-  noInterrupts();
-  digitalWrite(m_sensors[idx].triggerPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(m_sensors[idx].triggerPin, LOW);
-  // if we stop due to timeout the distance meassurement might still be in progress!
-  unsigned long durationMicroSec = pulseIn(m_sensors[idx].echoPin, HIGH, m_sensors[idx].timeout);
-  interrupts();
-
-  if (durationMicroSec > 0) {
-    m_sensors[idx].duration = durationMicroSec;
-    m_sensors[idx].distance = durationMicroSec / MICRO_SEC_TO_CM_DIVIDER;
-    if (m_sensors[idx].distance > m_sensors[idx].offset)
-    {
-      sensorValues[idx] = m_sensors[idx].distance - m_sensors[idx].offset;
+    if (duration == 0 || duration > m_sensors[idx].timeout || duration >= MAX_DURATION_MICRO_SEC) {
+      sensorValues[idx] = MAX_SENSOR_VALUE;
+      m_sensors[idx].distance = MAX_SENSOR_VALUE;
     }
     else
     {
-      sensorValues[idx] = 0; // would be negative if corrected
+      const uint8_t dist = duration / MICRO_SEC_TO_CM_DIVIDER;
+      m_sensors[idx].distance = dist;
+      if (dist > m_sensors[idx].offset)
+      {
+        sensorValues[idx] = dist - m_sensors[idx].offset;
+      }
+      else
+      {
+        sensorValues[idx] = 0; // would be negative if corrected
+      }
     }
-    Serial.printf("Raw sensor[%d] distance read %3d cm -> %3d cm\n", idx, m_sensors[idx].distance, sensorValues[idx]);
-  }
-  else
-  { // timeout
-    m_sensors[idx].duration = 0;
-    m_sensors[idx].distance = MAX_SENSOR_VALUE;
-    sensorValues[idx] = MAX_SENSOR_VALUE;
-    Serial.printf("Raw sensor[%d] distance timeout -> %3d cm\n", idx, m_sensors[idx].distance);
-  }
+    Serial.printf("Raw sensor[%d] distance read %03ucm, duration: %lu us\n", idx, m_sensors[idx].distance, m_sensors[idx].duration);
 
-  if (sensorValues[idx] <= m_sensors[idx].minDistance)
-  {
-    m_sensors[idx].minDistance = sensorValues[idx];
-    m_sensors[idx].lastMinUpdate = millis();
+    if (sensorValues[idx] < m_sensors[idx].minDistance)
+    {
+      m_sensors[idx].minDistance = sensorValues[idx];
+      m_sensors[idx].lastMinUpdate = millis();
+    }
   }
 }
 
-
-void HCSR04SensorManager::getDistances() {
-  // Loop all sensors, measure distance one after one
+void HCSR04SensorManager::setSensorTriggersToLow() {
   for (size_t idx = 0; idx < m_sensors.size(); ++idx)
   {
-    if (idx != 0) {
-      // should be added elsewhere?
-      delayMicroseconds(60 * 1000); // avoid reverberation signals (60ms as in https://de.aliexpress.com/item/32737648330.html )
+    digitalWrite(m_sensors[idx].triggerPin, LOW);
+  }
+}
+
+void HCSR04SensorManager::waitForEchosOrTimeout() {
+  unsigned long end = micros() + timeout;
+  while (end > micros()) {
+    boolean allFinished = true;
+    for (size_t idx = 0; idx < m_sensors.size(); ++idx)
+    {
+      allFinished &= (m_sensors[idx].duration != 0);
     }
-    getDistance(idx);
+    if (allFinished)
+    {
+      break;
+    }
+    NOP();
+  }
+}
+
+/*
+ * Do not start measurements to fast. If time is used elsewhere we do not
+ * force a delay here, but if getDistances() is called with little time delay, we
+ * wait here for max SENSOR_QUIET_PERIOD_MICROS since last measurement start for
+ * the sensors to settle.
+ */
+void HCSR04SensorManager::sensorQuietPeriod() {
+  // calculate latest last start timne and add quiet period.
+  long lastStart = 0;
+  for (size_t idx = 0; idx < m_sensors.size(); ++idx)
+  {
+    // to be faster we could limit this to sensors with duration == 0, but this will force echos etc.
+    if (/* m_sensors[idx].duration == 0 && */ m_sensors[idx].start > lastStart) {
+      lastStart = m_sensors[idx].start;
+    }
+  }
+
+  // avoid reverberation signals (60ms as in https://de.aliexpress.com/item/32737648330.html )
+  long delayTill = lastStart + SENSOR_QUIET_PERIOD_MICROS;
+  while (delayTill > micros()) {
+    NOP();
+  }
+}
+
+void IRAM_ATTR HCSR04SensorManager::isr(int idx) {
+  HCSR04SensorInfo* sensor = &m_sensors[idx];
+
+  switch(digitalRead(sensor->echoPin)) {
+    case HIGH:
+      sensor->start = micros();
+      break;
+    case LOW:
+      sensor->duration = micros() - sensor->start;
+      break;
   }
 }

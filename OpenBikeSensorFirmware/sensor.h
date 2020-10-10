@@ -33,10 +33,11 @@ struct HCSR04SensorInfo
   int timeout = 15000;
   uint8_t offset = 0;
   uint8_t distance = 0;
-  uint32_t duration;
   char* sensorLocation;
   uint8_t minDistance=MAX_SENSOR_VALUE;
   unsigned long lastMinUpdate=0;
+  volatile unsigned long start = 0;
+  volatile unsigned long duration = 0;
 };
 
 class HCSR04SensorManager
@@ -55,72 +56,12 @@ class HCSR04SensorManager
   protected:
 
   private:
-    void getDistance(int idx);
-    void getDistanceSimple(int idx);
+    void sensorQuietPeriod();
+    void waitForEchosOrTimeout();
+    void setSensorTriggersToLow();
+    void collectSensorResults();
+    void isr(int idx);
+    int timeout = 15000;
 };
-
-/*
-class Sensor
-{
-  public:
-    Sensor() {}
-    virtual ~Sensor() {}
-    virtual void init() = 0;
-
-  protected:
-
-  private:
-};
-
-class DistanceSensor : public Sensor
-{
-  public:
-    DistanceSensor() : Sensor() {
-    }
-    ~DistanceSensor() {}
-    virtual void init()
-    {
-
-    }
-    void getMinDistance(uint8_t& min_distance);
-    virtual float getDistance() = 0;
-    void setOffset(uint8_t offset) {
-      m_offset = offset;
-    }
-  protected:
-    uint8_t m_offset = 0;
-  private:
-    unsigned long m_measureInterval = 1000;
-
-};
-
-class HCSR04DistanceSensor : public DistanceSensor
-{
-  public:
-    HCSR04DistanceSensor() : DistanceSensor() {
-      init();
-    }
-    HCSR04DistanceSensor(int echoPin, int triggerPin) {
-      m_echoPin = echoPin;
-      m_triggerPin = triggerPin;
-      init();
-    }
-    ~HCSR04DistanceSensor() {}
-    void init() {
-      pinMode(m_triggerPin, OUTPUT);
-      pinMode(m_echoPin, INPUT);
-      digitalWrite(m_triggerPin, HIGH);
-    }
-    float getDistance();
-    void setOffset(uint8_t offset) {
-      m_offset = offset;
-      m_timeout = 15000 + (int)(m_offset * 29.1 * 2);
-    }
-  protected:
-  private:
-    int m_triggerPin = 15;
-    int m_echoPin = 4;
-    int m_timeout = 15000;
-};*/
 
 #endif
