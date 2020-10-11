@@ -58,7 +58,7 @@ const long SENSOR_QUIET_PERIOD_MICROS = 75 * 1000;
 void HCSR04SensorManager::registerSensor(HCSR04SensorInfo sensorInfo) {
   m_sensors.push_back(sensorInfo);
   pinMode(sensorInfo.triggerPin, OUTPUT);
-  pinMode(sensorInfo.echoPin, INPUT);
+  pinMode(sensorInfo.echoPin, INPUT_PULLUP); // hint from https://youtu.be/xwsT-e1D9OY?t=354
   sensorValues.push_back(0); //make sure sensorValues has same size as m_sensors
   assert(sensorValues.size() == m_sensors.size());
   attachInterrupt(sensorInfo.echoPin, std::bind(&HCSR04SensorManager::isr, this, m_sensors.size() - 1), CHANGE);
