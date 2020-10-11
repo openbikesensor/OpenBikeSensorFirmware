@@ -26,6 +26,8 @@
 #include "globals.h"
 #include "vector.h"
 
+const uint8_t MEDIAN_DISTANCE_MEASURES = 3;
+
 struct HCSR04SensorInfo
 {
   int triggerPin = 15;
@@ -33,6 +35,8 @@ struct HCSR04SensorInfo
   int timeout = 15000;
   uint8_t offset = 0;
   uint8_t distance = 0;
+  uint8_t distances[MEDIAN_DISTANCE_MEASURES] = { MAX_SENSOR_VALUE, MAX_SENSOR_VALUE, MAX_SENSOR_VALUE };
+  uint8_t nextDistance = 0;
   char* sensorLocation;
   uint8_t minDistance=MAX_SENSOR_VALUE;
   unsigned long lastMinUpdate=0;
@@ -61,6 +65,9 @@ class HCSR04SensorManager
     void setSensorTriggersToLow();
     void collectSensorResults();
     void isr(int idx);
+    uint8_t medianMeasure(size_t idx, uint8_t value);
+    uint8_t median(uint8_t a, uint8_t b, uint8_t c);
+
     int timeout = 15000;
 };
 
