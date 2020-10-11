@@ -45,7 +45,8 @@
 */
 const uint8_t MICRO_SEC_TO_CM_DIVIDER = 58; // sound speed 340M/S, 2 times back and forward
 
-const uint32_t MAX_DURATION_MICRO_SEC = 255 * 58;
+const uint32_t MAX_DURATION_MICRO_SEC = 255 * MICRO_SEC_TO_CM_DIVIDER;
+const uint32_t MIN_SURATION_MICRO_SEC = 19 * MICRO_SEC_TO_CM_DIVIDER;
 
 /*
   https://de.aliexpress.com/item/32737648330.html and other sources give 60ms here
@@ -124,7 +125,7 @@ void HCSR04SensorManager::collectSensorResults() {
   {
     const unsigned long duration = m_sensors[idx].duration;
     uint8_t dist;
-    if (duration == 0 || duration > m_sensors[idx].timeout || duration >= MAX_DURATION_MICRO_SEC)
+    if (duration < MIN_SURATION_MICRO_SEC || duration >= MAX_DURATION_MICRO_SEC)
     {
       dist = MAX_SENSOR_VALUE;
     }
