@@ -247,14 +247,13 @@ void IRAM_ATTR HCSR04SensorManager::isr(int idx) {
   if (sensor->duration == 0) // ignore unexpected signals
   {
     const unsigned long time = micros();
-    switch(digitalRead(sensor->echoPin))
+    if (HIGH == digitalRead(sensor->echoPin))
     {
-      case HIGH:
-        sensor->start = time;
-        break;
-      case LOW:
-        sensor->duration = time - sensor->start;
-        break;
+      sensor->start = time;
+    }
+    else // LOW
+    {
+      sensor->duration = time - sensor->start;
     }
   }
 }
