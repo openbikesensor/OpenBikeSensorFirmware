@@ -30,8 +30,8 @@ const uint8_t MEDIAN_DISTANCE_MEASURES = 3;
 
 struct HCSR04SensorInfo
 {
-  int triggerPin = 15;
-  int echoPin = 4;
+  uint8_t triggerPin = 15;
+  uint8_t echoPin = 4;
   int timeout = 15000;
   uint8_t offset = 0;
   uint8_t distance = 0;
