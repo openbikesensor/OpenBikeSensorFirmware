@@ -36,7 +36,8 @@ enum DisplayOptions {
   DisplaySwapSensors = 0x20, // 32
   DisplayInvert = 0x40,     // 64
   DisplayFlip = 0x80,       // 128
-  DisplayNumConfirmed = 0x100 //256
+  DisplayNumConfirmed = 0x100, //256
+  DisplayDistanceDetail = 0x200 // 512
 };
 
 enum GPSOptions {
@@ -62,7 +63,7 @@ struct PrivacyArea {
 
 struct Config {
   uint8_t numSensors;
-  Vector<uint8_t> sensorOffsets;
+  Vector<uint16_t> sensorOffsets;
   char ssid[32];
   char password[64];
   char hostname[64];

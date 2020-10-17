@@ -270,6 +270,8 @@ String configIndex =
   "Show Velocity<input type='checkbox' name='displayVELO' {displayVELO}>"
   "<hr>"
   "Show Confirmation Stats<input type='checkbox' name='displayNumConfirmed' {displayNumConfirmed}>"
+  "<hr>"
+  "Show nerd details for distance sensors <input type='checkbox' name='displayDistanceDetail' {displayDistanceDetail}>"
   ""
   "<h3>Privacy Options</h3>"
   "<label for='location'>Dont record at all in privacy areas</label>"
@@ -371,6 +373,7 @@ void configAction() {
   String displayInvert = server.arg("displayInvert") == "on" ? "on" : "off";
   String displayFlip = server.arg("displayFlip") == "on" ? "on" : "off";
   String displayNumConfirmed = server.arg("displayNumConfirmed") == "on" ? "on" : "off";
+  String displayDistanceDetail = server.arg("displayDistanceDetail") == "on" ? "on" : "off";
 
   String validGPS = server.arg("validGPS");
 
@@ -429,6 +432,11 @@ void configAction() {
     config.displayConfig |= DisplayNumConfirmed;
   else
     config.displayConfig &= ~DisplayNumConfirmed;
+
+  if (displayDistanceDetail == "on")
+    config.displayConfig |= DisplayDistanceDetail;
+  else
+    config.displayConfig &= ~DisplayDistanceDetail;
 
   if (validGPS == "validLocation")
     config.GPSConfig = ValidLocation;
@@ -844,6 +852,7 @@ void startServer() {
     bool displayInvert = config.displayConfig & DisplayInvert;
     bool displayFlip = config.displayConfig & DisplayFlip;
     bool displayNumConfirmed = config.displayConfig & DisplayNumConfirmed;
+    bool displayDistanceDetail = config.displayConfig & DisplayDistanceDetail;
 
     html.replace("{displaySimple}", displaySimple ? "checked" : "");
     html.replace("{displayGPS}", displayGPS ? "checked" : "");
@@ -854,6 +863,7 @@ void startServer() {
     html.replace("{displayInvert}", displayInvert ? "checked" : "");
     html.replace("{displayFlip}", displayFlip ? "checked" : "");
     html.replace("{displayNumConfirmed}", displayNumConfirmed ? "checked" : "");
+    html.replace("{displayDistanceDetail}", displayDistanceDetail ? "checked" : "");
 
     bool validLocation = config.GPSConfig & ValidLocation;
     bool validTime = config.GPSConfig & ValidTime;

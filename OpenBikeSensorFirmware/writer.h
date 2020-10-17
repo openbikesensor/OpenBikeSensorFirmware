@@ -37,7 +37,7 @@ struct DataSet {
   TinyGPSTime time;
   TinyGPSCourse course;
   TinyGPSSpeed speed;
-  Vector<uint8_t> sensorValues;
+  Vector<uint16_t> sensorValues;
   bool confirmed = false;
   bool isInsidePrivacyArea;
 };

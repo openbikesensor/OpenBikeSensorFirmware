@@ -18,10 +18,10 @@ void SSD1306DisplayDevice::showNumButtonPressed() {
   this->showTextOnGrid(1, 5, "press");
 }
 
-void SSD1306DisplayDevice::showValues(HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2) {
+void SSD1306DisplayDevice::showValues(HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2, int lastMesurements) {
   // Show sensor1, when DisplaySimple or DisplayLeft is configured
   if (config.displayConfig & DisplaySimple || config.displayConfig & DisplayLeft) {
-    uint8_t value1 = sensor1.minDistance;
+    uint16_t value1 = sensor1.minDistance;
     String loc1 = sensor1.sensorLocation;
 
     // Do not show location, when DisplaySimple is configured
@@ -29,7 +29,7 @@ void SSD1306DisplayDevice::showValues(HCSR04SensorInfo sensor1, HCSR04SensorInfo
       this->showTextOnGrid(0, 0, loc1);
     }
 
-    if (value1 == 255) {
+    if (value1 == MAX_SENSOR_VALUE) {
       this->showTextOnGrid(0, 1, "---", Dialog_plain_30);
     } else {
       String val = String(value1);
@@ -51,11 +51,11 @@ void SSD1306DisplayDevice::showValues(HCSR04SensorInfo sensor1, HCSR04SensorInfo
 
     // Show sensor2, when DisplayRight is configured
     if (config.displayConfig & DisplayRight) {
-      uint8_t value2 = sensor2.minDistance;
+      uint16_t value2 = sensor2.minDistance;
       String loc2 = sensor2.sensorLocation;
 
       this->showTextOnGrid(2, 0, loc2);
-      if (value2 == 255) {
+      if (value2 == MAX_SENSOR_VALUE) {
         this->showTextOnGrid(2, 1, "---", Dialog_plain_30);
       } else {
         String val = String(value2);
@@ -67,7 +67,13 @@ void SSD1306DisplayDevice::showValues(HCSR04SensorInfo sensor1, HCSR04SensorInfo
         this->showTextOnGrid(2, 1, val, Dialog_plain_30);
       }
     }
-    if (config.displayConfig & DisplayNumConfirmed) {
+    if (config.displayConfig & DisplayDistanceDetail) {
+      const int bufSize = 64;
+      char buffer[bufSize];
+      snprintf(buffer, bufSize - 1, "%03d|%02d|%03d", sensor1.rawDistance,
+               lastMesurements, sensor2.rawDistance);
+      this->showTextOnGrid(0, 4, buffer, Dialog_plain_20);
+    } else if (config.displayConfig & DisplayNumConfirmed) {
       showNumButtonPressed();
       showNumConfirmed();
     } else {
