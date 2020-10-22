@@ -26,22 +26,22 @@
 #include "globals.h"
 #include "vector.h"
 
-const uint8_t MEDIAN_DISTANCE_MEASURES = 3;
+const uint16_t MEDIAN_DISTANCE_MEASURES = 3;
 
 struct HCSR04SensorInfo
 {
   uint8_t triggerPin = 15;
   uint8_t echoPin = 4;
-  int timeout = 15000;
-  uint8_t offset = 0;
-  uint8_t distance = 0;
-  uint8_t distances[MEDIAN_DISTANCE_MEASURES] = { MAX_SENSOR_VALUE, MAX_SENSOR_VALUE, MAX_SENSOR_VALUE };
-  uint8_t nextDistance = 0;
+  uint16_t offset = 0;
+  uint16_t rawDistance = 0;
+  uint16_t distances[MEDIAN_DISTANCE_MEASURES] = { MAX_SENSOR_VALUE, MAX_SENSOR_VALUE, MAX_SENSOR_VALUE };
+  uint16_t nextMedianDistance = 0;
+  uint16_t minDistance=MAX_SENSOR_VALUE;
   char* sensorLocation;
-  uint8_t minDistance=MAX_SENSOR_VALUE;
   unsigned long lastMinUpdate=0;
-  volatile unsigned long start = 0;
-  volatile unsigned long duration = 0;
+  volatile uint32_t start = 0;
+  /* if end == 0 - a measurement is in progress */
+  volatile uint32_t end = 1;
 };
 
 class HCSR04SensorManager
@@ -50,12 +50,11 @@ class HCSR04SensorManager
     HCSR04SensorManager() {}
     virtual ~HCSR04SensorManager() {}
     Vector<HCSR04SensorInfo> m_sensors;
-    Vector<uint8_t> sensorValues;
+    Vector<uint16_t> sensorValues;
     void getDistances();
     void reset(bool resetMinDistance);
     void registerSensor(HCSR04SensorInfo);
-    void setOffsets(Vector<uint8_t>);
-    void setTimeouts();
+    void setOffsets(Vector<uint16_t>);
 
   protected:
 
@@ -65,10 +64,11 @@ class HCSR04SensorManager
     void setSensorTriggersToLow();
     void collectSensorResults();
     void isr(int idx);
-    uint8_t medianMeasure(size_t idx, uint8_t value);
-    uint8_t median(uint8_t a, uint8_t b, uint8_t c);
-
-    int timeout = 15000;
+    uint16_t medianMeasure(size_t idx, uint16_t value);
+    static uint16_t median(uint16_t a, uint16_t b, uint16_t c);
+    static uint16_t correctSensorOffset(uint16_t dist, uint16_t offset);
+    /* used to obey the sensor quiet period even if both are in timeout */
+    uint32_t lastCall = 0;
 };
 
 #endif

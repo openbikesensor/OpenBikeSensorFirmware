@@ -34,6 +34,7 @@ extern HCSR04SensorManager* sensorManager;
 
 extern String esp_chipid;
 
+
 #endif
 
-#define MAX_SENSOR_VALUE 255
+#define MAX_SENSOR_VALUE 999

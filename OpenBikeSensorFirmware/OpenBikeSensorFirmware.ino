@@ -54,8 +54,8 @@ unsigned long buttonPushedTime = millis();
 //int timeout = 15000; /// ???
 bool usingSD = false;
 String text = "";
-uint8_t minDistanceToConfirm = MAX_SENSOR_VALUE;
-uint8_t confirmedMinDistance = MAX_SENSOR_VALUE;
+uint16_t minDistanceToConfirm = MAX_SENSOR_VALUE;
+uint16_t confirmedMinDistance = MAX_SENSOR_VALUE;
 bool transmitConfirmedData = false;
 int lastButtonState = 0;
 bool handleBarWidthReset = false;
@@ -80,6 +80,8 @@ uint8_t displayAddress = 0x3c;
 // - set wifi config
 // - prints more detailed log messages to serial (WIFI password)
 //#define DEVELOP
+
+int lastMeasurements = 0 ;
 
 void setup() {
   Serial.begin(115200);
@@ -214,7 +216,6 @@ void setup() {
   sensorManager->registerSensor(sensorManaged2);
 
   sensorManager->setOffsets(config.sensorOffsets);
-  sensorManager->setTimeouts();
 
 
   //##############################################################
@@ -335,7 +336,8 @@ void loop() {
     // Show values on the display
     displayTest->showValues(
       sensorManager->m_sensors[1],
-      sensorManager->m_sensors[0]
+      sensorManager->m_sensors[0],
+      lastMeasurements
     );
 
     // #######################################################
@@ -392,6 +394,8 @@ void loop() {
   Serial.print(measurements);
   Serial.write(" measurements  \n");
 
+  lastMeasurements = measurements;
+
   if (transmitConfirmedData)
   {
     //inverting the display until the data is saved TODO: add control over the time the display will be inverted so the user actually sees it.
@@ -429,7 +433,8 @@ void loop() {
       Serial.printf("Wrote set to file\n");
       delete dataset;
     }
-    writer->writeDataToSD();
+    if (writer)
+      writer->writeDataToSD();
 
     Serial.printf(">>> writeDataToSD - reset <<<");
     minDistanceToConfirm = MAX_SENSOR_VALUE;
@@ -455,7 +460,7 @@ void loop() {
   }
 
   // write data to sd every now and then, hardcoded value assuming it will write every minute or so
-  if ((writer->getDataLength() > 5000) && !(digitalRead(PushButton))) {
+  if (writer && (writer->getDataLength() > 5000) && !(digitalRead(PushButton))) {
     writer->writeDataToSD();
   }
 
