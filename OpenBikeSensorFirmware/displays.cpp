@@ -40,15 +40,13 @@ void SSD1306DisplayDevice::showValues(HCSR04SensorInfo sensor1, HCSR04SensorInfo
       }
 
       this->showTextOnGrid(0, 1, val, Dialog_plain_30);
+    }
 
-      // For DisplaySimple, show "cm"
-      if (config.displayConfig & DisplaySimple) {
-        this->showTextOnGrid(2, 2, "cm", Dialog_plain_20);
-      }
+    if (config.displayConfig & DisplaySimple) {
+      this->showTextOnGrid(2, 2, "cm", Dialog_plain_20);
     }
   }
 
-  // Show "cm" when DisplaySimple is configured
   if (!(config.displayConfig & DisplaySimple)) {
 
     // Show sensor2, when DisplayRight is configured
