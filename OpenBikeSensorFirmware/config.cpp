@@ -62,7 +62,7 @@ void jsonDocumentToConfig(DynamicJsonDocument &doc, Config &config)
   config.confirmationTimeWindow = doc["confirmationTimeWindow"] | 5;
   config.privacyConfig = doc["privacyConfig"] | AbsolutePrivacy;
 
-  config.privacyConfig = doc["privacyConfig"] | AbsolutePrivacy;
+  config.numPrivacyAreas = doc["numPrivacyAreas"] | 0;
 #ifdef DEVELOP
   config.devConfig = doc["devConfig"] | 0;
 #endif
