@@ -270,7 +270,14 @@ void setup() {
     }
     delay(300);
 
-    String satellitesString = String(gps.satellites.value()) + " / " + String(config.satsForFix) + " sats";
+    String satellitesString;
+    if (gps.passedChecksum() == 0) { // could not get any valid char from GPS module
+      satellitesString = "OFF?";
+    } else if (!gps.time.isValid()) {
+      satellitesString = "no time";
+    } else {
+      satellitesString = String(gps.satellites.value()) + " / " + String(config.satsForFix) + " sats";
+    }
     displayTest->showTextOnGrid(2, 5, satellitesString);
 
     buttonState = digitalRead(PushButton);
