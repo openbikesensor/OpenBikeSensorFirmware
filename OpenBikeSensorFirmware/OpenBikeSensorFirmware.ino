@@ -20,9 +20,13 @@
 
 #include "OpenBikeSensorFirmware.h"
 
+#ifndef BUILD_NUMBER
+#define BUILD_NUMBER "local"
+#endif
+
 // --- Global variables ---
 // Version
-const char *OBSVersion = "v0.1.10-dev";
+const char *OBSVersion = "v0.10.1#" BUILD_NUMBER;
 
 // PINs
 const int PushButton = 2;
