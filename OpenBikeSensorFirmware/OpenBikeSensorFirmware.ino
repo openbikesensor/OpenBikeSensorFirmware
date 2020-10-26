@@ -26,7 +26,7 @@
 
 // --- Global variables ---
 // Version
-const char *OBSVersion = "v0.10.1#" BUILD_NUMBER;
+const char *OBSVersion = "v0.2." BUILD_NUMBER;
 
 // PINs
 const int PushButton = 2;
