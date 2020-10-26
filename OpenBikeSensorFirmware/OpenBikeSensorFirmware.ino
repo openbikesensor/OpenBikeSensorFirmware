@@ -156,6 +156,8 @@ void setup() {
   //##############################################################
 
   SerialGPS.begin(9600, SERIAL_8N1, 16, 17);
+  // default buffer is 256, would not be to bad to go back to the default in need of memory see gps.cpp
+  SerialGPS.setRxBufferSize(512);
 
   //##############################################################
   // Handle SD

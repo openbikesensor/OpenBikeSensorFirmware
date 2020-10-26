@@ -190,16 +190,7 @@ class SSD1306DisplayDevice : public DisplayDevice
 
     void showGPS();
 
-    void showVelocity(double velocity)
-    {
-      int velo = int(velocity);
-      String val = String(velo);
-      if (velo <= 9) {
-        val = "0" + val;
-      }
-      this->showTextOnGrid(0, 4, val, Dialog_plain_20);
-      this->showTextOnGrid(1, 5, "km/h");
-    }
+    void showVelocity(double velocity);
 
     void showNumConfirmed();
 

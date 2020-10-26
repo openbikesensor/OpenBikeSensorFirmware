@@ -19,13 +19,65 @@
 */
 
 #include "gps.h"
+#include <sys/time.h>
 
 HardwareSerial SerialGPS(1);
 TinyGPSPlus gps;
 
+int gpsTime() {
+  struct tm t;
+  t.tm_year = gps.date.year() - 1900;
+  t.tm_mon = gps.date.month() - 1; // Month, 0 - jan
+  t.tm_mday = gps.date.day();
+  t.tm_hour = gps.time.hour();
+  t.tm_min = gps.time.minute();
+  t.tm_sec = gps.time.second();
+  return mktime(&t);
+}
+
+void configureGpsModule() {
+  // switch of periodic gps messages that we do not use, leaves GGA and RMC on
+  SerialGPS.print(F("$PUBX,40,GSV,0,0,0,0*59\r\n"));
+  SerialGPS.print(F("$PUBX,40,GSA,0,0,0,0*4E\r\n"));
+  SerialGPS.print(F("$PUBX,40,GLL,0,0,0,0*5C\r\n"));
+  SerialGPS.print(F("$PUBX,40,VTG,0,0,0,0*5E\r\n"));
+  SerialGPS.print(F("$PUBX,40,GGA,0,1,0,0*5B\r\n"));
+  SerialGPS.print(F("$PUBX,40,RMC,0,1,0,0*46\r\n"));
+
+  // setting also the default values here - in the net you see reports of modules with wired defaults
+  // "dynModel" - "3: pedestrian"
+  // "static hold" - 80cm/s == 2.88 km/h
+  // "staticHoldMaxDist" - 20m (not supported by our GPS receivers)
+  const uint8_t UBX_CFG_NAV5[] =
+    { 0xb5, 0x62, 0x06, 0x24, 0x24, 0x00, 0xff, 0xff, 0x03, 0x03, 0x00, 0x00, 0x00, 0x00, 0x10, 0x27,
+      0x00, 0x00, 0x05, 0x00, 0xfa, 0x00, 0xfa, 0x00, 0x64, 0x00, 0x2c, 0x01, 0x50, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x77, 0x76 };
+  SerialGPS.write(UBX_CFG_NAV5, sizeof(UBX_CFG_NAV5));
+
+  // "timepulse" - affecting the led, switching to 10ms pulse every 10sec, should be clearly differentiable
+  // from the default (100ms each second)
+  const uint8_t UBX_CFG_TP[] =
+    { 0xb5, 0x62, 0x06, 0x07, 0x14, 0x00, 0x80, 0x96, 0x98, 0x00, 0x10, 0x27, 0x00, 0x00, 0x01, 0x01,
+      0x00, 0x00, 0x32, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3a, 0xab };
+  SerialGPS.write(UBX_CFG_TP, sizeof(UBX_CFG_TP));
+}
+
 void readGPSData() {
   while (SerialGPS.available() > 0) {
-    gps.encode(SerialGPS.read());
+    if (gps.encode(SerialGPS.read())) {
+      // set system time once every minute
+      if (gps.time.isValid() && gps.time.second() == 0 && gps.time.isUpdated() && gps.time.age() < 100) {
+        // We are in the precision of +/- 1 sec, ok for our purpose
+        const time_t t = gpsTime();
+        const struct timeval now = {.tv_sec = t};
+        settimeofday(&now, nullptr);
+      }
+    }
+  }
+
+  // send configuration multiple times after switch on
+  if (gps.passedChecksum() > 1 && gps.passedChecksum() < 100 && 0 == gps.passedChecksum() % 11) {
+    configureGpsModule();
   }
 }
 
