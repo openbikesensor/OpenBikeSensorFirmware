@@ -18,7 +18,7 @@ void SSD1306DisplayDevice::showNumButtonPressed() {
   this->showTextOnGrid(1, 5, "press");
 }
 
-void SSD1306DisplayDevice::showValues(HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2, int lastMesurements) {
+void SSD1306DisplayDevice::showValues(HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2, int lastMeasurements) {
   // Show sensor1, when DisplaySimple or DisplayLeft is configured
   if (config.displayConfig & DisplaySimple || config.displayConfig & DisplayLeft) {
     uint16_t value1 = sensor1.minDistance;
@@ -71,17 +71,23 @@ void SSD1306DisplayDevice::showValues(HCSR04SensorInfo sensor1, HCSR04SensorInfo
       const int bufSize = 64;
       char buffer[bufSize];
       snprintf(buffer, bufSize - 1, "%03d|%02d|%03d", sensor1.rawDistance,
-               lastMesurements, sensor2.rawDistance);
+               lastMeasurements, sensor2.rawDistance);
       this->showTextOnGrid(0, 4, buffer, Dialog_plain_20);
     } else if (config.displayConfig & DisplayNumConfirmed) {
       showNumButtonPressed();
       showNumConfirmed();
     } else {
-      // Show GPS info, when DisplaySatelites is configured
+      // Show GPS info, when DisplaySatellites is configured
       if (config.displayConfig & DisplaySatelites) showGPS();
 
       // Show velocity, when DisplayVelocity is configured
-      if (config.displayConfig & DisplayVelocity) showVelocity(gps.speed.kmph());
+      if (config.displayConfig & DisplayVelocity) {
+        if (gps.speed.age() < 2000) {
+          showVelocity(gps.speed.kmph());
+        } else {
+          showVelocity(-1);
+        }
+      }
     }
   }
 
@@ -96,4 +102,17 @@ void SSD1306DisplayDevice::showGPS() {
   }
   this->showTextOnGrid(2, 4, val, Dialog_plain_20);
   this->showTextOnGrid(3, 5, "sats");
+}
+
+void SSD1306DisplayDevice::showVelocity(double velocity)
+{
+  const int bufSize = 4;
+  char buffer[bufSize];
+  if (velocity >= 0) {
+    snprintf(buffer, bufSize - 1, "%02d", (int) velocity);
+  } else {
+    snprintf(buffer, bufSize - 1, "--");
+  }
+  this->showTextOnGrid(0, 4, buffer, Dialog_plain_20);
+  this->showTextOnGrid(1, 5, "km/h");
 }
