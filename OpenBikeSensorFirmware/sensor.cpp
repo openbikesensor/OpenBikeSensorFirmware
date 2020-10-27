@@ -145,7 +145,10 @@ void HCSR04SensorManager::getDistances() {
       }
     }
   }
-  delayMicroseconds(10);
+  // spec says 10, there are reports that the JSN-SR04T-2.0 behaves better if we wait 20 microseconds.
+  // I did not observe this but others might be affected so we spend this time ;)
+  // https://wolles-elektronikkiste.de/hc-sr04-und-jsn-sr04t-2-0-abstandssensoren
+  delayMicroseconds(20);
   setSensorTriggersToLow();
 
   waitForEchosOrTimeout();
@@ -162,6 +165,14 @@ void HCSR04SensorManager::collectSensorResults() {
     if (end == MEASUREMENT_IN_PROGRESS)
     { // measurement is still in flight! But the time we want to wait is up (> MAX_DURATION_MICRO_SEC)
       duration = micros() - start;
+      // better save than sorry:
+      if (duration < MAX_DURATION_MICRO_SEC) {
+#ifdef DEVELOP
+        Serial.printf("Collect called to early! Sensor[%d] duration: %zu us - echo pin state: %d\n",
+          idx, duration, digitalRead(sensor->echoPin));
+#endif
+        duration = MAX_DURATION_MICRO_SEC;
+      }
     }
     else
     {
