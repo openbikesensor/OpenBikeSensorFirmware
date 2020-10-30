@@ -117,7 +117,7 @@ bool uploader::upload(const String& fileName)
     HTTPClient https;
     String postBuffer;
     String postHeader;
-    postHeader = String("{\"id\": \"") + config.obsUserID + "\",\"track\":{\"title\":\"AutoUpload" + String(number) + "\",\"description\":\"created by an esp32\",\"body\":\"";
+    postHeader = String("{\"id\": \"") + config.obsUserID + "\",\"track\":{\"title\":\"AutoUpload " + String(number) + "\",\"description\":\"Uploaded with OpenBikeSensor " + String(OBSVersion) + "\",\"body\":\"";
     String headerLine = csvFile.readStringUntil('\n');
     postBuffer = postHeader;
     int numLines = 0;
