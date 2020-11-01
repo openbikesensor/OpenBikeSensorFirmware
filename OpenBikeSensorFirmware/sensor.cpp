@@ -54,13 +54,24 @@ const uint32_t MAX_DURATION_MICRO_SEC = MAX_DISTANCE_MEASURED_CM * MICRO_SEC_TO_
 /* This time is maximum echo pin high time if the sensor gets no response (observed 71ms, docu 60ms) */
 const uint32_t MAX_TIMEOUT_MICRO_SEC = 75000;
 
+/* Wait time after the last ping was sent by any sensor for the next
+ * measurement. This should protect us from receiving unexpected, indirect
+ * echos.
+ */
+const uint32_t SENSOR_ECHO_STILLED_TIME_MICRO_SEC = 350 * MICRO_SEC_TO_CM_DIVIDER;
+
+/* The last end (echo goes to low) of a measurement must be this far
+ * away before a new measurement is started.
+ */
+const uint32_t SENSOR_QUIET_PERIOD_AFTER_END_MICRO_SEC = 10 * 1000;
+
 /* The last start of a new measurement must be as long ago as given here
     away, until we start a new measurement.
    - With 35ms I could get stable readings down to 19cm (new sensor)
    - With 30ms I could get stable readings down to 25/35cm only (new sensor)
    - It looked fine with the old sensor for all values
  */
-const uint32_t SENSOR_QUIET_PERIOD_MICRO_SEC = 35 * 1000;
+const uint32_t SENSOR_QUIET_PERIOD_AFTER_START_MICRO_SEC = 35 * 1000;
 
 /* Value of HCSR04SensorInfo::end during an ongoing measurement. */
 const uint32_t MEASUREMENT_IN_PROGRESS = 0;
@@ -89,7 +100,7 @@ const uint32_t MEASUREMENT_IN_PROGRESS = 0;
  *    one sensor while the other is still in "timeout-state" we save some time.
  *    Assuming 1st measure is just before the car appears besides the sensor:
  *
- *    75ms open sensor + 2x SENSOR_QUIET_PERIOD_MICRO_SEC (35ms) = 145ms which is
+ *    75ms open sensor + 2x SENSOR_QUIET_PERIOD_AFTER_START_MICRO_SEC (35ms) = 145ms which is
  *    close to the needed 148ms
  */
 
@@ -127,24 +138,8 @@ void HCSR04SensorManager::setOffsets(Vector<uint16_t> offsets) {
 
 void HCSR04SensorManager::getDistances() {
   setSensorTriggersToLow();
-  sensorQuietPeriod();
-  // send "trigger" if ready
-  for (size_t idx = 0; idx < m_sensors.size(); ++idx)
-  {
-    HCSR04SensorInfo* const sensor = &m_sensors[idx];
-    int echoPinState = digitalRead(sensor->echoPin);
-    if (echoPinState == LOW)
-    { // no measurement in flight
-      if (sensor->end != MEASUREMENT_IN_PROGRESS
-          || (sensor->start + MAX_TIMEOUT_MICRO_SEC) > micros() // signal was lost altogether
-        )
-      {
-        sensor->start = micros(); // will be updated with HIGH signal
-        sensor->end = 0; // will be updated with LOW signal
-        digitalWrite(sensor->triggerPin, HIGH);
-      }
-    }
-  }
+  waitTillNoSignalsInFlight();
+  sendTriggerToReadySensor();
   // spec says 10, there are reports that the JSN-SR04T-2.0 behaves better if we wait 20 microseconds.
   // I did not observe this but others might be affected so we spend this time ;)
   // https://wolles-elektronikkiste.de/hc-sr04-und-jsn-sr04t-2-0-abstandssensoren
@@ -155,12 +150,51 @@ void HCSR04SensorManager::getDistances() {
   collectSensorResults();
 }
 
+/* Start measurement with all sensors that are ready to measure, wait
+ * if there is no ready sensor at all.
+ */
+void HCSR04SensorManager::sendTriggerToReadySensor() {
+  boolean startedMeasurement = false;
+  while (!startedMeasurement) {
+    for (size_t idx = 0; idx < m_sensors.size(); ++idx)
+    {
+      HCSR04SensorInfo* const sensor = &m_sensors[idx];
+      if (isReadyForStart(sensor)) {
+        sensor->start = micros(); // will be updated with HIGH signal
+        sensor->end = MEASUREMENT_IN_PROGRESS; // will be updated with LOW signal
+        digitalWrite(sensor->triggerPin, HIGH);
+        startedMeasurement = true;
+      }
+    }
+  }
+}
+
+boolean HCSR04SensorManager::isReadyForStart(HCSR04SensorInfo* sensor) {
+  boolean ready = false;
+  uint32_t now = micros();
+  if (digitalRead(sensor->echoPin) == LOW && sensor->end != MEASUREMENT_IN_PROGRESS) { // no measurement in flight or just finished
+    if (((sensor->end + SENSOR_QUIET_PERIOD_AFTER_END_MICRO_SEC) < now)
+        && ((sensor->start + SENSOR_QUIET_PERIOD_AFTER_START_MICRO_SEC) < now)) {
+      ready = true;
+    }
+  } else if ((sensor->start + (2 * MAX_TIMEOUT_MICRO_SEC)) < now) {
+    // signal or interrupt was lost altogether this is an error,
+    // should we raise it?? Now pretend the sensor is ready, hope it helps to give him a trigger.
+    ready = true;
+#ifdef DEVELOP
+    Serial.printf("!Timeout trigger for %s duration %zu us - echo pin state: %d\n",
+      sensor->sensorLocation, sensor->start - now, digitalRead(sensor->echoPin));
+#endif
+  }
+  return ready;
+}
+
 void HCSR04SensorManager::collectSensorResults() {
   for (size_t idx = 0; idx < m_sensors.size(); ++idx)
   {
     HCSR04SensorInfo* const sensor = &m_sensors[idx];
-    const uint32_t end =  sensor->end;
-    const uint32_t start =  sensor->start;
+    const uint32_t end = sensor->end;
+    const uint32_t start = sensor->start;
     uint32_t duration;
     if (end == MEASUREMENT_IN_PROGRESS)
     { // measurement is still in flight! But the time we want to wait is up (> MAX_DURATION_MICRO_SEC)
@@ -188,13 +222,11 @@ void HCSR04SensorManager::collectSensorResults() {
       dist = static_cast<uint16_t>(duration / MICRO_SEC_TO_CM_DIVIDER);
     }
     sensor->rawDistance = dist;
-    sensorValues[idx]
-      = correctSensorOffset(medianMeasure(idx, dist), sensor->offset);
+    sensorValues[idx] = correctSensorOffset(dist, sensor->offset);
 
 #ifdef DEVELOP
-    Serial.printf("Raw sensor[%d] distance read %03u / %03u (%03u, %03u, %03u) -> *%03ucm*, duration: %zu us - echo pin state: %d\n",
-      idx, sensor->rawDistance, dist, sensor->distances[0], sensor->distances[1],
-      sensor->distances[2], sensorValues[idx], duration, digitalRead(sensor->echoPin));
+    Serial.printf("Raw sensor[%d] distance read %03u / %03u -> *%03ucm*, duration: %zu us - echo pin state: %d\n",
+      idx, sensor->rawDistance, dist, sensorValues[idx], duration, digitalRead(sensor->echoPin));
 #endif
 
     if (sensorValues[idx] < sensor->minDistance)
@@ -242,66 +274,18 @@ void HCSR04SensorManager::waitForEchosOrTimeout() {
   }
 }
 
-/*
- * Do not start measurements to fast. If time is used elsewhere we do not
- * force a delay here, but if getDistances() is called with little time delay, we
- * wait here for max SENSOR_QUIET_PERIOD_MICROS since last measurement start(!) for
- * the sensors to settle. This returns quick if the measurement is already in
- * timeout.
+/* Make sure we did not send a echo (either sensor) short time ago where a still
+ * in flight echo could cause a false trigger of either of the sensors.
  */
-void HCSR04SensorManager::sensorQuietPeriod() {
-  // avoid that we over pace, if the sensors are both in timeout
-  while ((lastCall + SENSOR_QUIET_PERIOD_MICRO_SEC) > micros())
-  {
-    NOP();
-  }
-  lastCall = micros();
-
-  // we do not wait till all sensors are low, we ignore timed out inflight measurements
+void HCSR04SensorManager::waitTillNoSignalsInFlight() {
   for (size_t idx = 0; idx < m_sensors.size(); ++idx)
   {
     HCSR04SensorInfo* const sensor = &m_sensors[idx];
-    while ((sensor->start + SENSOR_QUIET_PERIOD_MICRO_SEC) > micros()) // max duration not expired
+    while ((sensor->start + SENSOR_ECHO_STILLED_TIME_MICRO_SEC) > micros()) // max duration not expired
     {
       NOP();
     }
   }
-}
-
-uint16_t HCSR04SensorManager::medianMeasure(size_t idx, uint16_t value) {
-  HCSR04SensorInfo* const sensor = &m_sensors[idx];
-  sensor->distances[sensor->nextMedianDistance++] = value;
-  if (sensor->nextMedianDistance >= MEDIAN_DISTANCE_MEASURES)
-  {
-    sensor->nextMedianDistance = 0;
-  }
-  return median(sensor->distances[0], sensor->distances[1], sensor->distances[2]);
-}
-
-uint16_t HCSR04SensorManager::median(uint16_t a, uint16_t b, uint16_t c) {
-  if (a < b)
-  {
-    if (a >= c)
-    {
-      return a;
-    }
-    else if (b < c)
-    {
-      return b;
-    }
-  }
-  else
-  {
-    if (a < c)
-    {
-      return a;
-    }
-    else if (b >= c)
-    {
-      return b;
-    }
-  }
-  return c;
 }
 
 void IRAM_ATTR HCSR04SensorManager::isr(int idx) {
@@ -310,14 +294,14 @@ void IRAM_ATTR HCSR04SensorManager::isr(int idx) {
   HCSR04SensorInfo* const sensor = &m_sensors[idx];
   if (sensor->end == MEASUREMENT_IN_PROGRESS)
   {
-    const uint32_t time = micros();
+    const uint32_t now = micros();
     if (HIGH == digitalRead(sensor->echoPin))
     {
-      sensor->start = time;
+      sensor->start = now;
     }
     else // LOW
     {
-      sensor->end = time;
+      sensor->end = now;
     }
   }
 }

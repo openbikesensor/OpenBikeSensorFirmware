@@ -34,8 +34,6 @@ struct HCSR04SensorInfo
   uint8_t echoPin = 4;
   uint16_t offset = 0;
   uint16_t rawDistance = 0;
-  uint16_t distances[MEDIAN_DISTANCE_MEASURES] = { MAX_SENSOR_VALUE, MAX_SENSOR_VALUE, MAX_SENSOR_VALUE };
-  uint16_t nextMedianDistance = 0;
   uint16_t minDistance=MAX_SENSOR_VALUE;
   char* sensorLocation;
   unsigned long lastMinUpdate=0;
@@ -59,16 +57,14 @@ class HCSR04SensorManager
   protected:
 
   private:
-    void sensorQuietPeriod();
+    void waitTillNoSignalsInFlight();
     void waitForEchosOrTimeout();
     void setSensorTriggersToLow();
     void collectSensorResults();
+    void sendTriggerToReadySensor();
     void isr(int idx);
-    uint16_t medianMeasure(size_t idx, uint16_t value);
-    static uint16_t median(uint16_t a, uint16_t b, uint16_t c);
     static uint16_t correctSensorOffset(uint16_t dist, uint16_t offset);
-    /* used to obey the sensor quiet period even if both are in timeout */
-    uint32_t lastCall = 0;
+    static boolean isReadyForStart(HCSR04SensorInfo* sensor);
 };
 
 #endif
