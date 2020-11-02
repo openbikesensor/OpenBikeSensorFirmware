@@ -164,14 +164,6 @@ void setup() {
   SerialGPS.setRxBufferSize(512);
 
   //##############################################################
-  // Bluetooth
-  //##############################################################
-#ifdef BLUETOOTH_ACTIVATED
-  bluetoothManager->init();
-  bluetoothManager->activateBluetooth();
-#endif
-
-  //##############################################################
   // Check, if the button is pressed
   // Enter configuration mode and enable OTA
   //##############################################################
@@ -196,6 +188,7 @@ void setup() {
       ArduinoOTA.handle();
     }
   }
+  WiFi.mode(WIFI_MODE_NULL);
 
   //##############################################################
   // Init HCSR04
@@ -231,19 +224,24 @@ void setup() {
 #ifdef RADMESSER_S_COMPATIBILITY_MODE
   requiresSdCardMount = false;
 #endif
-  while (requiresSdCardMount && !SD.begin())
+  while (!SD.begin())
   {
     if(sdCount > 0) {
       sdCount--;
     } else {
       displayTest->showTextOnGrid(2, 2, "SD... error");
+      if (!requiresSdCardMount) {
+        break;
+      }
     }
     Serial.println("Card Mount Failed");
     //delay(100);
   }
   delay(333); // Added for user experience
-  Serial.println("Card Mount Succeeded");
-  displayTest->showTextOnGrid(2, 2, "SD... ok");
+  if (SD.begin()) {
+    Serial.println("Card Mount Succeeded");
+    displayTest->showTextOnGrid(2, 2, "SD... ok");
+  }
 
   //##############################################################
   // Prepare CSV file
@@ -269,7 +267,7 @@ void setup() {
 #ifdef RADMESSER_S_COMPATIBILITY_MODE
   requiresGpsConnection = false;
 #endif
-  while (requiresGpsConnection && !validGPSData)
+  while (!validGPSData)
   {
     Serial.println("readGPSData()");
     readGPSData();
@@ -325,6 +323,14 @@ void setup() {
     Serial.println(String(gps.satellites.value()));
     displayTest->showTextOnGrid(2, 5, "Got GPS Fix");
   }
+
+  //##############################################################
+  // Bluetooth
+  //##############################################################
+#ifdef BLUETOOTH_ACTIVATED
+  bluetoothManager->init();
+  bluetoothManager->activateBluetooth();
+#endif
 
   delay(1000); // Added for user experience
 
@@ -382,14 +388,20 @@ void loop() {
     auto leftValues = std::list<uint8_t>();
     auto rightValues = std::list<uint8_t>();
 
-    leftValues.push_back(sensorManager->m_sensors[0].distance);
-    bluetoothManager->newSensorValues(leftValues, rightValues);
-
+    if (sensorManager->m_sensors[1].rawDistance < 255) {
+      leftValues.push_back(sensorManager->m_sensors[1].rawDistance);
+    }
+    if (sensorManager->m_sensors[0].rawDistance < 255) {
+      rightValues.push_back(sensorManager->m_sensors[0].rawDistance);
+    }
+    if (!leftValues.empty()) {
+      bluetoothManager->newSensorValues(leftValues, rightValues);
+    }
     bluetoothManager->processButtonState(digitalRead(PushButton));
 #endif
 
     // #######################################################
-    // Stoarge
+    // Storage
     // #######################################################
 
     // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
