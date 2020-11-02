@@ -304,7 +304,7 @@ void HCSR04SensorManager::waitTillNoSignalsInFlight() {
   for (size_t idx = 0; idx < m_sensors.size(); ++idx)
   {
     HCSR04SensorInfo* const sensor = &m_sensors[idx];
-    while ((sensor->start + SENSOR_ECHO_STILLED_TIME_MICRO_SEC) > micros()) // max duration not expired
+    while (microsSince(sensor->start) < SENSOR_ECHO_STILLED_TIME_MICRO_SEC)
     {
       NOP();
     }
