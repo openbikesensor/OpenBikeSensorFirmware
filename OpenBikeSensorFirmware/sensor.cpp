@@ -43,7 +43,7 @@
       can so confirm that my math is correct?
       can so confirm that we accept this error rate?
 */
-const uint16_t MICRO_SEC_TO_CM_DIVIDER = 58; // sound speed 340M/S, 2 times back and forward
+const uint32_t MICRO_SEC_TO_CM_DIVIDER = 58; // sound speed 340M/S, 2 times back and forward
 
 const uint16_t MIN_DISTANCE_MEASURED_CM =   2;
 const uint16_t MAX_DISTANCE_MEASURED_CM = 320; // candidate to check I could not get good readings above 300
@@ -173,11 +173,11 @@ boolean HCSR04SensorManager::isReadyForStart(HCSR04SensorInfo* sensor) {
   boolean ready = false;
   uint32_t now = micros();
   if (digitalRead(sensor->echoPin) == LOW && sensor->end != MEASUREMENT_IN_PROGRESS) { // no measurement in flight or just finished
-    if (((sensor->end + SENSOR_QUIET_PERIOD_AFTER_END_MICRO_SEC) < now)
-        && ((sensor->start + SENSOR_QUIET_PERIOD_AFTER_START_MICRO_SEC) < now)) {
+    if ((microsBetween(now, sensor->end) > SENSOR_QUIET_PERIOD_AFTER_END_MICRO_SEC)
+        && (microsBetween(now, sensor->start) > SENSOR_QUIET_PERIOD_AFTER_START_MICRO_SEC)) {
       ready = true;
     }
-  } else if ((sensor->start + (2 * MAX_TIMEOUT_MICRO_SEC)) < now) {
+  } else if (microsBetween(now, sensor->start) > (2 * MAX_TIMEOUT_MICRO_SEC)) {
     // signal or interrupt was lost altogether this is an error,
     // should we raise it?? Now pretend the sensor is ready, hope it helps to give him a trigger.
     ready = true;
@@ -198,7 +198,7 @@ void HCSR04SensorManager::collectSensorResults() {
     uint32_t duration;
     if (end == MEASUREMENT_IN_PROGRESS)
     { // measurement is still in flight! But the time we want to wait is up (> MAX_DURATION_MICRO_SEC)
-      duration = micros() - start;
+      duration = microsSince(start);
       // better save than sorry:
       if (duration < MAX_DURATION_MICRO_SEC) {
 #ifdef DEVELOP
@@ -210,7 +210,7 @@ void HCSR04SensorManager::collectSensorResults() {
     }
     else
     {
-      duration = end - start;
+      duration = microsBetween(start, end);
     }
     uint16_t dist;
     if (duration < MIN_DURATION_MICRO_SEC || duration >= MAX_DURATION_MICRO_SEC)
@@ -266,12 +266,37 @@ void HCSR04SensorManager::waitForEchosOrTimeout() {
   {
     HCSR04SensorInfo* const sensor = &m_sensors[idx];
     while ((sensor->end == MEASUREMENT_IN_PROGRESS)
-           && ((sensor->start + MAX_DURATION_MICRO_SEC) > micros()) // max duration not expired
-      )
+           && (microsSince(sensor->start) < MAX_DURATION_MICRO_SEC)) // max duration not expired
     {
       NOP();
     }
   }
+}
+
+/* Determines the microseconds between the 2 time counters given.
+ * Internally we only count 32bit, this overflows after around 71 minutes,
+ * so we take care for the overflow. Times we measure are way below the
+ * possible maximum.
+ * We should not use 64bit variables for "start" and "end" because access
+ * to 64bit vars is not atomic for our 32bit cpu.
+ */
+uint32_t HCSR04SensorManager::microsBetween(uint32_t a, uint32_t b) {
+  uint32_t result;
+  if (a > b) {
+    result = a - b;
+  } else {
+    result = b - a;
+  }
+  return result;
+}
+
+/* Determines the microseconds between the time counter given and now.
+ * Internally we only count 32bit, this overflows after around 71 minutes,
+ * so we take care for the overflow. Times we measure are way below the
+ * possible maximum.
+ */
+uint32_t HCSR04SensorManager::microsSince(uint32_t a) {
+  return microsBetween(micros(), a);
 }
 
 /* Make sure we did not send a echo (either sensor) short time ago where a still

@@ -65,6 +65,8 @@ class HCSR04SensorManager
     void isr(int idx);
     static uint16_t correctSensorOffset(uint16_t dist, uint16_t offset);
     static boolean isReadyForStart(HCSR04SensorInfo* sensor);
+    static uint32_t microsBetween(uint32_t a, uint32_t b);
+    static uint32_t microsSince(uint32_t a);
 };
 
 #endif
