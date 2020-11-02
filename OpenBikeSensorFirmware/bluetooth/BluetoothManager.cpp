@@ -8,7 +8,10 @@ boolean buttonWasPressed = false;
 unsigned long buttonPressTimestamp = -1;
 
 void BluetoothManager::init() {
-  BLEDevice::init("OpenBikeSensor");
+
+  char deviceName[32];
+  snprintf(deviceName, sizeof(deviceName), "OpenBikeSensor %04X", (uint16_t)(ESP.getEfuseMac() >> 32));
+  BLEDevice::init(deviceName);
   pServer = BLEDevice::createServer();
   //pServer->setCallbacks(new CustomBTCallback());
 
@@ -46,9 +49,10 @@ void BluetoothManager::activateBluetooth() {
       pServer->getAdvertising()->addServiceUUID(service->getService()->getUUID());
     }
   }
+//  esp_bt_controller_mem_release(ESP_BT_MODE_BTDM);
 
   pServer->getAdvertising()->start();
-  digitalWrite(13, HIGH);
+//  digitalWrite(13, HIGH);
 }
 
 void BluetoothManager::deactivateBluetooth() {
