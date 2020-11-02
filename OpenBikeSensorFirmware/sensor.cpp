@@ -281,11 +281,9 @@ void HCSR04SensorManager::waitForEchosOrTimeout() {
  * to 64bit vars is not atomic for our 32bit cpu.
  */
 uint32_t HCSR04SensorManager::microsBetween(uint32_t a, uint32_t b) {
-  uint32_t result;
-  if (a > b) {
-    result = a - b;
-  } else {
-    result = b - a;
+  uint32_t result = a - b;
+  if (result & 0x8000) {
+    result = -result;
   }
   return result;
 }
