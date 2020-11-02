@@ -282,7 +282,7 @@ void HCSR04SensorManager::waitForEchosOrTimeout() {
  */
 uint32_t HCSR04SensorManager::microsBetween(uint32_t a, uint32_t b) {
   uint32_t result = a - b;
-  if (result & 0x8000) {
+  if (result & 0x80000000) {
     result = -result;
   }
   return result;
