@@ -13,8 +13,29 @@ jobs:
       with:
         fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
 
-    - name: Prepare output directories
-      run: mkdir bin
+    - name: Prepare source
+      run: |
+        mkdir bin
+        echo GITHUB Ref: ${{ github.ref }}
+        VERSION_STRING=`grep "const char \*OBSVersion =" OpenBikeSensorFirmware/OpenBikeSensorFirmware.ino`
+        MAJOR=`echo ${VERSION_STRING} | cut -f2 -d\"`
+        if [ "${{ github.ref }}" = "refs/heads/master" ]
+        then
+          PATCH=${GITHUB_RUN_NUMBER}
+          SEPARATOR=.
+          PREPARE_RELEASE=true
+        else
+          PATCH=RC${GITHUB_RUN_NUMBER}
+          SEPARATOR=-
+          PREPARE_RELEASE=false
+        fi
+        VERSION=${MAJOR}${SEPARATOR}${PATCH}
+        echo "OBS_PREPARE_RELEASE=${PREPARE_RELEASE}" >> $GITHUB_ENV
+        echo "OBS_VERSION=${VERSION}" >> $GITHUB_ENV
+        echo "OBS_MAJOR_VERSION=${MAJOR}" >> $GITHUB_ENV
+        echo $VERSION > VERSION
+        echo Building OBS Version: $VERSION
+        sed -i 's|-DBUILD_NUMBER=\\"-dev\\"|-DBUILD_NUMBER=\\"'${SEPARATOR}${PATCH}'\\"|' platformio.ini
 
     - name: Install SonarQube dependencies
       run: |
@@ -26,11 +47,17 @@ jobs:
         unzip -qq sonar-scanner-cli-4.5.0.2216-linux.zip
         cd ..
         mkdir sonarqube-out
+        apt-get update
+        apt-get install -qq -y zip
 
     - name: Build firmware
       run: |
         ./sonarqube/build-wrapper-linux-x86/build-wrapper-linux-x86-64 --out-dir sonarqube-out \
           platformio ci --build-dir="./bin" --keep-build-dir --project-conf=platformio.ini ./OpenBikeSensorFirmware/
+
+    - name: Package firmware
+      run: |
+        zip --junk-paths obs-${{ env.OBS_VERSION }}.zip bin/.pio/build/esp32dev/firmware.bin
 
     - name: Cache SonarCloud packages
       uses: actions/cache@v1
@@ -53,14 +80,41 @@ jobs:
           -Dsonar.sourceEncoding=UTF-8 \
           -Dsonar.cfamily.cache.enabled=false \
           -Dsonar.cfamily.threads=1 \
-          -Dsonar.cfamily.build-wrapper-output=sonarqube-out
+          -Dsonar.cfamily.build-wrapper-output=sonarqube-out \
+          -Dsonar.projectVersion=${{ env.OBS_MAJOR_VERSION }}
 
     - name: Upload result artifact
       uses: actions/upload-artifact@v2
       with:
-        name: obs-firmware
+        name: obs ${{ env.OBS_VERSION }}
         path: bin/.pio/build/esp32dev/firmware.bin
         if-no-files-found: error
+
+    - name: Create Release
+      id: create_release
+      if: ${{ env.OBS_PREPARE_RELEASE == 'true' }}
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ env.OBS_VERSION }}
+        release_name: ${{ env.OBS_VERSION }}
+        body: |
+          Version ${{ env.OBS_VERSION }} based on ${{ github.ref }} ${{ github.sha }}
+        draft: true
+        prerelease: true
+
+    - name: Upload Release Asset
+      id: upload-release-asset
+      if: ${{ env.OBS_PREPARE_RELEASE == 'true' }}
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./obs-${{ env.OBS_VERSION }}.zip
+        asset_name: obs-${{ env.OBS_VERSION }}.zip
+        asset_content_type: application/zip
 
 #  super-lint:
 #    # Name the Job
