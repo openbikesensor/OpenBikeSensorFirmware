@@ -31,6 +31,7 @@ void ClosePassService::buttonPressed() {
   payload->push_back(lastValue);
 
   writeToEventCharacteristic("button", payload);
+  delete payload;
 }
 
 void ClosePassService::writeToDistanceCharacteristic(const std::list<uint8_t>& leftValues, const std::list<uint8_t>& rightValues) {
@@ -106,6 +107,7 @@ void ClosePassService::processValuesForEventChar_Avg2s(const std::list<uint8_t>&
     payload->push_back(distanceMin);
 
     writeToEventCharacteristic("avg2s", payload);
+    delete payload;
   }
 }
 
@@ -131,5 +133,6 @@ void ClosePassService::processValuesForEventChar_MinKalman(const std::list<uint8
 
     writeToEventCharacteristic("min_kalman", payload);
     mEventMinKalman_Min = UINT8_MAX;
+    delete payload;
   }
 }
