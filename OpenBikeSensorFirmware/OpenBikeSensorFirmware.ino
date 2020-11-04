@@ -127,6 +127,7 @@ void setup() {
 
   if (!SPIFFS.begin(true)) {
     Serial.println("An Error has occurred while mounting SPIFFS");
+    displayTest->showTextOnGrid(2, 1, "Config... error ");
     return;
   }
 
@@ -188,7 +189,8 @@ void setup() {
       ArduinoOTA.handle();
     }
   }
-  WiFi.mode(WIFI_MODE_NULL);
+  SPIFFS.end();
+  WiFiGenericClass::mode(WIFI_MODE_NULL);
 
   //##############################################################
   // Init HCSR04
