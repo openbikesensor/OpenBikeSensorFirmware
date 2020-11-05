@@ -288,6 +288,10 @@ String configIndex =
   "<input name='hostname' placeholder='hostname' value='{hostname}'>"
   "<hr>"
   "<input name='obsUserID' placeholder='API ID' value='{userId}' >"
+  "<h3>Operation</h3>"
+  "Enable Bluetooth <input type='checkbox' name='bluetooth' {bluetooth}>"
+  "<hr>"
+  "SimRa Mode <input type='checkbox' name='simRaMode' {simRaMode}>"
   "<input type=submit class=btn value=Save>"
   + footer;
 
@@ -374,6 +378,8 @@ void configAction() {
   String displayFlip = server.arg("displayFlip") == "on" ? "on" : "off";
   String displayNumConfirmed = server.arg("displayNumConfirmed") == "on" ? "on" : "off";
   String displayDistanceDetail = server.arg("displayDistanceDetail") == "on" ? "on" : "off";
+  String bluetooth = server.arg("bluetooth") == "on" ? "on" : "off";
+  String simRaMode = server.arg("simRaMode") == "on" ? "on" : "off";
 
   String validGPS = server.arg("validGPS");
 
@@ -437,6 +443,9 @@ void configAction() {
     config.displayConfig |= DisplayDistanceDetail;
   else
     config.displayConfig &= ~DisplayDistanceDetail;
+
+  config.bluetooth = (bluetooth == "on");
+  config.simRaMode = (simRaMode == "on");
 
   if (validGPS == "validLocation")
     config.GPSConfig = ValidLocation;
@@ -864,6 +873,8 @@ void startServer() {
     html.replace("{displayFlip}", displayFlip ? "checked" : "");
     html.replace("{displayNumConfirmed}", displayNumConfirmed ? "checked" : "");
     html.replace("{displayDistanceDetail}", displayDistanceDetail ? "checked" : "");
+    html.replace("{bluetooth}", config.bluetooth ? "checked" : "");
+    html.replace("{simRaMode}", config.simRaMode ? "checked" : "");
 
     bool validLocation = config.GPSConfig & ValidLocation;
     bool validTime = config.GPSConfig & ValidTime;
