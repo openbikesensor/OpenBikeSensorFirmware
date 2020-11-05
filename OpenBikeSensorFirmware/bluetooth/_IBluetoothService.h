@@ -33,7 +33,7 @@ public:
    * @param leftValues sensor values from the left side (might be empty)
    * @param rightValues sensor values from the right side (might be empty)
    */
-  virtual void newSensorValues(const std::list<uint8_t>& leftValues, const std::list<uint8_t>& rightValues) = 0;
+  virtual void newSensorValues(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues) = 0;
 
   /**
    * Processes the event that the push button was just triggered.

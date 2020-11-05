@@ -63,7 +63,7 @@ void BluetoothManager::disconnectDevice() {
   pServer->disconnect(pServer->getConnId());
 }
 
-void BluetoothManager::newSensorValues(const std::list<uint8_t>& leftValues, const std::list<uint8_t>& rightValues) {
+void BluetoothManager::newSensorValues(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues) {
   // Discarding values if they are more recent than 50 ms
   if (millis() - lastValueTimestamp < 50) return;
   lastValueTimestamp = millis();

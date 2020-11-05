@@ -27,7 +27,7 @@ BLEService* HeartRateService::getService() {
   return mService;
 }
 
-void HeartRateService::newSensorValues(const std::list<uint8_t>& leftValues, const std::list<uint8_t>& rightValues) {
+void HeartRateService::newSensorValues(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues) {
   auto value = leftValues.front();
   mDistances.push(value);
 
@@ -42,12 +42,8 @@ void HeartRateService::newSensorValues(const std::list<uint8_t>& leftValues, con
     distanceAvg += mDistances[i] / (float) mDistances.size();
   }
 
-  // Transmit average
-  uint8_t buffer[2] = {
-    0, // whether 8 or 16 bit
-    uint8_t(distanceAvg)
-  };
-  mCharacteristic->setValue(buffer, 2);
+  uint16_t averageInt = uint16_t(distanceAvg);
+  mCharacteristic->setValue(averageInt);
   mCharacteristic->notify();
 
   // Reset values

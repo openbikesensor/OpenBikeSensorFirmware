@@ -46,7 +46,7 @@ public:
    * @param leftValues all sensor values of the left side (might be empty)
    * @param rightValues all sensor values of the right side (might be empty)
    */
-  void newSensorValues(const std::list<uint8_t>& leftValues, const std::list<uint8_t>& rightValues);
+  void newSensorValues(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues);
 
   /**
    * Process the current push button state itself. This will call
