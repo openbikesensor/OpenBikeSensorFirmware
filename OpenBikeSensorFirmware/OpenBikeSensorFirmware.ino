@@ -358,7 +358,8 @@ void loop() {
     // #######################################################
 
     // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
-    if (sensorManager->sensorValues[confirmationSensorID] < minDistanceToConfirm)
+    if (sensorManager->sensorValues[confirmationSensorID] > 0
+      && sensorManager->sensorValues[confirmationSensorID] < minDistanceToConfirm)
     {
       minDistanceToConfirm = sensorManager->sensorValues[confirmationSensorID];
       Serial.print("New minDistanceToConfirm=");
@@ -401,11 +402,13 @@ void loop() {
     dataBuffer.push(currentSet);
   }
 
+#ifdef DEVELOP
   Serial.write("min. distance: ");
   Serial.print(currentSet->sensorValues[confirmationSensorID]) ;
   Serial.write(" cm,");
   Serial.print(measurements);
   Serial.write(" measurements  \n");
+#endif
 
   lastMeasurements = measurements;
 
@@ -419,7 +422,7 @@ void loop() {
     // make sure the minimum distance is saved only once
     using index_t = decltype(dataBuffer)::index_t;
     index_t j = -1;
-    //Search for the latest appearence of the confirmed minimum value
+    //Search for the latest appearance of the confirmed minimum value
     for (index_t i = 0; i < dataBuffer.size(); i++)
     {
       if (dataBuffer[i]->sensorValues[confirmationSensorID] == minDistanceToConfirm)
