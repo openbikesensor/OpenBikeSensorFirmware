@@ -165,6 +165,37 @@ void setup() {
   SerialGPS.setRxBufferSize(512);
 
   //##############################################################
+  // Handle SD
+  //##############################################################
+
+  // Counter, how often the SD card will be read before writing an error on the display
+  int8_t sdCount = 25;
+
+  displayTest->showTextOnGrid(2, 2, "SD...");
+  boolean requiresSdCardMount = true;
+#ifdef RADMESSER_S_COMPATIBILITY_MODE
+  requiresSdCardMount = false;
+#endif
+  while (!SD.begin())
+  {
+    if(sdCount > 0) {
+      sdCount--;
+    } else {
+      displayTest->showTextOnGrid(2, 2, "SD... error");
+      if (!requiresSdCardMount) {
+        break;
+      }
+    }
+    Serial.println("Card Mount Failed");
+    //delay(100);
+  }
+  delay(333); // Added for user experience
+  if (SD.begin()) {
+    Serial.println("Card Mount Succeeded");
+    displayTest->showTextOnGrid(2, 2, "SD... ok");
+  }
+
+  //##############################################################
   // Check, if the button is pressed
   // Enter configuration mode and enable OTA
   //##############################################################
@@ -215,37 +246,6 @@ void setup() {
   sensorManager->setOffsets(config.sensorOffsets);
 
   sensorManager->setPrimarySensor(1); // LEFT !!!
-
-  //##############################################################
-  // Handle SD
-  //##############################################################
-
-  // Counter, how often the SD card will be read before writing an error on the display
-  int8_t sdCount = 25;
-
-  displayTest->showTextOnGrid(2, 2, "SD...");
-  boolean requiresSdCardMount = true;
-#ifdef RADMESSER_S_COMPATIBILITY_MODE
-  requiresSdCardMount = false;
-#endif
-  while (!SD.begin())
-  {
-    if(sdCount > 0) {
-      sdCount--;
-    } else {
-      displayTest->showTextOnGrid(2, 2, "SD... error");
-      if (!requiresSdCardMount) {
-        break;
-      }
-    }
-    Serial.println("Card Mount Failed");
-    //delay(100);
-  }
-  delay(333); // Added for user experience
-  if (SD.begin()) {
-    Serial.println("Card Mount Succeeded");
-    displayTest->showTextOnGrid(2, 2, "SD... ok");
-  }
 
   //##############################################################
   // Prepare CSV file
