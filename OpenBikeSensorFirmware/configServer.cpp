@@ -206,7 +206,7 @@ String wifiSettingsIndex =
 
 String backupIndex =
   header +
-  "<p>This backups and restores the device configration incl. the Basic Config, Privacy Zones and Wifi Settings.</p>"
+  "<p>This backups and restores the device configuration incl. the Basic Config, Privacy Zones and Wifi Settings.</p>"
   "<h3>Backup</h3>"
   "<a href='/settings/backup.json'><button type='button' class='btn'>Download</button></a>"
   "<h3>Restore</h3>"
@@ -906,7 +906,8 @@ void startServer() {
   server.on("/update", HTTP_POST, []() {
     Serial.println("Send response...");
     if (Update.hasError()) {
-      server.send(500, "text/plain", "Update fails!");
+      server.send(500, "text/plain",
+                  "Update failed! Note: update from v0.2.x to v0.3 or newer needs to be done once with USB cable!");
     } else {
       server.send(200, "text/plain", "Update successful! Device reboots now!");
       delay(250);
