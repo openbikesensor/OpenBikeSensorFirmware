@@ -396,7 +396,7 @@ void loop() {
     if (sensorManager->m_sensors[0].rawDistance < 255) {
       rightValues.push_back(sensorManager->m_sensors[0].rawDistance);
     }
-    if (!leftValues.empty()) {
+    if (measurements == 0 || !leftValues.empty() || !rightValues.empty()) {
       bluetoothManager->newSensorValues(leftValues, rightValues);
     }
     bluetoothManager->processButtonState(digitalRead(PushButton));
