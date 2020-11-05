@@ -9,6 +9,17 @@ Currently we measure the distance with either HC-SR04 or JSN-SR04T ultrasonic se
 
 Inspired by the Berlin project Radmesser. This version uses a simple push button at the handle bar to confirm distance-measures were actually overtaking vehicles. It has its own GPS and a SD card for logging, so it does not require any additional hardware (like a smartphone).
 
+With version v0.3 on the firmware also exposes the measured data via buetooth.
+You can use this to feed data to [SimRa](https://www.mcc.tu-berlin.de/menue/forschung/projekte/simra/) App.
+
+## Updating
+
+Because the version v0.3 and up uses a different partitioning schema for the
+ESP32, this update cannot be done over the air. THis needs a onetime update 
+via USB cable connection. Once this was done you can OTA update again with
+all versions (even back to v0.2.x).   
+
+
 ## Find the documentation
 
 You can find the OpenBikeSensor documentation under:
