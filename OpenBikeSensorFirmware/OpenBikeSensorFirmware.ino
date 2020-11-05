@@ -178,6 +178,8 @@ void setup() {
   if (buttonState == HIGH || (requiresDisplayConnection && displayError != 0))
   {
     displayTest->showTextOnGrid(2, 2, "Start Server");
+    esp_bt_mem_release(ESP_BT_MODE_BTDM); // no bluetooth at all here.
+
     delay(1000); // Added for user experience
 
     startServer();
