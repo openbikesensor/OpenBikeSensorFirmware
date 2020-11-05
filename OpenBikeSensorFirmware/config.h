@@ -69,6 +69,8 @@ struct Config {
   char hostname[64];
   char obsUserID[64];
   int displayConfig;
+  boolean bluetooth;
+  boolean simRaMode;
 #ifdef DEVELOP
   int devConfig;
 #endif

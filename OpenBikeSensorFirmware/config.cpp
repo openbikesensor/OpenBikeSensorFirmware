@@ -63,6 +63,8 @@ void jsonDocumentToConfig(DynamicJsonDocument &doc, Config &config)
   config.privacyConfig = doc["privacyConfig"] | AbsolutePrivacy;
 
   config.numPrivacyAreas = doc["numPrivacyAreas"] | 0;
+  config.bluetooth = doc["bluetooth"] | false;
+  config.simRaMode = doc["simRaMode"] | false;
 #ifdef DEVELOP
   config.devConfig = doc["devConfig"] | 0;
 #endif
@@ -130,6 +132,9 @@ DynamicJsonDocument configToJsonDocument(const Config &config) {
   doc["GPSConfig"] = config.GPSConfig;
   doc["confirmationTimeWindow"] = config.confirmationTimeWindow;
   doc["privacyConfig"] = config.privacyConfig;
+  doc["bluetooth"] = config.bluetooth;
+  doc["simRaMode"] = config.simRaMode;
+
 #ifdef DEVELOP
   doc["devConfig"] = config.devConfig;
 #endif
@@ -263,6 +268,12 @@ void printConfig(Config &config) {
 
   Serial.print(F("SSID = "));
   Serial.println(String(config.ssid));
+
+  Serial.print(F("bluetooth = "));
+  Serial.println(String(config.bluetooth));
+
+  Serial.print(F("simRaMode = "));
+  Serial.println(String(config.simRaMode));
 
 #ifdef DEVELOP
   if(config.devConfig & PrintWifiPassword) {

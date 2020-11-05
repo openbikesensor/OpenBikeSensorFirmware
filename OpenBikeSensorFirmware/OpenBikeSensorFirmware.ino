@@ -44,9 +44,7 @@ SSD1306DisplayDevice* displayTest;
 
 HCSR04SensorManager* sensorManager;
 
-#ifdef BLUETOOTH_ACTIVATED
 BluetoothManager* bluetoothManager;
-#endif
 
 String esp_chipid;
 
@@ -169,20 +167,16 @@ void setup() {
   //##############################################################
 
   // Counter, how often the SD card will be read before writing an error on the display
-  int8_t sdCount = 25;
+  int8_t sdCount = 5;
 
   displayTest->showTextOnGrid(2, 2, "SD...");
-  boolean requiresSdCardMount = true;
-#ifdef RADMESSER_S_COMPATIBILITY_MODE
-  requiresSdCardMount = false;
-#endif
   while (!SD.begin())
   {
     if(sdCount > 0) {
       sdCount--;
     } else {
       displayTest->showTextOnGrid(2, 2, "SD... error");
-      if (!requiresSdCardMount) {
+      if (config.simRaMode || digitalRead(PushButton) == HIGH) {
         break;
       }
     }
@@ -201,12 +195,7 @@ void setup() {
   //##############################################################
 
   buttonState = digitalRead(PushButton);
-
-  bool requiresDisplayConnection = true;
-#ifdef RADMESSER_S_COMPATIBILITY_MODE
-  requiresDisplayConnection = false;
-#endif
-  if (buttonState == HIGH || (requiresDisplayConnection && displayError != 0))
+  if (buttonState == HIGH || (!config.simRaMode && displayError != 0))
   {
     displayTest->showTextOnGrid(2, 2, "Start Server");
     esp_bt_mem_release(ESP_BT_MODE_BTDM); // no bluetooth at all here.
@@ -253,12 +242,15 @@ void setup() {
 
   displayTest->showTextOnGrid(2, 3, "CSV file...");
 
-  writer = new CSVFileWriter;
-  writer->setFileName();
-  writer->writeHeader();
-  Serial.println("File initialised");
-
-  displayTest->showTextOnGrid(2, 3, "CSV file... ok");
+  if (SD.begin()) {
+    writer = new CSVFileWriter;
+    writer->setFileName();
+    writer->writeHeader();
+    displayTest->showTextOnGrid(2, 3, "CSV file... ok");
+    Serial.println("File initialised");
+  } else {
+    displayTest->showTextOnGrid(2, 3, "CSV file... skip");
+  }
 
   //##############################################################
   // GPS
@@ -267,10 +259,8 @@ void setup() {
   displayTest->showTextOnGrid(2, 4, "Wait for GPS");
   Serial.println("Waiting for GPS fix...");
   bool validGPSData = false;
-  bool requiresGpsConnection = true;
-#ifdef RADMESSER_S_COMPATIBILITY_MODE
-  requiresGpsConnection = false;
-#endif
+  readGPSData();
+  delay(300);
   while (!validGPSData)
   {
     Serial.println("readGPSData()");
@@ -314,7 +304,9 @@ void setup() {
     displayTest->showTextOnGrid(2, 5, satellitesString);
 
     buttonState = digitalRead(PushButton);
-    if (buttonState == HIGH)
+    if (buttonState == HIGH
+      || (config.simRaMode && gps.passedChecksum() == 0) // no module && simRaMode
+      )
     {
       Serial.println("Skipped get GPS...");
       displayTest->showTextOnGrid(2, 5, "...skipped");
@@ -331,10 +323,12 @@ void setup() {
   //##############################################################
   // Bluetooth
   //##############################################################
-#ifdef BLUETOOTH_ACTIVATED
-  bluetoothManager->init();
-  bluetoothManager->activateBluetooth();
-#endif
+  if (config.bluetooth) {
+    bluetoothManager->init();
+    bluetoothManager->activateBluetooth();
+  } else {
+    esp_bt_mem_release(ESP_BT_MODE_BTDM); // no bluetooth at all here.
+  }
 
   delay(1000); // Added for user experience
 
@@ -388,21 +382,21 @@ void loop() {
       lastMeasurements
     );
 
-#ifdef BLUETOOTH_ACTIVATED
-    auto leftValues = std::list<uint16_t>();
-    auto rightValues = std::list<uint16_t>();
+    if (config.bluetooth) {
+      auto leftValues = std::list<uint16_t>();
+      auto rightValues = std::list<uint16_t>();
 
-    if (sensorManager->m_sensors[1].rawDistance < MAX_SENSOR_VALUE) {
-      leftValues.push_back(sensorManager->m_sensors[1].rawDistance);
+      if (sensorManager->m_sensors[1].rawDistance < MAX_SENSOR_VALUE) {
+        leftValues.push_back(sensorManager->m_sensors[1].rawDistance);
+      }
+      if (sensorManager->m_sensors[0].rawDistance < MAX_SENSOR_VALUE) {
+        rightValues.push_back(sensorManager->m_sensors[0].rawDistance);
+      }
+      if (measurements == 0 || !leftValues.empty() || !rightValues.empty()) {
+        bluetoothManager->newSensorValues(leftValues, rightValues);
+      }
+      bluetoothManager->processButtonState(digitalRead(PushButton));
     }
-    if (sensorManager->m_sensors[0].rawDistance < MAX_SENSOR_VALUE) {
-      rightValues.push_back(sensorManager->m_sensors[0].rawDistance);
-    }
-    if (measurements == 0 || !leftValues.empty() || !rightValues.empty()) {
-      bluetoothManager->newSensorValues(leftValues, rightValues);
-    }
-    bluetoothManager->processButtonState(digitalRead(PushButton));
-#endif
 
     // #######################################################
     // Storage
