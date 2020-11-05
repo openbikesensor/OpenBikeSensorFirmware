@@ -62,8 +62,9 @@ const uint32_t SENSOR_ECHO_STILLED_TIME_MICRO_SEC = 350 * MICRO_SEC_TO_CM_DIVIDE
 
 /* The last end (echo goes to low) of a measurement must be this far
  * away before a new measurement is started.
+ * Saw false readings with 10 * 1000, increased to 25.
  */
-const uint32_t SENSOR_QUIET_PERIOD_AFTER_END_MICRO_SEC = 10 * 1000;
+const uint32_t SENSOR_QUIET_PERIOD_AFTER_END_MICRO_SEC = 25 * 1000;
 
 /* The last start of a new measurement must be as long ago as given here
     away, until we start a new measurement.
