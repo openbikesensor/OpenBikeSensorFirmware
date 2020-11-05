@@ -20,15 +20,15 @@ public:
   bool shouldAdvertise() override;
   BLEService *getService() override;
 
-  void newSensorValues(const std::list<uint8_t>& leftValues, const std::list<uint8_t>& rightValues) override;
+  void newSensorValues(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues) override;
   void buttonPressed() override;
 
 private:
-  void writeToDistanceCharacteristic(const std::list<uint8_t>& leftValues, const std::list<uint8_t>& rightValues);
+  void writeToDistanceCharacteristic(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues);
   void writeToEventCharacteristic(const String& event, std::list<uint16_t>* payload);
-  void processValuesForDistanceChar(const std::list<uint8_t>& leftValues, const std::list<uint8_t>& rightValues, uint8_t value);
-  void processValuesForEventChar_Avg2s(const std::list<uint8_t>& leftValues, const std::list<uint8_t>& rightValues, uint8_t value);
-  void processValuesForEventChar_MinKalman(const std::list<uint8_t>& leftValues, const std::list<uint8_t>& rightValues, uint8_t value);
+  void processValuesForDistanceChar(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues, uint16_t value);
+  void processValuesForEventChar_Avg2s(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues, uint16_t value);
+  void processValuesForEventChar_MinKalman(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues, uint16_t value);
 
   BLEService *mService;
   BLECharacteristic *mDistanceCharacteristic;

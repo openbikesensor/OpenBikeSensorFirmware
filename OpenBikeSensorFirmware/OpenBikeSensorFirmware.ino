@@ -387,13 +387,13 @@ void loop() {
     );
 
 #ifdef BLUETOOTH_ACTIVATED
-    auto leftValues = std::list<uint8_t>();
-    auto rightValues = std::list<uint8_t>();
+    auto leftValues = std::list<uint16_t>();
+    auto rightValues = std::list<uint16_t>();
 
-    if (sensorManager->m_sensors[1].rawDistance < 255) {
+    if (sensorManager->m_sensors[1].rawDistance < MAX_SENSOR_VALUE) {
       leftValues.push_back(sensorManager->m_sensors[1].rawDistance);
     }
-    if (sensorManager->m_sensors[0].rawDistance < 255) {
+    if (sensorManager->m_sensors[0].rawDistance < MAX_SENSOR_VALUE) {
       rightValues.push_back(sensorManager->m_sensors[0].rawDistance);
     }
     if (measurements == 0 || !leftValues.empty() || !rightValues.empty()) {

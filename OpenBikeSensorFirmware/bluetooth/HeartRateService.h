@@ -16,7 +16,7 @@ public:
   bool shouldAdvertise() override;
   BLEService* getService() override;
 
-  void newSensorValues(const std::list<uint8_t>& leftValues, const std::list<uint8_t>& rightValues) override;
+  void newSensorValues(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues) override;
   void buttonPressed() override;
 
 private:

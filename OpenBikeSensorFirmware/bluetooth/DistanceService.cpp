@@ -13,10 +13,10 @@ BLEService* DistanceService::getService() {
   return mService;
 }
 
-void DistanceService::newSensorValues(const std::list<uint8_t>& leftValues, const std::list<uint8_t>& rightValues) {
+void DistanceService::newSensorValues(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues) {
   auto transmitValue = String(millis()) + ";";
-  transmitValue += joinList(leftValues, ",") + ";";
-  transmitValue += joinList(rightValues, ",");
+  transmitValue += joinList16(leftValues, ",") + ";";
+  transmitValue += joinList16(rightValues, ",");
 
   mCharacteristic->setValue(transmitValue.c_str());
   mCharacteristic->notify();

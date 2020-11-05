@@ -18,7 +18,7 @@ BLEService* ClosePassService::getService() {
   return mService;
 }
 
-void ClosePassService::newSensorValues(const std::list<uint8_t>& leftValues, const std::list<uint8_t>& rightValues) {
+void ClosePassService::newSensorValues(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues) {
   auto value = leftValues.front();
   lastValue = value;
   processValuesForDistanceChar(leftValues, rightValues, value);
@@ -34,10 +34,10 @@ void ClosePassService::buttonPressed() {
   delete payload;
 }
 
-void ClosePassService::writeToDistanceCharacteristic(const std::list<uint8_t>& leftValues, const std::list<uint8_t>& rightValues) {
+void ClosePassService::writeToDistanceCharacteristic(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues) {
   auto transmitValue = String(millis()) + ";";
-  transmitValue += joinList(leftValues, ",") + ";";
-  transmitValue += joinList(rightValues, ",");
+  transmitValue += joinList16(leftValues, ",") + ";";
+  transmitValue += joinList16(rightValues, ",");
 
   mDistanceCharacteristic->setValue(transmitValue.c_str());
   mDistanceCharacteristic->notify();
@@ -53,7 +53,7 @@ void ClosePassService::writeToEventCharacteristic(const String& event, std::list
   mEventCharacteristic->notify();
 }
 
-void ClosePassService::processValuesForDistanceChar(const std::list<uint8_t>& leftValues, const std::list<uint8_t>& rightValues, const uint8_t value) {
+void ClosePassService::processValuesForDistanceChar(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues, const uint16_t value) {
   if (mDistancePhase == PHASE_PRE && value < THRESHOLD_CLOSEPASS) {
     mDistancePhase = PHASE_TRANSMITTING;
   }
@@ -81,7 +81,7 @@ void ClosePassService::processValuesForDistanceChar(const std::list<uint8_t>& le
   }
 }
 
-void ClosePassService::processValuesForEventChar_Avg2s(const std::list<uint8_t>& leftValues, const std::list<uint8_t>& rightValues, const uint8_t value) {
+void ClosePassService::processValuesForEventChar_Avg2s(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues, const uint16_t value) {
   mEventAvg2s_Buffer.push(value);
 
   if (!mEventAvg2s_Buffer.isFull()) return;
@@ -111,7 +111,7 @@ void ClosePassService::processValuesForEventChar_Avg2s(const std::list<uint8_t>&
   }
 }
 
-void ClosePassService::processValuesForEventChar_MinKalman(const std::list<uint8_t>& leftValues, const std::list<uint8_t>& rightValues, const uint8_t value) {
+void ClosePassService::processValuesForEventChar_MinKalman(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues, const uint16_t value) {
   // TODO: test these parameters!!!
   float errMeasure = 10;
   float q = 0.01;
