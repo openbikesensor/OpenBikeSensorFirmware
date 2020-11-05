@@ -229,7 +229,7 @@ void HCSR04SensorManager::collectSensorResults() {
       idx, sensor->rawDistance, dist, sensorValues[idx], duration, digitalRead(sensor->echoPin));
 #endif
 
-    if (sensorValues[idx] < sensor->minDistance)
+    if (sensorValues[idx] > 0 && sensorValues[idx] < sensor->minDistance)
     {
       sensor->minDistance = sensorValues[idx];
       sensor->lastMinUpdate = millis();
