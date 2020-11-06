@@ -5,6 +5,7 @@
 .vscode/launch.json
 .vscode/ipch
 .vscode/extensions.json
+.idea/sonarIssues.xml
 CMakeLists.txt
 CMakeListsPrivate.txt
 cmake-build-*/
