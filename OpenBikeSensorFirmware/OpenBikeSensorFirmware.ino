@@ -223,6 +223,8 @@ void setup() {
 
   sensorManager->setOffsets(config.sensorOffsets);
 
+  sensorManager->setPrimarySensor(1); // LEFT !!!
+
 
   //##############################################################
   // Prepare CSV file

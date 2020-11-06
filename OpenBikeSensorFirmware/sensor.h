@@ -53,11 +53,13 @@ class HCSR04SensorManager
     void reset(bool resetMinDistance);
     void registerSensor(HCSR04SensorInfo);
     void setOffsets(Vector<uint16_t>);
+    void setPrimarySensor(uint8_t idx);
 
   protected:
 
   private:
-    void waitTillNoSignalsInFlight();
+    uint8_t primarySensor = 1;
+    void waitTillPrimarySensorIsReady();
     void waitForEchosOrTimeout();
     void setSensorTriggersToLow();
     void collectSensorResults();
