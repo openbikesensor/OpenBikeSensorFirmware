@@ -34,6 +34,8 @@ struct HCSR04SensorInfo
   uint8_t echoPin = 4;
   uint16_t offset = 0;
   uint16_t rawDistance = 0;
+  uint16_t distances[MEDIAN_DISTANCE_MEASURES] = { MAX_SENSOR_VALUE, MAX_SENSOR_VALUE, MAX_SENSOR_VALUE };
+  uint16_t nextMedianDistance = 0;
   uint16_t minDistance=MAX_SENSOR_VALUE;
   char* sensorLocation;
   unsigned long lastMinUpdate=0;
@@ -67,6 +69,8 @@ class HCSR04SensorManager
     void sendTriggerToReadySensor();
     void IRAM_ATTR isr(int idx);
     uint32_t getFixedStart(size_t idx, const HCSR04SensorInfo *sensor);
+    static uint16_t medianMeasure(HCSR04SensorInfo* const sensor, uint16_t value);
+    static uint16_t median(uint16_t a, uint16_t b, uint16_t c);
     static uint16_t correctSensorOffset(uint16_t dist, uint16_t offset);
     static boolean isReadyForStart(HCSR04SensorInfo* sensor);
     static uint32_t microsBetween(uint32_t a, uint32_t b);

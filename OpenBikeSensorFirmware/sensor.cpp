@@ -233,11 +233,12 @@ void HCSR04SensorManager::collectSensorResults() {
       dist = static_cast<uint16_t>(duration / MICRO_SEC_TO_CM_DIVIDER);
     }
     sensor->rawDistance = dist;
-    sensorValues[idx] = correctSensorOffset(dist, sensor->offset);
+    sensorValues[idx] = correctSensorOffset(medianMeasure(sensor, dist), sensor->offset);
 
 #ifdef DEVELOP
-    Serial.printf("Raw sensor[%d] distance read %03u / %03u -> *%03ucm*, duration: %zu us - echo pin state: %d\n",
-      idx, sensor->rawDistance, dist, sensorValues[idx], duration, digitalRead(sensor->echoPin));
+    Serial.printf("Raw sensor[%d] distance read %03u / %03u (%03u, %03u, %03u) -> *%03ucm*, duration: %zu us - echo pin state: %d\n",
+      idx, sensor->rawDistance, dist, sensor->distances[0], sensor->distances[1],
+      sensor->distances[2], sensorValues[idx], duration, digitalRead(sensor->echoPin));
 #endif
 
     if (sensorValues[idx] > 0 && sensorValues[idx] < sensor->minDistance)
@@ -329,6 +330,31 @@ uint32_t HCSR04SensorManager::microsBetween(uint32_t a, uint32_t b) {
  */
 uint32_t HCSR04SensorManager::microsSince(uint32_t a) {
   return microsBetween(micros(), a);
+}
+
+uint16_t HCSR04SensorManager::medianMeasure(HCSR04SensorInfo *const sensor, uint16_t value) {
+  sensor->distances[sensor->nextMedianDistance++] = value;
+  if (sensor->nextMedianDistance >= MEDIAN_DISTANCE_MEASURES) {
+    sensor->nextMedianDistance = 0;
+  }
+  return median(sensor->distances[0], sensor->distances[1], sensor->distances[2]);
+}
+
+uint16_t HCSR04SensorManager::median(uint16_t a, uint16_t b, uint16_t c) {
+  if (a < b) {
+    if (a >= c) {
+      return a;
+    } else if (b < c) {
+      return b;
+    }
+  } else {
+    if (a < c) {
+      return a;
+    } else if (b >= c) {
+      return b;
+    }
+  }
+  return c;
 }
 
 void IRAM_ATTR HCSR04SensorManager::isr(int idx) {
