@@ -107,6 +107,7 @@ void HCSR04SensorManager::registerSensor(HCSR04SensorInfo sensorInfo) {
   pinMode(sensorInfo.echoPin, INPUT_PULLUP); // hint from https://youtu.be/xwsT-e1D9OY?t=354
   sensorValues.push_back(0); //make sure sensorValues has same size as m_sensors
   assert(sensorValues.size() == m_sensors.size());
+  // only one interrupt per pin, can not split RISING/FALLING here
   attachInterrupt(sensorInfo.echoPin, std::bind(&HCSR04SensorManager::isr, this, m_sensors.size() - 1), CHANGE);
 }
 
@@ -170,7 +171,7 @@ void HCSR04SensorManager::sendTriggerToReadySensor() {
   {
     HCSR04SensorInfo* const sensor = &m_sensors[idx];
     if (idx == primarySensor || isReadyForStart(sensor)) {
-      sensor->start = micros(); // will be updated with HIGH signal
+      sensor->trigger = sensor->start = micros(); // will be updated with HIGH signal
       sensor->end = MEASUREMENT_IN_PROGRESS; // will be updated with LOW signal
       digitalWrite(sensor->triggerPin, HIGH);
     }
@@ -180,12 +181,14 @@ void HCSR04SensorManager::sendTriggerToReadySensor() {
 boolean HCSR04SensorManager::isReadyForStart(HCSR04SensorInfo* sensor) {
   boolean ready = false;
   const uint32_t now = micros();
-  if (digitalRead(sensor->echoPin) == LOW && sensor->end != MEASUREMENT_IN_PROGRESS) { // no measurement in flight or just finished
-    if ((microsBetween(now, sensor->end) > SENSOR_QUIET_PERIOD_AFTER_END_MICRO_SEC)
-        && (microsBetween(now, sensor->start) > SENSOR_QUIET_PERIOD_AFTER_START_MICRO_SEC)) {
+  const uint32_t start = sensor->start;
+  const uint32_t end = sensor->end;
+  if (digitalRead(sensor->echoPin) == LOW && end != MEASUREMENT_IN_PROGRESS) { // no measurement in flight or just finished
+    if ((microsBetween(now, end) > SENSOR_QUIET_PERIOD_AFTER_END_MICRO_SEC)
+        && (microsBetween(now, start) > SENSOR_QUIET_PERIOD_AFTER_START_MICRO_SEC)) {
       ready = true;
     }
-  } else if (microsBetween(now, sensor->start) > MAX_TIMEOUT_MICRO_SEC) {
+  } else if (microsBetween(now, start) > MAX_TIMEOUT_MICRO_SEC) {
     // signal or interrupt was lost altogether this is an error,
     // should we raise it?? Now pretend the sensor is ready, hope it helps to give it a trigger.
     ready = true;
@@ -243,6 +246,29 @@ void HCSR04SensorManager::collectSensorResults() {
       sensor->lastMinUpdate = millis();
     }
   }
+}
+
+/* During debugging I observed readings that did not get `start` updated
+ * By the interrupt. Since we also set start when we send the pulse to the
+ * sensor this adds 300 microseconds or 5 centimeters to the measured result.
+ * After research, is a bug in the ESP!? See https://esp32.com/viewtopic.php?t=10124
+ */
+uint32_t HCSR04SensorManager::getFixedStart(
+  size_t idx, const HCSR04SensorInfo *sensor) {
+  uint32_t start = sensor->start;
+  // the error appears if both sensors trigger the interrupt at the exact same
+  // time, if this happens, trigger time == start time
+  if (sensor->trigger == sensor->start) {
+    for (size_t idx2 = 0; idx2 < m_sensors.size(); ++idx2) {
+      if (idx2 != idx) {
+        // it should be save to use the start value from the other sensor.
+        const uint32_t alternativeStart = m_sensors[idx2].start;
+        if (microsBetween(alternativeStart, start) < 500) // typically 290-310 microseconds {
+          start = alternativeStart;
+      }
+    }
+  }
+  return start;
 }
 
 uint16_t HCSR04SensorManager::correctSensorOffset(uint16_t dist, uint16_t offset) {
