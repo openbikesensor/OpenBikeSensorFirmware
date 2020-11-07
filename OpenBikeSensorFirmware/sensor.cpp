@@ -205,7 +205,7 @@ void HCSR04SensorManager::collectSensorResults() {
   {
     HCSR04SensorInfo* const sensor = &m_sensors[idx];
     const uint32_t end = sensor->end;
-    const uint32_t start = sensor->start;
+    const uint32_t start = getFixedStart(idx, sensor);
     uint32_t duration;
     if (end == MEASUREMENT_IN_PROGRESS)
     { // measurement is still in flight! But the time we want to wait is up (> MAX_DURATION_MICRO_SEC)
