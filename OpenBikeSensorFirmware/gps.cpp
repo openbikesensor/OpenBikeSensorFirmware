@@ -24,7 +24,7 @@
 HardwareSerial SerialGPS(1);
 TinyGPSPlus gps;
 
-int gpsTime() {
+time_t gpsTime() {
   struct tm t;
   t.tm_year = gps.date.year() - 1900;
   t.tm_mon = gps.date.month() - 1; // Month, 0 - jan
