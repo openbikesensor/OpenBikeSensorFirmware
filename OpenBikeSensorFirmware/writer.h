@@ -30,16 +30,30 @@
 #include "globals.h"
 #include "vector.h"
 
+
 struct DataSet {
+  time_t time;
+//  TinyGPSDate date;
+//  TinyGPSTime time;
   TinyGPSLocation location;
   TinyGPSAltitude altitude;
-  TinyGPSDate date;
-  TinyGPSTime time;
   TinyGPSCourse course;
   TinyGPSSpeed speed;
+  TinyGPSHDOP hdop;
+  uint8_t validSatellites;
+  double batteryLevel;
   Vector<uint16_t> sensorValues;
   bool confirmed = false;
+  bool marked = false;
+  bool invalidMeasurement = false;
   bool isInsidePrivacyArea;
+  uint8_t factor = MICRO_SEC_TO_CM_DIVIDER;
+  uint8_t measurements;
+
+  uint16_t position = 0; // fixme: num sensors?
+  uint16_t startOffsetMilliseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
+  int32_t readDurationsLeftInMicroseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
+  int32_t readDurationsRightInMicroseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
 };
 
 

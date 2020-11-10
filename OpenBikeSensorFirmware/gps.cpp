@@ -35,6 +35,16 @@ time_t gpsTime() {
   return mktime(&t);
 }
 
+time_t currentTime() {
+  time_t result;
+  if (gps.date.isValid() && gps.date.age() < 2000 && gps.date.year() > 2019) {
+    result = gpsTime();
+  } else {
+    result = time(NULL);
+  }
+  return result;
+}
+
 void configureGpsModule() {
   // switch of periodic gps messages that we do not use, leaves GGA and RMC on
   SerialGPS.print(F("$PUBX,40,GSV,0,0,0,0*59\r\n"));

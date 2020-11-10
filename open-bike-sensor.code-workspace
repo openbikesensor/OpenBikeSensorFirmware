@@ -8,7 +8,8 @@
 		"files.associations": {
 			"*.tpp": "cpp",
 			"random": "cpp",
-			"functional": "cpp"
+			"functional": "cpp",
+			"cstdint": "cpp"
 		}
 	},
 	"extensions": {

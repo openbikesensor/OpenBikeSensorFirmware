@@ -26,7 +26,30 @@
 #include "globals.h"
 #include "vector.h"
 
+/* About the speed of sound:
+   See also http://www.sengpielaudio.com/Rechner-schallgeschw.htm (german)
+    - speed of sound depends on ambient temperature
+      temp, Celsius  speed, m/sec    int factor     dist error introduced with fix int factor of 58
+                     (331.5+(0.6*t)) (2000/speed)   (speed@58 / speed) - 1
+       35            352.1           (57)           -2.1% (-3.2cm bei 150cm)
+       30            349.2
+       25            346.3
+       22.4          344.82           58             0
+       20            343.4
+       15            340.5
+       12.5          338.98           (59)          +1.7% (2.6cm bei 150)
+       10            337.5
+       5             334.5
+       0             331.5            (60)          +4%  (6cm bei 150cm)
+      −5             328.5
+      −10            325.4
+      −15            322.3
+*/
+const uint32_t MICRO_SEC_TO_CM_DIVIDER = 58; // sound speed 340M/S, 2 times back and forward
+
+
 const uint16_t MEDIAN_DISTANCE_MEASURES = 3;
+const uint16_t MAX_NUMBER_MEASUREMENTS_PER_INTERVAL = 40;
 
 struct HCSR04SensorInfo
 {
@@ -43,6 +66,8 @@ struct HCSR04SensorInfo
   volatile uint32_t start = 0;
   /* if end == 0 - a measurement is in progress */
   volatile uint32_t end = 1;
+
+  int32_t echoDurationMicroseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
 };
 
 class HCSR04SensorManager
@@ -53,10 +78,12 @@ class HCSR04SensorManager
     Vector<HCSR04SensorInfo> m_sensors;
     Vector<uint16_t> sensorValues;
     void getDistances();
-    void reset(bool resetMinDistance);
+    void reset();
     void registerSensor(HCSR04SensorInfo);
     void setOffsets(Vector<uint16_t>);
     void setPrimarySensor(uint8_t idx);
+    uint16_t lastReadingCount = 0;
+    uint16_t startOffsetMilliseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
 
   protected:
 
@@ -75,6 +102,8 @@ class HCSR04SensorManager
     static boolean isReadyForStart(HCSR04SensorInfo* sensor);
     static uint32_t microsBetween(uint32_t a, uint32_t b);
     static uint32_t microsSince(uint32_t a);
+    static uint16_t millisSince(uint16_t milliseconds);
+    uint16_t startReadingMilliseconds = 0;
 };
 
 #endif

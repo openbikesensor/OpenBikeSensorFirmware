@@ -49,34 +49,20 @@ BluetoothManager* bluetoothManager;
 String esp_chipid;
 
 // --- Local variables ---
-const int runs = 20;
 unsigned long measureInterval = 1000;
-unsigned long timeOfLastNotificationAttempt = millis();
 unsigned long timeOfMinimum = millis();
-unsigned long StartTime = millis();
+unsigned long StartTime = 0;
 unsigned long CurrentTime = millis();
-unsigned long buttonPushedTime = millis();
 
-//int timeout = 15000; /// ???
 bool usingSD = false;
 String text = "";
 uint16_t minDistanceToConfirm = MAX_SENSOR_VALUE;
-uint16_t confirmedMinDistance = MAX_SENSOR_VALUE;
 bool transmitConfirmedData = false;
 int lastButtonState = 0;
-bool handleBarWidthReset = false;
 
 String filename;
 
 CircularBuffer<DataSet*, 10> dataBuffer;
-Vector<String> sensorNames;
-
-#define TASK_SERIAL_RATE 1000 // ms
-
-uint32_t nextSerialTaskTs = 0;
-uint32_t nextOledTaskTs = 0;
-
-uint8_t handleBarWidth = 0;
 
 FileWriter* writer;
 
@@ -281,7 +267,7 @@ void setup() {
           break;
         }
       case NumberSatellites: {
-          validGPSData = gps.satellites.value() < config.satsForFix ? false : true;
+          validGPSData = gps.satellites.value() >= config.satsForFix;
           if (validGPSData)
             Serial.println("Got required number of satellites...");
           break;
@@ -340,29 +326,35 @@ void loop() {
 
   Serial.println("loop()");
 
-  DataSet* currentSet = new DataSet;
+  auto* currentSet = new DataSet;
   //specify which sensors value can be confirmed by pressing the button, should be configurable
   uint8_t confirmationSensorID = 1; // LEFT !!!
   readGPSData();
+
+  currentSet->time = currentTime();
   currentSet->location = gps.location;
   currentSet->altitude = gps.altitude;
-  currentSet->date = gps.date;
-  currentSet->time = gps.time;
-  currentSet->speed = gps.speed;
   currentSet->course = gps.course;
+  currentSet->speed = gps.speed;
+  currentSet->hdop = gps.hdop;
+  currentSet->validSatellites = gps.satellites.isValid() ? (uint8_t) gps.satellites.value() : 0;
+  currentSet->batteryLevel = 0;
   currentSet->isInsidePrivacyArea = isInsidePrivacyArea(currentSet->location);
-  sensorManager->reset(false);
+
+  sensorManager->reset();
 
   CurrentTime = millis();
+  if (StartTime == 0) {
+    StartTime = CurrentTime;
+  }
   int measurements = 0;
 
   // if the detected minimum was measured more than 5s ago, it is discarded and cannot be confirmed
-  int timeDelta = CurrentTime - timeOfMinimum;
+  int timeDelta = (int) (CurrentTime - timeOfMinimum);
   if ((timeDelta ) > (config.confirmationTimeWindow * 1000))
   {
     Serial.println(">>> CTW reached - reset() <<<");
     minDistanceToConfirm = MAX_SENSOR_VALUE;
-    sensorManager->reset(true);
   }
 
   // do this for the time specified by measureInterval, e.g. 1s
@@ -412,8 +404,6 @@ void loop() {
       timeOfMinimum = millis();
     }
 
-
-
     // if there is a sensor value and confirmation was not already triggered
     if (!transmitConfirmedData)
     {
@@ -436,6 +426,13 @@ void loop() {
   for (size_t idx = 0; idx < sensorManager->m_sensors.size(); ++idx) {
     currentSet->sensorValues.push_back(sensorManager->m_sensors[idx].minDistance);
   }
+  currentSet->measurements = sensorManager->lastReadingCount;
+  memcpy(&(currentSet->readDurationsRightInMicroseconds),
+         &(sensorManager->m_sensors[0].echoDurationMicroseconds), currentSet->measurements * sizeof(int32_t));
+  memcpy(&(currentSet->readDurationsLeftInMicroseconds),
+         &(sensorManager->m_sensors[1].echoDurationMicroseconds), currentSet->measurements * sizeof(int32_t));
+  memcpy(&(currentSet->startOffsetMilliseconds),
+         &(sensorManager->startOffsetMilliseconds), currentSet->measurements * sizeof(uint16_t));
 
   // if nothing was detected, write the dataset to file, otherwise write it to the buffer for confirmation
   if ((currentSet->sensorValues[confirmationSensorID] == MAX_SENSOR_VALUE) && dataBuffer.isEmpty())
@@ -501,7 +498,6 @@ void loop() {
 
     Serial.printf(">>> writeDataToSD - reset <<<");
     minDistanceToConfirm = MAX_SENSOR_VALUE;
-    sensorManager->reset(true);
 
     transmitConfirmedData = false;
 
@@ -516,14 +512,15 @@ void loop() {
   if (dataBuffer.isFull())
   {
     DataSet* dataset = dataBuffer.shift();
-    dataset->sensorValues[0] = MAX_SENSOR_VALUE;
-    Serial.printf("Buffer full, writing set to file\n");
+// ?????    dataset->sensorValues[0] = MAX_SENSOR_VALUE;
+    Serial.printf("data buffer full, writing set to file buffer\n");
     if (writer) writer->writeData(dataset);
     delete dataset;
   }
 
   // write data to sd every now and then, hardcoded value assuming it will write every minute or so
-  if (writer && (writer->getDataLength() > 5000) && !(digitalRead(PushButton))) {
+  if (writer && (writer->getDataLength() > 10000) && !(digitalRead(PushButton))) {
+    Serial.printf("File buffer full, writing to file\n");
     writer->writeDataToSD();
   }
 

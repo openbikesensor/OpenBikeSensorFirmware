@@ -21,27 +21,6 @@
 #include "sensor.h"
 #include "FunctionalInterrupt.h"
 
-/* About the speed of sound:
-   See also http://www.sengpielaudio.com/Rechner-schallgeschw.htm (german)
-    - speed of sound depends on ambient temperature
-      temp, Celsius  speed, m/sec    int factor     dist error introduced with fix int factor of 58
-                     (331.5+(0.6*t)) (2000/speed)   (speed@58 / speed) - 1
-       35            352.1           (57)           -2.1% (-3.2cm bei 150cm)
-       30            349.2
-       25            346.3
-       22.4          344.82           58             0
-       20            343.4
-       15            340.5
-       12.5          338.98           (59)          +1.7% (2.6cm bei 150)
-       10            337.5
-       5             334.5
-       0             331.5            (60)          +4%  (6cm bei 150cm)
-      −5             328.5
-      −10            325.4
-      −15            322.3
-*/
-const uint32_t MICRO_SEC_TO_CM_DIVIDER = 58; // sound speed 340M/S, 2 times back and forward
-
 const uint16_t MIN_DISTANCE_MEASURED_CM =   2;
 const uint16_t MAX_DISTANCE_MEASURED_CM = 320; // candidate to check I could not get good readings above 300
 
@@ -56,7 +35,6 @@ const uint32_t MAX_TIMEOUT_MICRO_SEC = 75000;
 
 /* The last end (echo goes to low) of a measurement must be this far
  * away before a new measurement is started.
- * FIXME: Saw false readings with 10 * 1000, increased to 25.
  */
 const uint32_t SENSOR_QUIET_PERIOD_AFTER_END_MICRO_SEC = 10 * 1000;
 
@@ -100,7 +78,6 @@ const uint32_t MEASUREMENT_IN_PROGRESS = 0;
  *    close to the needed 148ms
  */
 
-
 void HCSR04SensorManager::registerSensor(HCSR04SensorInfo sensorInfo) {
   m_sensors.push_back(sensorInfo);
   pinMode(sensorInfo.triggerPin, OUTPUT);
@@ -111,12 +88,14 @@ void HCSR04SensorManager::registerSensor(HCSR04SensorInfo sensorInfo) {
   attachInterrupt(sensorInfo.echoPin, std::bind(&HCSR04SensorManager::isr, this, m_sensors.size() - 1), CHANGE);
 }
 
-void HCSR04SensorManager::reset(bool resetMinDistance) {
-  for (size_t idx = 0; idx < m_sensors.size(); ++idx)
-  {
-    sensorValues[idx] = MAX_SENSOR_VALUE;
-    if (resetMinDistance) m_sensors[idx].minDistance = MAX_SENSOR_VALUE;
+void HCSR04SensorManager::reset() {
+  for (size_t idx = 0; idx < m_sensors.size(); ++idx) {
+    m_sensors[idx].minDistance = MAX_SENSOR_VALUE;
+    memset(&(m_sensors[idx].echoDurationMicroseconds), 0, sizeof(m_sensors[idx].echoDurationMicroseconds));
   }
+  startReadingMilliseconds = millis();
+  lastReadingCount = 0;
+  memset(&(startOffsetMilliseconds), 0, sizeof(startOffsetMilliseconds));
 }
 
 void HCSR04SensorManager::setOffsets(Vector<uint16_t> offsets) {
@@ -210,6 +189,7 @@ void HCSR04SensorManager::collectSensorResults() {
     if (end == MEASUREMENT_IN_PROGRESS)
     { // measurement is still in flight! But the time we want to wait is up (> MAX_DURATION_MICRO_SEC)
       duration = microsSince(start);
+      sensor->echoDurationMicroseconds[lastReadingCount] = -1;
       // better save than sorry:
       if (duration < MAX_DURATION_MICRO_SEC) {
 #ifdef DEVELOP
@@ -222,6 +202,7 @@ void HCSR04SensorManager::collectSensorResults() {
     else
     {
       duration = microsBetween(start, end);
+      sensor->echoDurationMicroseconds[lastReadingCount] = duration;
     }
     uint16_t dist;
     if (duration < MIN_DURATION_MICRO_SEC || duration >= MAX_DURATION_MICRO_SEC)
@@ -246,6 +227,10 @@ void HCSR04SensorManager::collectSensorResults() {
       sensor->minDistance = sensorValues[idx];
       sensor->lastMinUpdate = millis();
     }
+  }
+  startOffsetMilliseconds[lastReadingCount] = millisSince(startReadingMilliseconds);
+  if (lastReadingCount < MAX_NUMBER_MEASUREMENTS_PER_INTERVAL) {
+    lastReadingCount++;
   }
 }
 
@@ -330,6 +315,14 @@ uint32_t HCSR04SensorManager::microsBetween(uint32_t a, uint32_t b) {
  */
 uint32_t HCSR04SensorManager::microsSince(uint32_t a) {
   return microsBetween(micros(), a);
+}
+
+uint16_t HCSR04SensorManager::millisSince(uint16_t milliseconds) {
+  uint16_t result = ((uint16_t) millis()) - milliseconds;
+  if (result & 0x8000) {
+    result = -result;
+  }
+  return result;
 }
 
 uint16_t HCSR04SensorManager::medianMeasure(HCSR04SensorInfo *const sensor, uint16_t value) {

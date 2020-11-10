@@ -159,72 +159,97 @@ uint16_t FileWriter::getDataLength() {
 
 void FileWriter::writeDataToSD() {
   this->appendFile(SD, m_filename.c_str(), dataString.c_str() );
-  dataString = "";
+  dataString.clear();
 }
 
 void CSVFileWriter::writeHeader() {
   String headerString;
-  headerString += "Date;Time;Latitude;Longitude;Course;Speed";
-  for (size_t idx = 0; idx < sensorManager->m_sensors.size(); ++idx)
+  headerString += "Date;Time;Latitude;Longitude;Altitude;"
+                  "Course;Speed;HDOP;Satellites;BatteryLevel;Left;Right;Confirmed;Marked;Invalid;"
+                  "insidePrivacyArea;Factor;Measurements";
+  for (size_t idx = 1; idx <= MAX_NUMBER_MEASUREMENTS_PER_INTERVAL; ++idx)
   {
-    headerString += ";";
-    headerString += sensorManager->m_sensors[idx].sensorLocation;
+    String number = String(idx);
+    headerString += ";Tms" + number;
+    headerString += ";Lus" + number;
+    headerString += ";Rus" + number;
   }
-  headerString += ";Confirmed";
-  headerString += ";insidePrivacyArea";
   headerString += "\n";
   this->appendFile(SD, m_filename.c_str(), headerString.c_str() );
 }
 
 void CSVFileWriter::writeData(DataSet* set) {
-  //String dataString = "";
-
   /*
     AbsolutePrivacy : When inside privacy area, the writer does noting, unless overriding is selected and the current set is confirmed
     NoPosition : When inside privacy area, the writer will replace latitude and longitude with NaNs
     NoPrivacy : Privacy areas are ignored, but the value "insidePrivacyArea" will be 1 inside
     OverridePrivacy : When selected, a full set is written, when a value was confirmed, even inside the privacy area
   */
-
-  if (!((config.privacyConfig & AbsolutePrivacy) && set->isInsidePrivacyArea) || ((config.privacyConfig & OverridePrivacy) && set->confirmed))
-  {
-    char dateString[12];
-    sprintf(dateString, "%02d.%02d.%04d;", set->date.day(), set->date.month(), set->date.year());
-    dataString = dataString + dateString;
-
-    char timeString[12];
-    sprintf(timeString, "%02d:%02d:%02d;", set->time.hour(), set->time.minute(), set->time.second());
-    dataString = dataString + timeString;
-
-    if ((config.privacyConfig & NoPosition) && set->isInsidePrivacyArea && !((config.privacyConfig & OverridePrivacy) && set->confirmed))
-    {
-      dataString = dataString + "NaN;NaN;";
-    }
-    else
-    {
-      String latitudeString = String(set->location.lat(), 6);
-      dataString = dataString + latitudeString + ";";
-
-      String longitudeString = String(set->location.lng(), 6);
-      dataString = dataString + longitudeString + ";";
-    }
-
-    String courseString = String(set->course.deg(), 3);
-    dataString = dataString + courseString + ";";
-
-    String speedString = String(set->speed.kmph(), 4);
-    dataString = dataString + speedString;
-
-    for (size_t idx = 0; idx < set->sensorValues.size(); ++idx)
-    {
-      dataString = dataString + ";" + String(set->sensorValues[idx]);
-    }
-    dataString = dataString + ";" + String(set->confirmed);
-    dataString = dataString + ";" + String(set->isInsidePrivacyArea);
-    dataString = dataString + "\n";
+  if (set->isInsidePrivacyArea
+    && ((config.privacyConfig & AbsolutePrivacy) || ((config.privacyConfig & OverridePrivacy) && !set->confirmed))) {
+    return;
   }
-}
 
+  const tm* time = localtime(&set->time);
+  char date[32];
+  snprintf(date, sizeof(date),
+           "%02d.%02d.%04d;%02d:%02d:%02d;",
+           time->tm_mday, time->tm_mon + 1, time->tm_year + 1900,
+           time->tm_hour, time->tm_min, time->tm_sec);
+
+  dataString += date;
+
+  if ((config.privacyConfig & NoPosition) && set->isInsidePrivacyArea && !((config.privacyConfig & OverridePrivacy) && set->confirmed)) {
+    dataString += ";;;";
+  } else if (set->location.isValid()) {
+    dataString += String(set->location.lat(), 6) + ";";
+    dataString += String(set->location.lng(), 6) + ";";
+    dataString += String(set->altitude.meters(), 1) + ";";
+  } else {
+    dataString += ";;;";
+  }
+  if (set->course.isValid()) {
+    dataString += String(set->course.deg(), 3) + ";";
+  } else {
+    dataString += ";";
+  }
+  if (set->speed.isValid()) {
+    dataString += String(set->speed.kmph(), 4) + ";";
+  } else {
+    dataString += ";";
+  }
+  if (set->hdop.isValid()) {
+    dataString += String(set->hdop.hdop(), 2) + ";";
+  } else {
+    dataString += ";";
+  }
+  dataString += String(set->validSatellites) + ";";
+  dataString += String(set->batteryLevel, 1) + ";";
+  dataString += String(set->sensorValues[1]) + ";"; // LEFT
+  dataString += String(set->sensorValues[0]) + ";"; // RIGHT
+  dataString += String(set->confirmed) + ";";
+  dataString += String(set->marked) + ";";
+  dataString += String(set->invalidMeasurement) + ";";
+  dataString += String(set->isInsidePrivacyArea) + ";";
+  dataString += String(set->factor) + ";";
+  dataString += String(set->measurements);
+
+  for (size_t idx = 0; idx < set->measurements; ++idx) {
+    dataString += ";" + String(set->startOffsetMilliseconds[idx]) + ";";
+    if (set->readDurationsLeftInMicroseconds[idx] > 0) {
+      dataString += String(set->readDurationsLeftInMicroseconds[idx]) + ";";
+    } else {
+      dataString += ";";
+    }
+    if (set->readDurationsRightInMicroseconds[idx] > 0) {
+      dataString += String(set->readDurationsRightInMicroseconds[idx]);
+    }
+  }
+  for (size_t idx = set->measurements; idx < MAX_NUMBER_MEASUREMENTS_PER_INTERVAL; ++idx) {
+    dataString += ";;;";
+  }
+  dataString = dataString + "\n";
+}
 
 
 void GPXFileWriter::writeHeader() {
@@ -249,16 +274,11 @@ void GPXFileWriter::writeData(DataSet* set) {
   dataString += "\">";
 
   char dateTimeString[25];
-  sprintf(
-    dateTimeString,
-    "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ",
-    set->date.year(),
-    set->date.month(),
-    set->date.day(),
-    set->time.hour(),
-    set->time.minute(),
-    set->time.second(),
-    set->time.centisecond());
+  const tm* time = localtime(&set->time);
+  snprintf(dateTimeString, sizeof(dateTimeString),
+           "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ",
+           time->tm_year + 1900, time->tm_mon + 1, time->tm_mday,
+           time->tm_hour, time->tm_min, time->tm_sec, 0);
   dataString += F("<time>");
   dataString += dateTimeString;
   dataString += F("</time>");
