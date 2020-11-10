@@ -433,7 +433,9 @@ void loop() {
   }
 
   // Write the minimum values of the while-loop to a set
-  currentSet->sensorValues = sensorManager->sensorValues;
+  for (size_t idx = 0; idx < sensorManager->m_sensors.size(); ++idx) {
+    currentSet->sensorValues.push_back(sensorManager->m_sensors[idx].minDistance);
+  }
 
   // if nothing was detected, write the dataset to file, otherwise write it to the buffer for confirmation
   if ((currentSet->sensorValues[confirmationSensorID] == MAX_SENSOR_VALUE) && dataBuffer.isEmpty())
