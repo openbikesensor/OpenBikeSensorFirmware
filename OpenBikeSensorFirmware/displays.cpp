@@ -18,10 +18,14 @@ void SSD1306DisplayDevice::showNumButtonPressed() {
   this->showTextOnGrid(1, 5, "press");
 }
 
-void SSD1306DisplayDevice::showValues(HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2, int lastMeasurements) {
+void SSD1306DisplayDevice::showValues(HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2, int minDistanceToConfirm, int lastMeasurements) {
   // Show sensor1, when DisplaySimple or DisplayLeft is configured
   if (config.displayConfig & DisplaySimple || config.displayConfig & DisplayLeft) {
     uint16_t value1 = sensor1.minDistance;
+    if (minDistanceToConfirm != MAX_SENSOR_VALUE) {
+      value1 = minDistanceToConfirm;
+    }
+
     String loc1 = sensor1.sensorLocation;
 
     // Do not show location, when DisplaySimple is configured
@@ -70,8 +74,8 @@ void SSD1306DisplayDevice::showValues(HCSR04SensorInfo sensor1, HCSR04SensorInfo
     if (config.displayConfig & DisplayDistanceDetail) {
       const int bufSize = 64;
       char buffer[bufSize];
-//      snprintf(buffer, bufSize - 1, "%03d|%02d|%03d", sensor1.rawDistance,
-//               lastMeasurements, sensor2.rawDistance);
+      snprintf(buffer, bufSize - 1, "%03d|%02d|%03d", sensor1.rawDistance,
+               lastMeasurements, sensor2.rawDistance);
       snprintf(buffer, bufSize - 1, "%03d|%02d|%uk", sensor1.rawDistance,
                lastMeasurements, ESP.getFreeHeap() / 1024);
       this->showTextOnGrid(0, 4, buffer, Dialog_plain_20);

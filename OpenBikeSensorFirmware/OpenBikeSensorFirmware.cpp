@@ -371,6 +371,7 @@ void loop() {
     displayTest->showValues(
       sensorManager->m_sensors[1],
       sensorManager->m_sensors[0],
+      minDistanceToConfirm,
       lastMeasurements
     );
 
