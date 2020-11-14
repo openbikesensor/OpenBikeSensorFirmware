@@ -170,7 +170,7 @@ void FileWriter::writeDataBuffered(DataSet* set) {
     writeDataToSD();
   }
 
-  if (getDataLength() < 1300) { // do not add data if our buffer is foll already. We loose data here!
+  if (getDataLength() < 13000) { // do not add data if our buffer is full already. We loose data here!
     writeData(set);
   } else {
     // ALERT!! - display?
