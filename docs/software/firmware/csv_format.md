@@ -33,6 +33,9 @@ PrivacyLevelApplied
 MaximumValidFlightTimeMicroseconds
 : 18560 - TODO: Refine! all echo times above this value must be discarded and treated as no object in sight
 
+DistanceSensorsUsed
+: `HC-SR04/JSN-SR04T` - enum currently only one possible value
+
 
 ## CSV
 
@@ -52,10 +55,11 @@ There is typically one line per second, but there are exceptions:
 - If we have multiple confirmed measurements in one interval in that case 
   an interval appears multiple times - once with each confirmed value.  
 
-THe headline of the 1st cell in not `Date` as the field description would 
-request, it is uese as Version indicator in the form `Version <n>`. `<n>` is a
+The headline of the 1st cell in not `Date` as the field description would 
+indicate, it is used as Version indicator in the form `OBSVER<n>`. `<n>` is an
 integer which is increased with every change that would need an adoption
-of the parser.
+of the parser this is `OBSVER2` so you can check for `OBSVER2` as magic at 
+the file start.
 
 
 Headline  | Format | Range | Sample | Description |
