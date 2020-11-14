@@ -75,13 +75,14 @@ void configureGpsModule() {
 void readGPSData() {
   while (SerialGPS.available() > 0) {
     if (gps.encode(SerialGPS.read())) {
+      // We MUST NOT set the time since this changes the couter value for all the places where we use millis() :(
       // set system time once every minute
-      if (gps.time.isValid() && gps.time.second() == 0 && gps.time.isUpdated() && gps.time.age() < 100) {
+//      if (gps.time.isValid() && gps.time.second() == 0 && gps.time.isUpdated() && gps.time.age() < 100) {
         // We are in the precision of +/- 1 sec, ok for our purpose
-        const time_t t = gpsTime();
-        const struct timeval now = {.tv_sec = t};
-        settimeofday(&now, nullptr);
-      }
+//        const time_t t = gpsTime();
+//        const struct timeval now = {.tv_sec = t};
+//        settimeofday(&now, nullptr);
+//      }
     }
   }
 

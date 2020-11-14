@@ -51,7 +51,7 @@ String esp_chipid;
 
 // --- Local variables ---
 unsigned long measureInterval = 1000;
-unsigned long timeOfMinimum = millis();
+unsigned long timeOfMinimum = esp_timer_get_time(); //  millis();
 unsigned long startTimeMillis = 0;
 unsigned long currentTimeMillis = millis();
 
@@ -332,8 +332,12 @@ void loop() {
   uint8_t confirmationSensorID = 1; // LEFT !!!
   readGPSData();
 
+  currentTimeMillis = millis();
+  if (startTimeMillis == 0) {
+    startTimeMillis = (currentTimeMillis / measureInterval) * measureInterval;
+  }
   currentSet->time = currentTime();
-  currentSet->millis = millis();
+  currentSet->millis = currentTimeMillis;
   currentSet->location = gps.location;
   currentSet->altitude = gps.altitude;
   currentSet->course = gps.course;
@@ -345,10 +349,6 @@ void loop() {
 
   sensorManager->reset();
 
-  currentTimeMillis = millis();
-  if (startTimeMillis == 0) {
-    startTimeMillis = (currentTimeMillis / measureInterval) * measureInterval;
-  }
   int measurements = 0;
 
   // if the detected minimum was measured more than 5s ago, it is discarded and cannot be confirmed
@@ -427,10 +427,10 @@ void loop() {
       datasetToConfirm = currentSet;
       Serial.print("New minDistanceToConfirm=");
       Serial.println(minDistanceToConfirm);
-      timeOfMinimum = millis();
+      timeOfMinimum = currentTimeMillis;
     }
     measurements++;
-  }
+  } // end measureInterval while
 
   // Write the minimum values of the while-loop to a set
   for (size_t idx = 0; idx < sensorManager->m_sensors.size(); ++idx) {
@@ -445,15 +445,15 @@ void loop() {
          &(sensorManager->startOffsetMilliseconds), currentSet->measurements * sizeof(uint16_t));
 
   // if nothing was detected, write the dataset to file, otherwise write it to the buffer for confirmation
-  // CHECKME: Do we need this special case?
-  if ((currentSet->sensorValues[confirmationSensorID] == MAX_SENSOR_VALUE) && dataBuffer.isEmpty())
-  {
+  if (!transmitConfirmedData
+      && currentSet->sensorValues[confirmationSensorID] == MAX_SENSOR_VALUE
+      && dataBuffer.isEmpty()) {
     Serial.write("Empty Buffer, writing directly ");
-    if (writer) writer->writeDataBuffered(currentSet);
+    if (writer) {
+      writer->writeDataBuffered(currentSet);
+    }
     delete currentSet;
-  }
-  else
-  {
+  } else {
     dataBuffer.push(currentSet);
   }
 
@@ -512,10 +512,7 @@ void loop() {
     delete dataset;
   }
 
-  unsigned long elapsedTimeMillis = currentTimeMillis - startTimeMillis;
-  Serial.write(" Time elapsed: ");
-  Serial.print(elapsedTimeMillis);
-  Serial.write(" milliseconds\n");
-  // synchronize to full measureIntervals  
+  Serial.printf("Time elapsed %lu milliseconds\n", currentTimeMillis - startTimeMillis);
+  // synchronize to full measureIntervals
   startTimeMillis = (currentTimeMillis / measureInterval) * measureInterval;
 }

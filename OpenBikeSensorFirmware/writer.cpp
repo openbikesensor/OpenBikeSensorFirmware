@@ -211,7 +211,7 @@ void CSVFileWriter::writeData(DataSet* set) {
   const tm* time = localtime(&set->time);
   char date[32];
   snprintf(date, sizeof(date),
-           "%02d.%02d.%04d;%02d:%02d:%02d;%u",
+           "%02d.%02d.%04d;%02d:%02d:%02d;%u;",
            time->tm_mday, time->tm_mon + 1, time->tm_year + 1900,
            time->tm_hour, time->tm_min, time->tm_sec, set->millis);
 
