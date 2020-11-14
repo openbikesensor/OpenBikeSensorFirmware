@@ -78,6 +78,7 @@ class HCSR04SensorManager
     Vector<HCSR04SensorInfo> m_sensors;
     Vector<uint16_t> sensorValues;
     void getDistances();
+    void getDistancesParallel();
     void reset();
     void registerSensor(HCSR04SensorInfo);
     void setOffsets(Vector<uint16_t>);
@@ -88,7 +89,11 @@ class HCSR04SensorManager
   protected:
 
   private:
-    uint8_t primarySensor = 1;
+    void waitTillSensorIsReady(uint8_t sensorId);
+    void sendTriggerToSensor(uint8_t sensorId);
+    void waitForEchosOrTimeout(uint8_t sensorId);
+    void collectSensorResult(uint8_t sensorId);
+    void setNoMeasureDate(uint8_t sensorId);
     void waitTillPrimarySensorIsReady();
     void waitForEchosOrTimeout();
     void setSensorTriggersToLow();
@@ -104,6 +109,9 @@ class HCSR04SensorManager
     static uint32_t microsSince(uint32_t a);
     static uint16_t millisSince(uint16_t milliseconds);
     uint16_t startReadingMilliseconds = 0;
+    /* The currently used sensor for alternating use. */
+    uint32_t activeSensor = 0;
+    uint8_t primarySensor = 1;
 };
 
 #endif
