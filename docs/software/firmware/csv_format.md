@@ -30,6 +30,9 @@ NumberOfDefinedPrivacyAreas
 PrivacyLevelApplied
 : NoPrivacy|NoPosition|OverridePrivacy|AbsolutePrivacy|
 
+MaximumValidFlightTimeMicroseconds
+: 18560 - TODO: Refine! all echo times above this value must be discarded and treated as no object in sight
+
 
 ## CSV
 
@@ -43,31 +46,39 @@ the space.
 
 NOTE: The order of the fields is different from Version 1 of the CVS file. Ok??
 
+There is typically one line per second, but there are exceptions:
+
+- Timing might be bad, and we miss one second
+- If we have multiple confirmed measurements in one interval in that case 
+  an interval appears multiple times - once with each confirmed value.  
+
+
+
 Headline  | Format | Range | Sample | Description |
 ---       | --- | --- | --- | --- |
 `Date`    | TT.MM.YYYY | | 24.11.2020 | UTC, typically as received by the GPS module in that second. If there is no GPS module present, system time is used. If there was no reception of a time signal yet, this might be unix time (starting 1.1.1970) which can be at least used as offset between the csv lines.    
 `Time`      | HH.MM.SS | | 12:00:00 | UTC time, see also above
-`Millies`   | Integer| 0-2^31 | 1234567 | Millisecond counter will continuously increase in the file, for time offset calculatio
-`Latitude`  | Float |  | 9.123456 | Latitude as degrees
-`Longitude` | Float |  | 42.123456 | Longitude in degrees
-`Altitude`  | Float | -9999.9-17999.9 | 480.12 | meters above mean sea level (GPGGA)
-`Course`    | Float | 0-359.9 | 42 | Course over ground in degrees (GPRMC)
-`Speed`     | Float | 0-359.9 | 42.0 | Speed over ground in km/h
-`HDOP`      | Float | 0-99.9 | 2.3  | Relative accuracy of horizontal position (GPGGA)
-`Satellites` | Integer | 0-99 | 5 | Number of satellites in use (GPGGA)
-`BatteryLevel` | Float | 0-9.99 | 3.3 | Current battery level reading (~V)
-`Left`      | Integer | 0-999 | 150 | Left minimum measured distance in centimeters of this line, the measurement is already corrected for the handlebar offset, 999 for no measurement. 
-`Right`     | Integer | 0-999 | 150 | Right minimum measured distance as `Left` above.
-`Confirmed` | Boolean | 0-1 | 1 | Measurement was confirmed overtaking by button press  
-`Marked`    | Boolean | 0-1 | 1 | Measurement was marked (not possible yet)
-`Invalid`   | Boolean | 0-1 | 1 | Measurement was marked as invalid reading (not possible yet)
-`insidePrivacyArea`| Boolean | 0-1 | 1 | 
-`Factor`    | Integer |  | 58 | The factor used to calculate the time given in micro seconds (us) into centimeters (cm). Currently fix, might get adjusted by temperature some time later. |
-`Measurements` | Integer | 0-999 | 18 | Number of measurements taken in this line |
+`Millies`   | int32  | 0-2^31 | 1234567 | Millisecond counter will continuously increase in the file, for time offset calculatio
+`Latitude`  | double |  | 9.123456 | Latitude as degrees
+`Longitude` | double |  | 42.123456 | Longitude in degrees
+`Altitude`  | double | -9999.9-17999.9 | 480.12 | meters above mean sea level (GPGGA)
+`Course`    | double | 0-359.9 | 42 | Course over ground in degrees (GPRMC)
+`Speed`     | double | 0-359.9 | 42.0 | Speed over ground in km/h
+`HDOP`      | double | 0-99.9 | 2.3  | Relative accuracy of horizontal position (GPGGA)
+`Satellites` | int16 | 0-99 | 5 | Number of satellites in use (GPGGA)
+`BatteryLevel` | double | 0-9.99 | 3.3 | Current battery level reading (~V)
+`Left`      | int16  | 0-999 | 150 | Left minimum measured distance in centimeters of this line, the measurement is already corrected for the handlebar offset, 999 for no measurement. 
+`Right`     | int16  | 0-999 | 150 | Right minimum measured distance as `Left` above.
+`Confirmed` | int16  | 0-1 | 1 | Measurement was confirmed overtaking by button press  
+`Marked`    | int16  | 0-1 | 1 | Measurement was marked (not possible yet)
+`Invalid`   | int16  | 0-1 | 1 | Measurement was marked as invalid reading (not possible yet)
+`insidePrivacyArea`| int16 | 0-1 | 1 | 
+`Factor`    | int16  |  | 58 | The factor used to calculate the time given in micro seconds (us) into centimeters (cm). Currently fix, might get adjusted by temperature some time later. |
+`Measurements` | int16  | 0-999 | 18 | Number of measurements entries in this line |
 _comment_   | | | | Now follows a series of #`Measurements` repetitions of #`DatasPerMeasurement` entries, `<n>` is always increased starting from 1 for the 1st measurement. Order is always the same, additional data might be added to the end, `DatasPerMeasurement` will be increased then.  |
-`Tms<n>`    | Integer | 0-1999 | 234 | Millisecond (ms) offset of measurement in this series (line) of measurements |
-`Lus<n>`    | Integer | 0-100000 | 3456 | Microseconds (us) till the echo was received by the left sensor, divide by the `Factor` given above to get the distance in centimeters you might also want to apply the handlebar offset given in the metadata. Empty for no measurement taken. You might see values above 30000 which point to a timeout reported by the sensor when there is no object in sight.|
-`Rus<n>`    | Integer | 0-100000 | 3456 | As `Lus<n>` above for the right sensor. |
+`Tms<n>`    | int16   | 0-1999 | 234 | Millisecond (ms) offset of measurement in this series (line) of measurements |
+`Lus<n>`    | int32  | 0-100000 | 3456 | Microseconds (us) till the echo was received by the left sensor, divide by the `Factor` given above to get the distance in centimeters you might also want to apply the handlebar offset given in the metadata. Empty for no measurement taken. You might see values above 30000 which point to a timeout reported by the sensor when there is no object in sight.|
+`Rus<n>`    | int32  | 0-100000 | 3456 | As `Lus<n>` above for the right sensor. |
 
 
 Possible Header:
