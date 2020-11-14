@@ -469,7 +469,7 @@ void loop() {
 
   if (transmitConfirmedData) {
     // Empty buffer by writing it, after confirmation it will be written to SD card directly so no confirmed sets will be lost
-    while (!dataBuffer.isEmpty()) {
+    while (!dataBuffer.isEmpty() && dataBuffer.first() != datasetToConfirm) {
       DataSet* dataset = dataBuffer.shift();
       if (dataset->confirmedDistances.size() == 0) {
         if (writer) {
