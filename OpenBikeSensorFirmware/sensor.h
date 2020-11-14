@@ -49,7 +49,7 @@ const uint32_t MICRO_SEC_TO_CM_DIVIDER = 58; // sound speed 340M/S, 2 times back
 
 
 const uint16_t MEDIAN_DISTANCE_MEASURES = 3;
-const uint16_t MAX_NUMBER_MEASUREMENTS_PER_INTERVAL = 40;
+const uint16_t MAX_NUMBER_MEASUREMENTS_PER_INTERVAL = 60;
 
 struct HCSR04SensorInfo
 {

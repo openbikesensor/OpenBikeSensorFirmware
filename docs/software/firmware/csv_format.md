@@ -62,7 +62,7 @@ Headline  | Format | Range | Sample | Description |
 ---       | --- | --- | --- | --- |
 `Date`    | TT.MM.YYYY | | 24.11.2020 | UTC, typically as received by the GPS module in that second. If there is no GPS module present, system time is used. If there was no reception of a time signal yet, this might be unix time (starting 1.1.1970) which can be at least used as offset between the csv lines.    
 `Time`      | HH.MM.SS | | 12:00:00 | UTC time, see also above
-`Millies`   | int32  | 0-2^31 | 1234567 | Millisecond counter will continuously increase in the file, for time offset calculatio
+`Millis`   | int32  | 0-2^31 | 1234567 | Millisecond counter will continuously increase in the file, for time offset calculatio
 `Latitude`  | double |  | 9.123456 | Latitude as degrees
 `Longitude` | double |  | 42.123456 | Longitude in degrees
 `Altitude`  | double | -9999.9-17999.9 | 480.12 | meters above mean sea level (GPGGA)
@@ -88,7 +88,7 @@ _comment_   | | | | Now follows a series of #`Measurements` repetitions of #`Dat
 Possible Header:
 
 ```csv
-Version: 1;Time;Millies;Latitude;Longitude;Altitude; \
+Version: 1;Time;Millis;Latitude;Longitude;Altitude; \
   Course;Speed;HDOP;Satellites;BatteryLevel;Left;Right;Confirmed;Marked;Invalid; \
   insidePrivacyArea;Factor;Measurements;Tms1;Lus1;Rus1;Tms2;Lus2;Rus2; \
   Tms3;Lus3;Rus3;...;Tms60;Lus60;Rus60

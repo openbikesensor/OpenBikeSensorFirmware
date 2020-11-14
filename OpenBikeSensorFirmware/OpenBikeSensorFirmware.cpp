@@ -34,6 +34,7 @@ const uint8_t GPS_POWER = 12;
 
 int confirmedMeasurements = 0;
 int numButtonReleased = 0;
+DataSet *datasetToConfirm = nullptr;
 
 int buttonState = 0;
 
@@ -51,8 +52,8 @@ String esp_chipid;
 // --- Local variables ---
 unsigned long measureInterval = 1000;
 unsigned long timeOfMinimum = millis();
-unsigned long StartTime = 0;
-unsigned long CurrentTime = millis();
+unsigned long startTimeMillis = 0;
+unsigned long currentTimeMillis = millis();
 
 bool usingSD = false;
 String text = "";
@@ -332,6 +333,7 @@ void loop() {
   readGPSData();
 
   currentSet->time = currentTime();
+  currentSet->millis = millis();
   currentSet->location = gps.location;
   currentSet->altitude = gps.altitude;
   currentSet->course = gps.course;
@@ -343,28 +345,27 @@ void loop() {
 
   sensorManager->reset();
 
-  CurrentTime = millis();
-  if (StartTime == 0) {
-    StartTime = CurrentTime;
+  currentTimeMillis = millis();
+  if (startTimeMillis == 0) {
+    startTimeMillis = (currentTimeMillis / measureInterval) * measureInterval;
   }
   int measurements = 0;
 
   // if the detected minimum was measured more than 5s ago, it is discarded and cannot be confirmed
-  int timeDelta = (int) (CurrentTime - timeOfMinimum);
-  if ((timeDelta ) > (config.confirmationTimeWindow * 1000))
-  {
+  int timeDelta = (int) (currentTimeMillis - timeOfMinimum);
+  if ((timeDelta ) > (config.confirmationTimeWindow * 1000)) {
     Serial.println(">>> CTW reached - reset() <<<");
     minDistanceToConfirm = MAX_SENSOR_VALUE;
+    datasetToConfirm = nullptr;
   }
 
   // do this for the time specified by measureInterval, e.g. 1s
-  while ((CurrentTime - StartTime) < measureInterval && !transmitConfirmedData)
-  {
+  while ((currentTimeMillis - startTimeMillis) < measureInterval) {
     // #######################################################
     // Display
     // #######################################################
 
-    CurrentTime = millis();
+    currentTimeMillis = millis();
     sensorManager->getDistances();
 
     // Show values on the display
@@ -395,30 +396,38 @@ void loop() {
     // Storage
     // #######################################################
 
-    // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
-    if (sensorManager->sensorValues[confirmationSensorID] > 0
-      && sensorManager->sensorValues[confirmationSensorID] < minDistanceToConfirm)
-    {
-      minDistanceToConfirm = sensorManager->sensorValues[confirmationSensorID];
-      Serial.print("New minDistanceToConfirm=");
-      Serial.println(minDistanceToConfirm);
-      timeOfMinimum = millis();
-    }
-
     // if there is a sensor value and confirmation was not already triggered
-    if (!transmitConfirmedData)
-    {
+    if (minDistanceToConfirm != MAX_SENSOR_VALUE) {
       buttonState = digitalRead(PushButton);
       // detect state change
-      if (buttonState != lastButtonState)
-      {
-        if (buttonState == LOW) //after button was released
-        {
+      if (buttonState != lastButtonState) {
+        if (buttonState == LOW) { // after button was released
+          // immediate user feedback - we start the action
+          // invert state might be a bit long - it does not block next confirmation.
+          if (config.displayConfig & DisplayInvert) displayTest->normalDisplay();
+          else displayTest->invert();
+
           transmitConfirmedData = true;
           numButtonReleased++;
+          if (datasetToConfirm != nullptr) {
+            datasetToConfirm->confirmed = true;
+            datasetToConfirm->confirmedDistances.push_back(minDistanceToConfirm);
+            datasetToConfirm = nullptr;
+          }
+          minDistanceToConfirm = MAX_SENSOR_VALUE; // ready for next confirmation
         }
       }
       lastButtonState = buttonState;
+    }
+
+    // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
+    if (sensorManager->sensorValues[confirmationSensorID] > 0
+        && sensorManager->sensorValues[confirmationSensorID] < minDistanceToConfirm) {
+      minDistanceToConfirm = sensorManager->sensorValues[confirmationSensorID];
+      datasetToConfirm = currentSet;
+      Serial.print("New minDistanceToConfirm=");
+      Serial.println(minDistanceToConfirm);
+      timeOfMinimum = millis();
     }
     measurements++;
   }
@@ -436,10 +445,11 @@ void loop() {
          &(sensorManager->startOffsetMilliseconds), currentSet->measurements * sizeof(uint16_t));
 
   // if nothing was detected, write the dataset to file, otherwise write it to the buffer for confirmation
+  // CHECKME: Do we need this special case?
   if ((currentSet->sensorValues[confirmationSensorID] == MAX_SENSOR_VALUE) && dataBuffer.isEmpty())
   {
     Serial.write("Empty Buffer, writing directly ");
-    if (writer) writer->writeData(currentSet);
+    if (writer) writer->writeDataBuffered(currentSet);
     delete currentSet;
   }
   else
@@ -457,77 +467,55 @@ void loop() {
 
   lastMeasurements = measurements;
 
-  if (transmitConfirmedData)
-  {
-    //inverting the display until the data is saved TODO: add control over the time the display will be inverted so the user actually sees it.
-    if (config.displayConfig & DisplayInvert) displayTest->normalDisplay();
-    else displayTest->invert();
-
-    Serial.printf("Trying to transmit Confirmed data \n");
-    // make sure the minimum distance is saved only once
-    using index_t = decltype(dataBuffer)::index_t;
-    index_t j = -1;
-    //Search for the latest appearance of the confirmed minimum value
-    for (index_t i = 0; i < dataBuffer.size(); i++)
-    {
-      if (dataBuffer[i]->sensorValues[confirmationSensorID] == minDistanceToConfirm)
-      {
-        j = i;
-      }
-    }
-    for (index_t i = 0; i < dataBuffer.size(); i++)
-    {
-      if (i == j)
-      {
-        dataBuffer[i]->confirmed = true; // set the confirmed tag of the set in the buffer containing the minimum
-        Serial.printf("Found confirmed data in buffer \n");
-        confirmedMeasurements++;
-      }
-    }
-
+  if (transmitConfirmedData) {
     // Empty buffer by writing it, after confirmation it will be written to SD card directly so no confirmed sets will be lost
-    while (!dataBuffer.isEmpty())
-    {
+    while (!dataBuffer.isEmpty()) {
       DataSet* dataset = dataBuffer.shift();
-      Serial.printf("Trying to write set to file\n");
-      if (writer) writer->writeData(dataset);
-      Serial.printf("Wrote set to file\n");
+      if (dataset->confirmedDistances.size() == 0) {
+        if (writer) {
+          writer->writeDataBuffered(dataset);
+        }
+      }
+      // write record as many times as we have confirmed values
+      for (int i = 0; i < dataset->confirmedDistances.size(); i++) {
+        // make sure the distance reported is the one that was confirmed
+        dataset->sensorValues[confirmationSensorID] = dataset->confirmedDistances[i];
+        confirmedMeasurements++;
+        if (writer) {
+          writer->writeDataBuffered(dataset);
+        }
+      }
       delete dataset;
     }
-    if (writer)
+    if (writer) {  // "flush"
       writer->writeDataToSD();
-
+    }
     Serial.printf(">>> writeDataToSD - reset <<<");
-    minDistanceToConfirm = MAX_SENSOR_VALUE;
-
     transmitConfirmedData = false;
-
+    // back to normal display mode
     if (config.displayConfig & DisplayInvert) displayTest->invert();
     else displayTest->normalDisplay();
-
-    // Lets clear the display again, so on the next cycle, it will be recreated
-    displayTest->clear();
   }
 
-  // If the circular buffer is full, write just one set to the writers buffer, will fail when the confirmation timeout is larger than measureInterval * dataBuffer.size()
-  if (dataBuffer.isFull())
-  {
+  // If the circular buffer is full, write just one set to the writers buffer,
+  if (dataBuffer.isFull()) { // TODO: Same code as above
     DataSet* dataset = dataBuffer.shift();
-// ?????    dataset->sensorValues[0] = MAX_SENSOR_VALUE;
     Serial.printf("data buffer full, writing set to file buffer\n");
-    if (writer) writer->writeData(dataset);
+    if (writer) {
+      writer->writeDataBuffered(dataset);
+    }
+    // we are about to delete the to be confirmed dataset, so take care for this.
+    if (datasetToConfirm == dataset) {
+      datasetToConfirm = nullptr;
+      minDistanceToConfirm = MAX_SENSOR_VALUE;
+    }
     delete dataset;
   }
 
-  // write data to sd every now and then, hardcoded value assuming it will write every minute or so
-  if (writer && (writer->getDataLength() > 10000) && !(digitalRead(PushButton))) {
-    Serial.printf("File buffer full, writing to file\n");
-    writer->writeDataToSD();
-  }
-
-  unsigned long ElapsedTime = CurrentTime - StartTime;
-  StartTime = CurrentTime;
+  unsigned long elapsedTimeMillis = currentTimeMillis - startTimeMillis;
   Serial.write(" Time elapsed: ");
-  Serial.print(ElapsedTime);
+  Serial.print(elapsedTimeMillis);
   Serial.write(" milliseconds\n");
+  // synchronize to full measureIntervals  
+  startTimeMillis = (currentTimeMillis / measureInterval) * measureInterval;
 }

@@ -162,13 +162,31 @@ void FileWriter::writeDataToSD() {
   dataString.clear();
 }
 
+void FileWriter::writeDataBuffered(DataSet* set) {
+  if (getDataLength() > 10000 && !(digitalRead(PushButton))) {
+#ifdef DEVELOP
+    Serial.printf("File buffer full, writing to file\n");
+#endif
+    writeDataToSD();
+  }
+
+  if (getDataLength() < 1300) { // do not add data if our buffer is foll already. We loose data here!
+    writeData(set);
+  } else {
+    // ALERT!! - display?
+#ifdef DEVELOP
+    Serial.printf("File buffer overflow, not allowed to write - will skip\n");
+#endif
+  }
+}
+
+
 void CSVFileWriter::writeHeader() {
   String headerString;
-  headerString += "Date;Time;Latitude;Longitude;Altitude;"
+  headerString += "Version: 1;Time;Millis;Latitude;Longitude;Altitude;"
                   "Course;Speed;HDOP;Satellites;BatteryLevel;Left;Right;Confirmed;Marked;Invalid;"
                   "insidePrivacyArea;Factor;Measurements";
-  for (size_t idx = 1; idx <= MAX_NUMBER_MEASUREMENTS_PER_INTERVAL; ++idx)
-  {
+  for (uint16_t idx = 1; idx <= MAX_NUMBER_MEASUREMENTS_PER_INTERVAL; ++idx) {
     String number = String(idx);
     headerString += ";Tms" + number;
     headerString += ";Lus" + number;
@@ -193,9 +211,9 @@ void CSVFileWriter::writeData(DataSet* set) {
   const tm* time = localtime(&set->time);
   char date[32];
   snprintf(date, sizeof(date),
-           "%02d.%02d.%04d;%02d:%02d:%02d;",
+           "%02d.%02d.%04d;%02d:%02d:%02d;%u",
            time->tm_mday, time->tm_mon + 1, time->tm_year + 1900,
-           time->tm_hour, time->tm_min, time->tm_sec);
+           time->tm_hour, time->tm_min, time->tm_sec, set->millis);
 
   dataString += date;
 

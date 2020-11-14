@@ -33,6 +33,7 @@
 
 struct DataSet {
   time_t time;
+  uint32_t  millis;
 //  TinyGPSDate date;
 //  TinyGPSTime time;
   TinyGPSLocation location;
@@ -43,6 +44,7 @@ struct DataSet {
   uint8_t validSatellites;
   double batteryLevel;
   Vector<uint16_t> sensorValues;
+  Vector<uint16_t> confirmedDistances;
   bool confirmed = false;
   bool marked = false;
   bool invalidMeasurement = false;
@@ -71,10 +73,12 @@ class FileWriter
     void renameFile(fs::FS &fs, const char * path1, const char * path2);
     void deleteFile(fs::FS &fs, const char * path);
     void setFileName();
+    void writeDataBuffered(DataSet *set);
     virtual void init() = 0;
     virtual void writeHeader() = 0;
     virtual void writeData(DataSet*) = 0;
-    void writeDataToSD();
+
+  void writeDataToSD();
     uint16_t getDataLength();
 
   protected:
@@ -98,7 +102,6 @@ class CSVFileWriter : public FileWriter
     }
     void writeHeader();
     void writeData(DataSet*);
-  protected:
 };
 
 class GPXFileWriter : public FileWriter
