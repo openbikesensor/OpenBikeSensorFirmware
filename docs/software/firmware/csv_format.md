@@ -52,6 +52,10 @@ There is typically one line per second, but there are exceptions:
 - If we have multiple confirmed measurements in one interval in that case 
   an interval appears multiple times - once with each confirmed value.  
 
+THe headline of the 1st cell in not `Date` as the field description would 
+request, it is uese as Version indicator in the form `Version <n>`. `<n>` is a
+integer which is increased with every change that would need an adoption
+of the parser.
 
 
 Headline  | Format | Range | Sample | Description |
@@ -84,7 +88,7 @@ _comment_   | | | | Now follows a series of #`Measurements` repetitions of #`Dat
 Possible Header:
 
 ```csv
-Date;Time;Millies;Latitude;Longitude;Altitude; \
+Version: 1;Time;Millies;Latitude;Longitude;Altitude; \
   Course;Speed;HDOP;Satellites;BatteryLevel;Left;Right;Confirmed;Marked;Invalid; \
   insidePrivacyArea;Factor;Measurements;Tms1;Lus1;Rus1;Tms2;Lus2;Rus2; \
   Tms3;Lus3;Rus3;...;Tms60;Lus60;Rus60
