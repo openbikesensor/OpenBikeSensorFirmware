@@ -224,7 +224,7 @@ void CSVFileWriter::writeData(DataSet* set) {
   dataString += set->comment;
 
 #ifdef DEVELOP
-  dataDtring += "DEVELOP: Mem: "
+  dataString += "DEVELOP: Mem: "
                 + String(ESP.getFreeHeap() / 1024) + "k Buffer: " + String(getDataLength()/1024) + "k last write time: "
                 + String(writeTimeMillis) + ";";
 #endif

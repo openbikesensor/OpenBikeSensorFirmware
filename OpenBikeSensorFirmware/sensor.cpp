@@ -94,7 +94,7 @@ void HCSR04SensorManager::reset() {
     m_sensors[idx].minDistance = MAX_SENSOR_VALUE;
     memset(&(m_sensors[idx].echoDurationMicroseconds), 0, sizeof(m_sensors[idx].echoDurationMicroseconds));
   }
-  startReadingMilliseconds = millis();
+  startReadingMilliseconds = 0; // cheat a bit, we start the clock just with the 1st measurement
   lastReadingCount = 0;
   memset(&(startOffsetMilliseconds), 0, sizeof(startOffsetMilliseconds));
   activeSensor = primarySensor;
@@ -129,6 +129,9 @@ void HCSR04SensorManager::getDistances() {
   setSensorTriggersToLow();
   waitTillSensorIsReady(activeSensor);
   sendTriggerToSensor(activeSensor);
+  if (startReadingMilliseconds == 0) {
+    startReadingMilliseconds = millis();
+  }
   startOffsetMilliseconds[lastReadingCount] = millisSince(startReadingMilliseconds);
   // spec says 10, there are reports that the JSN-SR04T-2.0 behaves better if we wait 20 microseconds.
   // I did not observe this but others might be affected so we spend this time ;)
@@ -158,6 +161,9 @@ void HCSR04SensorManager::getDistancesParallel() {
   setSensorTriggersToLow();
   waitTillPrimarySensorIsReady();
   sendTriggerToReadySensor();
+  if (startReadingMilliseconds == 0) {
+    startReadingMilliseconds = millis();
+  }
   // spec says 10, there are reports that the JSN-SR04T-2.0 behaves better if we wait 20 microseconds.
   // I did not observe this but others might be affected so we spend this time ;)
   // https://wolles-elektronikkiste.de/hc-sr04-und-jsn-sr04t-2-0-abstandssensoren
