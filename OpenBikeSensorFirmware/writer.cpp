@@ -20,6 +20,9 @@
 
 #include "writer.h"
 
+int writeTimeMillis;
+
+
 void FileWriter::listDir(fs::FS &fs, const char * dirname, uint8_t levels) {
   Serial.printf("Listing directory: %s\n", dirname);
 
@@ -158,7 +161,9 @@ uint16_t FileWriter::getDataLength() {
 }
 
 void FileWriter::writeDataToSD() {
+  const int start = millis();
   this->appendFile(SD, m_filename.c_str(), dataString.c_str() );
+  writeTimeMillis = millis() - start;
   dataString.clear();
 }
 
@@ -183,7 +188,7 @@ void FileWriter::writeDataBuffered(DataSet* set) {
 
 void CSVFileWriter::writeHeader() {
   String headerString;
-  headerString += "OBSVER2;Time;Millis;Latitude;Longitude;Altitude;"
+  headerString += "OBSVER2;Time;Millis;Comment;Latitude;Longitude;Altitude;"
                   "Course;Speed;HDOP;Satellites;BatteryLevel;Left;Right;Confirmed;Marked;Invalid;"
                   "insidePrivacyArea;Factor;Measurements";
   for (uint16_t idx = 1; idx <= MAX_NUMBER_MEASUREMENTS_PER_INTERVAL; ++idx) {
@@ -216,6 +221,14 @@ void CSVFileWriter::writeData(DataSet* set) {
            time->tm_hour, time->tm_min, time->tm_sec, set->millis);
 
   dataString += date;
+  dataString += set->comment;
+
+#ifdef DEVELOP
+  dataDtring += "DEVELOP: Mem: "
+                + String(ESP.getFreeHeap() / 1024) + "k Buffer: " + String(getDataLength()/1024) + "k last write time: "
+                + String(writeTimeMillis) + ";";
+#endif
+  dataString += ";";
 
   if ((config.privacyConfig & NoPosition) && set->isInsidePrivacyArea && !((config.privacyConfig & OverridePrivacy) && set->confirmed)) {
     dataString += ";;;";

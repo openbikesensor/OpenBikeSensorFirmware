@@ -58,6 +58,7 @@ unsigned long currentTimeMillis = millis();
 bool usingSD = false;
 String text = "";
 uint16_t minDistanceToConfirm = MAX_SENSOR_VALUE;
+uint16_t minDistanceToConfirmTimeOffset = 0;
 bool transmitConfirmedData = false;
 int lastButtonState = 0;
 
@@ -410,8 +411,8 @@ void loop() {
           transmitConfirmedData = true;
           numButtonReleased++;
           if (datasetToConfirm != nullptr) {
-            datasetToConfirm->confirmed = true;
             datasetToConfirm->confirmedDistances.push_back(minDistanceToConfirm);
+            datasetToConfirm->confirmedDistancesTimeOffset.push_back(minDistanceToConfirmTimeOffset);
             datasetToConfirm = nullptr;
           }
           minDistanceToConfirm = MAX_SENSOR_VALUE; // ready for next confirmation
@@ -424,6 +425,7 @@ void loop() {
     if (sensorManager->sensorValues[confirmationSensorID] > 0
         && sensorManager->sensorValues[confirmationSensorID] < minDistanceToConfirm) {
       minDistanceToConfirm = sensorManager->sensorValues[confirmationSensorID];
+      minDistanceToConfirmTimeOffset = sensorManager->getCurrentMeasureTimeOffset(confirmationSensorID);
       datasetToConfirm = currentSet;
       Serial.print("New minDistanceToConfirm=");
       Serial.println(minDistanceToConfirm);
@@ -480,6 +482,7 @@ void loop() {
       for (int i = 0; i < dataset->confirmedDistances.size(); i++) {
         // make sure the distance reported is the one that was confirmed
         dataset->sensorValues[confirmationSensorID] = dataset->confirmedDistances[i];
+        dataset->confirmed = dataset->confirmedDistancesTimeOffset[i];
         confirmedMeasurements++;
         if (writer) {
           writer->writeDataBuffered(dataset);

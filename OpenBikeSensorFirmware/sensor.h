@@ -85,8 +85,9 @@ class HCSR04SensorManager
     void setPrimarySensor(uint8_t idx);
     uint16_t lastReadingCount = 0;
     uint16_t startOffsetMilliseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
+    uint16_t getCurrentMeasureTimeOffset(uint8_t sensorId);
 
-  protected:
+protected:
 
   private:
     void waitTillSensorIsReady(uint8_t sensorId);

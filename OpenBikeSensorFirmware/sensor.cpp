@@ -1,3 +1,4 @@
+#include <rom/queue.h>
 /*
   Copyright (C) 2019 Zweirat
   Contact: https://openbikesensor.org
@@ -165,6 +166,11 @@ void HCSR04SensorManager::getDistancesParallel() {
 
   waitForEchosOrTimeout();
   collectSensorResults();
+}
+
+uint16_t HCSR04SensorManager::getCurrentMeasureTimeOffset(__unused uint8_t sensorId) {
+  // parameter will likely be needed soon
+  return startOffsetMilliseconds[lastReadingCount - 1];
 }
 
 /* Wait till the primary sensor is ready, this also defines the frequency of

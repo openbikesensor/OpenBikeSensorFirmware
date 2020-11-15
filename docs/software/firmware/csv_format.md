@@ -67,6 +67,7 @@ Headline  | Format | Range | Sample | Description |
 `Date`    | TT.MM.YYYY | | 24.11.2020 | UTC, typically as received by the GPS module in that second. If there is no GPS module present, system time is used. If there was no reception of a time signal yet, this might be unix time (starting 1.1.1970) which can be at least used as offset between the csv lines.    
 `Time`      | HH.MM.SS | | 12:00:00 | UTC time, see also above
 `Millis`   | int32  | 0-2^31 | 1234567 | Millisecond counter will continuously increase in the file, for time offset calculatio
+`Comment`   | char[] |  |  | Space to leave a text comment, limit to ascii 
 `Latitude`  | double |  | 9.123456 | Latitude as degrees
 `Longitude` | double |  | 42.123456 | Longitude in degrees
 `Altitude`  | double | -9999.9-17999.9 | 480.12 | meters above mean sea level (GPGGA)
@@ -77,8 +78,8 @@ Headline  | Format | Range | Sample | Description |
 `BatteryLevel` | double | 0-9.99 | 3.3 | Current battery level reading (~V)
 `Left`      | int16  | 0-999 | 150 | Left minimum measured distance in centimeters of this line, the measurement is already corrected for the handlebar offset, 999 for no measurement. 
 `Right`     | int16  | 0-999 | 150 | Right minimum measured distance as `Left` above.
-`Confirmed` | int16  | 0-1 | 1 | Measurement was confirmed overtaking by button press  
-`Marked`    | int16  | 0-1 | 1 | Measurement was marked (not possible yet)
+`Confirmed` | int32  |  | 1234 | If !=0 the Measurement was confirmed overtaking by button press, contains the `Tms<n>` of the related measurement    
+`Marked`    | char[]  | | "OVERTAKING" | Measurement was marked (not possible yet) with the given tag use <code>&#124;</code> to separate multiple tags is needed. 
 `Invalid`   | int16  | 0-1 | 1 | Measurement was marked as invalid reading (not possible yet)
 `insidePrivacyArea`| int16 | 0-1 | 1 | 
 `Factor`    | int16  |  | 58 | The factor used to calculate the time given in micro seconds (us) into centimeters (cm). Currently fix, might get adjusted by temperature some time later. |

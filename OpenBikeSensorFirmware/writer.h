@@ -36,6 +36,7 @@ struct DataSet {
   uint32_t  millis;
 //  TinyGPSDate date;
 //  TinyGPSTime time;
+  String comment;
   TinyGPSLocation location;
   TinyGPSAltitude altitude;
   TinyGPSCourse course;
@@ -45,8 +46,9 @@ struct DataSet {
   double batteryLevel;
   Vector<uint16_t> sensorValues;
   Vector<uint16_t> confirmedDistances;
-  bool confirmed = false;
-  bool marked = false;
+  Vector<uint16_t> confirmedDistancesTimeOffset;
+  uint16_t confirmed = 0;
+  String marked;
   bool invalidMeasurement = false;
   bool isInsidePrivacyArea;
   uint8_t factor = MICRO_SEC_TO_CM_DIVIDER;

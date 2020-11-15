@@ -74,8 +74,8 @@ void SSD1306DisplayDevice::showValues(HCSR04SensorInfo sensor1, HCSR04SensorInfo
     if (config.displayConfig & DisplayDistanceDetail) {
       const int bufSize = 64;
       char buffer[bufSize];
-      snprintf(buffer, bufSize - 1, "%03d|%02d|%03d", sensor1.rawDistance,
-               lastMeasurements, sensor2.rawDistance);
+//      snprintf(buffer, bufSize - 1, "%03d|%02d|%03d", sensor1.rawDistance,
+//               lastMeasurements, sensor2.rawDistance);
       snprintf(buffer, bufSize - 1, "%03d|%02d|%uk", sensor1.rawDistance,
                lastMeasurements, ESP.getFreeHeap() / 1024);
       this->showTextOnGrid(0, 4, buffer, Dialog_plain_20);
