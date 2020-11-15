@@ -226,7 +226,8 @@ void CSVFileWriter::writeData(DataSet* set) {
 #ifdef DEVELOP
   dataString += "DEVELOP: Mem: "
                 + String(ESP.getFreeHeap() / 1024) + "k Buffer: " + String(getDataLength()/1024) + "k last write time: "
-                + String(writeTimeMillis) + ";";
+                + String(writeTimeMillis) +
+                + " Bat:" + String(analogRead(34)) + " Ref: " + String(analogRead(35));
 #endif
   dataString += ";";
 
@@ -255,7 +256,7 @@ void CSVFileWriter::writeData(DataSet* set) {
     dataString += ";";
   }
   dataString += String(set->validSatellites) + ";";
-  dataString += String(set->batteryLevel, 1) + ";";
+  dataString += String(set->batteryLevel, 2) + ";";
   dataString += String(set->sensorValues[1]) + ";"; // LEFT
   dataString += String(set->sensorValues[0]) + ";"; // RIGHT
   dataString += String(set->confirmed) + ";";

@@ -275,12 +275,9 @@ void HCSR04SensorManager::collectSensorResult(uint8_t sensorId) {
     sensor->echoDurationMicroseconds[lastReadingCount] = duration;
   }
   uint16_t dist;
-  if (duration < MIN_DURATION_MICRO_SEC || duration >= MAX_DURATION_MICRO_SEC)
-  {
+  if (duration < MIN_DURATION_MICRO_SEC || duration >= MAX_DURATION_MICRO_SEC) {
     dist = MAX_SENSOR_VALUE;
-  }
-  else
-  {
+  } else {
     dist = static_cast<uint16_t>(duration / MICRO_SEC_TO_CM_DIVIDER);
   }
   sensor->rawDistance = dist;

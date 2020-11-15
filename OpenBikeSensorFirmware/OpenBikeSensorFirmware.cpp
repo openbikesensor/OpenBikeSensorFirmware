@@ -42,10 +42,9 @@ const char *configFilename = "/config.txt";  // <- SD library uses 8.3 filenames
 Config config;
 
 SSD1306DisplayDevice* displayTest;
-
 HCSR04SensorManager* sensorManager;
-
 BluetoothManager* bluetoothManager;
+VoltageMeter* voltageMeter;
 
 String esp_chipid;
 
@@ -116,7 +115,6 @@ void setup() {
     displayTest->showTextOnGrid(2, 1, "Config... error ");
     return;
   }
-
   // Should load default config if run for the first time
   Serial.println(F("Load config"));
   loadConfiguration(configFilename, config);
@@ -140,7 +138,11 @@ void setup() {
   if (config.displayConfig & DisplayFlip) displayTest->flipScreen();
 
   delay(333); // Added for user experience
-  displayTest->showTextOnGrid(2, 1, "Config... ok");
+  char buffer[32];
+  snprintf(buffer, sizeof(buffer), "<%02d| |%02d>",
+           config.sensorOffsets[1], config.sensorOffsets[0]);
+  displayTest->showTextOnGrid(2, 1, buffer);
+
 
   //##############################################################
   // GPS
@@ -201,6 +203,8 @@ void setup() {
   }
   SPIFFS.end();
   WiFiGenericClass::mode(WIFI_MODE_NULL);
+
+  voltageMeter = new VoltageMeter;
 
   //##############################################################
   // Init HCSR04
@@ -345,7 +349,7 @@ void loop() {
   currentSet->speed = gps.speed;
   currentSet->hdop = gps.hdop;
   currentSet->validSatellites = gps.satellites.isValid() ? (uint8_t) gps.satellites.value() : 0;
-  currentSet->batteryLevel = 0;
+  currentSet->batteryLevel = voltageMeter->read();
   currentSet->isInsidePrivacyArea = isInsidePrivacyArea(currentSet->location);
 
   sensorManager->reset();
@@ -380,16 +384,9 @@ void loop() {
     if (config.bluetooth) {
       auto leftValues = std::list<uint16_t>();
       auto rightValues = std::list<uint16_t>();
-
-      if (sensorManager->m_sensors[1].rawDistance < MAX_SENSOR_VALUE) {
-        leftValues.push_back(sensorManager->m_sensors[1].rawDistance);
-      }
-      if (sensorManager->m_sensors[0].rawDistance < MAX_SENSOR_VALUE) {
-        rightValues.push_back(sensorManager->m_sensors[0].rawDistance);
-      }
-      if (measurements == 0 || !leftValues.empty() || !rightValues.empty()) {
-        bluetoothManager->newSensorValues(leftValues, rightValues);
-      }
+      leftValues.push_back(sensorManager->m_sensors[1].rawDistance);
+      rightValues.push_back(sensorManager->m_sensors[0].rawDistance);
+      bluetoothManager->newSensorValues(leftValues, rightValues);
       bluetoothManager->processButtonState(digitalRead(PushButton));
     }
 
