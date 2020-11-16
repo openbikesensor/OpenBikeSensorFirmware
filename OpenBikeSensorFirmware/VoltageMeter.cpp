@@ -9,6 +9,13 @@ VoltageMeter::VoltageMeter() {
   analogSetPinAttenuation(BATTERY_PIN, ADC_11db); //0db attenuation on pin A18
 }
 
+/* on MY OBS: Off at 2.84V stop charging at 4.00V
+ * Todo:
+ *  - better start value
+ *  - add method for trend
+ *  - persist max/min value?
+ *  - decide reliable "alert" threshold
+ */
 double VoltageMeter::read() {
   const double readValue = readPlain();
   const double scale1v = 1240; // for default ADC_11db / 4095 == 3.3V
@@ -17,6 +24,6 @@ double VoltageMeter::read() {
 
 int VoltageMeter::readPlain() {
   lastReading =
-    (lastReading * 31 + analogRead(BATTERY_PIN)) / 32;
+    (lastReading * 63 + analogRead(BATTERY_PIN)) / 64;
   return lastReading;
 }

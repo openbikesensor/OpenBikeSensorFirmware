@@ -224,14 +224,20 @@ void CSVFileWriter::writeData(DataSet* set) {
   dataString += set->comment;
 
 #ifdef DEVELOP
-  dataString += "DEVELOP: Mem: "
-                + String(ESP.getFreeHeap() / 1024) + "k Buffer: " + String(getDataLength()/1024) + "k last write time: "
-                + String(writeTimeMillis) +
-                + " Bat:" + String(analogRead(34)) + " Ref: " + String(analogRead(35));
+  if (time->tm_sec == 0) {
+    dataString += "DEVELOP:  GPSMessages: " + String(gps.passedChecksum())
+      + " GPS crc errors: " + String(gps.failedChecksum());
+  } else if (time->tm_sec == 1) {
+    dataString += "DEVELOP: Mem: "
+                + String(ESP.getFreeHeap() / 1024) + "k Buffer: "
+                + String(getDataLength() / 1024) + "k last write time: "
+                + String(writeTimeMillis);
+  }
 #endif
   dataString += ";";
 
-  if ((config.privacyConfig & NoPosition) && set->isInsidePrivacyArea && !((config.privacyConfig & OverridePrivacy) && set->confirmed)) {
+  if ((config.privacyConfig & NoPosition) && set->isInsidePrivacyArea
+    && !((config.privacyConfig & OverridePrivacy) && set->confirmed)) {
     dataString += ";;;";
   } else if (set->location.isValid()) {
     dataString += String(set->location.lat(), 6) + ";";
@@ -241,6 +247,7 @@ void CSVFileWriter::writeData(DataSet* set) {
     dataString += ";;;";
   }
   if (set->course.isValid()) {
+    // FIXME, seems to give: 201160 or 5410 ...
     dataString += String(set->course.deg(), 3) + ";";
   } else {
     dataString += ";";

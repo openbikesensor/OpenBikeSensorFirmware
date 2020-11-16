@@ -67,7 +67,7 @@ CircularBuffer<DataSet*, 10> dataBuffer;
 
 FileWriter* writer;
 
-uint8_t displayAddress = 0x3c;
+const uint8_t displayAddress = 0x3c;
 
 // Enable dev-mode. Allows to
 // - set wifi config
@@ -335,7 +335,7 @@ void loop() {
   auto* currentSet = new DataSet;
   //specify which sensors value can be confirmed by pressing the button, should be configurable
   uint8_t confirmationSensorID = 1; // LEFT !!!
-  readGPSData();
+  readGPSData(); // needs <=1ms
 
   currentTimeMillis = millis();
   if (startTimeMillis == 0) {
@@ -378,7 +378,8 @@ void loop() {
       sensorManager->m_sensors[1],
       sensorManager->m_sensors[0],
       minDistanceToConfirm,
-      lastMeasurements
+      lastMeasurements,
+      currentSet->isInsidePrivacyArea
     );
 
     if (config.bluetooth) {

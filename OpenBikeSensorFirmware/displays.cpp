@@ -18,7 +18,9 @@ void SSD1306DisplayDevice::showNumButtonPressed() {
   this->showTextOnGrid(1, 5, "press");
 }
 
-void SSD1306DisplayDevice::showValues(HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2, int minDistanceToConfirm, int lastMeasurements) {
+void SSD1306DisplayDevice::showValues(
+  HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2, int minDistanceToConfirm,
+  int lastMeasurements, boolean insidePrivacyArea) {
   // Show sensor1, when DisplaySimple or DisplayLeft is configured
   if (config.displayConfig & DisplaySimple || config.displayConfig & DisplayLeft) {
     uint16_t value1 = sensor1.minDistance;
@@ -27,6 +29,9 @@ void SSD1306DisplayDevice::showValues(HCSR04SensorInfo sensor1, HCSR04SensorInfo
     }
 
     String loc1 = sensor1.sensorLocation;
+    if (insidePrivacyArea) {
+      loc1 = "(" + loc1 + ")";
+    }
 
     // Do not show location, when DisplaySimple is configured
     if (!(config.displayConfig & DisplaySimple)) {
@@ -80,10 +85,8 @@ void SSD1306DisplayDevice::showValues(HCSR04SensorInfo sensor1, HCSR04SensorInfo
 //               lastMeasurements, ESP.getFreeHeap() / 1024);
 //      snprintf(buffer, bufSize - 1, "%03d|%02d|%3.2f", sensor1.rawDistance,
 //               lastMeasurements, voltageMeter->read());
-//      snprintf(buffer, bufSize - 1, "%03d|%02d|%04d", sensor1.rawDistance,
-//               lastMeasurements, voltageMeter->readPlain());
 
-      this->showTextOnGrid(0, 4, buffer, Dialog_plain_16);
+      this->showTextOnGrid(0, 4, buffer, Dialog_plain_20);
     } else if (config.displayConfig & DisplayNumConfirmed) {
       showNumButtonPressed();
       showNumConfirmed();

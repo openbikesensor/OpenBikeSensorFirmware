@@ -197,7 +197,8 @@ class SSD1306DisplayDevice : public DisplayDevice
     void showNumButtonPressed();
 
     void showValues(
-      HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2, int minDistanceToConfirm, int lastMesurements);
+      HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2,
+      int minDistanceToConfirm, int lastMesurements, boolean insidePrivacyArea);
 
 };
 
