@@ -93,7 +93,7 @@ _comment_   | | | | Now follows a series of #`Measurements` repetitions of #`Dat
 Possible Header:
 
 ```csv
-Version: 1;Time;Millis;Latitude;Longitude;Altitude; \
+OBSVER2;Time;Millis;Latitude;Longitude;Altitude; \
   Course;Speed;HDOP;Satellites;BatteryLevel;Left;Right;Confirmed;Marked;Invalid; \
   insidePrivacyArea;Factor;Measurements;Tms1;Lus1;Rus1;Tms2;Lus2;Rus2; \
   Tms3;Lus3;Rus3;...;Tms60;Lus60;Rus60
