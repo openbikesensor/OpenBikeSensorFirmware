@@ -281,7 +281,8 @@ void HCSR04SensorManager::collectSensorResult(uint8_t sensorId) {
     dist = static_cast<uint16_t>(duration / MICRO_SEC_TO_CM_DIVIDER);
   }
   sensor->rawDistance = dist;
-  sensorValues[sensorId] = correctSensorOffset(medianMeasure(sensor, dist), sensor->offset);
+  sensorValues[sensorId] =
+    sensor->distance = correctSensorOffset(medianMeasure(sensor, dist), sensor->offset);
 
 #ifdef DEVELOP
   Serial.printf("Raw sensor[%d] distance read %03u / %03u (%03u, %03u, %03u) -> *%03ucm*, duration: %zu us - echo pin state: %d\n",
@@ -289,9 +290,9 @@ void HCSR04SensorManager::collectSensorResult(uint8_t sensorId) {
       sensor->distances[2], sensorValues[sensorId], duration, digitalRead(sensor->echoPin));
 #endif
 
-  if (sensorValues[sensorId] > 0 && sensorValues[sensorId] < sensor->minDistance)
+  if (sensor->distance > 0 && sensor->distance < sensor->minDistance)
   {
-    sensor->minDistance = sensorValues[sensorId];
+    sensor->minDistance = sensor->distance;
     sensor->lastMinUpdate = millis();
   }
 }

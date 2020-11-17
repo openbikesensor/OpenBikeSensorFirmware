@@ -60,6 +60,7 @@ struct HCSR04SensorInfo
   uint16_t distances[MEDIAN_DISTANCE_MEASURES] = { MAX_SENSOR_VALUE, MAX_SENSOR_VALUE, MAX_SENSOR_VALUE };
   uint16_t nextMedianDistance = 0;
   uint16_t minDistance=MAX_SENSOR_VALUE;
+  uint16_t distance=MAX_SENSOR_VALUE;
   char* sensorLocation;
   unsigned long lastMinUpdate=0;
   uint32_t trigger = 0;

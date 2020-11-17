@@ -19,7 +19,7 @@ void SSD1306DisplayDevice::showNumButtonPressed() {
 }
 
 void SSD1306DisplayDevice::showValues(
-  HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2, int minDistanceToConfirm,
+  HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2, uint16_t minDistanceToConfirm,
   int lastMeasurements, boolean insidePrivacyArea) {
   // Show sensor1, when DisplaySimple or DisplayLeft is configured
   if (config.displayConfig & DisplaySimple || config.displayConfig & DisplayLeft) {
@@ -60,7 +60,7 @@ void SSD1306DisplayDevice::showValues(
 
     // Show sensor2, when DisplayRight is configured
     if (config.displayConfig & DisplayRight) {
-      uint16_t value2 = sensor2.minDistance;
+      uint16_t value2 = sensor2.distance;
       String loc2 = sensor2.sensorLocation;
 
       this->showTextOnGrid(2, 0, loc2);
@@ -83,7 +83,7 @@ void SSD1306DisplayDevice::showValues(
                lastMeasurements, sensor2.rawDistance);
 //      snprintf(buffer, bufSize - 1, "%03d|%02d|%uk", sensor1.rawDistance,
 //               lastMeasurements, ESP.getFreeHeap() / 1024);
-//      snprintf(buffer, bufSize - 1, "%03d|%02d|%3.2f", sensor1.rawDistance,
+//      snprintf(buffer, bufSize - 1, "%03d|%02d|%3.2fV", sensor1.rawDistance,
 //               lastMeasurements, voltageMeter->read());
 
       this->showTextOnGrid(0, 4, buffer, Dialog_plain_20);

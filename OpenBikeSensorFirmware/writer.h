@@ -34,8 +34,6 @@
 struct DataSet {
   time_t time;
   uint32_t  millis;
-//  TinyGPSDate date;
-//  TinyGPSTime time;
   String comment;
   TinyGPSLocation location;
   TinyGPSAltitude altitude;

@@ -248,12 +248,12 @@ void CSVFileWriter::writeData(DataSet* set) {
   }
   if (set->course.isValid()) {
     // FIXME, seems to give: 201160 or 5410 ...
-    dataString += String(set->course.deg(), 3) + ";";
+    dataString += String(set->course.deg(), 2) + ";";
   } else {
     dataString += ";";
   }
   if (set->speed.isValid()) {
-    dataString += String(set->speed.kmph(), 4) + ";";
+    dataString += String(set->speed.kmph(), 2) + ";";
   } else {
     dataString += ";";
   }

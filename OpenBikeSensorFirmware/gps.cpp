@@ -40,7 +40,7 @@ time_t currentTime() {
   if (gps.date.isValid() && gps.date.age() < 2000 && gps.date.year() > 2019) {
     result = gpsTime();
   } else {
-    result = time(NULL);
+    result = time(nullptr);
   }
   return result;
 }

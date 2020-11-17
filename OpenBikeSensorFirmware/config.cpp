@@ -81,24 +81,24 @@ void jsonDocumentToConfig(DynamicJsonDocument &doc, Config &config)
   // Append new values to the privacy-vector
   for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx)
   {
-    PrivacyArea pricacyAreaTemp;
+    PrivacyArea privacyAreaTemp;
     // Original coordinates
     String latitudeString = "privacyLatitude" + String(idx);
-    pricacyAreaTemp.latitude = doc[latitudeString] | 51.0;
+    privacyAreaTemp.latitude = doc[latitudeString] | 51.0;
     String longitudeString = "privacyLongitude" + String(idx);
-    pricacyAreaTemp.longitude = doc[longitudeString] | 9.0;
+    privacyAreaTemp.longitude = doc[longitudeString] | 9.0;
 
     // randomly transformed coordinates
     String transformedLatitudeString = "privacyTransformedLatitude" + String(idx);
-    pricacyAreaTemp.transformedLatitude = doc[transformedLatitudeString] | 51.0;
+    privacyAreaTemp.transformedLatitude = doc[transformedLatitudeString] | 51.0;
     String transformedLongitudeString = "privacyTransformedLongitude" + String(idx);
-    pricacyAreaTemp.transformedLongitude = doc[transformedLongitudeString] | 9.0;
+    privacyAreaTemp.transformedLongitude = doc[transformedLongitudeString] | 9.0;
 
     // Radius
     String radiusString = "privacyRadius" + String(idx);
-    pricacyAreaTemp.radius = doc[radiusString] | 500.0;
+    privacyAreaTemp.radius = doc[radiusString] | 500.0;
 
-    config.privacyAreas.push_back(pricacyAreaTemp);
+    config.privacyAreas.push_back(privacyAreaTemp);
   }
 
   // Fix invalid "old" broken configurations, where the default value was 0

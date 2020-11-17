@@ -204,8 +204,6 @@ void setup() {
   SPIFFS.end();
   WiFiGenericClass::mode(WIFI_MODE_NULL);
 
-  voltageMeter = new VoltageMeter;
-
   //##############################################################
   // Init HCSR04
   //##############################################################
@@ -241,7 +239,7 @@ void setup() {
     displayTest->showTextOnGrid(2, 3, "CSV file... ok");
     Serial.println("File initialised");
   } else {
-    displayTest->showTextOnGrid(2, 3, "CSV file... skip");
+    displayTest->showTextOnGrid(2, 3, "CSV. skipped");
   }
 
   //##############################################################
@@ -252,6 +250,9 @@ void setup() {
   Serial.println("Waiting for GPS fix...");
   bool validGPSData = false;
   readGPSData();
+
+  voltageMeter = new VoltageMeter; // takes a moment, so do it here
+
   delay(300);
   while (!validGPSData)
   {
