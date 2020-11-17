@@ -198,7 +198,7 @@ class SSD1306DisplayDevice : public DisplayDevice
 
     void showValues(
       HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2,
-      uint16_t minDistanceToConfirm, int lastMesurements, boolean insidePrivacyArea);
+      uint16_t minDistanceToConfirm, int lastMeasurements, boolean insidePrivacyArea);
 
 };
 
