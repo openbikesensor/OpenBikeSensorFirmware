@@ -31,7 +31,7 @@ PrivacyLevelApplied
 : NoPrivacy|NoPosition|OverridePrivacy|AbsolutePrivacy|
 
 MaximumValidFlightTimeMicroseconds
-: 18560 - TODO: Refine! all echo times above this value must be discarded and treated as no object in sight
+: 18560 - all echo times above this value must be discarded and treated as no object in sight.
 
 DistanceSensorsUsed
 : `HC-SR04/JSN-SR04T` - enum currently only one possible value
@@ -43,30 +43,30 @@ The CSV File must contain a header line with headline entries for each field, th
 names must be the same as given here. The number of data entries per line
 can differ.
 
-If there is no value this means no measurement or not available or hidden. 
-Before we used `-1` or `NaN` for this, now we are less polite and save 
-the space.
+One exception, the headline of the 1st cell in not `Date` as the field 
+description would indicate, it is used as Version indicator in the form 
+`OBSVER<n>`. `<n>` is an integer which is increased with every change 
+that would need an adoption of the parser this is `OBSVER2` so you can 
+check for `OBSVER2` as magic at the file start.
 
-NOTE: The order of the fields is different from Version 1 of the CVS file. Ok??
+If there is no value in a entry this means no measurement or not 
+available or hidden. Before we used `-1` or `NaN` for this, now we are 
+less polite and save the space.
 
-There is typically one line per second, but there are exceptions:
-
-- Timing might be bad, and we miss one second
+There is typically one line per second, but there are possible exceptions:
+- Timing might be bad, and we miss one second, use the `Millis` field if 
+  you need more precise timings. 
 - If we have multiple confirmed measurements in one interval in that case 
-  an interval appears multiple times - once with each confirmed value.  
+  an interval appears multiple times - once with each confirmed value. 
+  Other fields are identical in both lines.  
 
-The headline of the 1st cell in not `Date` as the field description would 
-indicate, it is used as Version indicator in the form `OBSVER<n>`. `<n>` is an
-integer which is increased with every change that would need an adoption
-of the parser this is `OBSVER2` so you can check for `OBSVER2` as magic at 
-the file start.
+NOTE: The order of the fields is different from Version 1 of the CVS file.
 
-
-Headline  | Format | Range | Sample | Description |
----       | --- | --- | --- | --- |
-`Date`    | TT.MM.YYYY | | 24.11.2020 | UTC, typically as received by the GPS module in that second. If there is no GPS module present, system time is used. If there was no reception of a time signal yet, this might be unix time (starting 1.1.1970) which can be at least used as offset between the csv lines.    
+Headline    | Format | Range | Sample | Description |
+---         | --- | --- | --- | --- |
+`Date`      | TT.MM.YYYY | | 24.11.2020 | UTC, typically as received by the GPS module in that second. If there is no GPS module present, system time is used. If there was no reception of a time signal yet, this might be unix time (starting 1.1.1970) which can be at least used as offset between the csv lines.    
 `Time`      | HH.MM.SS | | 12:00:00 | UTC time, see also above
-`Millis`   | int32  | 0-2^31 | 1234567 | Millisecond counter will continuously increase in the file, for time offset calculatio
+`Millis`    | int32  | 0-2^31 | 1234567 | Millisecond counter will continuously increase in the file, for time offset calculatio
 `Comment`   | char[] |  |  | Space to leave a text comment, limit to ascii 
 `Latitude`  | double |  | 9.123456 | Latitude as degrees
 `Longitude` | double |  | 42.123456 | Longitude in degrees
