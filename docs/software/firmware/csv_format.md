@@ -86,7 +86,7 @@ Headline    | Format | Range | Sample | Description |
 `Measurements` | int16  | 0-999 | 18 | Number of measurements entries in this line |
 _comment_   | | | | Now follows a series of #`Measurements` repetitions of #`DatasPerMeasurement` entries, `<n>` is always increased starting from 1 for the 1st measurement. Order is always the same, additional data might be added to the end, `DatasPerMeasurement` will be increased then.  |
 `Tms<n>`    | int16   | 0-1999 | 234 | Millisecond (ms) offset of measurement in this series (line) of measurements |
-`Lus<n>`    | int32  | 0-100000 | 3456 | Microseconds (us) till the echo was received by the left sensor, divide by the `Factor` given above to get the distance in centimeters you might also want to apply the handlebar offset given in the metadata. Empty for no measurement taken. You might see values above 30000 which point to a timeout reported by the sensor when there is no object in sight.|
+`Lus<n>`    | int32  | 0-100000 | 3456 | Microseconds (us) till the echo was received by the left sensor, divide by the `Factor` given above to get the distance in centimeters you might also want to apply the handlebar offset given in the metadata. Empty for no measurement taken. Values above `MaximumValidFlightTimeMicroseconds` (metadata) point to a measurement timeout when there is no object in sight.|
 `Rus<n>`    | int32  | 0-100000 | 3456 | As `Lus<n>` above for the right sensor. |
 
 
