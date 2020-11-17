@@ -247,7 +247,6 @@ void CSVFileWriter::writeData(DataSet* set) {
     dataString += ";;;";
   }
   if (set->course.isValid()) {
-    // FIXME, seems to give: 201160 or 5410 ...
     dataString += String(set->course.deg(), 2) + ";";
   } else {
     dataString += ";";
