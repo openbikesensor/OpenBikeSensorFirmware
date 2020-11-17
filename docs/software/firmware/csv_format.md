@@ -40,16 +40,16 @@ DistanceSensorsUsed
 ## CSV
 
 The CSV File must contain a header line with headline entries for each field, the 
-names must be the same as given here. The number of data entries per line
-can differ.
+with one exception the names must be the same as given here. The number of 
+data entries per line can differ.
 
-One exception, the headline of the 1st cell in not `Date` as the field 
-description would indicate, it is used as Version indicator in the form 
-`OBSVER<n>`. `<n>` is an integer which is increased with every change 
-that would need an adoption of the parser this is `OBSVER2` so you can 
-check for `OBSVER2` as magic at the file start.
+The headline of the 1st cell is not `Date` as the field description would 
+indicate, it is used as Version indicator in the form `OBSVER<n>`. 
+`<n>` is an integer which is increased with every change that would need 
+an adoption of the parser. You might also check for `OBSVER2` as magic 
+at the file start.
 
-If there is no value in a entry this means no measurement or not 
+If there is no value in an entry this means no measurement or not 
 available or hidden. Before we used `-1` or `NaN` for this, now we are 
 less polite and save the space.
 
@@ -62,12 +62,31 @@ There is typically one line per second, but there are possible exceptions:
 
 NOTE: The order of the fields is different from Version 1 of the CVS file.
 
+### CSV-DIALECT 
+
+Based on http://dataprotocols.org/csv-dialect/ the definition is:
+
+```json
+{
+  "csvddfVersion": 1.2,
+  "delimiter": ";",
+  "lineTerminator": "\n",
+  "skipInitialSpace": true,
+  "header": true
+}
+```
+
+Character encoding is UTF-8. Data from the OBS however uses only the 
+7-bit ASCII part. There is no BOM at the start.
+
+### Data
+
 Headline    | Format | Range | Sample | Description |
 ---         | --- | --- | --- | --- |
 `Date`      | TT.MM.YYYY | | 24.11.2020 | UTC, typically as received by the GPS module in that second. If there is no GPS module present, system time is used. If there was no reception of a time signal yet, this might be unix time (starting 1.1.1970) which can be at least used as offset between the csv lines.    
 `Time`      | HH.MM.SS | | 12:00:00 | UTC time, see also above
 `Millis`    | int32  | 0-2^31 | 1234567 | Millisecond counter will continuously increase in the file, for time offset calculatio
-`Comment`   | char[] |  |  | Space to leave a text comment, limit to ascii 
+`Comment`   | char[] |  |  | Space to leave a text comment 
 `Latitude`  | double |  | 9.123456 | Latitude as degrees
 `Longitude` | double |  | 42.123456 | Longitude in degrees
 `Altitude`  | double | -9999.9-17999.9 | 480.12 | meters above mean sea level (GPGGA)
