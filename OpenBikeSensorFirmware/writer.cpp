@@ -188,6 +188,46 @@ void FileWriter::writeDataBuffered(DataSet* set) {
 
 void CSVFileWriter::writeHeader() {
   String headerString;
+  headerString += "OBSDataFormat=2&";
+  headerString += "OBSFirmwareVersion=" + String(OBSVersion) + "&";
+  headerString += "DeviceId=" + String((uint16_t)(ESP.getEfuseMac() >> 32), 16) + "&";
+  headerString += "OBSUserID=" + String(config.obsUserID) + "&";
+  headerString += "DataPerMeasurement=3&";
+  headerString += "MaximumMeasurementsPerLine=" + String(MAX_NUMBER_MEASUREMENTS_PER_INTERVAL) + "&";
+  headerString += "OffsetLeft=" + String(config.sensorOffsets[LEFT_SENSOR_ID]) + "&";
+  headerString += "OffsetRight=" + String(config.sensorOffsets[RIGHT_SENSOR_ID]) + "&";
+  headerString += "NumberOfDefinedPrivacyAreas=" + String((int) config.privacyAreas.size()) + "&";
+  headerString += "PrivacyLevelApplied=";
+
+  String privacyString;
+  if (config.privacyConfig & AbsolutePrivacy) {
+    privacyString += "AbsolutePrivacy";
+  }
+  if (config.privacyConfig & NoPosition) {
+    if (!privacyString.isEmpty()) {
+      privacyString += "|";
+    }
+    privacyString += "NoPosition";
+  }
+  if (config.privacyConfig & NoPrivacy) {
+    if (!privacyString.isEmpty()) {
+      privacyString += "|";
+    }
+    privacyString += "NoPrivacy";
+  }
+  if (config.privacyConfig & OverridePrivacy) {
+    if (!privacyString.isEmpty()) {
+      privacyString += "|";
+    }
+    headerString += "OverridePrivacy";
+  }
+  if (privacyString.isEmpty()) {
+    privacyString += "NoPrivacy";
+  }
+  headerString += privacyString + "&";
+  headerString += "MaximumValidFlightTimeMicroseconds=" + String(MAX_DURATION_MICRO_SEC) + "&";
+  headerString += "DistanceSensorsUsed=HC-SR04/JSN-SR04T\n";
+
   headerString += "Date;Time;Millis;Comment;Latitude;Longitude;Altitude;"
                   "Course;Speed;HDOP;Satellites;BatteryLevel;Left;Right;Confirmed;Marked;Invalid;"
                   "InsidePrivacyArea;Factor;Measurements";
@@ -263,8 +303,16 @@ void CSVFileWriter::writeData(DataSet* set) {
   }
   dataString += String(set->validSatellites) + ";";
   dataString += String(set->batteryLevel, 2) + ";";
-  dataString += String(set->sensorValues[1]) + ";"; // LEFT
-  dataString += String(set->sensorValues[0]) + ";"; // RIGHT
+  if (set->sensorValues[LEFT_SENSOR_ID] < MAX_SENSOR_VALUE) {
+    dataString += String(set->sensorValues[LEFT_SENSOR_ID]) + ";";
+  } else {
+    dataString += ";";
+  }
+  if (set->sensorValues[RIGHT_SENSOR_ID] < MAX_SENSOR_VALUE) {
+    dataString += String(set->sensorValues[RIGHT_SENSOR_ID]) + ";";
+  } else {
+    dataString += ";";
+  }
   dataString += String(set->confirmed) + ";";
   dataString += String(set->marked) + ";";
   dataString += String(set->invalidMeasurement) + ";";

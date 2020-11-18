@@ -481,8 +481,8 @@ void configAction() {
   else
     config.privacyConfig &= ~OverridePrivacy;
 
-  config.sensorOffsets[0] = atoi(offsetS1.c_str());
-  config.sensorOffsets[1] = atoi(offsetS2.c_str());
+  config.sensorOffsets[LEFT_SENSOR_ID] = atoi(offsetS1.c_str());
+  config.sensorOffsets[RIGHT_SENSOR_ID] = atoi(offsetS2.c_str());
   config.satsForFix = atoi(satsForFix.c_str());
   config.confirmationTimeWindow = atoi(confirmationTimeWindow.c_str());
 
@@ -845,8 +845,8 @@ void startServer() {
     html.replace("{version}", OBSVersion);
     html.replace("{subtitle}", "General");
     // Form data
-    html.replace("{offset1}", String(config.sensorOffsets[0]));
-    html.replace("{offset2}", String(config.sensorOffsets[1]));
+    html.replace("{offset1}", String(config.sensorOffsets[LEFT_SENSOR_ID]));
+    html.replace("{offset2}", String(config.sensorOffsets[RIGHT_SENSOR_ID]));
     html.replace("{satsForFix}", String(config.satsForFix));
     html.replace("{hostname}", String(config.hostname));
     html.replace("{userId}", String(config.obsUserID));

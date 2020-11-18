@@ -28,6 +28,11 @@
 // Version only change the "vN.M" part if needed.
 const char *OBSVersion = "v0.3" BUILD_NUMBER;
 
+const int LEFT_SENSOR_ID = 1;
+const int RIGHT_SENSOR_ID = 0;
+
+
+
 // PINs
 const int PushButton = 2;
 const uint8_t GPS_POWER = 12;
@@ -140,7 +145,8 @@ void setup() {
   delay(333); // Added for user experience
   char buffer[32];
   snprintf(buffer, sizeof(buffer), "<%02d| |%02d>",
-           config.sensorOffsets[1], config.sensorOffsets[0]);
+           config.sensorOffsets[LEFT_SENSOR_ID],
+           config.sensorOffsets[RIGHT_SENSOR_ID]);
   displayTest->showTextOnGrid(2, 1, buffer);
 
 
@@ -224,7 +230,7 @@ void setup() {
 
   sensorManager->setOffsets(config.sensorOffsets);
 
-  sensorManager->setPrimarySensor(1); // LEFT !!!
+  sensorManager->setPrimarySensor(LEFT_SENSOR_ID);
 
   //##############################################################
   // Prepare CSV file
@@ -335,7 +341,7 @@ void loop() {
 
   auto* currentSet = new DataSet;
   //specify which sensors value can be confirmed by pressing the button, should be configurable
-  uint8_t confirmationSensorID = 1; // LEFT !!!
+  uint8_t confirmationSensorID = LEFT_SENSOR_ID;
   readGPSData(); // needs <=1ms
 
   currentTimeMillis = millis();
@@ -372,8 +378,8 @@ void loop() {
     sensorManager->getDistances();
 
     displayTest->showValues(
-      sensorManager->m_sensors[1],
-      sensorManager->m_sensors[0],
+      sensorManager->m_sensors[LEFT_SENSOR_ID],
+      sensorManager->m_sensors[RIGHT_SENSOR_ID],
       minDistanceToConfirm,
       lastMeasurements,
       currentSet->isInsidePrivacyArea
@@ -382,8 +388,8 @@ void loop() {
     if (config.bluetooth) {
       auto leftValues = std::list<uint16_t>();
       auto rightValues = std::list<uint16_t>();
-      leftValues.push_back(sensorManager->m_sensors[1].rawDistance);
-      rightValues.push_back(sensorManager->m_sensors[0].rawDistance);
+      leftValues.push_back(sensorManager->m_sensors[LEFT_SENSOR_ID].rawDistance);
+      rightValues.push_back(sensorManager->m_sensors[RIGHT_SENSOR_ID].rawDistance);
       bluetoothManager->newSensorValues(leftValues, rightValues);
       bluetoothManager->processButtonState(digitalRead(PushButton));
     }
