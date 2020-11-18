@@ -341,7 +341,7 @@ void loop() {
 
   auto* currentSet = new DataSet;
   //specify which sensors value can be confirmed by pressing the button, should be configurable
-  uint8_t confirmationSensorID = LEFT_SENSOR_ID;
+  const uint8_t confirmationSensorID = LEFT_SENSOR_ID;
   readGPSData(); // needs <=1ms
 
   currentTimeMillis = millis();

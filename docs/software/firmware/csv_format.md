@@ -2,14 +2,20 @@
 
 ## Metadata
 
-The 1st line of the CSV file contains metadata in URL encoded parameters.
-This line must be skiped to get full CVS conform format. A sample line could look
-like follows:
+The 1st line of the CSV file contains key value metadata as URL encoded 
+parameters. This line must be skipped to get a full CVS conform format. 
+A sample line could look like follows:
 
 ```URL
-OBSFirmwareVersion=v0.3.999&OBSDataFormat=2&DataPerMeasurement=3&MaximumMeasurementsPerLine=60&Offset-Left=30&Offset-Right=30&NumberOfDefinedPrivacyAreas=3&PrivacyLevelApplied=AbsolutePrivacy&MaximumValidFlightTimeMicroseconds=18560&DistanceSensorsUsed=HC-SR04/JSN-SR04T&DeviceId=ECEC&OBSUserID=32423432342234
+OBSFirmwareVersion=v0.3.999&OBSDataFormat=2&DataPerMeasurement=3&\
+MaximumMeasurementsPerLine=60&OffsetLeft=30&OffsetRight=30&\
+NumberOfDefinedPrivacyAreas=3&PrivacyLevelApplied=AbsolutePrivacy&\
+MaximumValidFlightTimeMicroseconds=18560&\
+DistanceSensorsUsed=HC-SR04/JSN-SR04T&DeviceId=ECEC&OBSUserID=32423432342234
 ```
 
+There might be new keys added. Parsers should ignore values they do not 
+understand.  
 
 OBSFirmwareVersion
 : v0.3.999
@@ -24,10 +30,10 @@ MaximumMeasurementsPerLine
 : 60 (currently fix)
 
 HandlebarOffsetLeft
-: 30 as set in the configuration
+: 30 as set in the configurations
 
 HandlebarOffsetRight
-: 30 as set in the configuration
+: 30 as set in the configurations
 
 NumberOfDefinedPrivacyAreas
 : 3 as set in the configuration, just to be aware of
