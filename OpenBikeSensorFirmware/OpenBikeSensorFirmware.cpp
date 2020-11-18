@@ -57,7 +57,7 @@ unsigned long currentTimeMillis = millis();
 bool usingSD = false;
 String text = "";
 uint16_t minDistanceToConfirm = MAX_SENSOR_VALUE;
-uint16_t minDistanceToConfirmTimeOffset = 0;
+uint16_t minDistanceToConfirmIndex = 0;
 bool transmitConfirmedData = false;
 int lastButtonState = 0;
 
@@ -367,14 +367,10 @@ void loop() {
 
   // do this for the time specified by measureInterval, e.g. 1s
   while ((currentTimeMillis - startTimeMillis) < measureInterval) {
-    // #######################################################
-    // Display
-    // #######################################################
 
     currentTimeMillis = millis();
     sensorManager->getDistances();
 
-    // Show values on the display
     displayTest->showValues(
       sensorManager->m_sensors[1],
       sensorManager->m_sensors[0],
@@ -392,10 +388,6 @@ void loop() {
       bluetoothManager->processButtonState(digitalRead(PushButton));
     }
 
-    // #######################################################
-    // Storage
-    // #######################################################
-
     // if there is a sensor value and confirmation was not already triggered
     if (minDistanceToConfirm != MAX_SENSOR_VALUE) {
       buttonState = digitalRead(PushButton);
@@ -411,7 +403,7 @@ void loop() {
           numButtonReleased++;
           if (datasetToConfirm != nullptr) {
             datasetToConfirm->confirmedDistances.push_back(minDistanceToConfirm);
-            datasetToConfirm->confirmedDistancesTimeOffset.push_back(minDistanceToConfirmTimeOffset);
+            datasetToConfirm->confirmedDistancesTimeOffset.push_back(minDistanceToConfirmIndex);
             datasetToConfirm = nullptr;
           }
           minDistanceToConfirm = MAX_SENSOR_VALUE; // ready for next confirmation
@@ -424,7 +416,12 @@ void loop() {
     if (sensorManager->sensorValues[confirmationSensorID] > 0
         && sensorManager->sensorValues[confirmationSensorID] < minDistanceToConfirm) {
       minDistanceToConfirm = sensorManager->sensorValues[confirmationSensorID];
-      minDistanceToConfirmTimeOffset = sensorManager->getCurrentMeasureTimeOffset(confirmationSensorID);
+      minDistanceToConfirmIndex = sensorManager->getCurrentMeasureIndex();
+      // if there was no measurement of this sensor for this index, it is the
+      // one before. This happens with fast confirmations.
+      if (sensorManager->m_sensors[confirmationSensorID].echoDurationMicroseconds[minDistanceToConfirm - 1] <= 0) {
+        minDistanceToConfirmIndex--;
+      }
       datasetToConfirm = currentSet;
       Serial.print("New minDistanceToConfirm=");
       Serial.println(minDistanceToConfirm);

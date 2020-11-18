@@ -188,9 +188,9 @@ void FileWriter::writeDataBuffered(DataSet* set) {
 
 void CSVFileWriter::writeHeader() {
   String headerString;
-  headerString += "OBSVER2;Time;Millis;Comment;Latitude;Longitude;Altitude;"
+  headerString += "Date;Time;Millis;Comment;Latitude;Longitude;Altitude;"
                   "Course;Speed;HDOP;Satellites;BatteryLevel;Left;Right;Confirmed;Marked;Invalid;"
-                  "insidePrivacyArea;Factor;Measurements";
+                  "InsidePrivacyArea;Factor;Measurements";
   for (uint16_t idx = 1; idx <= MAX_NUMBER_MEASUREMENTS_PER_INTERVAL; ++idx) {
     String number = String(idx);
     headerString += ";Tms" + number;
