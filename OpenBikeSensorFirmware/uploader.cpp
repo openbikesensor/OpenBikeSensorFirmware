@@ -100,6 +100,13 @@ uploader::uploader()
 
 #define POST_BUFFSIZE 100 * 1024
 
+/* Upload data to "The Portal".
+ *
+ * File data can be sent nearly directly since the only thing we have
+ * to escape inside the JSON string is the newline, we do not use other
+ * characters that need escaping in the CSV (for now) (" & \)
+ *
+ */
 bool uploader::upload(const String& fileName)
 {
   int number=0;
@@ -126,7 +133,7 @@ bool uploader::upload(const String& fileName)
     {
       String line = csvFile.readStringUntil('\n');
       numLines++;
-      postBuffer += line + ";$"; // $ replaces the end of line which is not allowed in json
+      postBuffer += line + ";\\n";
       if (numLines > 100 || !csvFile.available())
       {
         postBuffer += "\"}}"; // end body string and close track and message
