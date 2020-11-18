@@ -1,15 +1,20 @@
 # Format specification for the internal CVS format
 
-In addition, the will be a json file per CSV file containing some metadata. 
-The file needs to be specified later - still there is some data needed here - 
-so I will list it.
-
 ## Metadata
 
-OBSVersion
+The 1st line of the CSV file contains metadata in URL encoded parameters.
+This line must be skiped to get full CVS conform format. A sample line could look
+like follows:
+
+```URL
+OBSFirmwareVersion=v0.3.999&OBSDataFormat=2&DataPerMeasurement=3&MaximumMeasurementsPerLine=60&Offset-Left=30&Offset-Right=30&NumberOfDefinedPrivacyAreas=3&PrivacyLevelApplied=AbsolutePrivacy&MaximumValidFlightTimeMicroseconds=18560&DistanceSensorsUsed=HC-SR04/JSN-SR04T&DeviceId=ECEC&OBSUserID=32423432342234
+```
+
+
+OBSFirmwareVersion
 : v0.3.999
 
-FormatVersion
+OBSDataFormatVersion
 : 2
 
 DataPerMeasurement
@@ -19,13 +24,13 @@ MaximumMeasurementsPerLine
 : 60 (currently fix)
 
 HandlebarOffsetLeft
-: as set in the configuration
+: 30 as set in the configuration
 
 HandlebarOffsetRight
-: as set in the configuration
+: 30 as set in the configuration
 
 NumberOfDefinedPrivacyAreas
-: as set in the configuration, just to be aware of
+: 3 as set in the configuration, just to be aware of
 
 PrivacyLevelApplied
 : NoPrivacy|NoPosition|OverridePrivacy|AbsolutePrivacy|
@@ -36,12 +41,21 @@ MaximumValidFlightTimeMicroseconds
 DistanceSensorsUsed
 : `HC-SR04/JSN-SR04T` - enum currently only one possible value
 
+DeviceId
+: AFFE - internal Id of the OBS.
+
+OBSUserId
+: SDASDFSD - if configured
+
+PresetId
+: Wade - Id to identify the selected preset. A owner might define multiple presets
+
 
 ## CSV
 
-The CSV File must contain a header line with headline entries for each field, 
-the names must be the same as given in the table below. The number of 
-data entries per line can differ.
+As 2nd line, the file contains a header line with headline entries for 
+each field, the names must be the same as given in the table below. 
+The number of data entries per line can differ.
 
 If there is no value in an entry this means no measurement or not 
 available or hidden. Before we used `-1` or `NaN` for this, now we are 
@@ -89,7 +103,7 @@ Headline    | Format | Range | Sample | Description |
 `HDOP`      | double | 0-99.9 | 2.3  | Relative accuracy of horizontal position (GPGGA)
 `Satellites` | int16 | 0-99 | 5 | Number of satellites in use (GPGGA)
 `BatteryLevel` | double | 0-9.99 | 3.3 | Current battery level reading (~V)
-`Left`      | int16  | 0-999 | 150 | Left minimum measured distance in centimeters of this line, the measurement is already corrected for the handlebar offset, 999 for no measurement. 
+`Left`      | int16  | 0-999 | 150 | Left minimum measured distance in centimeters of this line, the measurement is already corrected for the handlebar offset. 
 `Right`     | int16  | 0-999 | 150 | Right minimum measured distance as `Left` above.
 `Confirmed` | int32  | 0-60 | 5 | If !=0 the Measurement was confirmed overtaking by button press, contains the index `<n>` of the related measurement    
 `Marked`    | char[]  | | "OVERTAKING" | Measurement was marked (not possible yet) with the given tag use <code>&#124;</code> to separate multiple tags is needed. 
