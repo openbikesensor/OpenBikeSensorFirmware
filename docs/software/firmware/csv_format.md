@@ -15,47 +15,23 @@ DistanceSensorsUsed=HC-SR04/JSN-SR04T&DeviceId=ECEC&OBSUserID=32423432342234
 ```
 
 There might be new keys added. Parsers should ignore values they do not 
-understand.  
+understand.
 
-OBSFirmwareVersion
-: v0.3.999
-
-OBSDataFormatVersion
-: 2
-
-DataPerMeasurement
-: 3 (fix as of now is `Tms<n>`, `Lus<n>` and `Rus<n>`)
-
-MaximumMeasurementsPerLine
-: 60 (currently fix)
-
-HandlebarOffsetLeft
-: 30 as set in the configurations
-
-HandlebarOffsetRight
-: 30 as set in the configurations
-
-NumberOfDefinedPrivacyAreas
-: 3 as set in the configuration, just to be aware of
-
-PrivacyLevelApplied
-: NoPrivacy|NoPosition|OverridePrivacy|AbsolutePrivacy|
-
-MaximumValidFlightTimeMicroseconds
-: 18560 - all echo times above this value must be discarded and treated as no object in sight.
-
-DistanceSensorsUsed
-: `HC-SR04/JSN-SR04T` - enum currently only one possible value
-
-DeviceId
-: AFFE - internal Id of the OBS.
-
-OBSUserId
-: SDASDFSD - if configured
-
-PresetId
-: Wade - Id to identify the selected preset. A owner might define multiple presets
-
+| Key | Example value | Note |
+| --- | ------------- | ---- |
+| `OBSDataFormatVersion` | `2` | **Required**. This the version of this format specification that the file follows. |
+| `OBSFirmwareVersion` | `v0.3.999` | |
+| `DataPerMeasurement` | `3` | fix as of now is `Tms<n>`, `Lus<n>` and `Rus<n>` |
+| `MaximumMeasurementsPerLine` | `60` | currently fix |
+| `HandlebarOffsetLeft` | `30` | as set in the configurations |
+| `HandlebarOffsetRight` | `30` | as set in the configurations |
+| `NumberOfDefinedPrivacyAreas` | `3` | as set in the configuration, just to be aware of |
+| `PrivacyLevelApplied` | `AbsolutePrivacy` | One of: NoPrivacy, NoPosition, OverridePrivacy, AbsolutePrivacy |
+| `MaximumValidFlightTimeMicroseconds` | `18560` | all echo times above this value must be discarded and treated as no object in sight |
+| `DistanceSensorsUsed` | `HC-SR04/JSN-SR04T` | enum currently only one possible value |
+| `DeviceId` | `AFFE` | internal Id of the OBS |
+| `OBSUserId` | `SDASDFSD` | if configured |
+| `PresetId` | `Wade` | Id to identify the selected preset. A owner might define multiple presets |
 
 ## CSV
 
@@ -91,7 +67,7 @@ Based on http://dataprotocols.org/csv-dialect/ the definition is:
 ```
 
 Character encoding is UTF-8. Data from the OBS however uses only the 
-7-bit ASCII part. There is no BOM at the start.
+7-bit ASCII part, for simplicity on the embedded system. There is no BOM at the start.
 
 ### Data
 
