@@ -191,7 +191,6 @@ void CSVFileWriter::writeHeader() {
   headerString += "OBSDataFormat=2&";
   headerString += "OBSFirmwareVersion=" + String(OBSVersion) + "&";
   headerString += "DeviceId=" + String((uint16_t)(ESP.getEfuseMac() >> 32), 16) + "&";
-  headerString += "OBSUserID=" + String(config.obsUserID) + "&";
   headerString += "DataPerMeasurement=3&";
   headerString += "MaximumMeasurementsPerLine=" + String(MAX_NUMBER_MEASUREMENTS_PER_INTERVAL) + "&";
   headerString += "OffsetLeft=" + String(config.sensorOffsets[LEFT_SENSOR_ID]) + "&";

@@ -35,8 +35,7 @@ understand.
 | `PrivacyLevelApplied` | `AbsolutePrivacy` | One of: NoPrivacy, NoPosition, OverridePrivacy, AbsolutePrivacy |
 | `MaximumValidFlightTimeMicroseconds` | `18560` | all echo times above this value must be discarded and treated as no object in sight |
 | `DistanceSensorsUsed` | `HC-SR04/JSN-SR04T` | enum currently only one possible value |
-| `DeviceId` | `AFFE` | internal Id of the OBS |
-| `OBSUserId` | `SDASDFSD` | if configured |
+| `DeviceId` | `affe` | internal Id of the OBS |
 | `PresetId` | `Wade` | Id to identify the selected preset. A owner might define multiple presets |
 
 ## CSV
