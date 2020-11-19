@@ -1,5 +1,11 @@
 # Format specification for the internal CVS format
 
+## Encoding
+
+The whole data file is encoded as UTF-8. Writers of the file may choose not to use the whole unicode range for simplicity and restrict themselves to 7-bit ASCII for simplicity, because it is identical with UTF-8. The OBS does this for example, since it only produces data that can be encoded this way. Parsers should interpret the whole file as UTF-8 however, since other data sources may produce special characters inside the file, such as in free text comment fields.
+
+The file must not include a [BOM](https://de.wikipedia.org/wiki/Byte_Order_Mark).
+
 ## Metadata
 
 The 1st line of the CSV file contains key value metadata as URL encoded 
@@ -65,9 +71,6 @@ Based on http://dataprotocols.org/csv-dialect/ the definition is:
   "header": true
 }
 ```
-
-Character encoding is UTF-8. Data from the OBS however uses only the 
-7-bit ASCII part, for simplicity on the embedded system. There is no BOM at the start.
 
 ### Data
 
