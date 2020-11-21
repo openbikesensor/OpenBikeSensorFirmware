@@ -150,6 +150,12 @@ bool uploader::upload(const String& fileName)
         if (res)
         { // HTTPS
           https.addHeader("Content-Type", "application/json");
+          char buffer[128];
+          snprintf(buffer, sizeof(buffer), "OBSUserId %s", config.obsUserID);
+          https.addHeader("Authorization", buffer);
+          snprintf(buffer, sizeof(buffer), "OBS/%s", OBSVersion);
+          https.addHeader("User-Agent", buffer);
+
           //Serial.println(postBuffer.c_str());
           int httpCode = https.POST(postBuffer.c_str());
 
