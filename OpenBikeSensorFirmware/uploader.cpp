@@ -135,7 +135,7 @@ bool uploader::upload(const String& fileName)
     {
       String line = csvFile.readStringUntil('\n');
       numLines++;
-      postBuffer += line + ";\\n";
+      postBuffer += line + "\\n";
       if (numLines > 100 || !csvFile.available())
       {
         postBuffer += "\"}}"; // end body string and close track and message
