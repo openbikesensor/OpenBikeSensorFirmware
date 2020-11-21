@@ -17,7 +17,7 @@ OBSFirmwareVersion=v0.3.999&OBSDataFormat=2&DataPerMeasurement=3&\
 MaximumMeasurementsPerLine=60&OffsetLeft=30&OffsetRight=30&\
 NumberOfDefinedPrivacyAreas=3&PrivacyLevelApplied=AbsolutePrivacy&\
 MaximumValidFlightTimeMicroseconds=18560&\
-DistanceSensorsUsed=HC-SR04/JSN-SR04T&DeviceId=ECEC&OBSUserID=32423432342234
+DistanceSensorsUsed=HC-SR04/JSN-SR04T&DeviceId=ecec
 ```
 
 There might be new keys added. Parsers should ignore values they do not 
@@ -54,6 +54,11 @@ There is typically one line per second, but there are possible exceptions:
 - If we have multiple confirmed measurements in one interval in that case 
   an interval appears multiple times - once with each confirmed value. 
   Other fields are identical in both lines.  
+
+The header defines the order of the fields, it can be different from
+the order here. Also fields that do not appear in the header must be 
+assumed empty for the whole file.
+
 
 NOTE: The order of the fields is different from Version 1 of the CVS file.
 
