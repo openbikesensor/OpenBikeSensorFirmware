@@ -22,7 +22,7 @@
 
 #include "config.h"
 #include "globals.h"
-#include "MultipartStream.h"
+#include "utils/multipart.h"
 
 #include <WiFi.h>
 #include <WiFiMulti.h>
