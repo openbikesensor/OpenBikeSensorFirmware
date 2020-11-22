@@ -126,11 +126,8 @@ bool uploader::upload(const String& fileName)
 
     // USE CONGIG !!res = https.begin(*client, "http://192.168.98.51:3000/api/tracks");
     res = https.begin(*client, "https://openbikesensor.hlrs.de/api/tracks");
-    char buffer[128];
-    snprintf(buffer, sizeof(buffer), "OBSUserId %s", config.obsUserID);
-    https.addHeader("Authorization", buffer);
-    snprintf(buffer, sizeof(buffer), "OBS/%s", OBSVersion);
-    https.addHeader("User-Agent", buffer);
+    https.addHeader("Authorization", "OBSUserId " + String(config.obsUserID));
+    https.addHeader("User-Agent", "OBS/" + String(OBSVersion));
 
     if (res) { // HTTPS
       MultipartStream mp(&https);
