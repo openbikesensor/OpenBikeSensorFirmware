@@ -17,7 +17,7 @@ jobs:
       run: |
         mkdir bin
         echo GITHUB Ref: ${{ github.ref }}
-        VERSION_STRING=`grep "const char \*OBSVersion =" OpenBikeSensorFirmware/OpenBikeSensorFirmware.ino`
+        VERSION_STRING=`grep "const char \*OBSVersion =" OpenBikeSensorFirmware/OpenBikeSensorFirmware.cpp`
         MAJOR=`echo ${VERSION_STRING} | cut -f2 -d\"`
         if [ "${{ github.ref }}" = "refs/heads/master" ]
         then

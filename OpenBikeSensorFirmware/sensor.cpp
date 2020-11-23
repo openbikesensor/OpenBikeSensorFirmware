@@ -1,3 +1,4 @@
+#include <rom/queue.h>
 /*
   Copyright (C) 2019 Zweirat
   Contact: https://openbikesensor.org
@@ -21,27 +22,6 @@
 #include "sensor.h"
 #include "FunctionalInterrupt.h"
 
-/* About the speed of sound:
-   See also http://www.sengpielaudio.com/Rechner-schallgeschw.htm (german)
-    - speed of sound depends on ambient temperature
-      temp, Celsius  speed, m/sec    int factor     dist error introduced with fix int factor of 58
-                     (331.5+(0.6*t)) (2000/speed)   (speed@58 / speed) - 1
-       35            352.1           (57)           -2.1% (-3.2cm bei 150cm)
-       30            349.2
-       25            346.3
-       22.4          344.82           58             0
-       20            343.4
-       15            340.5
-       12.5          338.98           (59)          +1.7% (2.6cm bei 150)
-       10            337.5
-       5             334.5
-       0             331.5            (60)          +4%  (6cm bei 150cm)
-      −5             328.5
-      −10            325.4
-      −15            322.3
-*/
-const uint32_t MICRO_SEC_TO_CM_DIVIDER = 58; // sound speed 340M/S, 2 times back and forward
-
 const uint16_t MIN_DISTANCE_MEASURED_CM =   2;
 const uint16_t MAX_DISTANCE_MEASURED_CM = 320; // candidate to check I could not get good readings above 300
 
@@ -56,7 +36,6 @@ const uint32_t MAX_TIMEOUT_MICRO_SEC = 75000;
 
 /* The last end (echo goes to low) of a measurement must be this far
  * away before a new measurement is started.
- * FIXME: Saw false readings with 10 * 1000, increased to 25.
  */
 const uint32_t SENSOR_QUIET_PERIOD_AFTER_END_MICRO_SEC = 10 * 1000;
 
@@ -100,7 +79,6 @@ const uint32_t MEASUREMENT_IN_PROGRESS = 0;
  *    close to the needed 148ms
  */
 
-
 void HCSR04SensorManager::registerSensor(HCSR04SensorInfo sensorInfo) {
   m_sensors.push_back(sensorInfo);
   pinMode(sensorInfo.triggerPin, OUTPUT);
@@ -111,12 +89,15 @@ void HCSR04SensorManager::registerSensor(HCSR04SensorInfo sensorInfo) {
   attachInterrupt(sensorInfo.echoPin, std::bind(&HCSR04SensorManager::isr, this, m_sensors.size() - 1), CHANGE);
 }
 
-void HCSR04SensorManager::reset(bool resetMinDistance) {
-  for (size_t idx = 0; idx < m_sensors.size(); ++idx)
-  {
-    sensorValues[idx] = MAX_SENSOR_VALUE;
-    if (resetMinDistance) m_sensors[idx].minDistance = MAX_SENSOR_VALUE;
+void HCSR04SensorManager::reset() {
+  for (size_t idx = 0; idx < m_sensors.size(); ++idx) {
+    m_sensors[idx].minDistance = MAX_SENSOR_VALUE;
+    memset(&(m_sensors[idx].echoDurationMicroseconds), 0, sizeof(m_sensors[idx].echoDurationMicroseconds));
   }
+  startReadingMilliseconds = 0; // cheat a bit, we start the clock just with the 1st measurement
+  lastReadingCount = 0;
+  memset(&(startOffsetMilliseconds), 0, sizeof(startOffsetMilliseconds));
+  activeSensor = primarySensor;
 }
 
 void HCSR04SensorManager::setOffsets(Vector<uint16_t> offsets) {
@@ -140,10 +121,49 @@ void HCSR04SensorManager::setPrimarySensor(uint8_t idx) {
   primarySensor = idx;
 }
 
+
+/* Reads left sensor alternating to the right sensor, while
+ * one sensor is used the other one has time to settle down.
+ */
 void HCSR04SensorManager::getDistances() {
+  setSensorTriggersToLow();
+  waitTillSensorIsReady(activeSensor);
+  sendTriggerToSensor(activeSensor);
+  if (startReadingMilliseconds == 0) {
+    startReadingMilliseconds = millis();
+  }
+  startOffsetMilliseconds[lastReadingCount] = millisSince(startReadingMilliseconds);
+  // spec says 10, there are reports that the JSN-SR04T-2.0 behaves better if we wait 20 microseconds.
+  // I did not observe this but others might be affected so we spend this time ;)
+  // https://wolles-elektronikkiste.de/hc-sr04-und-jsn-sr04t-2-0-abstandssensoren
+  delayMicroseconds(20);
+  setSensorTriggersToLow();
+
+  waitForEchosOrTimeout(activeSensor);
+  collectSensorResult(activeSensor);
+  activeSensor++;
+  if (activeSensor >= m_sensors.size()) {
+    activeSensor = 0;
+  }
+  setNoMeasureDate(activeSensor);
+  if (lastReadingCount < MAX_NUMBER_MEASUREMENTS_PER_INTERVAL) {
+    lastReadingCount++;
+  }
+}
+
+
+/* Method that reads the sensors in parallel. We observed false readings
+ * that are likely caused by both sensors operated at the same time.
+ * So once the alternating implementation is established this code must
+ * be removed.
+ */
+void HCSR04SensorManager::getDistancesParallel() {
   setSensorTriggersToLow();
   waitTillPrimarySensorIsReady();
   sendTriggerToReadySensor();
+  if (startReadingMilliseconds == 0) {
+    startReadingMilliseconds = millis();
+  }
   // spec says 10, there are reports that the JSN-SR04T-2.0 behaves better if we wait 20 microseconds.
   // I did not observe this but others might be affected so we spend this time ;)
   // https://wolles-elektronikkiste.de/hc-sr04-und-jsn-sr04t-2-0-abstandssensoren
@@ -154,11 +174,20 @@ void HCSR04SensorManager::getDistances() {
   collectSensorResults();
 }
 
+uint16_t HCSR04SensorManager::getCurrentMeasureIndex() {
+  return lastReadingCount;
+}
+
 /* Wait till the primary sensor is ready, this also defines the frequency of
  * measurements and ensures we do not over pace.
  */
 void HCSR04SensorManager::waitTillPrimarySensorIsReady() {
-  while (!isReadyForStart(&m_sensors[primarySensor])) {
+  waitTillSensorIsReady(primarySensor);
+}
+
+/* Wait till the given sensor is ready.  */
+void HCSR04SensorManager::waitTillSensorIsReady(uint8_t sensorId) {
+  while (!isReadyForStart(&m_sensors[sensorId])) {
     NOP();
   }
 }
@@ -176,6 +205,16 @@ void HCSR04SensorManager::sendTriggerToReadySensor() {
       digitalWrite(sensor->triggerPin, HIGH);
     }
   }
+}
+
+/* Start measurement with all sensors that are ready to measure, wait
+ * if there is no ready sensor at all.
+ */
+void HCSR04SensorManager::sendTriggerToSensor(uint8_t sensorId) {
+    HCSR04SensorInfo* const sensor = &m_sensors[sensorId];
+    sensor->trigger = sensor->start = micros(); // will be updated with HIGH signal
+    sensor->end = MEASUREMENT_IN_PROGRESS; // will be updated with LOW signal
+    digitalWrite(sensor->triggerPin, HIGH);
 }
 
 boolean HCSR04SensorManager::isReadyForStart(HCSR04SensorInfo* sensor) {
@@ -203,50 +242,62 @@ boolean HCSR04SensorManager::isReadyForStart(HCSR04SensorInfo* sensor) {
 void HCSR04SensorManager::collectSensorResults() {
   for (size_t idx = 0; idx < m_sensors.size(); ++idx)
   {
-    HCSR04SensorInfo* const sensor = &m_sensors[idx];
-    const uint32_t end = sensor->end;
-    const uint32_t start = getFixedStart(idx, sensor);
-    uint32_t duration;
-    if (end == MEASUREMENT_IN_PROGRESS)
-    { // measurement is still in flight! But the time we want to wait is up (> MAX_DURATION_MICRO_SEC)
-      duration = microsSince(start);
-      // better save than sorry:
-      if (duration < MAX_DURATION_MICRO_SEC) {
-#ifdef DEVELOP
-        Serial.printf("Collect called to early! Sensor[%d] duration: %zu us - echo pin state: %d\n",
-          idx, duration, digitalRead(sensor->echoPin));
-#endif
-        duration = MAX_DURATION_MICRO_SEC;
-      }
-    }
-    else
-    {
-      duration = microsBetween(start, end);
-    }
-    uint16_t dist;
-    if (duration < MIN_DURATION_MICRO_SEC || duration >= MAX_DURATION_MICRO_SEC)
-    {
-      dist = MAX_SENSOR_VALUE;
-    }
-    else
-    {
-      dist = static_cast<uint16_t>(duration / MICRO_SEC_TO_CM_DIVIDER);
-    }
-    sensor->rawDistance = dist;
-    sensorValues[idx] = correctSensorOffset(medianMeasure(sensor, dist), sensor->offset);
+    collectSensorResult(idx);
+  }
+  startOffsetMilliseconds[lastReadingCount] = millisSince(startReadingMilliseconds);
+  if (lastReadingCount < MAX_NUMBER_MEASUREMENTS_PER_INTERVAL) {
+    lastReadingCount++;
+  }
+}
 
+void HCSR04SensorManager::collectSensorResult(uint8_t sensorId) {
+  HCSR04SensorInfo* const sensor = &m_sensors[sensorId];
+  const uint32_t end = sensor->end;
+  const uint32_t start = getFixedStart(sensorId, sensor);
+  uint32_t duration;
+  if (end == MEASUREMENT_IN_PROGRESS)
+  { // measurement is still in flight! But the time we want to wait is up (> MAX_DURATION_MICRO_SEC)
+    duration = microsSince(start);
+    sensor->echoDurationMicroseconds[lastReadingCount] = -1;
+    // better save than sorry:
+    if (duration < MAX_DURATION_MICRO_SEC) {
 #ifdef DEVELOP
-    Serial.printf("Raw sensor[%d] distance read %03u / %03u (%03u, %03u, %03u) -> *%03ucm*, duration: %zu us - echo pin state: %d\n",
-      idx, sensor->rawDistance, dist, sensor->distances[0], sensor->distances[1],
-      sensor->distances[2], sensorValues[idx], duration, digitalRead(sensor->echoPin));
+      Serial.printf("Collect called to early! Sensor[%d] duration: %zu us - echo pin state: %d\n",
+        sensorId, duration, digitalRead(sensor->echoPin));
 #endif
-
-    if (sensorValues[idx] > 0 && sensorValues[idx] < sensor->minDistance)
-    {
-      sensor->minDistance = sensorValues[idx];
-      sensor->lastMinUpdate = millis();
+      duration = MAX_DURATION_MICRO_SEC;
     }
   }
+  else
+  {
+    duration = microsBetween(start, end);
+    sensor->echoDurationMicroseconds[lastReadingCount] = duration;
+  }
+  uint16_t dist;
+  if (duration < MIN_DURATION_MICRO_SEC || duration >= MAX_DURATION_MICRO_SEC) {
+    dist = MAX_SENSOR_VALUE;
+  } else {
+    dist = static_cast<uint16_t>(duration / MICRO_SEC_TO_CM_DIVIDER);
+  }
+  sensor->rawDistance = dist;
+  sensorValues[sensorId] =
+    sensor->distance = correctSensorOffset(medianMeasure(sensor, dist), sensor->offset);
+
+#ifdef DEVELOP
+  Serial.printf("Raw sensor[%d] distance read %03u / %03u (%03u, %03u, %03u) -> *%03ucm*, duration: %zu us - echo pin state: %d\n",
+      sensorId, sensor->rawDistance, dist, sensor->distances[0], sensor->distances[1],
+      sensor->distances[2], sensorValues[sensorId], duration, digitalRead(sensor->echoPin));
+#endif
+
+  if (sensor->distance > 0 && sensor->distance < sensor->minDistance)
+  {
+    sensor->minDistance = sensor->distance;
+    sensor->lastMinUpdate = millis();
+  }
+}
+
+void HCSR04SensorManager::setNoMeasureDate(uint8_t sensorId) {
+  m_sensors[sensorId].echoDurationMicroseconds[lastReadingCount] = -1;
 }
 
 /* During debugging I observed readings that did not get `start` updated
@@ -299,12 +350,16 @@ void HCSR04SensorManager::setSensorTriggersToLow() {
 void HCSR04SensorManager::waitForEchosOrTimeout() {
   for (size_t idx = 0; idx < m_sensors.size(); ++idx)
   {
-    HCSR04SensorInfo* const sensor = &m_sensors[idx];
-    while ((sensor->end == MEASUREMENT_IN_PROGRESS)
-           && (microsSince(sensor->start) < MAX_DURATION_MICRO_SEC)) // max duration not expired
-    {
-      NOP();
-    }
+    waitForEchosOrTimeout(idx);
+  }
+}
+
+void HCSR04SensorManager::waitForEchosOrTimeout(uint8_t sensorId) {
+  HCSR04SensorInfo* const sensor = &m_sensors[sensorId];
+  while ((sensor->end == MEASUREMENT_IN_PROGRESS)
+         && (microsSince(sensor->start) < MAX_DURATION_MICRO_SEC)) // max duration not expired
+  {
+    NOP();
   }
 }
 
@@ -330,6 +385,14 @@ uint32_t HCSR04SensorManager::microsBetween(uint32_t a, uint32_t b) {
  */
 uint32_t HCSR04SensorManager::microsSince(uint32_t a) {
   return microsBetween(micros(), a);
+}
+
+uint16_t HCSR04SensorManager::millisSince(uint16_t milliseconds) {
+  uint16_t result = ((uint16_t) millis()) - milliseconds;
+  if (result & 0x8000) {
+    result = -result;
+  }
+  return result;
 }
 
 uint16_t HCSR04SensorManager::medianMeasure(HCSR04SensorInfo *const sensor, uint16_t value) {

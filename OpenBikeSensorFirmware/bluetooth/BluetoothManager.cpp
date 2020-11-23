@@ -11,7 +11,7 @@ void BluetoothManager::init() {
 
   esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
   char deviceName[32];
-  snprintf(deviceName, sizeof(deviceName), "OpenBikeSensor %04X", (uint16_t)(ESP.getEfuseMac() >> 32));
+  snprintf(deviceName, sizeof(deviceName), "OpenBikeSensor-%04X", (uint16_t)(ESP.getEfuseMac() >> 32));
   BLEDevice::init(deviceName);
   pServer = BLEDevice::createServer();
   //pServer->setCallbacks(new CustomBTCallback());

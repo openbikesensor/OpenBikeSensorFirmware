@@ -100,6 +100,13 @@ uploader::uploader()
 
 #define POST_BUFFSIZE 100 * 1024
 
+/* Upload data to "The Portal".
+ *
+ * File data can be sent nearly directly since the only thing we have
+ * to escape inside the JSON string is the newline, we do not use other
+ * characters that need escaping in the CSV (for now) (" & \)
+ *
+ */
 bool uploader::upload(const String& fileName)
 {
   int number=0;
@@ -117,8 +124,10 @@ bool uploader::upload(const String& fileName)
     HTTPClient https;
     String postBuffer;
     String postHeader;
-    postHeader = String("{\"id\": \"") + config.obsUserID + "\",\"track\":{\"title\":\"AutoUpload " + String(number) + "\",\"description\":\"Uploaded with OpenBikeSensor " + String(OBSVersion) + "\",\"body\":\"";
-    String headerLine = csvFile.readStringUntil('\n');
+    postHeader = String("{\"id\": \"") + config.obsUserID
+      + "\",\"track\":{\"title\":\"AutoUpload " + String(number)
+      + "\",\"description\":\"Uploaded with OpenBikeSensor " + String(OBSVersion)
+      + "\",\"body\":\"";
     postBuffer = postHeader;
     int numLines = 0;
     bool firstTime = true;
@@ -126,7 +135,7 @@ bool uploader::upload(const String& fileName)
     {
       String line = csvFile.readStringUntil('\n');
       numLines++;
-      postBuffer += line + ";$"; // $ replaces the end of line which is not allowed in json
+      postBuffer += line + "\\n";
       if (numLines > 100 || !csvFile.available())
       {
         postBuffer += "\"}}"; // end body string and close track and message
@@ -141,6 +150,12 @@ bool uploader::upload(const String& fileName)
         if (res)
         { // HTTPS
           https.addHeader("Content-Type", "application/json");
+          char buffer[128];
+          snprintf(buffer, sizeof(buffer), "OBSUserId %s", config.obsUserID);
+          https.addHeader("Authorization", buffer);
+          snprintf(buffer, sizeof(buffer), "OBS/%s", OBSVersion);
+          https.addHeader("User-Agent", buffer);
+
           //Serial.println(postBuffer.c_str());
           int httpCode = https.POST(postBuffer.c_str());
 

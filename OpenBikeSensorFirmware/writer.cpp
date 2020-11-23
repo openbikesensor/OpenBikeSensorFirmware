@@ -20,6 +20,9 @@
 
 #include "writer.h"
 
+int writeTimeMillis;
+
+
 void FileWriter::listDir(fs::FS &fs, const char * dirname, uint8_t levels) {
   Serial.printf("Listing directory: %s\n", dirname);
 
@@ -158,73 +161,180 @@ uint16_t FileWriter::getDataLength() {
 }
 
 void FileWriter::writeDataToSD() {
+  const int start = millis();
   this->appendFile(SD, m_filename.c_str(), dataString.c_str() );
-  dataString = "";
+  writeTimeMillis = millis() - start;
+  dataString.clear();
 }
+
+void FileWriter::writeDataBuffered(DataSet* set) {
+  if (getDataLength() > 10000 && !(digitalRead(PushButton))) {
+#ifdef DEVELOP
+    Serial.printf("File buffer full, writing to file\n");
+#endif
+    writeDataToSD();
+  }
+
+  if (getDataLength() < 13000) { // do not add data if our buffer is full already. We loose data here!
+    writeData(set);
+  } else {
+    // ALERT!! - display?
+#ifdef DEVELOP
+    Serial.printf("File buffer overflow, not allowed to write - will skip\n");
+#endif
+  }
+}
+
 
 void CSVFileWriter::writeHeader() {
   String headerString;
-  headerString += "Date;Time;Latitude;Longitude;Course;Speed";
-  for (size_t idx = 0; idx < sensorManager->m_sensors.size(); ++idx)
-  {
-    headerString += ";";
-    headerString += sensorManager->m_sensors[idx].sensorLocation;
+  headerString += "OBSDataFormat=2&";
+  headerString += "OBSFirmwareVersion=" + String(OBSVersion) + "&";
+  headerString += "DeviceId=" + String((uint16_t)(ESP.getEfuseMac() >> 32), 16) + "&";
+  headerString += "DataPerMeasurement=3&";
+  headerString += "MaximumMeasurementsPerLine=" + String(MAX_NUMBER_MEASUREMENTS_PER_INTERVAL) + "&";
+  headerString += "OffsetLeft=" + String(config.sensorOffsets[LEFT_SENSOR_ID]) + "&";
+  headerString += "OffsetRight=" + String(config.sensorOffsets[RIGHT_SENSOR_ID]) + "&";
+  headerString += "NumberOfDefinedPrivacyAreas=" + String((int) config.privacyAreas.size()) + "&";
+  headerString += "PrivacyLevelApplied=";
+
+  String privacyString;
+  if (config.privacyConfig & AbsolutePrivacy) {
+    privacyString += "AbsolutePrivacy";
   }
-  headerString += ";Confirmed";
-  headerString += ";insidePrivacyArea";
+  if (config.privacyConfig & NoPosition) {
+    if (!privacyString.isEmpty()) {
+      privacyString += "|";
+    }
+    privacyString += "NoPosition";
+  }
+  if (config.privacyConfig & NoPrivacy) {
+    if (!privacyString.isEmpty()) {
+      privacyString += "|";
+    }
+    privacyString += "NoPrivacy";
+  }
+  if (config.privacyConfig & OverridePrivacy) {
+    if (!privacyString.isEmpty()) {
+      privacyString += "|";
+    }
+    headerString += "OverridePrivacy";
+  }
+  if (privacyString.isEmpty()) {
+    privacyString += "NoPrivacy";
+  }
+  headerString += privacyString + "&";
+  headerString += "MaximumValidFlightTimeMicroseconds=" + String(MAX_DURATION_MICRO_SEC) + "&";
+  headerString += "DistanceSensorsUsed=HC-SR04/JSN-SR04T\n";
+
+  headerString += "Date;Time;Millis;Comment;Latitude;Longitude;Altitude;"
+                  "Course;Speed;HDOP;Satellites;BatteryLevel;Left;Right;Confirmed;Marked;Invalid;"
+                  "InsidePrivacyArea;Factor;Measurements";
+  for (uint16_t idx = 1; idx <= MAX_NUMBER_MEASUREMENTS_PER_INTERVAL; ++idx) {
+    String number = String(idx);
+    headerString += ";Tms" + number;
+    headerString += ";Lus" + number;
+    headerString += ";Rus" + number;
+  }
   headerString += "\n";
   this->appendFile(SD, m_filename.c_str(), headerString.c_str() );
 }
 
 void CSVFileWriter::writeData(DataSet* set) {
-  //String dataString = "";
-
   /*
     AbsolutePrivacy : When inside privacy area, the writer does noting, unless overriding is selected and the current set is confirmed
     NoPosition : When inside privacy area, the writer will replace latitude and longitude with NaNs
     NoPrivacy : Privacy areas are ignored, but the value "insidePrivacyArea" will be 1 inside
     OverridePrivacy : When selected, a full set is written, when a value was confirmed, even inside the privacy area
   */
-
-  if (!((config.privacyConfig & AbsolutePrivacy) && set->isInsidePrivacyArea) || ((config.privacyConfig & OverridePrivacy) && set->confirmed))
-  {
-    char dateString[12];
-    sprintf(dateString, "%02d.%02d.%04d;", set->date.day(), set->date.month(), set->date.year());
-    dataString = dataString + dateString;
-
-    char timeString[12];
-    sprintf(timeString, "%02d:%02d:%02d;", set->time.hour(), set->time.minute(), set->time.second());
-    dataString = dataString + timeString;
-
-    if ((config.privacyConfig & NoPosition) && set->isInsidePrivacyArea && !((config.privacyConfig & OverridePrivacy) && set->confirmed))
-    {
-      dataString = dataString + "NaN;NaN;";
-    }
-    else
-    {
-      String latitudeString = String(set->location.lat(), 6);
-      dataString = dataString + latitudeString + ";";
-
-      String longitudeString = String(set->location.lng(), 6);
-      dataString = dataString + longitudeString + ";";
-    }
-
-    String courseString = String(set->course.deg(), 3);
-    dataString = dataString + courseString + ";";
-
-    String speedString = String(set->speed.kmph(), 4);
-    dataString = dataString + speedString;
-
-    for (size_t idx = 0; idx < set->sensorValues.size(); ++idx)
-    {
-      dataString = dataString + ";" + String(set->sensorValues[idx]);
-    }
-    dataString = dataString + ";" + String(set->confirmed);
-    dataString = dataString + ";" + String(set->isInsidePrivacyArea);
-    dataString = dataString + "\n";
+  if (set->isInsidePrivacyArea
+    && ((config.privacyConfig & AbsolutePrivacy) || ((config.privacyConfig & OverridePrivacy) && !set->confirmed))) {
+    return;
   }
-}
 
+  const tm* time = localtime(&set->time);
+  char date[32];
+  snprintf(date, sizeof(date),
+           "%02d.%02d.%04d;%02d:%02d:%02d;%u;",
+           time->tm_mday, time->tm_mon + 1, time->tm_year + 1900,
+           time->tm_hour, time->tm_min, time->tm_sec, set->millis);
+
+  dataString += date;
+  dataString += set->comment;
+
+#ifdef DEVELOP
+  if (time->tm_sec == 0) {
+    dataString += "DEVELOP:  GPSMessages: " + String(gps.passedChecksum())
+      + " GPS crc errors: " + String(gps.failedChecksum());
+  } else if (time->tm_sec == 1) {
+    dataString += "DEVELOP: Mem: "
+                + String(ESP.getFreeHeap() / 1024) + "k Buffer: "
+                + String(getDataLength() / 1024) + "k last write time: "
+                + String(writeTimeMillis);
+  }
+#endif
+  dataString += ";";
+
+  if ((config.privacyConfig & NoPosition) && set->isInsidePrivacyArea
+    && !((config.privacyConfig & OverridePrivacy) && set->confirmed)) {
+    dataString += ";;;";
+  } else if (set->location.isValid()) {
+    dataString += String(set->location.lat(), 6) + ";";
+    dataString += String(set->location.lng(), 6) + ";";
+    dataString += String(set->altitude.meters(), 1) + ";";
+  } else {
+    dataString += ";;;";
+  }
+  if (set->course.isValid()) {
+    dataString += String(set->course.deg(), 2) + ";";
+  } else {
+    dataString += ";";
+  }
+  if (set->speed.isValid()) {
+    dataString += String(set->speed.kmph(), 2) + ";";
+  } else {
+    dataString += ";";
+  }
+  if (set->hdop.isValid()) {
+    dataString += String(set->hdop.hdop(), 2) + ";";
+  } else {
+    dataString += ";";
+  }
+  dataString += String(set->validSatellites) + ";";
+  dataString += String(set->batteryLevel, 2) + ";";
+  if (set->sensorValues[LEFT_SENSOR_ID] < MAX_SENSOR_VALUE) {
+    dataString += String(set->sensorValues[LEFT_SENSOR_ID]) + ";";
+  } else {
+    dataString += ";";
+  }
+  if (set->sensorValues[RIGHT_SENSOR_ID] < MAX_SENSOR_VALUE) {
+    dataString += String(set->sensorValues[RIGHT_SENSOR_ID]) + ";";
+  } else {
+    dataString += ";";
+  }
+  dataString += String(set->confirmed) + ";";
+  dataString += String(set->marked) + ";";
+  dataString += String(set->invalidMeasurement) + ";";
+  dataString += String(set->isInsidePrivacyArea) + ";";
+  dataString += String(set->factor) + ";";
+  dataString += String(set->measurements);
+
+  for (size_t idx = 0; idx < set->measurements; ++idx) {
+    dataString += ";" + String(set->startOffsetMilliseconds[idx]) + ";";
+    if (set->readDurationsLeftInMicroseconds[idx] > 0) {
+      dataString += String(set->readDurationsLeftInMicroseconds[idx]) + ";";
+    } else {
+      dataString += ";";
+    }
+    if (set->readDurationsRightInMicroseconds[idx] > 0) {
+      dataString += String(set->readDurationsRightInMicroseconds[idx]);
+    }
+  }
+  for (size_t idx = set->measurements; idx < MAX_NUMBER_MEASUREMENTS_PER_INTERVAL; ++idx) {
+    dataString += ";;;";
+  }
+  dataString += "\n";
+}
 
 
 void GPXFileWriter::writeHeader() {
@@ -249,16 +359,11 @@ void GPXFileWriter::writeData(DataSet* set) {
   dataString += "\">";
 
   char dateTimeString[25];
-  sprintf(
-    dateTimeString,
-    "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ",
-    set->date.year(),
-    set->date.month(),
-    set->date.day(),
-    set->time.hour(),
-    set->time.minute(),
-    set->time.second(),
-    set->time.centisecond());
+  const tm* time = localtime(&set->time);
+  snprintf(dateTimeString, sizeof(dateTimeString),
+           "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ",
+           time->tm_year + 1900, time->tm_mon + 1, time->tm_mday,
+           time->tm_hour, time->tm_min, time->tm_sec, 0);
   dataString += F("<time>");
   dataString += dateTimeString;
   dataString += F("</time>");

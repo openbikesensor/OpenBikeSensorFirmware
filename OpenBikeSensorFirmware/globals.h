@@ -6,6 +6,7 @@
 #include "config.h"
 #include "displays.h"
 #include "sensor.h"
+#include "VoltageMeter.h"
 
 // This file should contain declarations of all variables that will be used globally.
 // The variables don't have to be set here, but need to be declared.
@@ -32,8 +33,13 @@ extern SSD1306DisplayDevice* displayTest;
 
 extern HCSR04SensorManager* sensorManager;
 
+extern VoltageMeter* voltageMeter;
+
 extern String esp_chipid;
 
+extern const uint32_t MAX_DURATION_MICRO_SEC;
+extern const int LEFT_SENSOR_ID;
+extern const int RIGHT_SENSOR_ID;
 
 #endif
 

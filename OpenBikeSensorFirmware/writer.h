@@ -30,16 +30,32 @@
 #include "globals.h"
 #include "vector.h"
 
+
 struct DataSet {
+  time_t time;
+  uint32_t  millis;
+  String comment;
   TinyGPSLocation location;
   TinyGPSAltitude altitude;
-  TinyGPSDate date;
-  TinyGPSTime time;
   TinyGPSCourse course;
   TinyGPSSpeed speed;
+  TinyGPSHDOP hdop;
+  uint8_t validSatellites;
+  double batteryLevel;
   Vector<uint16_t> sensorValues;
-  bool confirmed = false;
+  Vector<uint16_t> confirmedDistances;
+  Vector<uint16_t> confirmedDistancesTimeOffset;
+  uint16_t confirmed = 0;
+  String marked;
+  bool invalidMeasurement = false;
   bool isInsidePrivacyArea;
+  uint8_t factor = MICRO_SEC_TO_CM_DIVIDER;
+  uint8_t measurements;
+
+  uint16_t position = 0; // fixme: num sensors?
+  uint16_t startOffsetMilliseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
+  int32_t readDurationsLeftInMicroseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
+  int32_t readDurationsRightInMicroseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
 };
 
 
@@ -57,10 +73,12 @@ class FileWriter
     void renameFile(fs::FS &fs, const char * path1, const char * path2);
     void deleteFile(fs::FS &fs, const char * path);
     void setFileName();
+    void writeDataBuffered(DataSet *set);
     virtual void init() = 0;
     virtual void writeHeader() = 0;
     virtual void writeData(DataSet*) = 0;
-    void writeDataToSD();
+
+  void writeDataToSD();
     uint16_t getDataLength();
 
   protected:
@@ -84,7 +102,6 @@ class CSVFileWriter : public FileWriter
     }
     void writeHeader();
     void writeData(DataSet*);
-  protected:
 };
 
 class GPXFileWriter : public FileWriter
