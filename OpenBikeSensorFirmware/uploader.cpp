@@ -143,12 +143,14 @@ bool uploader::upload(const String& fileName)
         postBuffer += "\"}}"; // end body string and close track and message
         // post this buffer
         bool res = false;
-        if (!csvFile.available())
+        if (!csvFile.available()) {
           res = https.begin(*client, "https://openbikesensor.hlrs.de/api/tracks/end");
-        else if (firstTime)
+        } else if (firstTime) {
           res = https.begin(*client, "https://openbikesensor.hlrs.de/api/tracks/begin");
-        else
+        } else {
           res = https.begin(*client, "https://openbikesensor.hlrs.de/api/tracks/add");
+        }
+
         if (res)
         { // HTTPS
           https.addHeader("Content-Type", "application/json");
