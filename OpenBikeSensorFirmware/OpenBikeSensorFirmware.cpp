@@ -135,16 +135,21 @@ void setup() {
   }
 #endif
 
-  if (config.displayConfig & DisplayInvert) displayTest->invert();
-  else displayTest->normalDisplay();
+  if (config.displayConfig & DisplayInvert) {
+    displayTest->invert();
+  } else {
+    displayTest->normalDisplay();
+  }
 
-  if (config.displayConfig & DisplayFlip) displayTest->flipScreen();
+  if (config.displayConfig & DisplayFlip) {
+    displayTest->flipScreen();
+  }
 
   delay(333); // Added for user experience
   char buffer[32];
   snprintf(buffer, sizeof(buffer), "<%02d| |%02d>",
-           config.sensorOffsets[LEFT_SENSOR_ID],
-           config.sensorOffsets[RIGHT_SENSOR_ID]);
+    config.sensorOffsets[LEFT_SENSOR_ID],
+    config.sensorOffsets[RIGHT_SENSOR_ID]);
   displayTest->showTextOnGrid(2, 1, buffer);
 
 
@@ -263,20 +268,23 @@ void setup() {
     switch (config.GPSConfig) {
       case ValidLocation: {
         validGPSData = gps.location.isValid();
-        if (validGPSData)
+        if (validGPSData) {
           Serial.println("Got location...");
+        }
         break;
       }
       case ValidTime: {
         validGPSData = gps.time.isValid();
-        if (validGPSData)
+        if (validGPSData) {
           Serial.println("Got time...");
+        }
         break;
       }
       case NumberSatellites: {
         validGPSData = gps.satellites.value() >= config.satsForFix;
-        if (validGPSData)
+        if (validGPSData) {
           Serial.println("Got required number of satellites...");
+        }
         break;
       }
       default: {
@@ -298,8 +306,8 @@ void setup() {
 
     buttonState = digitalRead(PushButton);
     if (buttonState == HIGH
-        || (config.simRaMode && gps.passedChecksum() == 0) // no module && simRaMode
-      ) {
+      || (config.simRaMode && gps.passedChecksum() == 0) // no module && simRaMode
+    ) {
       Serial.println("Skipped get GPS...");
       displayTest->showTextOnGrid(2, 5, "...skipped");
       break;
@@ -395,8 +403,11 @@ void loop() {
         if (buttonState == LOW) { // after button was released
           // immediate user feedback - we start the action
           // invert state might be a bit long - it does not block next confirmation.
-          if (config.displayConfig & DisplayInvert) displayTest->normalDisplay();
-          else displayTest->invert();
+          if (config.displayConfig & DisplayInvert) {
+            displayTest->normalDisplay();
+          } else {
+            displayTest->invert();
+          }
 
           transmitConfirmedData = true;
           numButtonReleased++;
@@ -413,7 +424,7 @@ void loop() {
 
     // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
     if (sensorManager->sensorValues[confirmationSensorID] > 0
-        && sensorManager->sensorValues[confirmationSensorID] < minDistanceToConfirm) {
+      && sensorManager->sensorValues[confirmationSensorID] < minDistanceToConfirm) {
       minDistanceToConfirm = sensorManager->sensorValues[confirmationSensorID];
       minDistanceToConfirmIndex = sensorManager->getCurrentMeasureIndex();
       // if there was no measurement of this sensor for this index, it is the
@@ -435,16 +446,16 @@ void loop() {
   }
   currentSet->measurements = sensorManager->lastReadingCount;
   memcpy(&(currentSet->readDurationsRightInMicroseconds),
-         &(sensorManager->m_sensors[0].echoDurationMicroseconds), currentSet->measurements * sizeof(int32_t));
+    &(sensorManager->m_sensors[0].echoDurationMicroseconds), currentSet->measurements * sizeof(int32_t));
   memcpy(&(currentSet->readDurationsLeftInMicroseconds),
-         &(sensorManager->m_sensors[1].echoDurationMicroseconds), currentSet->measurements * sizeof(int32_t));
+    &(sensorManager->m_sensors[1].echoDurationMicroseconds), currentSet->measurements * sizeof(int32_t));
   memcpy(&(currentSet->startOffsetMilliseconds),
-         &(sensorManager->startOffsetMilliseconds), currentSet->measurements * sizeof(uint16_t));
+    &(sensorManager->startOffsetMilliseconds), currentSet->measurements * sizeof(uint16_t));
 
   // if nothing was detected, write the dataset to file, otherwise write it to the buffer for confirmation
   if (!transmitConfirmedData
-      && currentSet->sensorValues[confirmationSensorID] == MAX_SENSOR_VALUE
-      && dataBuffer.isEmpty()) {
+    && currentSet->sensorValues[confirmationSensorID] == MAX_SENSOR_VALUE
+    && dataBuffer.isEmpty()) {
     Serial.write("Empty Buffer, writing directly ");
     if (writer) {
       writer->writeDataBuffered(currentSet);
@@ -491,8 +502,11 @@ void loop() {
     Serial.printf(">>> writeDataToSD - reset <<<");
     transmitConfirmedData = false;
     // back to normal display mode
-    if (config.displayConfig & DisplayInvert) displayTest->invert();
-    else displayTest->normalDisplay();
+    if (config.displayConfig & DisplayInvert) {
+      displayTest->invert();
+    } else {
+      displayTest->normalDisplay();
+    }
   }
 
   // If the circular buffer is full, write just one set to the writers buffer,

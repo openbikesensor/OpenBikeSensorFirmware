@@ -60,80 +60,80 @@ struct DataSet {
 
 
 class FileWriter {
-public:
-  FileWriter() {}
+  public:
+    FileWriter() {}
 
-  virtual ~FileWriter() {}
+    virtual ~FileWriter() {}
 
-  void listDir(fs::FS &fs, const char *dirname, uint8_t levels);
+    void listDir(fs::FS &fs, const char *dirname, uint8_t levels);
 
-  void createDir(fs::FS &fs, const char *path);
+    void createDir(fs::FS &fs, const char *path);
 
-  void removeDir(fs::FS &fs, const char *path);
+    void removeDir(fs::FS &fs, const char *path);
 
-  void readFile(fs::FS &fs, const char *path);
+    void readFile(fs::FS &fs, const char *path);
 
-  void writeFile(fs::FS &fs, const char *path, const char *message);
+    void writeFile(fs::FS &fs, const char *path, const char *message);
 
-  void appendFile(fs::FS &fs, const char *path, const char *message);
+    void appendFile(fs::FS &fs, const char *path, const char *message);
 
-  void renameFile(fs::FS &fs, const char *path1, const char *path2);
+    void renameFile(fs::FS &fs, const char *path1, const char *path2);
 
-  void deleteFile(fs::FS &fs, const char *path);
+    void deleteFile(fs::FS &fs, const char *path);
 
-  void setFileName();
+    void setFileName();
 
-  void writeDataBuffered(DataSet *set);
+    void writeDataBuffered(DataSet *set);
 
-  virtual void init() = 0;
+    virtual void init() = 0;
 
-  virtual void writeHeader() = 0;
+    virtual void writeHeader() = 0;
 
-  virtual void writeData(DataSet *) = 0;
+    virtual void writeData(DataSet *) = 0;
 
-  void writeDataToSD();
+    void writeDataToSD();
 
-  uint16_t getDataLength();
+    uint16_t getDataLength();
 
-protected:
-  String m_fileExtension;
-  String m_filename;
-  String dataString = "";
+  protected:
+    String m_fileExtension;
+    String m_filename;
+    String dataString = "";
 
-private:
+  private:
 
 };
 
 class CSVFileWriter : public FileWriter {
-public:
-  CSVFileWriter() : FileWriter() {
-    m_fileExtension = ".csv";
-  }
+  public:
+    CSVFileWriter() : FileWriter() {
+      m_fileExtension = ".csv";
+    }
 
-  ~CSVFileWriter() {}
+    ~CSVFileWriter() {}
 
-  void init() {
-  }
+    void init() {
+    }
 
-  void writeHeader();
+    void writeHeader();
 
-  void writeData(DataSet *);
+    void writeData(DataSet *);
 };
 
 class GPXFileWriter : public FileWriter {
-public:
-  GPXFileWriter() : FileWriter() {
-    m_fileExtension = ".gpx";
-  }
+  public:
+    GPXFileWriter() : FileWriter() {
+      m_fileExtension = ".gpx";
+    }
 
-  ~GPXFileWriter() {}
+    ~GPXFileWriter() {}
 
-  void writeHeader();
+    void writeHeader();
 
-  void writeData(DataSet *);
+    void writeData(DataSet *);
 
-protected:
-private:
+  protected:
+  private:
 };
 
 #endif

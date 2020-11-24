@@ -26,52 +26,52 @@
 
 
 class StringStream : public Stream {
-public:
-  explicit StringStream(String str);
+  public:
+    explicit StringStream(String str);
 
-  int available() override;
+    int available() override;
 
-  int read() override;
+    int read() override;
 
-  int peek() override;
+    int peek() override;
 
-  void flush() override;
+    void flush() override;
 
-  size_t write(uint8_t) override;
+    size_t write(uint8_t) override;
 
-  size_t readBytes(char *buffer, size_t length) override;
+    size_t readBytes(char *buffer, size_t length) override;
 
-private:
-  String string;
-  size_t pos = 0;
+  private:
+    String string;
+    size_t pos = 0;
 };
 
 static StringStream EMPTY_STREAM("");
 
 class StreamOfStreams : public Stream {
-public:
-  void push(Stream *addedStream);
+  public:
+    void push(Stream *addedStream);
 
-  int available() override;
+    int available() override;
 
-  int read() override;
+    int read() override;
 
-  int peek() override;
+    int peek() override;
 
-  void flush() override;
+    void flush() override;
 
-  size_t write(uint8_t) override;
+    size_t write(uint8_t) override;
 
-  size_t readBytes(char *buffer, size_t length) override;
+    size_t readBytes(char *buffer, size_t length) override;
 
-private:
-  Stream *current = nullptr;
-  std::vector<Stream *> streams;
-  size_t pos = 0;
+  private:
+    Stream *current = nullptr;
+    std::vector<Stream *> streams;
+    size_t pos = 0;
 
-  Stream *getCurrent();
+    Stream *getCurrent();
 
-  Stream *getNext();
+    Stream *getNext();
 };
 
 

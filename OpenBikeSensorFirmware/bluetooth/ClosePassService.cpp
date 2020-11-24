@@ -7,11 +7,11 @@ void ClosePassService::setup(BLEServer *pServer) {
   mService = pServer->createService(SERVICE_CLOSEPASS_UUID);
 
   mDistanceCharacteristic = mService->createCharacteristic(SERVICE_CLOSEPASS_CHAR_DISTANCE_UUID,
-                                                           BLECharacteristic::PROPERTY_READ |
-                                                           BLECharacteristic::PROPERTY_NOTIFY);
+      BLECharacteristic::PROPERTY_READ |
+      BLECharacteristic::PROPERTY_NOTIFY);
   mEventCharacteristic = mService->createCharacteristic(SERVICE_CLOSEPASS_CHAR_EVENT_UUID,
-                                                        BLECharacteristic::PROPERTY_READ |
-                                                        BLECharacteristic::PROPERTY_NOTIFY);
+      BLECharacteristic::PROPERTY_READ |
+      BLECharacteristic::PROPERTY_NOTIFY);
 }
 
 bool ClosePassService::shouldAdvertise() {
@@ -39,7 +39,7 @@ void ClosePassService::buttonPressed() {
 }
 
 void ClosePassService::writeToDistanceCharacteristic(const std::list<uint16_t> &leftValues,
-                                                     const std::list<uint16_t> &rightValues) {
+  const std::list<uint16_t> &rightValues) {
   auto transmitValue = String(millis()) + ";";
   transmitValue += joinList16(leftValues, ",") + ";";
   transmitValue += joinList16(rightValues, ",");
@@ -51,7 +51,9 @@ void ClosePassService::writeToDistanceCharacteristic(const std::list<uint16_t> &
 void ClosePassService::writeToEventCharacteristic(const String &event, std::list<uint16_t> *payload) {
   auto transmitValue = String(millis()) + ";";
   transmitValue += event + ";";
-  if (payload) transmitValue += joinList16(*payload, ",");
+  if (payload) {
+    transmitValue += joinList16(*payload, ",");
+  }
   Serial.println(transmitValue.c_str());
 
   mEventCharacteristic->setValue(transmitValue.c_str());
@@ -59,7 +61,7 @@ void ClosePassService::writeToEventCharacteristic(const String &event, std::list
 }
 
 void ClosePassService::processValuesForDistanceChar(const std::list<uint16_t> &leftValues,
-                                                    const std::list<uint16_t> &rightValues, const uint16_t value) {
+  const std::list<uint16_t> &rightValues, const uint16_t value) {
   if (mDistancePhase == PHASE_PRE && value < THRESHOLD_CLOSEPASS) {
     mDistancePhase = PHASE_TRANSMITTING;
   }
@@ -88,10 +90,12 @@ void ClosePassService::processValuesForDistanceChar(const std::list<uint16_t> &l
 }
 
 void ClosePassService::processValuesForEventChar_Avg2s(const std::list<uint16_t> &leftValues,
-                                                       const std::list<uint16_t> &rightValues, const uint16_t value) {
+  const std::list<uint16_t> &rightValues, const uint16_t value) {
   mEventAvg2s_Buffer.push(value);
 
-  if (!mEventAvg2s_Buffer.isFull()) return;
+  if (!mEventAvg2s_Buffer.isFull()) {
+    return;
+  }
 
   // Calculate average
   float distanceAvg = 0.0;
@@ -119,8 +123,8 @@ void ClosePassService::processValuesForEventChar_Avg2s(const std::list<uint16_t>
 }
 
 void ClosePassService::processValuesForEventChar_MinKalman(const std::list<uint16_t> &leftValues,
-                                                           const std::list<uint16_t> &rightValues,
-                                                           const uint16_t value) {
+  const std::list<uint16_t> &rightValues,
+  const uint16_t value) {
   // TODO: test these parameters!!!
   float errMeasure = 10;
   float q = 0.01;
@@ -129,7 +133,7 @@ void ClosePassService::processValuesForEventChar_MinKalman(const std::list<uint1
   mEventMinKalman_CurrentEstimate =
     mEventMinKalman_LastEstimate + mEventMinKalman_Gain * ((float) value - mEventMinKalman_LastEstimate);
   mEventMinKalman_ErrEstimate = (1.0f - mEventMinKalman_Gain) * mEventMinKalman_ErrEstimate +
-                                fabsf(mEventMinKalman_LastEstimate - mEventMinKalman_CurrentEstimate) * q;
+    fabsf(mEventMinKalman_LastEstimate - mEventMinKalman_CurrentEstimate) * q;
   mEventMinKalman_LastEstimate = mEventMinKalman_CurrentEstimate;
 
   if (mEventMinKalman_CurrentEstimate < mEventMinKalman_Min) {

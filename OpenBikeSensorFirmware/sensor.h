@@ -71,77 +71,77 @@ struct HCSR04SensorInfo {
 };
 
 class HCSR04SensorManager {
-public:
-  HCSR04SensorManager() {}
+  public:
+    HCSR04SensorManager() {}
 
-  virtual ~HCSR04SensorManager() {}
+    virtual ~HCSR04SensorManager() {}
 
-  Vector<HCSR04SensorInfo> m_sensors;
-  Vector<uint16_t> sensorValues;
+    Vector<HCSR04SensorInfo> m_sensors;
+    Vector<uint16_t> sensorValues;
 
-  void getDistances();
+    void getDistances();
 
-  void getDistancesParallel();
+    void getDistancesParallel();
 
-  void reset();
+    void reset();
 
-  void registerSensor(HCSR04SensorInfo);
+    void registerSensor(HCSR04SensorInfo);
 
-  void setOffsets(Vector<uint16_t>);
+    void setOffsets(Vector<uint16_t>);
 
-  void setPrimarySensor(uint8_t idx);
+    void setPrimarySensor(uint8_t idx);
 
-  uint16_t lastReadingCount = 0;
-  uint16_t startOffsetMilliseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
+    uint16_t lastReadingCount = 0;
+    uint16_t startOffsetMilliseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
 
-  /* Index for CSV - starts with 1. */
-  uint16_t getCurrentMeasureIndex();
+    /* Index for CSV - starts with 1. */
+    uint16_t getCurrentMeasureIndex();
 
-protected:
+  protected:
 
-private:
-  void waitTillSensorIsReady(uint8_t sensorId);
+  private:
+    void waitTillSensorIsReady(uint8_t sensorId);
 
-  void sendTriggerToSensor(uint8_t sensorId);
+    void sendTriggerToSensor(uint8_t sensorId);
 
-  void waitForEchosOrTimeout(uint8_t sensorId);
+    void waitForEchosOrTimeout(uint8_t sensorId);
 
-  void collectSensorResult(uint8_t sensorId);
+    void collectSensorResult(uint8_t sensorId);
 
-  void setNoMeasureDate(uint8_t sensorId);
+    void setNoMeasureDate(uint8_t sensorId);
 
-  void waitTillPrimarySensorIsReady();
+    void waitTillPrimarySensorIsReady();
 
-  void waitForEchosOrTimeout();
+    void waitForEchosOrTimeout();
 
-  void setSensorTriggersToLow();
+    void setSensorTriggersToLow();
 
-  void collectSensorResults();
+    void collectSensorResults();
 
-  void sendTriggerToReadySensor();
+    void sendTriggerToReadySensor();
 
-  void IRAM_ATTR isr(int idx);
+    void IRAM_ATTR isr(int idx);
 
-  uint32_t getFixedStart(size_t idx, const HCSR04SensorInfo *sensor);
+    uint32_t getFixedStart(size_t idx, const HCSR04SensorInfo *sensor);
 
-  static uint16_t medianMeasure(HCSR04SensorInfo *const sensor, uint16_t value);
+    static uint16_t medianMeasure(HCSR04SensorInfo *const sensor, uint16_t value);
 
-  static uint16_t median(uint16_t a, uint16_t b, uint16_t c);
+    static uint16_t median(uint16_t a, uint16_t b, uint16_t c);
 
-  static uint16_t correctSensorOffset(uint16_t dist, uint16_t offset);
+    static uint16_t correctSensorOffset(uint16_t dist, uint16_t offset);
 
-  static boolean isReadyForStart(HCSR04SensorInfo *sensor);
+    static boolean isReadyForStart(HCSR04SensorInfo *sensor);
 
-  static uint32_t microsBetween(uint32_t a, uint32_t b);
+    static uint32_t microsBetween(uint32_t a, uint32_t b);
 
-  static uint32_t microsSince(uint32_t a);
+    static uint32_t microsSince(uint32_t a);
 
-  static uint16_t millisSince(uint16_t milliseconds);
+    static uint16_t millisSince(uint16_t milliseconds);
 
-  uint16_t startReadingMilliseconds = 0;
-  /* The currently used sensor for alternating use. */
-  uint32_t activeSensor = 0;
-  uint8_t primarySensor = 1;
+    uint16_t startReadingMilliseconds = 0;
+    /* The currently used sensor for alternating use. */
+    uint32_t activeSensor = 0;
+    uint8_t primarySensor = 1;
 };
 
 #endif

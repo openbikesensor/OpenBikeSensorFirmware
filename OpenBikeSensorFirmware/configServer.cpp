@@ -77,75 +77,75 @@ String header =
   + previous;
 
 String footer = "</form>"
-                + style;
+  + style;
 
 // #########################################
 // Upload form
 // #########################################
 
 String xhrUpload = "<input type='file' name='upload' id='file' accept='{accept}'>"
-                   "<label id='file-input' for='file'>Choose file...</label>"
-                   "<input id='btn' type='submit' class=btn value='Upload'>"
-                   "<br><br>"
-                   "<div id='prg'></div>"
-                   "<br><div id='prgbar'><div id='bar'></div></div><br></form>"
-                   "<script>"
-                   ""
-                   "function hide(x) { x.style.display = 'none'; }"
-                   "function show(x) { x.style.display = 'block'; }"
-                   ""
-                   "hide(document.getElementById('file'));"
-                   "hide(document.getElementById('prgbar'));"
-                   "hide(document.getElementById('prg'));"
-                   ""
-                   "var fileName = '';"
-                   "document.getElementById('file').addEventListener('change', function(e){"
-                   "fileNameParts = e.target.value.split('\\\\');"
-                   "fileName = fileNameParts[fileNameParts.length-1];"
-                   "console.log(fileName);"
-                   "document.getElementById('file-input').innerHTML = fileName;"
-                   "});"
-                   ""
-                   "document.getElementById('btn').addEventListener('click', function(e){"
-                   "e.preventDefault();"
-                   "if (fileName == '') { alert('No file choosen'); return; }"
-                   "console.log('Start upload...');"
-                   ""
-                   "var form = document.getElementsByTagName('form')[0];"
-                   "var data = new FormData(form);"
-                   "console.log(data);"
-                   //https://developer.mozilla.org/en-US/docs/Web/API/FormData/values
-                   "for (var v of data.values()) { console.log(v); }"
-                   ""
-                   "hide(document.getElementById('file-input'));"
-                   "hide(document.getElementById('btn'));"
-                   "show(document.getElementById('prgbar'));"
-                   "show(document.getElementById('prg'));"
-                   ""
-                   "var xhr = new XMLHttpRequest();"
-                   "xhr.open( 'POST', '{method}', true );"
-                   "xhr.onreadystatechange = function(s) {"
-                   "console.log(xhr.responseText);"
-                   "if (xhr.readyState == 4 && xhr.status == 200) {"
-                   "document.getElementById('prg').innerHTML = xhr.responseText;"
-                   "} else if (xhr.readyState == 4 && xhr.status == 500) {"
-                   "document.getElementById('prg').innerHTML = 'Upload error:' + xhr.responseText;"
-                   "} else {"
-                   "document.getElementById('prg').innerHTML = 'Unknown error';"
-                   "}"
-                   "};"
-                   "xhr.upload.addEventListener('progress', function(evt) {"
-                   "if (evt.lengthComputable) {"
-                   "var per = Math.round(evt.loaded / evt.total * 100);"
-                   "if(per == 100) document.getElementById('prg').innerHTML = 'Updating...';"
-                   "else document.getElementById('prg').innerHTML = 'Upload progress: ' + per + '%';"
-                   "document.getElementById('bar').style.width = per + '%';"
-                   "}"
-                   "}, false);"
-                   "xhr.send( data );"
-                   "});" // btn click
-                   ""
-                   "</script>";
+  "<label id='file-input' for='file'>Choose file...</label>"
+  "<input id='btn' type='submit' class=btn value='Upload'>"
+  "<br><br>"
+  "<div id='prg'></div>"
+  "<br><div id='prgbar'><div id='bar'></div></div><br></form>"
+  "<script>"
+  ""
+  "function hide(x) { x.style.display = 'none'; }"
+  "function show(x) { x.style.display = 'block'; }"
+  ""
+  "hide(document.getElementById('file'));"
+  "hide(document.getElementById('prgbar'));"
+  "hide(document.getElementById('prg'));"
+  ""
+  "var fileName = '';"
+  "document.getElementById('file').addEventListener('change', function(e){"
+  "fileNameParts = e.target.value.split('\\\\');"
+  "fileName = fileNameParts[fileNameParts.length-1];"
+  "console.log(fileName);"
+  "document.getElementById('file-input').innerHTML = fileName;"
+  "});"
+  ""
+  "document.getElementById('btn').addEventListener('click', function(e){"
+  "e.preventDefault();"
+  "if (fileName == '') { alert('No file choosen'); return; }"
+  "console.log('Start upload...');"
+  ""
+  "var form = document.getElementsByTagName('form')[0];"
+  "var data = new FormData(form);"
+  "console.log(data);"
+  //https://developer.mozilla.org/en-US/docs/Web/API/FormData/values
+  "for (var v of data.values()) { console.log(v); }"
+  ""
+  "hide(document.getElementById('file-input'));"
+  "hide(document.getElementById('btn'));"
+  "show(document.getElementById('prgbar'));"
+  "show(document.getElementById('prg'));"
+  ""
+  "var xhr = new XMLHttpRequest();"
+  "xhr.open( 'POST', '{method}', true );"
+  "xhr.onreadystatechange = function(s) {"
+  "console.log(xhr.responseText);"
+  "if (xhr.readyState == 4 && xhr.status == 200) {"
+  "document.getElementById('prg').innerHTML = xhr.responseText;"
+  "} else if (xhr.readyState == 4 && xhr.status == 500) {"
+  "document.getElementById('prg').innerHTML = 'Upload error:' + xhr.responseText;"
+  "} else {"
+  "document.getElementById('prg').innerHTML = 'Unknown error';"
+  "}"
+  "};"
+  "xhr.upload.addEventListener('progress', function(evt) {"
+  "if (evt.lengthComputable) {"
+  "var per = Math.round(evt.loaded / evt.total * 100);"
+  "if(per == 100) document.getElementById('prg').innerHTML = 'Updating...';"
+  "else document.getElementById('prg').innerHTML = 'Upload progress: ' + per + '%';"
+  "document.getElementById('bar').style.width = per + '%';"
+  "}"
+  "}, false);"
+  "xhr.send( data );"
+  "});" // btn click
+  ""
+  "</script>";
 
 // #########################################
 // Navigation
@@ -338,16 +338,18 @@ void handle_NotFound() {
 void devAction() {
 
   String showGrid = server.arg("showGrid");
-  if (showGrid == "on")
+  if (showGrid == "on") {
     config.devConfig |= ShowGrid;
-  else
+  } else {
     config.devConfig &= ~ShowGrid;
+  }
 
   String printWifiPassword = server.arg("printWifiPassword");
-  if (printWifiPassword == "on")
+  if (printWifiPassword == "on") {
     config.devConfig |= PrintWifiPassword;
-  else
+  } else {
     config.devConfig &= ~PrintWifiPassword;
+  }
 
   // Print and safe config
   Serial.println(F("Print config file..."));
@@ -394,92 +396,110 @@ void configAction() {
   /* displayTest->clear();
     displayTest->drawString(64, 36, "displayConfig");
     displayTest->drawString(64, 48, displayGPS);*/
-  if (displayGPS == "on")
+  if (displayGPS == "on") {
     config.displayConfig |= DisplaySatelites;
-  else
+  } else {
     config.displayConfig &= ~DisplaySatelites;
+  }
 
-  if (displaySimple == "on")
+  if (displaySimple == "on") {
     config.displayConfig |= DisplaySimple;
-  else
+  } else {
     config.displayConfig &= ~DisplaySimple;
+  }
 
-  if (displayVELO == "on")
+  if (displayVELO == "on") {
     config.displayConfig |= DisplayVelocity;
-  else
+  } else {
     config.displayConfig &= ~DisplayVelocity;
+  }
 
-  if (displayLeft == "on")
+  if (displayLeft == "on") {
     config.displayConfig |= DisplayLeft;
-  else
+  } else {
     config.displayConfig &= ~DisplayLeft;
+  }
 
-  if (displayRight == "on")
+  if (displayRight == "on") {
     config.displayConfig |= DisplayRight;
-  else
+  } else {
     config.displayConfig &= ~DisplayRight;
+  }
 
-  if (displaySwapSensors == "on")
+  if (displaySwapSensors == "on") {
     config.displayConfig |= DisplaySwapSensors;
-  else
+  } else {
     config.displayConfig &= ~DisplaySwapSensors;
+  }
 
-  if (displayInvert == "on")
+  if (displayInvert == "on") {
     config.displayConfig |= DisplayInvert;
-  else
+  } else {
     config.displayConfig &= ~DisplayInvert;
+  }
 
-  if (displayFlip == "on")
+  if (displayFlip == "on") {
     config.displayConfig |= DisplayFlip;
-  else
+  } else {
     config.displayConfig &= ~DisplayFlip;
+  }
 
-  if (displayNumConfirmed == "on")
+  if (displayNumConfirmed == "on") {
     config.displayConfig |= DisplayNumConfirmed;
-  else
+  } else {
     config.displayConfig &= ~DisplayNumConfirmed;
+  }
 
-  if (displayDistanceDetail == "on")
+  if (displayDistanceDetail == "on") {
     config.displayConfig |= DisplayDistanceDetail;
-  else
+  } else {
     config.displayConfig &= ~DisplayDistanceDetail;
+  }
 
   config.bluetooth = (bluetooth == "on");
   config.simRaMode = (simRaMode == "on");
 
-  if (validGPS == "validLocation")
+  if (validGPS == "validLocation") {
     config.GPSConfig = ValidLocation;
+  }
 
-  if (validGPS == "validTime")
+  if (validGPS == "validTime") {
     config.GPSConfig = ValidTime;
+  }
 
-  if (validGPS == "numberSatellites")
+  if (validGPS == "numberSatellites") {
     config.GPSConfig = NumberSatellites;
+  }
 
-  if (privacyOptions == "absolutePrivacy")
+  if (privacyOptions == "absolutePrivacy") {
     config.privacyConfig |= AbsolutePrivacy;
-  else
+  } else {
     config.privacyConfig &= ~AbsolutePrivacy;
+  }
 
-  if (privacyOptions == "noPosition")
+  if (privacyOptions == "noPosition") {
     config.privacyConfig |= NoPosition;
-  else
+  } else {
     config.privacyConfig &= ~NoPosition;
+  }
 
-  if (privacyOptions == "noPrivacy")
+  if (privacyOptions == "noPrivacy") {
     config.privacyConfig |= NoPrivacy;
-  else
+  } else {
     config.privacyConfig &= ~NoPrivacy;
+  }
 
-  if (privacyOptions == "noPrivacy")
+  if (privacyOptions == "noPrivacy") {
     config.privacyConfig |= NoPrivacy;
-  else
+  } else {
     config.privacyConfig &= ~NoPrivacy;
+  }
 
-  if (overridePrivacy == "on")
+  if (overridePrivacy == "on") {
     config.privacyConfig |= OverridePrivacy;
-  else
+  } else {
     config.privacyConfig &= ~OverridePrivacy;
+  }
 
   config.sensorOffsets[LEFT_SENSOR_ID] = atoi(offsetS1.c_str());
   config.sensorOffsets[RIGHT_SENSOR_ID] = atoi(offsetS2.c_str());
@@ -905,7 +925,7 @@ void startServer() {
     Serial.println("Send response...");
     if (Update.hasError()) {
       server.send(500, "text/plain",
-                  "Update failed! Note: update from v0.2.x to v0.3 or newer needs to be done once with USB cable!");
+        "Update failed! Note: update from v0.2.x to v0.3 or newer needs to be done once with USB cable!");
     } else {
       server.send(200, "text/plain", "Update successful! Device reboots now!");
       delay(250);
@@ -983,11 +1003,11 @@ void startServer() {
     for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx) {
       privacyPage += "<h3>Privacy Area #" + String(idx) + "</h3>";
       privacyPage += "Latitude <input name=latitude" + String(idx) + " placeholder='latitude' value='" +
-                     String(config.privacyAreas[idx].latitude, 7) + "'disabled>";
+        String(config.privacyAreas[idx].latitude, 7) + "'disabled>";
       privacyPage += "Longitude <input name=longitude" + String(idx) + "placeholder='longitude' value='" +
-                     String(config.privacyAreas[idx].longitude, 7) + "'disabled>";
+        String(config.privacyAreas[idx].longitude, 7) + "'disabled>";
       privacyPage += "Radius (m) <input name=radius" + String(idx) + "placeholder='radius' value='" +
-                     String(config.privacyAreas[idx].radius) + "'disabled>";
+        String(config.privacyAreas[idx].radius) + "'disabled>";
       privacyPage += "<a class=\"deletePrivacyArea\" href=\"/privacy_delete?erase=" + String(idx) + "\">&#x2716;</a>";
     }
 

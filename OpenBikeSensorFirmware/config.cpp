@@ -52,8 +52,8 @@ void jsonDocumentToConfig(DynamicJsonDocument &doc, Config &config) {
   config.GPSConfig = doc["GPSConfig"] | NumberSatellites;
   config.port = doc["port"] | 2731;
   strlcpy(config.hostname,                              // <- destination
-          doc["hostname"] | "openbikesensor.hlrs.de",   // <- source
-          sizeof(config.hostname)                       // <- destination's capacity
+    doc["hostname"] | "openbikesensor.hlrs.de",   // <- source
+    sizeof(config.hostname)                       // <- destination's capacity
   );
   config.satsForFix = doc["satsForFix"] | 4;
   config.confirmationTimeWindow = doc["confirmationTimeWindow"] | 5;
@@ -97,9 +97,15 @@ void jsonDocumentToConfig(DynamicJsonDocument &doc, Config &config) {
   }
 
   // Fix invalid "old" broken configurations, where the default value was 0
-  if (config.privacyConfig == 0) config.privacyConfig = AbsolutePrivacy;
-  if (config.displayConfig == 0) config.displayConfig = DisplaySimple;
-  if (config.GPSConfig == 0) config.GPSConfig = NumberSatellites;
+  if (config.privacyConfig == 0) {
+    config.privacyConfig = AbsolutePrivacy;
+  }
+  if (config.displayConfig == 0) {
+    config.displayConfig = DisplaySimple;
+  }
+  if (config.GPSConfig == 0) {
+    config.GPSConfig = NumberSatellites;
+  }
 }
 
 // Helper: Config -> StaticJsonDocument
@@ -168,8 +174,9 @@ void jsonToConfig(String json, Config &config) {
 
   // Deserialize the JSON string
   DeserializationError error = deserializeJson(doc, json);
-  if (error)
+  if (error) {
     Serial.println(F("Failed to read file, using default configuration"));
+  }
 
   jsonDocumentToConfig(doc, config);
 }
@@ -186,8 +193,9 @@ void loadConfiguration(const char *configFilename, Config &config) {
 
   // Deserialize the JSON document
   DeserializationError error = deserializeJson(doc, file);
-  if (error)
+  if (error) {
     Serial.println(F("Failed to read file, using default configuration"));
+  }
 
   // Close the file (Curiously, File's destructor doesn't close the file)
   file.close();

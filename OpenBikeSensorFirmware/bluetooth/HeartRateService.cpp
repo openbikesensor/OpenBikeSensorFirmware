@@ -5,8 +5,8 @@ const unsigned long measurementInterval = 1000;
 void HeartRateService::setup(BLEServer *pServer) {
   mService = pServer->createService(SERVICE_HEARTRATE_UUID);
   mCharacteristic = mService->createCharacteristic(SERVICE_HEARTRATE_CHAR_HEARTRATE_UUID,
-                                                   BLECharacteristic::PROPERTY_READ |
-                                                   BLECharacteristic::PROPERTY_NOTIFY);
+      BLECharacteristic::PROPERTY_READ |
+      BLECharacteristic::PROPERTY_NOTIFY);
 
   auto *pDescriptor = new BLEDescriptor(SERVICE_HEARTRATE_DESCRIPTOR_UUID);
   mCharacteristic->addDescriptor(pDescriptor);
@@ -15,7 +15,7 @@ void HeartRateService::setup(BLEServer *pServer) {
   pDescriptor->setValue(&descriptorbuffer, 1);
 
   BLECharacteristic *pSensorLocationCharacteristic = mService->createCharacteristic(
-    SERVICE_HEARTRATE_CHAR_SENSORLOCATION_UUID, BLECharacteristic::PROPERTY_READ);
+      SERVICE_HEARTRATE_CHAR_SENSORLOCATION_UUID, BLECharacteristic::PROPERTY_READ);
   uint8_t locationValue = SERVICE_HEARTRATE_CHAR_SENSORLOCATION_VALUE;
   pSensorLocationCharacteristic->setValue(&locationValue, 1);
 

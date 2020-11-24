@@ -15,50 +15,50 @@
 #define PHASE_TRANSMITTING 0x01
 
 class ClosePassService : public IBluetoothService {
-public:
-  void setup(BLEServer *pServer) override;
+  public:
+    void setup(BLEServer *pServer) override;
 
-  bool shouldAdvertise() override;
+    bool shouldAdvertise() override;
 
-  BLEService *getService() override;
+    BLEService *getService() override;
 
-  void newSensorValues(const std::list<uint16_t> &leftValues, const std::list<uint16_t> &rightValues) override;
+    void newSensorValues(const std::list<uint16_t> &leftValues, const std::list<uint16_t> &rightValues) override;
 
-  void buttonPressed() override;
+    void buttonPressed() override;
 
-private:
-  void writeToDistanceCharacteristic(const std::list<uint16_t> &leftValues, const std::list<uint16_t> &rightValues);
+  private:
+    void writeToDistanceCharacteristic(const std::list<uint16_t> &leftValues, const std::list<uint16_t> &rightValues);
 
-  void writeToEventCharacteristic(const String &event, std::list<uint16_t> *payload);
+    void writeToEventCharacteristic(const String &event, std::list<uint16_t> *payload);
 
-  void processValuesForDistanceChar(const std::list<uint16_t> &leftValues, const std::list<uint16_t> &rightValues,
-                                    uint16_t value);
+    void processValuesForDistanceChar(const std::list<uint16_t> &leftValues, const std::list<uint16_t> &rightValues,
+      uint16_t value);
 
-  void processValuesForEventChar_Avg2s(const std::list<uint16_t> &leftValues, const std::list<uint16_t> &rightValues,
-                                       uint16_t value);
+    void processValuesForEventChar_Avg2s(const std::list<uint16_t> &leftValues, const std::list<uint16_t> &rightValues,
+      uint16_t value);
 
-  void
-  processValuesForEventChar_MinKalman(const std::list<uint16_t> &leftValues, const std::list<uint16_t> &rightValues,
-                                      uint16_t value);
+    void
+    processValuesForEventChar_MinKalman(const std::list<uint16_t> &leftValues, const std::list<uint16_t> &rightValues,
+      uint16_t value);
 
-  BLEService *mService;
-  BLECharacteristic *mDistanceCharacteristic;
-  BLECharacteristic *mEventCharacteristic;
+    BLEService *mService;
+    BLECharacteristic *mDistanceCharacteristic;
+    BLECharacteristic *mEventCharacteristic;
 
-  // Distance characteristic
-  int mDistancePhase = PHASE_PRE;
-  CircularBuffer<short, 200> mDistanceBuffer; // maximum 10 seconds buffer
+    // Distance characteristic
+    int mDistancePhase = PHASE_PRE;
+    CircularBuffer<short, 200> mDistanceBuffer; // maximum 10 seconds buffer
 
-  // Event characteristic - Avg2s
-  CircularBuffer<short, 40> mEventAvg2s_Buffer;
+    // Event characteristic - Avg2s
+    CircularBuffer<short, 40> mEventAvg2s_Buffer;
 
-  // Event characteristic - MinKalman
-  float mEventMinKalman_ErrEstimate = 10;
-  float mEventMinKalman_CurrentEstimate;
-  float mEventMinKalman_LastEstimate;
-  float mEventMinKalman_Gain;
-  float mEventMinKalman_Min = UINT8_MAX;
-  unsigned long mEventMinKalman_MinTimestamp = -1;
+    // Event characteristic - MinKalman
+    float mEventMinKalman_ErrEstimate = 10;
+    float mEventMinKalman_CurrentEstimate;
+    float mEventMinKalman_LastEstimate;
+    float mEventMinKalman_Gain;
+    float mEventMinKalman_Min = UINT8_MAX;
+    unsigned long mEventMinKalman_MinTimestamp = -1;
 };
 
 #endif

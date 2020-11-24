@@ -7,20 +7,20 @@
 #define SERVICE_DISTANCE_CHAR_50MS_UUID "1FE7FAF9-CE63-4236-0001-000000000001"
 
 class DistanceService : public IBluetoothService {
-public:
-  void setup(BLEServer *pServer) override;
+  public:
+    void setup(BLEServer *pServer) override;
 
-  bool shouldAdvertise() override;
+    bool shouldAdvertise() override;
 
-  BLEService *getService() override;
+    BLEService *getService() override;
 
-  void newSensorValues(const std::list<uint16_t> &leftValues, const std::list<uint16_t> &rightValues) override;
+    void newSensorValues(const std::list<uint16_t> &leftValues, const std::list<uint16_t> &rightValues) override;
 
-  void buttonPressed() override;
+    void buttonPressed() override;
 
-private:
-  BLEService *mService;
-  BLECharacteristic *mCharacteristic;
+  private:
+    BLEService *mService;
+    BLECharacteristic *mCharacteristic;
 };
 
 #endif

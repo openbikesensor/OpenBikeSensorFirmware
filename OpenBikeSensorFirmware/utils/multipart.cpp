@@ -79,7 +79,7 @@ MultipartStream::MultipartStream(HTTPClient *client) {
   this->httpClient = client;
   boundary = "----" + String(rand(), 16) + String(rand(), 16);
   httpClient->addHeader("Content-Type",
-                        "multipart/form-data; boundary=" + boundary);
+    "multipart/form-data; boundary=" + boundary);
 }
 
 MultipartStream::~MultipartStream() {
@@ -95,7 +95,7 @@ size_t MultipartStream::predictSize() const {
 
 void MultipartStream::add(MultipartData &newData) {
   String preamble = "\r\n--" + boundary + "\r\n"
-                    + newData.getHeaders() + "\r\n";
+    + newData.getHeaders() + "\r\n";
   Stream *preambleStream = new StringStream(preamble);
   streams.push(preambleStream);
   myStreams.push_back(preambleStream);
