@@ -98,7 +98,7 @@ uploader::uploader()
   }
 }
 
-#define POST_BUFFSIZE 100 * 1024
+#define LINES_PER_CHUNK 10
 
 /* Upload data to "The Portal".
  *
@@ -138,7 +138,7 @@ bool uploader::upload(const String& fileName)
       String line = csvFile.readStringUntil('\n');
       numLines++;
       postBuffer += line + "\\n";
-      if (numLines > 100 || !csvFile.available())
+      if (numLines >= LINES_PER_CHUNK || !csvFile.available())
       {
         postBuffer += "\"}}"; // end body string and close track and message
         // post this buffer
