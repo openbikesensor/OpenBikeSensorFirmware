@@ -22,6 +22,7 @@
 
 #include "config.h"
 #include "globals.h"
+#include "utils/multipart.h"
 
 #include <WiFi.h>
 #include <WiFiMulti.h>
@@ -98,8 +99,6 @@ uploader::uploader()
   }
 }
 
-#define LINES_PER_CHUNK 10
-
 /* Upload data to "The Portal".
  *
  * File data can be sent nearly directly since the only thing we have
@@ -119,77 +118,44 @@ bool uploader::upload(const String& fileName)
   sscanf(fileName.c_str(),"/sensorData%d",&number);
 
   File csvFile = SD.open(fileName.c_str(), "r");
-  if (csvFile)
-  {
+  if (csvFile) {
     HTTPClient https;
     https.setUserAgent(String("OBS/") + String(OBSVersion));
+    boolean res = false;
 
-    String postBuffer;
-    String postHeader;
-    postHeader = String("{\"id\": \"") + config.obsUserID
-      + "\",\"track\":{\"title\":\"AutoUpload " + String(number)
-      + "\",\"description\":\"Uploaded with OpenBikeSensor " + String(OBSVersion)
-      + "\",\"body\":\"";
-    postBuffer = postHeader;
-    int numLines = 0;
-    bool firstTime = true;
-    while (csvFile.available())
-    {
-      String line = csvFile.readStringUntil('\n');
-      numLines++;
-      postBuffer += line + "\\n";
-      if (numLines >= LINES_PER_CHUNK || !csvFile.available())
-      {
-        postBuffer += "\"}}"; // end body string and close track and message
-        // post this buffer
-        bool res = false;
-        if (!csvFile.available()) {
-          res = https.begin(*client, "https://openbikesensor.hlrs.de/api/tracks/end");
-        } else if (firstTime) {
-          res = https.begin(*client, "https://openbikesensor.hlrs.de/api/tracks/begin");
-        } else {
-          res = https.begin(*client, "https://openbikesensor.hlrs.de/api/tracks/add");
-        }
+    // USE CONGIG !!res = https.begin(*client, "http://192.168.98.51:3000/api/tracks");
+    res = https.begin(*client, "https://openbikesensor.hlrs.de/api/tracks");
+    https.addHeader("Authorization", "OBSUserId " + String(config.obsUserID));
+    https.addHeader("Content-Type", "application/json");
 
-        if (res)
-        { // HTTPS
-
-          https.addHeader("Content-Type", "application/json");
-          https.addHeader("Authorization", String("OBSUserId ") + config.obsUserID);
-
-          //Serial.println(postBuffer.c_str());
-          int httpCode = https.POST(postBuffer.c_str());
-
-          if (httpCode != 200)
-          {
-            Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
-            String payload = https.getString();
-            Serial.println(payload);
-            return false;
-          }
-          https.end();
-        }
-        else
-        {
-          Serial.printf("[HTTPS] Unable to connect\n");
-          return false;
-        }
-        // done posting
-        firstTime = false;
-        postBuffer = postHeader;
-        numLines = 0;
+    if (res) { // HTTPS
+      MultipartStream mp(&https);
+      MultipartDataString title("title", "AutoUpload " + String(number));
+      mp.add(title);
+      MultipartDataString description("description", "Uploaded with OpenBikeSensor " + String(OBSVersion));
+      mp.add(description);
+      MultipartDataStream data("body", fileName, &csvFile, "text/csv");
+      mp.add(data);
+      mp.last();
+      int httpCode = https.sendRequest("POST", &mp, mp.predictSize());
+      if (httpCode != 200) {
+        Serial.printf("[HTTPS] POST... code: %d\n", httpCode);
+        String payload = https.getString();
+        Serial.println(payload);
+        return false;
       }
+      https.end();
+    } else {
+      Serial.printf("[HTTPS] Unable to connect\n");
+      return false;
     }
-  }
-  else
-  {
+  } else {
     Serial.printf(("file " + fileName + " not found\n").c_str());
     return false;
   }
   return true;
 }
 
-void uploader::destroy()
-{
+void uploader::destroy() {
   delete client;
 }
