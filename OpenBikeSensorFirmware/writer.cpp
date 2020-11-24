@@ -333,7 +333,7 @@ void CSVFileWriter::writeData(DataSet* set) {
   for (size_t idx = set->measurements; idx < MAX_NUMBER_MEASUREMENTS_PER_INTERVAL; ++idx) {
     dataString += ";;;";
   }
-  dataString = dataString + "\n";
+  dataString += "\n";
 }
 
 

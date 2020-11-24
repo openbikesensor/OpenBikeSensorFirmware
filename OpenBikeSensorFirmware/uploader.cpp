@@ -99,8 +99,6 @@ uploader::uploader()
   }
 }
 
-#define POST_BUFFSIZE 100 * 1024
-
 /* Upload data to "The Portal".
  *
  * File data can be sent nearly directly since the only thing we have
@@ -122,12 +120,13 @@ bool uploader::upload(const String& fileName)
   File csvFile = SD.open(fileName.c_str(), "r");
   if (csvFile) {
     HTTPClient https;
+    https.setUserAgent(String("OBS/") + String(OBSVersion));
     boolean res = false;
 
     // USE CONGIG !!res = https.begin(*client, "http://192.168.98.51:3000/api/tracks");
     res = https.begin(*client, "https://openbikesensor.hlrs.de/api/tracks");
     https.addHeader("Authorization", "OBSUserId " + String(config.obsUserID));
-    https.addHeader("User-Agent", "OBS/" + String(OBSVersion));
+    https.addHeader("Content-Type", "application/json");
 
     if (res) { // HTTPS
       MultipartStream mp(&https);
@@ -157,9 +156,6 @@ bool uploader::upload(const String& fileName)
   return true;
 }
 
-void uploader::destroy()
-{
+void uploader::destroy() {
   delete client;
 }
-
-
