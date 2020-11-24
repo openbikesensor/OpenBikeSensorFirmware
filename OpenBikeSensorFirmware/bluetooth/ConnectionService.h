@@ -8,23 +8,23 @@
 #define SERVICE_CONNECTION_CHAR_CONNECTED_UUID "1FE7FAF9-CE63-4236-0002-000000000001"
 
 class ConnectionService : public IBluetoothService {
-public:
-  void setup(BLEServer *pServer) override;
-  bool shouldAdvertise() override;
-  BLEService *getService() override;
+  public:
+    void setup(BLEServer *pServer) override;
+    bool shouldAdvertise() override;
+    BLEService *getService() override;
 
-  void newSensorValues(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues) override;
-  void buttonPressed() override;
+    void newSensorValues(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues) override;
+    void buttonPressed() override;
 
-private:
-  bool isSensorCovered();
+  private:
+    bool isSensorCovered();
 
-  BLEService *mService;
-  BLECharacteristic *mCharacteristic;
+    BLEService *mService;
+    BLECharacteristic *mCharacteristic;
 
-  unsigned long mConnectionStartTime;
-  unsigned long mSensorCoveredStartTime;
-  CircularBuffer<uint8_t, 25> mSensorValues;
+    unsigned long mConnectionStartTime;
+    unsigned long mSensorCoveredStartTime;
+    CircularBuffer<uint8_t, 25> mSensorValues;
 };
 
 #endif

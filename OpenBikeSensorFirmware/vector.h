@@ -29,7 +29,9 @@ class Vector {
       return *this;
     }; // Needed for memory management
     void push_back(Data const &x) {
-      if (d_capacity == d_size) resize();
+      if (d_capacity == d_size) {
+        resize();
+      }
       d_data[d_size++] = x;
     }; // Adds new value. If needed, allocates more space
     size_t size() const {

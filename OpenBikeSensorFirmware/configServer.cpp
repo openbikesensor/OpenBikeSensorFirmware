@@ -338,16 +338,18 @@ void handle_NotFound() {
 void devAction() {
 
   String showGrid = server.arg("showGrid");
-  if (showGrid == "on")
+  if (showGrid == "on") {
     config.devConfig |= ShowGrid;
-  else
+  } else {
     config.devConfig &= ~ShowGrid;
+  }
 
   String printWifiPassword = server.arg("printWifiPassword");
-  if (printWifiPassword == "on")
+  if (printWifiPassword == "on") {
     config.devConfig |= PrintWifiPassword;
-  else
+  } else {
     config.devConfig &= ~PrintWifiPassword;
+  }
 
   // Print and safe config
   Serial.println(F("Print config file..."));
@@ -394,92 +396,110 @@ void configAction() {
   /* displayTest->clear();
     displayTest->drawString(64, 36, "displayConfig");
     displayTest->drawString(64, 48, displayGPS);*/
-  if (displayGPS == "on")
+  if (displayGPS == "on") {
     config.displayConfig |= DisplaySatelites;
-  else
+  } else {
     config.displayConfig &= ~DisplaySatelites;
+  }
 
-  if (displaySimple == "on")
+  if (displaySimple == "on") {
     config.displayConfig |= DisplaySimple;
-  else
+  } else {
     config.displayConfig &= ~DisplaySimple;
+  }
 
-  if (displayVELO == "on")
+  if (displayVELO == "on") {
     config.displayConfig |= DisplayVelocity;
-  else
+  } else {
     config.displayConfig &= ~DisplayVelocity;
+  }
 
-  if (displayLeft == "on")
+  if (displayLeft == "on") {
     config.displayConfig |= DisplayLeft;
-  else
+  } else {
     config.displayConfig &= ~DisplayLeft;
+  }
 
-  if (displayRight == "on")
+  if (displayRight == "on") {
     config.displayConfig |= DisplayRight;
-  else
+  } else {
     config.displayConfig &= ~DisplayRight;
+  }
 
-  if (displaySwapSensors == "on")
+  if (displaySwapSensors == "on") {
     config.displayConfig |= DisplaySwapSensors;
-  else
+  } else {
     config.displayConfig &= ~DisplaySwapSensors;
+  }
 
-  if (displayInvert == "on")
+  if (displayInvert == "on") {
     config.displayConfig |= DisplayInvert;
-  else
+  } else {
     config.displayConfig &= ~DisplayInvert;
+  }
 
-  if (displayFlip == "on")
+  if (displayFlip == "on") {
     config.displayConfig |= DisplayFlip;
-  else
+  } else {
     config.displayConfig &= ~DisplayFlip;
+  }
 
-  if (displayNumConfirmed == "on")
+  if (displayNumConfirmed == "on") {
     config.displayConfig |= DisplayNumConfirmed;
-  else
+  } else {
     config.displayConfig &= ~DisplayNumConfirmed;
+  }
 
-  if (displayDistanceDetail == "on")
+  if (displayDistanceDetail == "on") {
     config.displayConfig |= DisplayDistanceDetail;
-  else
+  } else {
     config.displayConfig &= ~DisplayDistanceDetail;
+  }
 
   config.bluetooth = (bluetooth == "on");
   config.simRaMode = (simRaMode == "on");
 
-  if (validGPS == "validLocation")
+  if (validGPS == "validLocation") {
     config.GPSConfig = ValidLocation;
+  }
 
-  if (validGPS == "validTime")
+  if (validGPS == "validTime") {
     config.GPSConfig = ValidTime;
+  }
 
-  if (validGPS == "numberSatellites")
+  if (validGPS == "numberSatellites") {
     config.GPSConfig = NumberSatellites;
+  }
 
-  if (privacyOptions == "absolutePrivacy")
+  if (privacyOptions == "absolutePrivacy") {
     config.privacyConfig |= AbsolutePrivacy;
-  else
+  } else {
     config.privacyConfig &= ~AbsolutePrivacy;
+  }
 
-  if (privacyOptions == "noPosition")
+  if (privacyOptions == "noPosition") {
     config.privacyConfig |= NoPosition;
-  else
+  } else {
     config.privacyConfig &= ~NoPosition;
+  }
 
-  if (privacyOptions == "noPrivacy")
+  if (privacyOptions == "noPrivacy") {
     config.privacyConfig |= NoPrivacy;
-  else
+  } else {
     config.privacyConfig &= ~NoPrivacy;
+  }
 
-  if (privacyOptions == "noPrivacy")
+  if (privacyOptions == "noPrivacy") {
     config.privacyConfig |= NoPrivacy;
-  else
+  } else {
     config.privacyConfig &= ~NoPrivacy;
+  }
 
-  if (overridePrivacy == "on")
+  if (overridePrivacy == "on") {
     config.privacyConfig |= OverridePrivacy;
-  else
+  } else {
     config.privacyConfig &= ~OverridePrivacy;
+  }
 
   config.sensorOffsets[LEFT_SENSOR_ID] = atoi(offsetS1.c_str());
   config.sensorOffsets[RIGHT_SENSOR_ID] = atoi(offsetS2.c_str());
@@ -537,8 +557,7 @@ void privacyAction() {
   longitude.replace(",", ".");
   String radius = server.arg("newradius");
 
-  if ( (latitude != "") && (longitude != "") && (radius != "") )
-  {
+  if ( (latitude != "") && (longitude != "") && (radius != "") ) {
     Serial.println(F("Valid privacyArea!"));
     addNewPrivacyArea(atof(latitude.c_str()), atof(longitude.c_str()), atoi(radius.c_str()));
   }
@@ -547,8 +566,7 @@ void privacyAction() {
   server.send(200, "text/html", s);
 }
 
-bool CreateWifiSoftAP(String chipID)
-{
+bool CreateWifiSoftAP(String chipID) {
   bool SoftAccOK;
   WiFi.disconnect();
   Serial.print(F("Initalize SoftAP "));
@@ -566,8 +584,7 @@ bool CreateWifiSoftAP(String chipID)
 
 
   WiFi.softAPConfig(apIP, apIP, netMsk);
-  if (SoftAccOK)
-  {
+  if (SoftAccOK) {
     /* Setup the DNS server redirecting all the domains to the apIP */
     //dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
     //dnsServer.start(DNS_PORT, "*", apIP);
@@ -579,9 +596,7 @@ bool CreateWifiSoftAP(String chipID)
 
     displayTest->showTextOnGrid(0, 5, "IP:");
     displayTest->showTextOnGrid(1, 5, "172.20.0.1");
-  }
-  else
-  {
+  } else {
     Serial.println(F("Soft AP Error."));
     Serial.println(APName.c_str());
     Serial.println(APPassword.c_str());
@@ -620,12 +635,9 @@ void startServer() {
     delay(1000);
     Serial.print(".");
   }
-  if (WiFi.status() != WL_CONNECTED)
-  {
+  if (WiFi.status() != WL_CONNECTED) {
     CreateWifiSoftAP(esp_chipid);
-  }
-  else
-  {
+  } else {
     Serial.println("");
     Serial.print("Connected to ");
     Serial.println(config.ssid);
@@ -676,29 +688,24 @@ void startServer() {
     html.replace("{subtitle}", "Upload Tracks");
 
     File root = SDFileSystem.open("/");
-    if (!root)
-    {
+    if (!root) {
       Serial.println("Failed to open directory");
       return;
     }
-    if (!root.isDirectory())
-    {
+    if (!root.isDirectory()) {
       Serial.println("Not a directory");
       return;
     }
 
     File file = root.openNextFile();
-    while (file)
-    {
-      if (!file.isDirectory())
-      {
-        if(uploader::instance()->upload(file.name()))
-        {
+    while (file) {
+      if (!file.isDirectory()) {
+        if(uploader::instance()->upload(file.name())) {
 
-        SDFileSystem.mkdir("/uploaded");
-        SDFileSystem.rename(file.name(),String("/uploaded")+file.name());
-        html += String(file.name());
-        html += "<br>";
+          SDFileSystem.mkdir("/uploaded");
+          SDFileSystem.rename(file.name(),String("/uploaded")+file.name());
+          html += String(file.name());
+          html += "<br>";
         }
       }
       file = root.openNextFile();
@@ -918,7 +925,7 @@ void startServer() {
     Serial.println("Send response...");
     if (Update.hasError()) {
       server.send(500, "text/plain",
-                  "Update failed! Note: update from v0.2.x to v0.3 or newer needs to be done once with USB cable!");
+        "Update failed! Note: update from v0.2.x to v0.3 or newer needs to be done once with USB cable!");
     } else {
       server.send(200, "text/plain", "Update successful! Device reboots now!");
       delay(250);
@@ -963,8 +970,7 @@ void startServer() {
 
     bool validGPSData = false;
     buttonState = digitalRead(PushButton);
-    while (!validGPSData && (buttonState == LOW))
-    {
+    while (!validGPSData && (buttonState == LOW)) {
       Serial.println("GPSData not valid");
       buttonState = digitalRead(PushButton);
       readGPSData();
@@ -994,8 +1000,7 @@ void startServer() {
     String privacyPage = html;
 
 
-    for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx)
-    {
+    for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx) {
       privacyPage += "<h3>Privacy Area #" + String(idx) + "</h3>";
       privacyPage += "Latitude <input name=latitude" + String(idx) + " placeholder='latitude' value='" + String(config.privacyAreas[idx].latitude, 7) + "'disabled>";
       privacyPage += "Longitude <input name=longitude" + String(idx) + "placeholder='longitude' value='" + String(config.privacyAreas[idx].longitude, 7) + "'disabled>";
@@ -1010,9 +1015,7 @@ void startServer() {
     if (validGPSData) {
       privacyPage += "Latitude<input name=newlatitude value='" + String(gps.location.lat(), 7) + "'>";
       privacyPage += "Longitude<input name=newlongitude value='" + String(gps.location.lng(), 7) + "'>";
-    }
-    else
-    {
+    } else {
       privacyPage += "Latitude<input name=newlatitude placeholder='48.12345'>";
       privacyPage += "Longitude<input name=newlongitude placeholder='9.12345'>";
     }
@@ -1022,11 +1025,10 @@ void startServer() {
     server.send(200, "text/html", privacyPage);
   });
 
-  server.on("/privacy_delete", HTTP_GET, [](){
+  server.on("/privacy_delete", HTTP_GET, []() {
 
     String erase = server.arg("erase");
-    if (erase != "")
-    {
+    if (erase != "") {
       int idx = atoi(erase.c_str());
       Serial.print(F("Erase idx="));
       Serial.println(idx);
@@ -1042,7 +1044,7 @@ void startServer() {
 
       // Workaround for #104: Create a new vector and add existing elements
       Vector<PrivacyArea> privacyAreas;
-      for(int i=0; i<config.privacyAreas.size(); i++){
+      for(int i=0; i<config.privacyAreas.size(); i++) {
         if(i != idx) {
           privacyAreas.push_back(config.privacyAreas[i]);
         }

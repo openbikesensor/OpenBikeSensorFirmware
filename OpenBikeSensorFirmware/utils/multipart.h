@@ -25,85 +25,85 @@
 #include "streams.h"
 
 class MultipartData {
-public:
-  virtual String getHeaders() = 0;
+  public:
+    virtual String getHeaders() = 0;
 
-  virtual Stream *asStream() = 0;
+    virtual Stream *asStream() = 0;
 
-  virtual size_t length() = 0;
+    virtual size_t length() = 0;
 
-  explicit MultipartData(String name, String contentType = "");
+    explicit MultipartData(String name, String contentType = "");
 
-protected:
-  String getBaseHeaders(const String& fileName = "");
+  protected:
+    String getBaseHeaders(const String& fileName = "");
 
-  String name;
-  String contentType;
+    String name;
+    String contentType;
 };
 
 class MultipartDataString : public MultipartData {
-public:
+  public:
 
-  MultipartDataString(String name, const String& content, String contentType = "");
+    MultipartDataString(String name, const String& content, String contentType = "");
 
-  String getHeaders() override;
+    String getHeaders() override;
 
-  Stream *asStream() override;
+    Stream *asStream() override;
 
-  size_t length() override;
+    size_t length() override;
 
-private:
-  String content;
-  StringStream contentStream;
+  private:
+    String content;
+    StringStream contentStream;
 };
 
 class MultipartDataStream : public MultipartData {
-public:
-  String getHeaders() override;
+  public:
+    String getHeaders() override;
 
-  Stream *asStream() override;
+    Stream *asStream() override;
 
-  size_t length() override;
+    size_t length() override;
 
-  MultipartDataStream(String name, String fileName, File *content, String contentType = "");
+    MultipartDataStream(String name, String fileName, File *content, String contentType = "");
 
-private:
-  String fileName;
-  File *content;
+  private:
+    String fileName;
+    File *content;
 };
 
 
 class MultipartStream : public Stream {
-public:
-  explicit MultipartStream(HTTPClient *client);
+  public:
+    explicit MultipartStream(HTTPClient *client);
 
-  ~MultipartStream() override;
+    ~MultipartStream() override;
 
-  size_t predictSize() const;
+    size_t predictSize() const;
 
-  void add(MultipartData &newData);
+    void add(MultipartData &newData);
 
-  // API is bast - client must make sure to call last after the last add
-  void last();
+    // API is bast - client must make sure to call last after the last add
+    void last();
 
-  int available() override;
+    int available() override;
 
-  int read() override;
+    int read() override;
 
-  int peek() override;
+    int peek() override;
 
-  void flush() override;
+    void flush() override;
 
-  size_t write(uint8_t) override;
+    size_t write(uint8_t) override;
 
-  size_t readBytes(char *buffer, size_t length) override;
+    size_t readBytes(char *buffer, size_t length) override;
 
-private:
-  HTTPClient *httpClient;
-  StreamOfStreams streams;
-  std::vector<Stream *> myStreams;
-  String boundary;
-  size_t length = 0;
+  private:
+    HTTPClient *httpClient;
+    StreamOfStreams streams;
+    std::vector<Stream *> myStreams;
+    String boundary;
+    size_t length = 0;
 };
 
 #endif //OPENBIKESENSORFIRMWARE_MULTIPART_H

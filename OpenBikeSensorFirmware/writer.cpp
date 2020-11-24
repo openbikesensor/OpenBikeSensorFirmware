@@ -146,8 +146,7 @@ void FileWriter::setFileName() {
   fileSuffix++; // use next file number
   String base_filename = "/sensorData";
   m_filename = base_filename + String(fileSuffix) + m_fileExtension;
-  while (SD.exists(m_filename.c_str()))
-  {
+  while (SD.exists(m_filename.c_str())) {
     fileSuffix++;
     m_filename = base_filename + String(fileSuffix) + m_fileExtension;
   }
@@ -228,8 +227,8 @@ void CSVFileWriter::writeHeader() {
   headerString += "DistanceSensorsUsed=HC-SR04/JSN-SR04T\n";
 
   headerString += "Date;Time;Millis;Comment;Latitude;Longitude;Altitude;"
-                  "Course;Speed;HDOP;Satellites;BatteryLevel;Left;Right;Confirmed;Marked;Invalid;"
-                  "InsidePrivacyArea;Factor;Measurements";
+    "Course;Speed;HDOP;Satellites;BatteryLevel;Left;Right;Confirmed;Marked;Invalid;"
+    "InsidePrivacyArea;Factor;Measurements";
   for (uint16_t idx = 1; idx <= MAX_NUMBER_MEASUREMENTS_PER_INTERVAL; ++idx) {
     String number = String(idx);
     headerString += ";Tms" + number;
@@ -255,9 +254,9 @@ void CSVFileWriter::writeData(DataSet* set) {
   const tm* time = localtime(&set->time);
   char date[32];
   snprintf(date, sizeof(date),
-           "%02d.%02d.%04d;%02d:%02d:%02d;%u;",
-           time->tm_mday, time->tm_mon + 1, time->tm_year + 1900,
-           time->tm_hour, time->tm_min, time->tm_sec, set->millis);
+    "%02d.%02d.%04d;%02d:%02d:%02d;%u;",
+    time->tm_mday, time->tm_mon + 1, time->tm_year + 1900,
+    time->tm_hour, time->tm_min, time->tm_sec, set->millis);
 
   dataString += date;
   dataString += set->comment;
@@ -268,9 +267,9 @@ void CSVFileWriter::writeData(DataSet* set) {
       + " GPS crc errors: " + String(gps.failedChecksum());
   } else if (time->tm_sec == 1) {
     dataString += "DEVELOP: Mem: "
-                + String(ESP.getFreeHeap() / 1024) + "k Buffer: "
-                + String(getDataLength() / 1024) + "k last write time: "
-                + String(writeTimeMillis);
+      + String(ESP.getFreeHeap() / 1024) + "k Buffer: "
+      + String(getDataLength() / 1024) + "k last write time: "
+      + String(writeTimeMillis);
   }
 #endif
   dataString += ";";
@@ -340,9 +339,9 @@ void CSVFileWriter::writeData(DataSet* set) {
 void GPXFileWriter::writeHeader() {
   String headerString;
   headerString += F(
-                    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-                    "<gpx version=\"1.0\">\n"
-                    "\t<trk><trkseg>\n");
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+      "<gpx version=\"1.0\">\n"
+      "\t<trk><trkseg>\n");
   this->appendFile(SD, m_filename.c_str(), headerString.c_str() );
 }
 
@@ -361,9 +360,9 @@ void GPXFileWriter::writeData(DataSet* set) {
   char dateTimeString[25];
   const tm* time = localtime(&set->time);
   snprintf(dateTimeString, sizeof(dateTimeString),
-           "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ",
-           time->tm_year + 1900, time->tm_mon + 1, time->tm_mday,
-           time->tm_hour, time->tm_min, time->tm_sec, 0);
+    "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ",
+    time->tm_year + 1900, time->tm_mon + 1, time->tm_mday,
+    time->tm_hour, time->tm_min, time->tm_sec, 0);
   dataString += F("<time>");
   dataString += dateTimeString;
   dataString += F("</time>");

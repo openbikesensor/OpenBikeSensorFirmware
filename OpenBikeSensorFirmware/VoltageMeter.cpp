@@ -24,8 +24,8 @@ VoltageMeter::VoltageMeter() {
   ESP_ERROR_CHECK_WITHOUT_ABORT(
     adc1_config_channel_atten(BATTERY_ADC_CHANNEL, ADC_ATTEN_DB_11));
   __unused const esp_adc_cal_value_t val_type = esp_adc_cal_characterize(
-    ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12,
-    REF_VOLTAGE_MILLI_VOLT, &adc_chars);
+      ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12,
+      REF_VOLTAGE_MILLI_VOLT, &adc_chars);
 #ifdef DEVELOP
   if (val_type == ESP_ADC_CAL_VAL_EFUSE_TP) {
     Serial.printf("Characterized using Two Point Value\n");
@@ -58,7 +58,7 @@ VoltageMeter::VoltageMeter() {
 
 double VoltageMeter::read() {
   return esp_adc_cal_raw_to_voltage(readSmoothed(), &adc_chars)
-          * 3.0 / 2000.0; // voltage divider @ OSB PCB
+    * 3.0 / 2000.0; // voltage divider @ OSB PCB
 }
 
 int VoltageMeter::readSmoothed() {

@@ -39,8 +39,7 @@ const int DIO = 25; //Set the DIO pin connection to the display
 //Segments for line of dashes on display
 //uint8_t segments[] = {64, 64, 64, 64};
 
-class DisplayDevice
-{
+class DisplayDevice {
   public:
     DisplayDevice() {}
     virtual ~DisplayDevice() {}
@@ -51,8 +50,7 @@ class DisplayDevice
 };
 
 
-class SSD1306DisplayDevice : public DisplayDevice
-{
+class SSD1306DisplayDevice : public DisplayDevice {
   private:
     SSD1306* m_display;
     String gridText[ 4 ][ 6 ];

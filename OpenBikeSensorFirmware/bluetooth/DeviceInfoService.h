@@ -21,16 +21,16 @@
 #define SERVICE_DEVICE_CHAR_MANUFACTURERNAME_STRING_VALUE "Polar Electro Oy"
 
 class DeviceInfoService : public IBluetoothService {
-public:
-  void setup(BLEServer *pServer) override;
-  bool shouldAdvertise() override;
-  BLEService* getService() override;
+  public:
+    void setup(BLEServer *pServer) override;
+    bool shouldAdvertise() override;
+    BLEService* getService() override;
 
-  void newSensorValues(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues) override;
-  void buttonPressed() override;
+    void newSensorValues(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues) override;
+    void buttonPressed() override;
 
-private:
-  BLEService *mService;
+  private:
+    BLEService *mService;
 };
 
 #endif

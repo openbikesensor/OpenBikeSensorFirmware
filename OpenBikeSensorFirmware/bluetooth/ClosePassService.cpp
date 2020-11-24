@@ -46,7 +46,9 @@ void ClosePassService::writeToDistanceCharacteristic(const std::list<uint16_t>& 
 void ClosePassService::writeToEventCharacteristic(const String& event, std::list<uint16_t>* payload) {
   auto transmitValue = String(millis()) + ";";
   transmitValue += event + ";";
-  if (payload) transmitValue += joinList16(*payload, ",");
+  if (payload) {
+    transmitValue += joinList16(*payload, ",");
+  }
   Serial.println(transmitValue.c_str());
 
   mEventCharacteristic->setValue(transmitValue.c_str());
@@ -84,7 +86,9 @@ void ClosePassService::processValuesForDistanceChar(const std::list<uint16_t>& l
 void ClosePassService::processValuesForEventChar_Avg2s(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues, const uint16_t value) {
   mEventAvg2s_Buffer.push(value);
 
-  if (!mEventAvg2s_Buffer.isFull()) return;
+  if (!mEventAvg2s_Buffer.isFull()) {
+    return;
+  }
 
   // Calculate average
   float distanceAvg = 0.0;

@@ -65,7 +65,9 @@ void BluetoothManager::disconnectDevice() {
 
 void BluetoothManager::newSensorValues(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues) {
   // Discarding values if they are more recent than 50 ms
-  if (millis() - lastValueTimestamp < 50) return;
+  if (millis() - lastValueTimestamp < 50) {
+    return;
+  }
   lastValueTimestamp = millis();
 
   for (auto &service : services) {
@@ -86,7 +88,9 @@ void BluetoothManager::newSensorValues(const std::list<uint16_t>& leftValues, co
  */
 void BluetoothManager::processButtonState(int state) {
   if (state == HIGH) {
-    if (!buttonWasPressed) buttonPressed();
+    if (!buttonWasPressed) {
+      buttonPressed();
+    }
 
     buttonWasPressed = true;
     buttonPressTimestamp = millis();

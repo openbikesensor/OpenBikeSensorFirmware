@@ -59,8 +59,7 @@ struct DataSet {
 };
 
 
-class FileWriter
-{
+class FileWriter {
   public:
     FileWriter() {}
     virtual ~FileWriter() {}
@@ -78,7 +77,7 @@ class FileWriter
     virtual void writeHeader() = 0;
     virtual void writeData(DataSet*) = 0;
 
-  void writeDataToSD();
+    void writeDataToSD();
     uint16_t getDataLength();
 
   protected:
@@ -90,22 +89,19 @@ class FileWriter
 
 };
 
-class CSVFileWriter : public FileWriter
-{
+class CSVFileWriter : public FileWriter {
   public:
     CSVFileWriter() : FileWriter() {
       m_fileExtension = ".csv";
     }
     ~CSVFileWriter() {}
-    void init()
-    {
+    void init() {
     }
     void writeHeader();
     void writeData(DataSet*);
 };
 
-class GPXFileWriter : public FileWriter
-{
+class GPXFileWriter : public FileWriter {
   public:
     GPXFileWriter() : FileWriter() {
       m_fileExtension = ".gpx";
