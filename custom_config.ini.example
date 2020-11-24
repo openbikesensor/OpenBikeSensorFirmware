@@ -1,12 +1,18 @@
 ; This file should contain your local modifications to the PlatformIO.ini file.
 
 [env:esp32dev]
-; upload_port: Optional. If not set, PlatformIO will try to autodetect the port.
-; (for example for macOS:)
+
+; === upload_port ===
+; Optional. If not set, PlatformIO will try to autodetect the port.
+
+; -- macOS --
 ; upload_port = /dev/cu.SLAB_USBtoUART
-; upload via network:
+
+; -- Upload via network / OTA --
 ; upload_port = 192.168.0.1
 ; upload_protocol = espota
-; upload_flags = -p someportnumber
+; upload_flags = -p 3232
+
+; === build_flags ===
 ; build with development option
 ; build_flags = -D DEVELOP
