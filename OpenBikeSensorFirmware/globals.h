@@ -27,13 +27,14 @@ extern Config config;
 
 // Forward declare classes to build (because there is a cyclic dependency between sensor.h and displays.h)
 class SSD1306DisplayDevice;
+
 class HCSR04SensorManager;
 
-extern SSD1306DisplayDevice* displayTest;
+extern SSD1306DisplayDevice *displayTest;
 
-extern HCSR04SensorManager* sensorManager;
+extern HCSR04SensorManager *sensorManager;
 
-extern VoltageMeter* voltageMeter;
+extern VoltageMeter *voltageMeter;
 
 extern String esp_chipid;
 

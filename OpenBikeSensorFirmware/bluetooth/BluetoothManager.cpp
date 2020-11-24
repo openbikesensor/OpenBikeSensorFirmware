@@ -1,7 +1,7 @@
 #include "BluetoothManager.h"
 
 BLEServer *pServer;
-std::list<IBluetoothService*> services;
+std::list<IBluetoothService *> services;
 
 unsigned long lastValueTimestamp = millis();
 boolean buttonWasPressed = false;
@@ -11,7 +11,7 @@ void BluetoothManager::init() {
 
   esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
   char deviceName[32];
-  snprintf(deviceName, sizeof(deviceName), "OpenBikeSensor-%04X", (uint16_t)(ESP.getEfuseMac() >> 32));
+  snprintf(deviceName, sizeof(deviceName), "OpenBikeSensor-%04X", (uint16_t) (ESP.getEfuseMac() >> 32));
   BLEDevice::init(deviceName);
   pServer = BLEDevice::createServer();
   //pServer->setCallbacks(new CustomBTCallback());
@@ -63,7 +63,7 @@ void BluetoothManager::disconnectDevice() {
   pServer->disconnect(pServer->getConnId());
 }
 
-void BluetoothManager::newSensorValues(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues) {
+void BluetoothManager::newSensorValues(const std::list<uint16_t> &leftValues, const std::list<uint16_t> &rightValues) {
   // Discarding values if they are more recent than 50 ms
   if (millis() - lastValueTimestamp < 50) return;
   lastValueTimestamp = millis();

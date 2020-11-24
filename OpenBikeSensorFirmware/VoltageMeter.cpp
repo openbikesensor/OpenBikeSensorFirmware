@@ -58,7 +58,7 @@ VoltageMeter::VoltageMeter() {
 
 double VoltageMeter::read() {
   return esp_adc_cal_raw_to_voltage(readSmoothed(), &adc_chars)
-          * 3.0 / 2000.0; // voltage divider @ OSB PCB
+         * 3.0 / 2000.0; // voltage divider @ OSB PCB
 }
 
 int VoltageMeter::readSmoothed() {

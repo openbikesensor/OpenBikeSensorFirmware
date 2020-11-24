@@ -26,14 +26,14 @@ public:
   /**
    * Gets the only BLEService that was created in setup().
    */
-  virtual BLEService* getService() = 0;
+  virtual BLEService *getService() = 0;
 
   /**
    * Processes new sensor values from both sides.
    * @param leftValues sensor values from the left side (might be empty)
    * @param rightValues sensor values from the right side (might be empty)
    */
-  virtual void newSensorValues(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues) = 0;
+  virtual void newSensorValues(const std::list<uint16_t> &leftValues, const std::list<uint16_t> &rightValues) = 0;
 
   /**
    * Processes the event that the push button was just triggered.
@@ -44,7 +44,7 @@ protected:
   /**
    * Joins a list of integers by placing the `glue` string between the members.
    */
-  static String joinList(const std::list<uint8_t>& list, const String& glue) {
+  static String joinList(const std::list<uint8_t> &list, const String &glue) {
     String s = "";
 
     boolean firstValue = true;
@@ -59,7 +59,7 @@ protected:
   /**
    * Joins a list of integers by placing the `glue` string between the members.
    */
-  static String joinList16(const std::list<uint16_t>& list, const String& glue) {
+  static String joinList16(const std::list<uint16_t> &list, const String &glue) {
     String s = "";
 
     boolean firstValue = true;

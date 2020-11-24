@@ -28,7 +28,7 @@
 #include <FS.h>
 #include <uploader.h>
 
-const char* host = "openbikesensor";
+const char *host = "openbikesensor";
 WebServer server(80);
 String json_buffer;
 
@@ -77,75 +77,75 @@ String header =
   + previous;
 
 String footer = "</form>"
-  + style;
+                + style;
 
 // #########################################
 // Upload form
 // #########################################
 
-String xhrUpload =   "<input type='file' name='upload' id='file' accept='{accept}'>"
-  "<label id='file-input' for='file'>Choose file...</label>"
-  "<input id='btn' type='submit' class=btn value='Upload'>"
-  "<br><br>"
-  "<div id='prg'></div>"
-  "<br><div id='prgbar'><div id='bar'></div></div><br></form>"
-  "<script>"
-  ""
-  "function hide(x) { x.style.display = 'none'; }"
-  "function show(x) { x.style.display = 'block'; }"
-  ""
-  "hide(document.getElementById('file'));"
-  "hide(document.getElementById('prgbar'));"
-  "hide(document.getElementById('prg'));"
-  ""
-  "var fileName = '';"
-  "document.getElementById('file').addEventListener('change', function(e){"
-  "fileNameParts = e.target.value.split('\\\\');"
-  "fileName = fileNameParts[fileNameParts.length-1];"
-  "console.log(fileName);"
-  "document.getElementById('file-input').innerHTML = fileName;"
-  "});"
-  ""
-  "document.getElementById('btn').addEventListener('click', function(e){"
-  "e.preventDefault();"
-  "if (fileName == '') { alert('No file choosen'); return; }"
-  "console.log('Start upload...');"
-  ""
-  "var form = document.getElementsByTagName('form')[0];"
-  "var data = new FormData(form);"
-  "console.log(data);"
-  //https://developer.mozilla.org/en-US/docs/Web/API/FormData/values
-  "for (var v of data.values()) { console.log(v); }"
-  ""
-  "hide(document.getElementById('file-input'));"
-  "hide(document.getElementById('btn'));"
-  "show(document.getElementById('prgbar'));"
-  "show(document.getElementById('prg'));"
-  ""
-  "var xhr = new XMLHttpRequest();"
-  "xhr.open( 'POST', '{method}', true );"
-  "xhr.onreadystatechange = function(s) {"
-  "console.log(xhr.responseText);"
-  "if (xhr.readyState == 4 && xhr.status == 200) {"
-  "document.getElementById('prg').innerHTML = xhr.responseText;"
-  "} else if (xhr.readyState == 4 && xhr.status == 500) {"
-  "document.getElementById('prg').innerHTML = 'Upload error:' + xhr.responseText;"
-  "} else {"
-  "document.getElementById('prg').innerHTML = 'Unknown error';"
-  "}"
-  "};"
-  "xhr.upload.addEventListener('progress', function(evt) {"
-  "if (evt.lengthComputable) {"
-  "var per = Math.round(evt.loaded / evt.total * 100);"
-  "if(per == 100) document.getElementById('prg').innerHTML = 'Updating...';"
-  "else document.getElementById('prg').innerHTML = 'Upload progress: ' + per + '%';"
-  "document.getElementById('bar').style.width = per + '%';"
-  "}"
-  "}, false);"
-  "xhr.send( data );"
-  "});" // btn click
-  ""
-  "</script>";
+String xhrUpload = "<input type='file' name='upload' id='file' accept='{accept}'>"
+                   "<label id='file-input' for='file'>Choose file...</label>"
+                   "<input id='btn' type='submit' class=btn value='Upload'>"
+                   "<br><br>"
+                   "<div id='prg'></div>"
+                   "<br><div id='prgbar'><div id='bar'></div></div><br></form>"
+                   "<script>"
+                   ""
+                   "function hide(x) { x.style.display = 'none'; }"
+                   "function show(x) { x.style.display = 'block'; }"
+                   ""
+                   "hide(document.getElementById('file'));"
+                   "hide(document.getElementById('prgbar'));"
+                   "hide(document.getElementById('prg'));"
+                   ""
+                   "var fileName = '';"
+                   "document.getElementById('file').addEventListener('change', function(e){"
+                   "fileNameParts = e.target.value.split('\\\\');"
+                   "fileName = fileNameParts[fileNameParts.length-1];"
+                   "console.log(fileName);"
+                   "document.getElementById('file-input').innerHTML = fileName;"
+                   "});"
+                   ""
+                   "document.getElementById('btn').addEventListener('click', function(e){"
+                   "e.preventDefault();"
+                   "if (fileName == '') { alert('No file choosen'); return; }"
+                   "console.log('Start upload...');"
+                   ""
+                   "var form = document.getElementsByTagName('form')[0];"
+                   "var data = new FormData(form);"
+                   "console.log(data);"
+                   //https://developer.mozilla.org/en-US/docs/Web/API/FormData/values
+                   "for (var v of data.values()) { console.log(v); }"
+                   ""
+                   "hide(document.getElementById('file-input'));"
+                   "hide(document.getElementById('btn'));"
+                   "show(document.getElementById('prgbar'));"
+                   "show(document.getElementById('prg'));"
+                   ""
+                   "var xhr = new XMLHttpRequest();"
+                   "xhr.open( 'POST', '{method}', true );"
+                   "xhr.onreadystatechange = function(s) {"
+                   "console.log(xhr.responseText);"
+                   "if (xhr.readyState == 4 && xhr.status == 200) {"
+                   "document.getElementById('prg').innerHTML = xhr.responseText;"
+                   "} else if (xhr.readyState == 4 && xhr.status == 500) {"
+                   "document.getElementById('prg').innerHTML = 'Upload error:' + xhr.responseText;"
+                   "} else {"
+                   "document.getElementById('prg').innerHTML = 'Unknown error';"
+                   "}"
+                   "};"
+                   "xhr.upload.addEventListener('progress', function(evt) {"
+                   "if (evt.lengthComputable) {"
+                   "var per = Math.round(evt.loaded / evt.total * 100);"
+                   "if(per == 100) document.getElementById('prg').innerHTML = 'Updating...';"
+                   "else document.getElementById('prg').innerHTML = 'Upload progress: ' + per + '%';"
+                   "document.getElementById('bar').style.width = per + '%';"
+                   "}"
+                   "}, false);"
+                   "xhr.send( data );"
+                   "});" // btn click
+                   ""
+                   "</script>";
 
 // #########################################
 // Navigation
@@ -507,7 +507,7 @@ void wifiAction() {
   Serial.println(ssid);
 
 #ifdef DEVELOP
-  if(config.devConfig & PrintWifiPassword) {
+  if (config.devConfig & PrintWifiPassword) {
     Serial.print(F("password = "));
     Serial.println(password);
   }
@@ -515,7 +515,7 @@ void wifiAction() {
 
   // Write always both data, thus the WIFI config can be overwritten
   strlcpy(config.ssid, ssid.c_str(), sizeof(config.ssid));
-  if(strcmp(password.c_str(), "******") != 0) {
+  if (strcmp(password.c_str(), "******") != 0) {
     strlcpy(config.password, password.c_str(), sizeof(config.password));
   }
 
@@ -537,8 +537,7 @@ void privacyAction() {
   longitude.replace(",", ".");
   String radius = server.arg("newradius");
 
-  if ( (latitude != "") && (longitude != "") && (radius != "") )
-  {
+  if ((latitude != "") && (longitude != "") && (radius != "")) {
     Serial.println(F("Valid privacyArea!"));
     addNewPrivacyArea(atof(latitude.c_str()), atof(longitude.c_str()), atoi(radius.c_str()));
   }
@@ -547,14 +546,13 @@ void privacyAction() {
   server.send(200, "text/html", s);
 }
 
-bool CreateWifiSoftAP(String chipID)
-{
+bool CreateWifiSoftAP(String chipID) {
   bool SoftAccOK;
   WiFi.disconnect();
   Serial.print(F("Initalize SoftAP "));
   String APName = "OpenBikeSensor-" + chipID;
   String APPassword = "12345678";
-  SoftAccOK  =  WiFi.softAP(APName.c_str(), APPassword.c_str()); // Passwortlänge mindestens 8 Zeichen !
+  SoftAccOK = WiFi.softAP(APName.c_str(), APPassword.c_str()); // Passwortlänge mindestens 8 Zeichen !
   delay(2000); // Without delay I've seen the IP address blank
   /* Soft AP network parameters */
   IPAddress apIP(172, 20, 0, 1);
@@ -566,8 +564,7 @@ bool CreateWifiSoftAP(String chipID)
 
 
   WiFi.softAPConfig(apIP, apIP, netMsk);
-  if (SoftAccOK)
-  {
+  if (SoftAccOK) {
     /* Setup the DNS server redirecting all the domains to the apIP */
     //dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
     //dnsServer.start(DNS_PORT, "*", apIP);
@@ -579,9 +576,7 @@ bool CreateWifiSoftAP(String chipID)
 
     displayTest->showTextOnGrid(0, 5, "IP:");
     displayTest->showTextOnGrid(1, 5, "172.20.0.1");
-  }
-  else
-  {
+  } else {
     Serial.println(F("Soft AP Error."));
     Serial.println(APName.c_str());
     Serial.println(APPassword.c_str());
@@ -593,8 +588,8 @@ void startServer() {
 #if defined(ESP32)
   uint64_t chipid_num;
   chipid_num = ESP.getEfuseMac();
-  esp_chipid = String((uint16_t)(chipid_num >> 32), HEX);
-  esp_chipid += String((uint32_t)chipid_num, HEX);
+  esp_chipid = String((uint16_t) (chipid_num >> 32), HEX);
+  esp_chipid += String((uint32_t) chipid_num, HEX);
 #endif
 
   displayTest->clear();
@@ -616,16 +611,13 @@ void startServer() {
   uint16_t timeout = 10000;
   Serial.printf("Timeout %u\n", timeout);
   Serial.printf("startTime %u\n", startTime);
-  while ((WiFi.status() != WL_CONNECTED) && (( millis() - startTime) <= timeout)) {
+  while ((WiFi.status() != WL_CONNECTED) && ((millis() - startTime) <= timeout)) {
     delay(1000);
     Serial.print(".");
   }
-  if (WiFi.status() != WL_CONNECTED)
-  {
+  if (WiFi.status() != WL_CONNECTED) {
     CreateWifiSoftAP(esp_chipid);
-  }
-  else
-  {
+  } else {
     Serial.println("");
     Serial.print("Connected to ");
     Serial.println(config.ssid);
@@ -669,36 +661,31 @@ void startServer() {
 
   server.on("/upload", HTTP_GET, []() {
 
-    String html = header+"<div>";
+    String html = header + "<div>";
 
     html.replace("{action}", "");
     html.replace("{version}", OBSVersion);
     html.replace("{subtitle}", "Upload Tracks");
 
     File root = SDFileSystem.open("/");
-    if (!root)
-    {
+    if (!root) {
       Serial.println("Failed to open directory");
       return;
     }
-    if (!root.isDirectory())
-    {
+    if (!root.isDirectory()) {
       Serial.println("Not a directory");
       return;
     }
 
     File file = root.openNextFile();
-    while (file)
-    {
-      if (!file.isDirectory())
-      {
-        if(uploader::instance()->upload(file.name()))
-        {
+    while (file) {
+      if (!file.isDirectory()) {
+        if (uploader::instance()->upload(file.name())) {
 
-        SDFileSystem.mkdir("/uploaded");
-        SDFileSystem.rename(file.name(),String("/uploaded")+file.name());
-        html += String(file.name());
-        html += "<br>";
+          SDFileSystem.mkdir("/uploaded");
+          SDFileSystem.rename(file.name(), String("/uploaded") + file.name());
+          html += String(file.name());
+          html += "<br>";
         }
       }
       file = root.openNextFile();
@@ -762,13 +749,13 @@ void startServer() {
     server.send(200, "text/plain", "Restore successful!");
   }, []() {
     //Serial.println("Recover Config...");
-    HTTPUpload& upload = server.upload();
+    HTTPUpload &upload = server.upload();
     if (upload.status == UPLOAD_FILE_START) {
       Serial.printf("Recover: %s\n", upload.filename.c_str());
       json_buffer = "";
     } else if (upload.status == UPLOAD_FILE_WRITE) {
       // Convert all uint8_t elements until currentSize to String
-      for(int i = 0; i<upload.currentSize; i++) {
+      for (int i = 0; i < upload.currentSize; i++) {
         json_buffer += (char) upload.buf[i];
       }
 
@@ -797,7 +784,7 @@ void startServer() {
     html.replace("{subtitle}", "Wifi");
     // Form data
     html.replace("{ssid}", config.ssid);
-    if(sizeof(config.password) > 0) {
+    if (sizeof(config.password) > 0) {
       html.replace("{password}", "******");
     } else {
       html.replace("{password}", "");
@@ -926,7 +913,7 @@ void startServer() {
     }
   }, []() {
     //Serial.println('Update Firmware...');
-    HTTPUpload& upload = server.upload();
+    HTTPUpload &upload = server.upload();
     if (upload.status == UPLOAD_FILE_START) {
       Serial.printf("Update: %s\n", upload.filename.c_str());
       if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
@@ -963,8 +950,7 @@ void startServer() {
 
     bool validGPSData = false;
     buttonState = digitalRead(PushButton);
-    while (!validGPSData && (buttonState == LOW))
-    {
+    while (!validGPSData && (buttonState == LOW)) {
       Serial.println("GPSData not valid");
       buttonState = digitalRead(PushButton);
       readGPSData();
@@ -994,12 +980,14 @@ void startServer() {
     String privacyPage = html;
 
 
-    for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx)
-    {
+    for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx) {
       privacyPage += "<h3>Privacy Area #" + String(idx) + "</h3>";
-      privacyPage += "Latitude <input name=latitude" + String(idx) + " placeholder='latitude' value='" + String(config.privacyAreas[idx].latitude, 7) + "'disabled>";
-      privacyPage += "Longitude <input name=longitude" + String(idx) + "placeholder='longitude' value='" + String(config.privacyAreas[idx].longitude, 7) + "'disabled>";
-      privacyPage += "Radius (m) <input name=radius" + String(idx) + "placeholder='radius' value='" + String(config.privacyAreas[idx].radius) + "'disabled>";
+      privacyPage += "Latitude <input name=latitude" + String(idx) + " placeholder='latitude' value='" +
+                     String(config.privacyAreas[idx].latitude, 7) + "'disabled>";
+      privacyPage += "Longitude <input name=longitude" + String(idx) + "placeholder='longitude' value='" +
+                     String(config.privacyAreas[idx].longitude, 7) + "'disabled>";
+      privacyPage += "Radius (m) <input name=radius" + String(idx) + "placeholder='radius' value='" +
+                     String(config.privacyAreas[idx].radius) + "'disabled>";
       privacyPage += "<a class=\"deletePrivacyArea\" href=\"/privacy_delete?erase=" + String(idx) + "\">&#x2716;</a>";
     }
 
@@ -1010,9 +998,7 @@ void startServer() {
     if (validGPSData) {
       privacyPage += "Latitude<input name=newlatitude value='" + String(gps.location.lat(), 7) + "'>";
       privacyPage += "Longitude<input name=newlongitude value='" + String(gps.location.lng(), 7) + "'>";
-    }
-    else
-    {
+    } else {
       privacyPage += "Latitude<input name=newlatitude placeholder='48.12345'>";
       privacyPage += "Longitude<input name=newlongitude placeholder='9.12345'>";
     }
@@ -1022,11 +1008,10 @@ void startServer() {
     server.send(200, "text/html", privacyPage);
   });
 
-  server.on("/privacy_delete", HTTP_GET, [](){
+  server.on("/privacy_delete", HTTP_GET, []() {
 
     String erase = server.arg("erase");
-    if (erase != "")
-    {
+    if (erase != "") {
       int idx = atoi(erase.c_str());
       Serial.print(F("Erase idx="));
       Serial.println(idx);
@@ -1042,8 +1027,8 @@ void startServer() {
 
       // Workaround for #104: Create a new vector and add existing elements
       Vector<PrivacyArea> privacyAreas;
-      for(int i=0; i<config.privacyAreas.size(); i++){
-        if(i != idx) {
+      for (int i = 0; i < config.privacyAreas.size(); i++) {
+        if (i != idx) {
           privacyAreas.push_back(config.privacyAreas[i]);
         }
       }

@@ -42,7 +42,9 @@
 //DNSServer dnsServer;
 
 extern WebServer server;
+
 void startServer();
+
 void createPrivacyPage();
 
 #endif

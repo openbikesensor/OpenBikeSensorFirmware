@@ -32,7 +32,6 @@ const int LEFT_SENSOR_ID = 1;
 const int RIGHT_SENSOR_ID = 0;
 
 
-
 // PINs
 const int PushButton = 2;
 const uint8_t GPS_POWER = 12;
@@ -46,10 +45,10 @@ int buttonState = 0;
 const char *configFilename = "/config.txt";  // <- SD library uses 8.3 filenames
 Config config;
 
-SSD1306DisplayDevice* displayTest;
-HCSR04SensorManager* sensorManager;
-BluetoothManager* bluetoothManager;
-VoltageMeter* voltageMeter;
+SSD1306DisplayDevice *displayTest;
+HCSR04SensorManager *sensorManager;
+BluetoothManager *bluetoothManager;
+VoltageMeter *voltageMeter;
 
 String esp_chipid;
 
@@ -68,9 +67,9 @@ int lastButtonState = 0;
 
 String filename;
 
-CircularBuffer<DataSet*, 10> dataBuffer;
+CircularBuffer<DataSet *, 10> dataBuffer;
 
-FileWriter* writer;
+FileWriter *writer;
 
 const uint8_t displayAddress = 0x3c;
 
@@ -79,7 +78,7 @@ const uint8_t displayAddress = 0x3c;
 // - prints more detailed log messages to serial (WIFI password)
 //#define DEVELOP
 
-int lastMeasurements = 0 ;
+int lastMeasurements = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -92,7 +91,7 @@ void setup() {
 
   pinMode(PushButton, INPUT);
   pinMode(GPS_POWER, OUTPUT);
-  digitalWrite(GPS_POWER,HIGH);
+  digitalWrite(GPS_POWER, HIGH);
 
   //##############################################################
   // Setup display
@@ -100,8 +99,7 @@ void setup() {
   Wire.begin();
   Wire.beginTransmission(displayAddress);
   byte displayError = Wire.endTransmission();
-  if (displayError != 0)
-  {
+  if (displayError != 0) {
     Serial.println("Display not found");
   }
   displayTest = new SSD1306DisplayDevice;
@@ -132,7 +130,7 @@ void setup() {
   saveConfiguration(configFilename, config);
 
 #ifdef DEVELOP
-  if(config.devConfig & ShowGrid) {
+  if (config.devConfig & ShowGrid) {
     displayTest->showGrid(true);
   }
 #endif
@@ -166,9 +164,8 @@ void setup() {
   int8_t sdCount = 5;
 
   displayTest->showTextOnGrid(2, 2, "SD...");
-  while (!SD.begin())
-  {
-    if(sdCount > 0) {
+  while (!SD.begin()) {
+    if (sdCount > 0) {
       sdCount--;
     } else {
       displayTest->showTextOnGrid(2, 2, "SD... error");
@@ -191,8 +188,7 @@ void setup() {
   //##############################################################
 
   buttonState = digitalRead(PushButton);
-  if (buttonState == HIGH || (!config.simRaMode && displayError != 0))
-  {
+  if (buttonState == HIGH || (!config.simRaMode && displayError != 0)) {
     displayTest->showTextOnGrid(2, 2, "Start Server");
     esp_bt_mem_release(ESP_BT_MODE_BTDM); // no bluetooth at all here.
 
@@ -219,13 +215,13 @@ void setup() {
   HCSR04SensorInfo sensorManaged1;
   sensorManaged1.triggerPin = (config.displayConfig & DisplaySwapSensors) ? 25 : 15;
   sensorManaged1.echoPin = (config.displayConfig & DisplaySwapSensors) ? 26 : 4;
-  sensorManaged1.sensorLocation = (char*) "Right"; // TODO
+  sensorManaged1.sensorLocation = (char *) "Right"; // TODO
   sensorManager->registerSensor(sensorManaged1);
 
   HCSR04SensorInfo sensorManaged2;
   sensorManaged2.triggerPin = (config.displayConfig & DisplaySwapSensors) ? 15 : 25;
   sensorManaged2.echoPin = (config.displayConfig & DisplaySwapSensors) ? 4 : 26;
-  sensorManaged2.sensorLocation = (char*) "Left"; // TODO
+  sensorManaged2.sensorLocation = (char *) "Left"; // TODO
   sensorManager->registerSensor(sensorManaged2);
 
   sensorManager->setOffsets(config.sensorOffsets);
@@ -260,34 +256,32 @@ void setup() {
   voltageMeter = new VoltageMeter; // takes a moment, so do it here
 
   delay(300);
-  while (!validGPSData)
-  {
+  while (!validGPSData) {
     Serial.println("readGPSData()");
     readGPSData();
 
-    switch (config.GPSConfig)
-    {
+    switch (config.GPSConfig) {
       case ValidLocation: {
-          validGPSData = gps.location.isValid();
-          if (validGPSData)
-            Serial.println("Got location...");
-          break;
-        }
+        validGPSData = gps.location.isValid();
+        if (validGPSData)
+          Serial.println("Got location...");
+        break;
+      }
       case ValidTime: {
-          validGPSData = gps.time.isValid();
-          if (validGPSData)
-            Serial.println("Got time...");
-          break;
-        }
+        validGPSData = gps.time.isValid();
+        if (validGPSData)
+          Serial.println("Got time...");
+        break;
+      }
       case NumberSatellites: {
-          validGPSData = gps.satellites.value() >= config.satsForFix;
-          if (validGPSData)
-            Serial.println("Got required number of satellites...");
-          break;
-        }
+        validGPSData = gps.satellites.value() >= config.satsForFix;
+        if (validGPSData)
+          Serial.println("Got required number of satellites...");
+        break;
+      }
       default: {
-          validGPSData = false;
-        }
+        validGPSData = false;
+      }
 
     }
     delay(300);
@@ -304,9 +298,8 @@ void setup() {
 
     buttonState = digitalRead(PushButton);
     if (buttonState == HIGH
-      || (config.simRaMode && gps.passedChecksum() == 0) // no module && simRaMode
-      )
-    {
+        || (config.simRaMode && gps.passedChecksum() == 0) // no module && simRaMode
+      ) {
       Serial.println("Skipped get GPS...");
       displayTest->showTextOnGrid(2, 5, "...skipped");
       break;
@@ -339,7 +332,7 @@ void loop() {
 
   Serial.println("loop()");
 
-  auto* currentSet = new DataSet;
+  auto *currentSet = new DataSet;
   //specify which sensors value can be confirmed by pressing the button, should be configurable
   const uint8_t confirmationSensorID = LEFT_SENSOR_ID;
   readGPSData(); // needs <=1ms
@@ -365,7 +358,7 @@ void loop() {
 
   // if the detected minimum was measured more than 5s ago, it is discarded and cannot be confirmed
   int timeDelta = (int) (currentTimeMillis - timeOfMinimum);
-  if ((timeDelta ) > (config.confirmationTimeWindow * 1000)) {
+  if ((timeDelta) > (config.confirmationTimeWindow * 1000)) {
     Serial.println(">>> CTW reached - reset() <<<");
     minDistanceToConfirm = MAX_SENSOR_VALUE;
     datasetToConfirm = nullptr;
@@ -463,7 +456,7 @@ void loop() {
 
 #ifdef DEVELOP
   Serial.write("min. distance: ");
-  Serial.print(currentSet->sensorValues[confirmationSensorID]) ;
+  Serial.print(currentSet->sensorValues[confirmationSensorID]);
   Serial.write(" cm,");
   Serial.print(measurements);
   Serial.write(" measurements  \n");
@@ -474,7 +467,7 @@ void loop() {
   if (transmitConfirmedData) {
     // Empty buffer by writing it, after confirmation it will be written to SD card directly so no confirmed sets will be lost
     while (!dataBuffer.isEmpty() && dataBuffer.first() != datasetToConfirm) {
-      DataSet* dataset = dataBuffer.shift();
+      DataSet *dataset = dataBuffer.shift();
       if (dataset->confirmedDistances.size() == 0) {
         if (writer) {
           writer->writeDataBuffered(dataset);
@@ -504,7 +497,7 @@ void loop() {
 
   // If the circular buffer is full, write just one set to the writers buffer,
   if (dataBuffer.isFull()) { // TODO: Same code as above
-    DataSet* dataset = dataBuffer.shift();
+    DataSet *dataset = dataBuffer.shift();
     Serial.printf("data buffer full, writing set to file buffer\n");
     if (writer) {
       writer->writeDataBuffered(dataset);

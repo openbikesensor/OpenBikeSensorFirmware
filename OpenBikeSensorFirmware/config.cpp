@@ -21,23 +21,20 @@
 #include "config.h"
 
 // Helper: StaticJsonDocument --> Config
-void jsonDocumentToConfig(DynamicJsonDocument &doc, Config &config)
-{
+void jsonDocumentToConfig(DynamicJsonDocument &doc, Config &config) {
 
   // Copy values from the JsonDocument to the Config
   config.numSensors = doc["numSensors"] | 2;
 
   // Removes all elements from the offset-vector
   int vector_size_offset = config.sensorOffsets.size();
-  for (size_t idx = 0; idx < vector_size_offset; idx++)
-  {
+  for (size_t idx = 0; idx < vector_size_offset; idx++) {
     // Rease always from the beginning of the vector
     config.sensorOffsets.erase(0);
   }
 
   // Append new values to the offset-vector
-  for (size_t idx = 0; idx < config.numSensors; ++idx)
-  {
+  for (size_t idx = 0; idx < config.numSensors; ++idx) {
     uint8_t offsetTemp;
     String offsetString = "offsetInfo" + String(idx);
     offsetTemp = doc[offsetString] | 35;
@@ -72,15 +69,13 @@ void jsonDocumentToConfig(DynamicJsonDocument &doc, Config &config)
 
   // Removes all elements from the privacy-vector
   int vector_size_privacy = config.privacyAreas.size();
-  for (size_t idx = 0; idx < vector_size_privacy; idx++)
-  {
+  for (size_t idx = 0; idx < vector_size_privacy; idx++) {
     // Rease always from the beginning of the vector
     config.privacyAreas.erase(0);
   }
 
   // Append new values to the privacy-vector
-  for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx)
-  {
+  for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx) {
     PrivacyArea privacyAreaTemp;
     // Original coordinates
     String latitudeString = "privacyLatitude" + String(idx);
@@ -102,9 +97,9 @@ void jsonDocumentToConfig(DynamicJsonDocument &doc, Config &config)
   }
 
   // Fix invalid "old" broken configurations, where the default value was 0
-  if(config.privacyConfig == 0) config.privacyConfig = AbsolutePrivacy;
-  if(config.displayConfig == 0) config.displayConfig = DisplaySimple;
-  if(config.GPSConfig == 0) config.GPSConfig = NumberSatellites;
+  if (config.privacyConfig == 0) config.privacyConfig = AbsolutePrivacy;
+  if (config.displayConfig == 0) config.displayConfig = DisplaySimple;
+  if (config.GPSConfig == 0) config.GPSConfig = NumberSatellites;
 }
 
 // Helper: Config -> StaticJsonDocument
@@ -116,8 +111,7 @@ DynamicJsonDocument configToJsonDocument(const Config &config) {
 
   // Set the values in the document
   doc["numSensors"] = config.numSensors;
-  for (size_t idx = 0; idx < config.numSensors; ++idx)
-  {
+  for (size_t idx = 0; idx < config.numSensors; ++idx) {
     String offsetString = "offsetInfo" + String(idx);
     doc[offsetString] = config.sensorOffsets[idx];
   }
@@ -139,8 +133,7 @@ DynamicJsonDocument configToJsonDocument(const Config &config) {
   doc["devConfig"] = config.devConfig;
 #endif
   doc["numPrivacyAreas"] = config.numPrivacyAreas;
-  for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx)
-  {
+  for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx) {
     //String latitudeString = "privacyLatitude" + String(idx);
     //JsonArray data = doc.createNestedArray(latitudeString);
 
@@ -162,8 +155,7 @@ DynamicJsonDocument configToJsonDocument(const Config &config) {
 }
 
 // Config -> StaticJsonDocument --> String
-String configToJson(Config &config)
-{
+String configToJson(Config &config) {
   DynamicJsonDocument doc = configToJsonDocument(config);
   String s;
   serializeJson(doc, s);
@@ -171,8 +163,7 @@ String configToJson(Config &config)
 }
 
 // String -> StaticJsonDocument --> Config
-void jsonToConfig(String json, Config &config)
-{
+void jsonToConfig(String json, Config &config) {
   DynamicJsonDocument doc(2048);
 
   // Deserialize the JSON string
@@ -234,8 +225,7 @@ void printConfig(Config &config) {
   Serial.print(F("numSensors = "));
   Serial.println(String(config.numSensors));
 
-  for (size_t idx = 0; idx < config.numSensors; ++idx)
-  {
+  for (size_t idx = 0; idx < config.numSensors; ++idx) {
     String offsetString = "Offset[" + String(idx) + "] = " + config.sensorOffsets[idx];
     Serial.println(offsetString);
   }
@@ -276,7 +266,7 @@ void printConfig(Config &config) {
   Serial.println(String(config.simRaMode));
 
 #ifdef DEVELOP
-  if(config.devConfig & PrintWifiPassword) {
+  if (config.devConfig & PrintWifiPassword) {
     Serial.print(F("password = "));
     Serial.println(String(config.password));
   }
@@ -285,18 +275,19 @@ void printConfig(Config &config) {
   Serial.print(F("numPrivacyAreas = "));
   Serial.println(String(config.numPrivacyAreas));
 
-  for (size_t idx = 0; idx < config.numPrivacyAreas; idx++)
-  {
+  for (size_t idx = 0; idx < config.numPrivacyAreas; idx++) {
     String latitudeString = "privacyLatitude[" + String(idx) + "] = " + String(config.privacyAreas[idx].latitude, 7);
     Serial.println(latitudeString);
 
     String longitudeString = "privacyLongitude[" + String(idx) + "] = " + String(config.privacyAreas[idx].longitude, 7);
     Serial.println(longitudeString);
 
-    String transformdedLatitudeString = "privacyTransformedLatitude[" + String(idx) + "] = " + String(config.privacyAreas[idx].transformedLatitude, 7);
+    String transformdedLatitudeString =
+      "privacyTransformedLatitude[" + String(idx) + "] = " + String(config.privacyAreas[idx].transformedLatitude, 7);
     Serial.println(transformdedLatitudeString);
 
-    String transformdedLongitudeString = "privacyTransformedLongitude[" + String(idx) + "] = " + String(config.privacyAreas[idx].transformedLongitude, 7);
+    String transformdedLongitudeString =
+      "privacyTransformedLongitude[" + String(idx) + "] = " + String(config.privacyAreas[idx].transformedLongitude, 7);
     Serial.println(transformdedLongitudeString);
 
     String radiusString = "privacyRadius[" + String(idx) + "] = " + config.privacyAreas[idx].radius;

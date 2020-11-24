@@ -22,6 +22,7 @@
 
 #include "config.h"
 #include "globals.h"
+#include "utils/multipart.h"
 
 #include <WiFi.h>
 #include <WiFiMulti.h>
@@ -31,40 +32,38 @@
 
 // Telekom rootCA certificate
 const char *rootCACertificate =
-    "-----BEGIN CERTIFICATE-----\n"
-    "MIIDwzCCAqugAwIBAgIBATANBgkqhkiG9w0BAQsFADCBgjELMAkGA1UEBhMCREUx\n"
-    "KzApBgNVBAoMIlQtU3lzdGVtcyBFbnRlcnByaXNlIFNlcnZpY2VzIEdtYkgxHzAd\n"
-    "BgNVBAsMFlQtU3lzdGVtcyBUcnVzdCBDZW50ZXIxJTAjBgNVBAMMHFQtVGVsZVNl\n"
-    "YyBHbG9iYWxSb290IENsYXNzIDIwHhcNMDgxMDAxMTA0MDE0WhcNMzMxMDAxMjM1\n"
-    "OTU5WjCBgjELMAkGA1UEBhMCREUxKzApBgNVBAoMIlQtU3lzdGVtcyBFbnRlcnBy\n"
-    "aXNlIFNlcnZpY2VzIEdtYkgxHzAdBgNVBAsMFlQtU3lzdGVtcyBUcnVzdCBDZW50\n"
-    "ZXIxJTAjBgNVBAMMHFQtVGVsZVNlYyBHbG9iYWxSb290IENsYXNzIDIwggEiMA0G\n"
-    "CSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCqX9obX+hzkeXaXPSi5kfl82hVYAUd\n"
-    "AqSzm1nzHoqvNK38DcLZSBnuaY/JIPwhqgcZ7bBcrGXHX+0CfHt8LRvWurmAwhiC\n"
-    "FoT6ZrAIxlQjgeTNuUk/9k9uN0goOA/FvudocP05l03Sx5iRUKrERLMjfTlH6VJi\n"
-    "1hKTXrcxlkIF+3anHqP1wvzpesVsqXFP6st4vGCvx9702cu+fjOlbpSD8DT6Iavq\n"
-    "jnKgP6TeMFvvhk1qlVtDRKgQFRzlAVfFmPHmBiiRqiDFt1MmUUOyCxGVWOHAD3bZ\n"
-    "wI18gfNycJ5v/hqO2V81xrJvNHy+SE/iWjnX2J14np+GPgNeGYtEotXHAgMBAAGj\n"
-    "QjBAMA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBS/\n"
-    "WSA2AHmgoCJrjNXyYdK4LMuCSjANBgkqhkiG9w0BAQsFAAOCAQEAMQOiYQsfdOhy\n"
-    "NsZt+U2e+iKo4YFWz827n+qrkRk4r6p8FU3ztqONpfSO9kSpp+ghla0+AGIWiPAC\n"
-    "uvxhI+YzmzB6azZie60EI4RYZeLbK4rnJVM3YlNfvNoBYimipidx5joifsFvHZVw\n"
-    "IEoHNN/q/xWA5brXethbdXwFeilHfkCoMRN3zUA7tFFHei4R40cR3p1m0IvVVGb6\n"
-    "g1XqfMIpiRvpb7PO4gWEyS8+eIVibslfwXhjdFjASBgMmTnrpMwatXlajRWc2BQN\n"
-    "9noHV8cigwUtPJslJj0Ys6lDfMjIq2SPDqO/nBudMNva0Bkuqjzx+zOAduTNrRlP\n"
-    "BSeOE6Fuwg==\n"
-    "-----END CERTIFICATE-----\n";
+  "-----BEGIN CERTIFICATE-----\n"
+  "MIIDwzCCAqugAwIBAgIBATANBgkqhkiG9w0BAQsFADCBgjELMAkGA1UEBhMCREUx\n"
+  "KzApBgNVBAoMIlQtU3lzdGVtcyBFbnRlcnByaXNlIFNlcnZpY2VzIEdtYkgxHzAd\n"
+  "BgNVBAsMFlQtU3lzdGVtcyBUcnVzdCBDZW50ZXIxJTAjBgNVBAMMHFQtVGVsZVNl\n"
+  "YyBHbG9iYWxSb290IENsYXNzIDIwHhcNMDgxMDAxMTA0MDE0WhcNMzMxMDAxMjM1\n"
+  "OTU5WjCBgjELMAkGA1UEBhMCREUxKzApBgNVBAoMIlQtU3lzdGVtcyBFbnRlcnBy\n"
+  "aXNlIFNlcnZpY2VzIEdtYkgxHzAdBgNVBAsMFlQtU3lzdGVtcyBUcnVzdCBDZW50\n"
+  "ZXIxJTAjBgNVBAMMHFQtVGVsZVNlYyBHbG9iYWxSb290IENsYXNzIDIwggEiMA0G\n"
+  "CSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCqX9obX+hzkeXaXPSi5kfl82hVYAUd\n"
+  "AqSzm1nzHoqvNK38DcLZSBnuaY/JIPwhqgcZ7bBcrGXHX+0CfHt8LRvWurmAwhiC\n"
+  "FoT6ZrAIxlQjgeTNuUk/9k9uN0goOA/FvudocP05l03Sx5iRUKrERLMjfTlH6VJi\n"
+  "1hKTXrcxlkIF+3anHqP1wvzpesVsqXFP6st4vGCvx9702cu+fjOlbpSD8DT6Iavq\n"
+  "jnKgP6TeMFvvhk1qlVtDRKgQFRzlAVfFmPHmBiiRqiDFt1MmUUOyCxGVWOHAD3bZ\n"
+  "wI18gfNycJ5v/hqO2V81xrJvNHy+SE/iWjnX2J14np+GPgNeGYtEotXHAgMBAAGj\n"
+  "QjBAMA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBS/\n"
+  "WSA2AHmgoCJrjNXyYdK4LMuCSjANBgkqhkiG9w0BAQsFAAOCAQEAMQOiYQsfdOhy\n"
+  "NsZt+U2e+iKo4YFWz827n+qrkRk4r6p8FU3ztqONpfSO9kSpp+ghla0+AGIWiPAC\n"
+  "uvxhI+YzmzB6azZie60EI4RYZeLbK4rnJVM3YlNfvNoBYimipidx5joifsFvHZVw\n"
+  "IEoHNN/q/xWA5brXethbdXwFeilHfkCoMRN3zUA7tFFHei4R40cR3p1m0IvVVGb6\n"
+  "g1XqfMIpiRvpb7PO4gWEyS8+eIVibslfwXhjdFjASBgMmTnrpMwatXlajRWc2BQN\n"
+  "9noHV8cigwUtPJslJj0Ys6lDfMjIq2SPDqO/nBudMNva0Bkuqjzx+zOAduTNrRlP\n"
+  "BSeOE6Fuwg==\n"
+  "-----END CERTIFICATE-----\n";
 
 // Not sure if WiFiClientSecure checks the validity date of the certificate.
 // Setting clock just to be sure...
-void uploader::setClock()
-{
+void uploader::setClock() {
   configTime(0, 0, "rustime01.rus.uni-stuttgart.de", "time.nist.gov");
 
   Serial.print(F("Waiting for NTP time sync: "));
   time_t nowSecs = time(nullptr);
-  while (nowSecs < 8 * 3600 * 2)
-  {
+  while (nowSecs < 8 * 3600 * 2) {
     delay(500);
     Serial.print(F("."));
     yield();
@@ -81,24 +80,18 @@ void uploader::setClock()
 
 uploader *uploader::inst = nullptr;
 
-uploader::uploader()
-{
+uploader::uploader() {
   setClock();
 
   Serial.print("WiFiClientSecure\n");
   client = new WiFiClientSecure;
   Serial.print("WiFiClientSecure2\n");
-  if (client)
-  {
+  if (client) {
     client->setCACert(rootCACertificate);
-  }
-  else
-  {
+  } else {
     Serial.println("Unable to create client");
   }
 }
-
-#define LINES_PER_CHUNK 10
 
 /* Upload data to "The Portal".
  *
@@ -107,89 +100,54 @@ uploader::uploader()
  * characters that need escaping in the CSV (for now) (" & \)
  *
  */
-bool uploader::upload(const String& fileName)
-{
-  int number=0;
-  if(fileName.substring(0,7)!="/sensor")
-  {
+bool uploader::upload(const String &fileName) {
+  int number = 0;
+  if (fileName.substring(0, 7) != "/sensor") {
     Serial.printf(("not sending " + fileName + "\n").c_str());
     return false;
   }
-    Serial.printf(("sending " + fileName + "\n").c_str());
-  sscanf(fileName.c_str(),"/sensorData%d",&number);
+  Serial.printf(("sending " + fileName + "\n").c_str());
+  sscanf(fileName.c_str(), "/sensorData%d", &number);
 
   File csvFile = SD.open(fileName.c_str(), "r");
-  if (csvFile)
-  {
+  if (csvFile) {
     HTTPClient https;
     https.setUserAgent(String("OBS/") + String(OBSVersion));
+    boolean res = false;
 
-    String postBuffer;
-    String postHeader;
-    postHeader = String("{\"id\": \"") + config.obsUserID
-      + "\",\"track\":{\"title\":\"AutoUpload " + String(number)
-      + "\",\"description\":\"Uploaded with OpenBikeSensor " + String(OBSVersion)
-      + "\",\"body\":\"";
-    postBuffer = postHeader;
-    int numLines = 0;
-    bool firstTime = true;
-    while (csvFile.available())
-    {
-      String line = csvFile.readStringUntil('\n');
-      numLines++;
-      postBuffer += line + "\\n";
-      if (numLines >= LINES_PER_CHUNK || !csvFile.available())
-      {
-        postBuffer += "\"}}"; // end body string and close track and message
-        // post this buffer
-        bool res = false;
-        if (!csvFile.available()) {
-          res = https.begin(*client, "https://openbikesensor.hlrs.de/api/tracks/end");
-        } else if (firstTime) {
-          res = https.begin(*client, "https://openbikesensor.hlrs.de/api/tracks/begin");
-        } else {
-          res = https.begin(*client, "https://openbikesensor.hlrs.de/api/tracks/add");
-        }
+    // USE CONGIG !!res = https.begin(*client, "http://192.168.98.51:3000/api/tracks");
+    res = https.begin(*client, "https://openbikesensor.hlrs.de/api/tracks");
+    https.addHeader("Authorization", "OBSUserId " + String(config.obsUserID));
+    https.addHeader("Content-Type", "application/json");
 
-        if (res)
-        { // HTTPS
-
-          https.addHeader("Content-Type", "application/json");
-          https.addHeader("Authorization", String("OBSUserId ") + config.obsUserID);
-
-          //Serial.println(postBuffer.c_str());
-          int httpCode = https.POST(postBuffer.c_str());
-
-          if (httpCode != 200)
-          {
-            Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
-            String payload = https.getString();
-            Serial.println(payload);
-            return false;
-          }
-          https.end();
-        }
-        else
-        {
-          Serial.printf("[HTTPS] Unable to connect\n");
-          return false;
-        }
-        // done posting
-        firstTime = false;
-        postBuffer = postHeader;
-        numLines = 0;
+    if (res) { // HTTPS
+      MultipartStream mp(&https);
+      MultipartDataString title("title", "AutoUpload " + String(number));
+      mp.add(title);
+      MultipartDataString description("description", "Uploaded with OpenBikeSensor " + String(OBSVersion));
+      mp.add(description);
+      MultipartDataStream data("body", fileName, &csvFile, "text/csv");
+      mp.add(data);
+      mp.last();
+      int httpCode = https.sendRequest("POST", &mp, mp.predictSize());
+      if (httpCode != 200) {
+        Serial.printf("[HTTPS] POST... code: %d\n", httpCode);
+        String payload = https.getString();
+        Serial.println(payload);
+        return false;
       }
+      https.end();
+    } else {
+      Serial.printf("[HTTPS] Unable to connect\n");
+      return false;
     }
-  }
-  else
-  {
+  } else {
     Serial.printf(("file " + fileName + " not found\n").c_str());
     return false;
   }
   return true;
 }
 
-void uploader::destroy()
-{
+void uploader::destroy() {
   delete client;
 }

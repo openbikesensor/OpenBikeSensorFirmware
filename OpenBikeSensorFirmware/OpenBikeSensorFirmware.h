@@ -2,7 +2,9 @@
 #define OBS_OPENBIKESENSORFIRMWARE_H
 
 #include <Arduino.h>
+
 #define CIRCULAR_BUFFER_INT_SAFE
+
 #include <CircularBuffer.h>
 
 #include "config.h"
@@ -16,7 +18,9 @@
 #include "writer.h"
 
 #ifdef BLUETOOTH_ACTIVATED
+
 #include "bluetooth/BluetoothManager.h"
+
 #endif
 
 #endif

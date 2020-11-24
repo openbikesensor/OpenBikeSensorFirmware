@@ -59,16 +59,16 @@ void configureGpsModule() {
   // "static hold" - 80cm/s == 2.88 km/h
   // "staticHoldMaxDist" - 20m (not supported by our GPS receivers)
   const uint8_t UBX_CFG_NAV5[] =
-    { 0xb5, 0x62, 0x06, 0x24, 0x24, 0x00, 0xff, 0xff, 0x03, 0x03, 0x00, 0x00, 0x00, 0x00, 0x10, 0x27,
-      0x00, 0x00, 0x05, 0x00, 0xfa, 0x00, 0xfa, 0x00, 0x64, 0x00, 0x2c, 0x01, 0x50, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x77, 0x76 };
+    {0xb5, 0x62, 0x06, 0x24, 0x24, 0x00, 0xff, 0xff, 0x03, 0x03, 0x00, 0x00, 0x00, 0x00, 0x10, 0x27,
+     0x00, 0x00, 0x05, 0x00, 0xfa, 0x00, 0xfa, 0x00, 0x64, 0x00, 0x2c, 0x01, 0x50, 0x00, 0x00, 0x00,
+     0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x77, 0x76};
   SerialGPS.write(UBX_CFG_NAV5, sizeof(UBX_CFG_NAV5));
 
   // "timepulse" - affecting the led, switching to 10ms pulse every 10sec, should be clearly differentiable
   // from the default (100ms each second)
   const uint8_t UBX_CFG_TP[] =
-    { 0xb5, 0x62, 0x06, 0x07, 0x14, 0x00, 0x80, 0x96, 0x98, 0x00, 0x10, 0x27, 0x00, 0x00, 0x01, 0x01,
-      0x00, 0x00, 0x32, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3a, 0xab };
+    {0xb5, 0x62, 0x06, 0x07, 0x14, 0x00, 0x80, 0x96, 0x98, 0x00, 0x10, 0x27, 0x00, 0x00, 0x01, 0x01,
+     0x00, 0x00, 0x32, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3a, 0xab};
   SerialGPS.write(UBX_CFG_TP, sizeof(UBX_CFG_TP));
 }
 
@@ -94,19 +94,17 @@ void readGPSData() {
 bool isInsidePrivacyArea(TinyGPSLocation location) {
   // quite accurate haversine formula
   // consider using simplified flat earth calculation to save time
-  for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx)
-  {
-    double distance = haversine(location.lat(), location.lng(), config.privacyAreas[idx].transformedLatitude, config.privacyAreas[idx].transformedLongitude);
-    if (distance < config.privacyAreas[idx].radius)
-    {
+  for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx) {
+    double distance = haversine(location.lat(), location.lng(), config.privacyAreas[idx].transformedLatitude,
+                                config.privacyAreas[idx].transformedLongitude);
+    if (distance < config.privacyAreas[idx].radius) {
       return true;
     }
   }
   return false;
 }
 
-double haversine(double lat1, double lon1, double lat2, double lon2)
-{
+double haversine(double lat1, double lon1, double lat2, double lon2) {
   // https://www.geeksforgeeks.org/haversine-formula-to-find-distance-between-two-points-on-a-sphere/
   // distance between latitudes and longitudes
   double dLat = (lat2 - lat1) * M_PI / 180.0;
@@ -127,10 +125,10 @@ void randomOffset(PrivacyArea &p) {
   randomSeed(analogRead(0));
   // Offset in degree and distance
   int offsetAngle = random(0, 360);
-  int offsetDistance = random(p.radius / 10.0 , p.radius / 10.0 * 9.0);
+  int offsetDistance = random(p.radius / 10.0, p.radius / 10.0 * 9.0);
   //Offset in m
-  int dLatM = sin(offsetAngle / 180.0 * M_PI ) * offsetDistance;
-  int dLongM = cos(offsetAngle / 180.0 * M_PI ) * offsetDistance;
+  int dLatM = sin(offsetAngle / 180.0 * M_PI) * offsetDistance;
+  int dLongM = cos(offsetAngle / 180.0 * M_PI) * offsetDistance;
 #ifdef DEVELOP
   Serial.print(F("offsetAngle = "));
   Serial.println(String(offsetAngle));
@@ -159,7 +157,7 @@ void randomOffset(PrivacyArea &p) {
 #endif
   //OffsetPosition, decimal degrees
   p.transformedLatitude = p.latitude + dLat * 180.0 / M_PI;
-  p.transformedLongitude = p.longitude + dLon * 180.0 / M_PI ;
+  p.transformedLongitude = p.longitude + dLon * 180.0 / M_PI;
 #ifdef DEVELOP
   Serial.print(F("p.transformedLatitude = "));
   Serial.println(String(p.transformedLatitude, 5));

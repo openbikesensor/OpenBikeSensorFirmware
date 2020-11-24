@@ -33,7 +33,7 @@
 
 struct DataSet {
   time_t time;
-  uint32_t  millis;
+  uint32_t millis;
   String comment;
   TinyGPSLocation location;
   TinyGPSAltitude altitude;
@@ -59,62 +59,81 @@ struct DataSet {
 };
 
 
-class FileWriter
-{
-  public:
-    FileWriter() {}
-    virtual ~FileWriter() {}
-    void listDir(fs::FS &fs, const char * dirname, uint8_t levels);
-    void createDir(fs::FS &fs, const char * path);
-    void removeDir(fs::FS &fs, const char * path);
-    void readFile(fs::FS &fs, const char * path);
-    void writeFile(fs::FS &fs, const char * path, const char * message);
-    void appendFile(fs::FS &fs, const char * path, const char * message);
-    void renameFile(fs::FS &fs, const char * path1, const char * path2);
-    void deleteFile(fs::FS &fs, const char * path);
-    void setFileName();
-    void writeDataBuffered(DataSet *set);
-    virtual void init() = 0;
-    virtual void writeHeader() = 0;
-    virtual void writeData(DataSet*) = 0;
+class FileWriter {
+public:
+  FileWriter() {}
+
+  virtual ~FileWriter() {}
+
+  void listDir(fs::FS &fs, const char *dirname, uint8_t levels);
+
+  void createDir(fs::FS &fs, const char *path);
+
+  void removeDir(fs::FS &fs, const char *path);
+
+  void readFile(fs::FS &fs, const char *path);
+
+  void writeFile(fs::FS &fs, const char *path, const char *message);
+
+  void appendFile(fs::FS &fs, const char *path, const char *message);
+
+  void renameFile(fs::FS &fs, const char *path1, const char *path2);
+
+  void deleteFile(fs::FS &fs, const char *path);
+
+  void setFileName();
+
+  void writeDataBuffered(DataSet *set);
+
+  virtual void init() = 0;
+
+  virtual void writeHeader() = 0;
+
+  virtual void writeData(DataSet *) = 0;
 
   void writeDataToSD();
-    uint16_t getDataLength();
 
-  protected:
-    String m_fileExtension;
-    String m_filename;
-    String dataString = "";
+  uint16_t getDataLength();
 
-  private:
+protected:
+  String m_fileExtension;
+  String m_filename;
+  String dataString = "";
+
+private:
 
 };
 
-class CSVFileWriter : public FileWriter
-{
-  public:
-    CSVFileWriter() : FileWriter() {
-      m_fileExtension = ".csv";
-    }
-    ~CSVFileWriter() {}
-    void init()
-    {
-    }
-    void writeHeader();
-    void writeData(DataSet*);
+class CSVFileWriter : public FileWriter {
+public:
+  CSVFileWriter() : FileWriter() {
+    m_fileExtension = ".csv";
+  }
+
+  ~CSVFileWriter() {}
+
+  void init() {
+  }
+
+  void writeHeader();
+
+  void writeData(DataSet *);
 };
 
-class GPXFileWriter : public FileWriter
-{
-  public:
-    GPXFileWriter() : FileWriter() {
-      m_fileExtension = ".gpx";
-    }
-    ~GPXFileWriter() {}
-    void writeHeader();
-    void writeData(DataSet*);
-  protected:
-  private:
+class GPXFileWriter : public FileWriter {
+public:
+  GPXFileWriter() : FileWriter() {
+    m_fileExtension = ".gpx";
+  }
+
+  ~GPXFileWriter() {}
+
+  void writeHeader();
+
+  void writeData(DataSet *);
+
+protected:
+private:
 };
 
 #endif

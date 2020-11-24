@@ -118,8 +118,7 @@ void SSD1306DisplayDevice::showGPS() {
   this->showTextOnGrid(3, 5, "sats");
 }
 
-void SSD1306DisplayDevice::showVelocity(double velocity)
-{
+void SSD1306DisplayDevice::showVelocity(double velocity) {
   const int bufSize = 4;
   char buffer[bufSize];
   if (velocity >= 0) {

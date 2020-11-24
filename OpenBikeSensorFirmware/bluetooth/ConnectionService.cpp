@@ -15,7 +15,9 @@ const float maxCoveredDistanceCm = 4.0f;
 void ConnectionService::setup(BLEServer *pServer) {
   mService = pServer->createService(SERVICE_CONNECTION_UUID);
 
-  mCharacteristic = mService->createCharacteristic(SERVICE_CONNECTION_CHAR_CONNECTED_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+  mCharacteristic = mService->createCharacteristic(SERVICE_CONNECTION_CHAR_CONNECTED_UUID,
+                                                   BLECharacteristic::PROPERTY_READ |
+                                                   BLECharacteristic::PROPERTY_NOTIFY);
   uint8_t value = 1;
   mCharacteristic->setValue(&value, 1);
 }

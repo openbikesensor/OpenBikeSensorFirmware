@@ -7,6 +7,7 @@
 class VoltageMeter {
 public:
   VoltageMeter();
+
   /* Returns the (smoothed) value in Volts. */
   double read();
 
@@ -21,7 +22,9 @@ private:
   const int16_t SAMPLES_DIVIDE = 128;
   esp_adc_cal_characteristics_t adc_chars;
   int16_t lastSmoothedReading;
+
   int readSmoothed();
+
   int readRaw();
 };
 
