@@ -122,6 +122,8 @@ bool uploader::upload(const String& fileName)
   if (csvFile)
   {
     HTTPClient https;
+    https.setUserAgent(String("OBS/") + String(OBSVersion));
+
     String postBuffer;
     String postHeader;
     postHeader = String("{\"id\": \"") + config.obsUserID
