@@ -28,7 +28,7 @@ BLEService *ConnectionService::getService() {
   return mService;
 }
 
-void ConnectionService::newSensorValues(const std::list<uint16_t> &leftValues, const std::list<uint16_t> &rightValues) {
+void ConnectionService::newSensorValues(const uint16_t leftValues, const uint16_t rightValues) {
 }
 
 void ConnectionService::buttonPressed() {

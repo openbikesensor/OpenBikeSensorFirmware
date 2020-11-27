@@ -18,12 +18,10 @@ BLEService* ClosePassService::getService() {
   return mService;
 }
 
-void ClosePassService::newSensorValues(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues) {
-  auto value = leftValues.front();
-  lastValue = value;
-  processValuesForDistanceChar(leftValues, rightValues, value);
-  processValuesForEventChar_Avg2s(leftValues, rightValues, value);
-  processValuesForEventChar_MinKalman(leftValues, rightValues, value);
+void ClosePassService::newSensorValues(const uint16_t leftValue, const uint16_t rightValue) {
+  processValuesForDistanceChar(leftValue, rightValue);
+  processValuesForEventChar_Avg2s(leftValue, rightValue);
+  processValuesForEventChar_MinKalman(leftValue, rightValue);
 }
 
 void ClosePassService::buttonPressed() {
@@ -34,10 +32,10 @@ void ClosePassService::buttonPressed() {
   delete payload;
 }
 
-void ClosePassService::writeToDistanceCharacteristic(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues) {
+void ClosePassService::writeToDistanceCharacteristic(const uint16_t leftValue, const uint16_t rightValue) {
   auto transmitValue = String(millis()) + ";";
-  transmitValue += joinList16(leftValues, ",") + ";";
-  transmitValue += joinList16(rightValues, ",");
+  transmitValue += valueAsString(leftValue) + ";";
+  transmitValue += valueAsString(rightValue);
 
   mDistanceCharacteristic->setValue(transmitValue.c_str());
   mDistanceCharacteristic->notify();
@@ -47,23 +45,22 @@ void ClosePassService::writeToEventCharacteristic(const String& event, std::list
   auto transmitValue = String(millis()) + ";";
   transmitValue += event + ";";
   if (payload) {
-    transmitValue += joinList16(*payload, ",");
+    transmitValue += joinList(*payload, ",");
   }
-  Serial.println(transmitValue.c_str());
 
   mEventCharacteristic->setValue(transmitValue.c_str());
   mEventCharacteristic->notify();
 }
 
-void ClosePassService::processValuesForDistanceChar(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues, const uint16_t value) {
-  if (mDistancePhase == PHASE_PRE && value < THRESHOLD_CLOSEPASS) {
+void ClosePassService::processValuesForDistanceChar(const uint16_t leftValue, const uint16_t rightValue) {
+  if (mDistancePhase == PHASE_PRE && leftValue < THRESHOLD_CLOSEPASS) {
     mDistancePhase = PHASE_TRANSMITTING;
   }
 
   if (mDistancePhase == PHASE_TRANSMITTING) {
     // Transmitting the value
-    writeToDistanceCharacteristic(leftValues, rightValues);
-    mDistanceBuffer.push(value);
+    writeToDistanceCharacteristic(leftValue, rightValue);
+    mDistanceBuffer.push(leftValue);
 
     // Either the buffer is full (10s)
     if (mDistanceBuffer.isFull()) {
@@ -83,8 +80,8 @@ void ClosePassService::processValuesForDistanceChar(const std::list<uint16_t>& l
   }
 }
 
-void ClosePassService::processValuesForEventChar_Avg2s(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues, const uint16_t value) {
-  mEventAvg2s_Buffer.push(value);
+void ClosePassService::processValuesForEventChar_Avg2s(const uint16_t leftValue, const uint16_t rightValue) {
+  mEventAvg2s_Buffer.push(leftValue);
 
   if (!mEventAvg2s_Buffer.isFull()) {
     return;
@@ -115,13 +112,13 @@ void ClosePassService::processValuesForEventChar_Avg2s(const std::list<uint16_t>
   }
 }
 
-void ClosePassService::processValuesForEventChar_MinKalman(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues, const uint16_t value) {
+void ClosePassService::processValuesForEventChar_MinKalman(const uint16_t leftValue, const uint16_t rightValue) {
   // TODO: test these parameters!!!
   float errMeasure = 10;
   float q = 0.01;
 
   mEventMinKalman_Gain = mEventMinKalman_ErrEstimate / (mEventMinKalman_ErrEstimate + errMeasure);
-  mEventMinKalman_CurrentEstimate = mEventMinKalman_LastEstimate + mEventMinKalman_Gain * ((float) value - mEventMinKalman_LastEstimate);
+  mEventMinKalman_CurrentEstimate = mEventMinKalman_LastEstimate + mEventMinKalman_Gain * ((float) leftValue - mEventMinKalman_LastEstimate);
   mEventMinKalman_ErrEstimate = (1.0f - mEventMinKalman_Gain) * mEventMinKalman_ErrEstimate + fabsf(mEventMinKalman_LastEstimate - mEventMinKalman_CurrentEstimate) * q;
   mEventMinKalman_LastEstimate = mEventMinKalman_CurrentEstimate;
 

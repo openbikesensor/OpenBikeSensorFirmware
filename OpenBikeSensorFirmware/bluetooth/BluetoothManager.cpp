@@ -9,7 +9,8 @@ unsigned long buttonPressTimestamp = -1;
 
 void BluetoothManager::init() {
 
-  esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
+  ESP_ERROR_CHECK_WITHOUT_ABORT(
+    esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
   char deviceName[32];
   snprintf(deviceName, sizeof(deviceName), "OpenBikeSensor-%04X", (uint16_t)(ESP.getEfuseMac() >> 32));
   BLEDevice::init(deviceName);
@@ -50,7 +51,6 @@ void BluetoothManager::activateBluetooth() {
       pServer->getAdvertising()->addServiceUUID(service->getService()->getUUID());
     }
   }
-
   pServer->getAdvertising()->start();
 //  digitalWrite(13, HIGH);
 }
@@ -63,7 +63,7 @@ void BluetoothManager::disconnectDevice() {
   pServer->disconnect(pServer->getConnId());
 }
 
-void BluetoothManager::newSensorValues(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues) {
+void BluetoothManager::newSensorValues(const uint16_t leftValues, const uint16_t rightValues) {
   // Discarding values if they are more recent than 50 ms
   if (millis() - lastValueTimestamp < 50) {
     return;

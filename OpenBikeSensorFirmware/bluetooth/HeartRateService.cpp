@@ -27,12 +27,12 @@ BLEService* HeartRateService::getService() {
   return mService;
 }
 
-void HeartRateService::newSensorValues(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues) {
-  auto value = leftValues.front();
-  if (value < mMinimumDistance) {
-    mMinimumDistance = value;
+void HeartRateService::newSensorValues(const uint16_t leftValue, const uint16_t rightValue) {
+  const unsigned long now = millis();
+  if (leftValue < mMinimumDistance) {
+    mMinimumDistance = leftValue;
   }
-  if ((millis() - mCollectionStartTime) < measurementInterval) {
+  if ((now - mCollectionStartTime) < measurementInterval) {
     return;
   }
 
@@ -45,8 +45,8 @@ void HeartRateService::newSensorValues(const std::list<uint16_t>& leftValues, co
   mCharacteristic->notify();
 
   // Reset values
-  mMinimumDistance = 999;
-  mCollectionStartTime = millis();
+  mMinimumDistance = MAX_SENSOR_VALUE;
+  mCollectionStartTime = now;
 }
 
 void HeartRateService::buttonPressed() {

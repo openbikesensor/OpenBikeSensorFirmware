@@ -20,15 +20,15 @@ class ClosePassService : public IBluetoothService {
     bool shouldAdvertise() override;
     BLEService *getService() override;
 
-    void newSensorValues(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues) override;
+    void newSensorValues(const uint16_t leftValue, const uint16_t rightValue) override;
     void buttonPressed() override;
 
   private:
-    void writeToDistanceCharacteristic(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues);
+    void writeToDistanceCharacteristic(const uint16_t leftValue, const uint16_t rightValue);
     void writeToEventCharacteristic(const String& event, std::list<uint16_t>* payload);
-    void processValuesForDistanceChar(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues, uint16_t value);
-    void processValuesForEventChar_Avg2s(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues, uint16_t value);
-    void processValuesForEventChar_MinKalman(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues, uint16_t value);
+    void processValuesForDistanceChar(const uint16_t leftValue, const uint16_t rightValue);
+    void processValuesForEventChar_Avg2s(const uint16_t leftValue, const uint16_t rightValue);
+    void processValuesForEventChar_MinKalman(const uint16_t leftValue, const uint16_t rightValue);
 
     BLEService *mService;
     BLECharacteristic *mDistanceCharacteristic;

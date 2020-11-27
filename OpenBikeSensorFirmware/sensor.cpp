@@ -184,7 +184,7 @@ void HCSR04SensorManager::waitTillPrimarySensorIsReady() {
 /* Wait till the given sensor is ready.  */
 void HCSR04SensorManager::waitTillSensorIsReady(uint8_t sensorId) {
   while (!isReadyForStart(&m_sensors[sensorId])) {
-    NOP();
+    yield();
   }
 }
 
@@ -222,13 +222,13 @@ boolean HCSR04SensorManager::isReadyForStart(HCSR04SensorInfo* sensor) {
       && (microsBetween(now, start) > SENSOR_QUIET_PERIOD_AFTER_START_MICRO_SEC)) {
       ready = true;
     }
-  } else if (microsBetween(now, start) > MAX_TIMEOUT_MICRO_SEC) {
+  } else if (microsBetween(now, start) > 2 * MAX_TIMEOUT_MICRO_SEC) {
     // signal or interrupt was lost altogether this is an error,
     // should we raise it?? Now pretend the sensor is ready, hope it helps to give it a trigger.
     ready = true;
 #ifdef DEVELOP
-    Serial.printf("!Timeout trigger for %s duration %zu us - echo pin state: %d\n",
-      sensor->sensorLocation, sensor->start - now, digitalRead(sensor->echoPin));
+    Serial.printf("!Timeout trigger for %s duration %u us - echo pin state: %d start: %u end: %u now: %u\n",
+      sensor->sensorLocation, now - start, digitalRead(sensor->echoPin), start, end, now);
 #endif
   }
   return ready;
@@ -343,7 +343,7 @@ void HCSR04SensorManager::waitForEchosOrTimeout(uint8_t sensorId) {
   HCSR04SensorInfo* const sensor = &m_sensors[sensorId];
   while ((sensor->end == MEASUREMENT_IN_PROGRESS)
     && (microsSince(sensor->start) < MAX_DURATION_MICRO_SEC)) { // max duration not expired
-    NOP();
+    yield();
   }
 }
 
