@@ -45,6 +45,8 @@ class DisplayDevice {
     virtual ~DisplayDevice() {}
     virtual void invert() = 0;
     virtual void normalDisplay() = 0;
+    virtual void showSplashScreen() = 0;
+    virtual void drawProgressBar(uint8_t progress_bar) = 0;
     //virtual void drawString(int16_t, int16_t, String) = 0;
     virtual void clear() = 0;
 };
@@ -54,6 +56,7 @@ class SSD1306DisplayDevice : public DisplayDevice {
   private:
     SSD1306* m_display;
     String gridText[ 4 ][ 6 ];
+    uint8_t m_lastProgress = 255;
 
   public:
     SSD1306DisplayDevice() : DisplayDevice() {
@@ -99,6 +102,24 @@ class SSD1306DisplayDevice : public DisplayDevice {
     void showLogo(bool val) {
       m_display->drawXbm(0, 0, OBSLogo_width, OBSLogo_height, OBSLogo);
       m_display->display();
+    }
+
+    void showSplashScreen() {
+      clear();
+      m_display->drawXbm(32, 0, OBSLogo_width, OBSLogo_height, OBSLogo);
+      m_display->display();
+    }
+
+    void drawProgressBar(uint8_t progress) {
+      if (m_lastProgress != progress) {
+        m_display->drawRect(12, 56, 104, 8);
+        if (progress != 0) {
+          m_display->fillRect(14, 58, progress > 100 ? 100 : progress, 4);
+        }
+        m_display->display();
+
+        m_lastProgress = progress;
+      }
     }
 
     //##############################################################

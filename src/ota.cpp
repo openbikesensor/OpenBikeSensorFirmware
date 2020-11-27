@@ -20,7 +20,7 @@
 
 #include "ota.h"
 
-void OtaInit(String esp_chipid) {
+void OtaInit(String esp_chipid, DisplayDevice* display) {
   /* omitted due to new configServer
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
@@ -44,7 +44,7 @@ void OtaInit(String esp_chipid) {
   // ArduinoOTA.setPasswordHash("21232f297a57a5a743894a0e4a801fc3");
 
   ArduinoOTA
-  .onStart([]() {
+  .onStart([display]() {
     String type;
     if (ArduinoOTA.getCommand() == U_FLASH) {
       type = "sketch";
@@ -54,12 +54,21 @@ void OtaInit(String esp_chipid) {
 
     // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
     Serial.println("Start updating " + type);
+
+    if (display) {
+      display->showSplashScreen();
+    }
   })
   .onEnd([]() {
     Serial.println("\nEnd");
   })
-  .onProgress([](unsigned int progress, unsigned int total) {
+  .onProgress([display](unsigned int progress, unsigned int total) {
     Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+
+    if (display) {
+      uint8_t p = (progress * 100 / total);
+      display->drawProgressBar(p);
+    }
   })
   .onError([](ota_error_t error) {
     Serial.printf("Error[%u]: ", error);

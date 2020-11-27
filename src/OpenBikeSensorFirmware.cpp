@@ -202,7 +202,7 @@ void setup() {
     delay(1000); // Added for user experience
 
     startServer();
-    OtaInit(esp_chipid);
+    OtaInit(esp_chipid, displayTest);
 
     while (true) {
       server.handleClient();

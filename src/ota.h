@@ -3,7 +3,8 @@
 
 #include <Arduino.h>
 #include <ArduinoOTA.h>
+#include "displays.h"
 
-void OtaInit(String esp_chipid);
+void OtaInit(String esp_chipid, DisplayDevice* display);
 
 #endif
