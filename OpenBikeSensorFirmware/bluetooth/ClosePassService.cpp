@@ -1,5 +1,4 @@
 #include "ClosePassService.h"
-#include <math.h>
 
 uint16_t lastValue = UINT8_MAX;
 

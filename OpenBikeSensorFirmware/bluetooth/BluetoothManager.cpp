@@ -5,7 +5,7 @@ std::list<IBluetoothService*> services;
 
 unsigned long lastValueTimestamp = millis();
 boolean buttonWasPressed = false;
-unsigned long buttonPressTimestamp = -1;
+unsigned long buttonPressTimestamp = 0;
 
 void BluetoothManager::init() {
 
@@ -82,7 +82,7 @@ void BluetoothManager::newSensorValues(const uint16_t leftValues, const uint16_t
  * buttonPressed() again.
  *
  * The method is implemented in this way because the `state` can be erroneously
- * set to `LOW` even if the button is still pressed. This implemention fixes
+ * set to `LOW` even if the button is still pressed. This implementation fixes
  * that problem.
  * @param state current state of the push button (LOW or HIGH)
  */
@@ -98,7 +98,7 @@ void BluetoothManager::processButtonState(int state) {
 
   if (buttonWasPressed && (millis() - buttonPressTimestamp) >= 300) {
     buttonWasPressed = false;
-    buttonPressTimestamp = -1;
+    buttonPressTimestamp = 0;
   }
 }
 

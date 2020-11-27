@@ -34,7 +34,7 @@ class IBluetoothService {
      * @param leftValue sensor value of the left side (MAX_SENSOR_VALUE for no reading)
      * @param rightValues sensor value of the right side (MAX_SENSOR_VALUE for no reading)
      */
-    virtual void newSensorValues(const uint16_t leftValue, const uint16_t rightValue) = 0;
+    virtual void newSensorValues(uint16_t leftValue, uint16_t rightValue) = 0;
 
     /**
      * Processes the event that the push button was just triggered.
@@ -46,11 +46,14 @@ class IBluetoothService {
      * Joins a list of integers by placing the `glue` string between the members.
      */
     static String joinList(const std::list<uint16_t>& list, const String& glue) {
-      String s = "";
+      String s;
 
       boolean firstValue = true;
       for (auto value : list) {
-        s += (firstValue ? "" : glue) + String(value);
+        if (!firstValue) {
+          s += glue;
+        }
+        s += String(value);
         firstValue = false;
       }
 

@@ -26,11 +26,11 @@ class DeviceInfoService : public IBluetoothService {
     bool shouldAdvertise() override;
     BLEService* getService() override;
 
-    void newSensorValues(const uint16_t leftValue, const uint16_t rightValue) override;
+    void newSensorValues(uint16_t leftValue, uint16_t rightValue) override;
     void buttonPressed() override;
 
   private:
-    BLEService *mService;
+    BLEService *mService = nullptr;
 };
 
 #endif

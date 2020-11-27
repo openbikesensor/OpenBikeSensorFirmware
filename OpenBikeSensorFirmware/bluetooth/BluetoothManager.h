@@ -44,7 +44,7 @@ class BluetoothManager {
      * @param leftValue sensor value of the left side (MAX_SENSOR_VALUE for no reading)
      * @param rightValues sensor value of the right side (MAX_SENSOR_VALUE for no reading)
      */
-    void newSensorValues(const uint16_t leftValue, const uint16_t rightValue);
+    void newSensorValues(uint16_t leftValue, uint16_t rightValue);
 
     /**
      * Process the current push button state itself. This will call

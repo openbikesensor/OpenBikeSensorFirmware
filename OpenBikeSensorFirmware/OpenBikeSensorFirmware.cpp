@@ -49,6 +49,10 @@ Config config;
 SSD1306DisplayDevice* displayTest;
 HCSR04SensorManager* sensorManager;
 BluetoothManager* bluetoothManager;
+const long BLUETOOTH_INTERVAL_MILLIS = 150;
+long lastBluetoothInterval = 0;
+
+
 VoltageMeter* voltageMeter;
 
 String esp_chipid;
@@ -387,13 +391,16 @@ void loop() {
     // with alternating measurement we only report every other measurement
     // TODO: Reduced further, due to testing feedback, if we report
     //   every 2nd value we should switch to the median measurement!?
-    if (config.bluetooth && (measurements % 8 == 0)) {
+    //   See https://github.com/Friends-of-OpenBikeSensor/OpenBikeSensorFirmware/issues/157
+    if (config.bluetooth
+        && lastBluetoothInterval != currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS) {
 #ifdef DEVELOP
       Serial.printf("Reporting BT: %d/%d (%d)\n",
                     sensorManager->m_sensors[LEFT_SENSOR_ID].rawDistance,
                     sensorManager->m_sensors[RIGHT_SENSOR_ID].rawDistance,
                     buttonState);
 #endif
+      lastBluetoothInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
       bluetoothManager->newSensorValues(
         sensorManager->m_sensors[LEFT_SENSOR_ID].rawDistance,
         sensorManager->m_sensors[RIGHT_SENSOR_ID].rawDistance);
