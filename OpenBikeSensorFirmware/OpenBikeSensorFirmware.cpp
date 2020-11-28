@@ -388,22 +388,18 @@ void loop() {
       currentSet->isInsidePrivacyArea
     );
 
-    // with alternating measurement we only report every other measurement
-    // TODO: Reduced further, due to testing feedback, if we report
-    //   every 2nd value we should switch to the median measurement!?
-    //   See https://github.com/Friends-of-OpenBikeSensor/OpenBikeSensorFirmware/issues/157
     if (config.bluetooth
-        && lastBluetoothInterval != currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS) {
+        && lastBluetoothInterval != (currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS)) {
 #ifdef DEVELOP
-      Serial.printf("Reporting BT: %d/%d (%d)\n",
-                    sensorManager->m_sensors[LEFT_SENSOR_ID].rawDistance,
-                    sensorManager->m_sensors[RIGHT_SENSOR_ID].rawDistance,
+      Serial.printf("Reporting BT: %d/%d Button: %d\n",
+                    sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
+                    sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median(),
                     buttonState);
 #endif
       lastBluetoothInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
       bluetoothManager->newSensorValues(
-        sensorManager->m_sensors[LEFT_SENSOR_ID].rawDistance,
-        sensorManager->m_sensors[RIGHT_SENSOR_ID].rawDistance);
+        sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
+        sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median());
       bluetoothManager->processButtonState(digitalRead(PushButton));
     }
 

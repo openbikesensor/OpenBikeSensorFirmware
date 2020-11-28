@@ -34,12 +34,9 @@ void BluetoothManager::init() {
   services.push_back(new HeartRateService);
 #endif
 
-  // Create the services
   for (auto &service : services) {
     service->setup(pServer);
   }
-
-  // Start the service
   for (auto &service : services) {
     service->getService()->start();
   }
@@ -52,7 +49,6 @@ void BluetoothManager::activateBluetooth() {
     }
   }
   pServer->getAdvertising()->start();
-//  digitalWrite(13, HIGH);
 }
 
 void BluetoothManager::deactivateBluetooth() {
@@ -64,11 +60,12 @@ void BluetoothManager::disconnectDevice() {
 }
 
 void BluetoothManager::newSensorValues(const uint16_t leftValues, const uint16_t rightValues) {
+  const auto now = millis();
   // Discarding values if they are more recent than 50 ms
-  if (millis() - lastValueTimestamp < 50) {
+  if (now - lastValueTimestamp < 50) {
     return;
   }
-  lastValueTimestamp = millis();
+  lastValueTimestamp = now;
 
   for (auto &service : services) {
     service->newSensorValues(leftValues, rightValues);
