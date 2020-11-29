@@ -3,7 +3,7 @@
   <component name="CMakeWorkspace" PROJECT_DIR="$PROJECT_DIR$" />
   <component name="CidrRootsConfiguration">
     <sourceRoots>
-      <file path="$PROJECT_DIR$/OpenBikeSensorFirmware" />
+      <file path="$PROJECT_DIR$/src" />
     </sourceRoots>
   </component>
   <component name="JavaScriptSettings">

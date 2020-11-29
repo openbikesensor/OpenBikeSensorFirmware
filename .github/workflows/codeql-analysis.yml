@@ -52,7 +52,7 @@ jobs:
 
     - name: Build firmware
       run: |
-        platformio ci --build-dir="./bin" --keep-build-dir --project-conf=platformio.ini ./OpenBikeSensorFirmware/
+        platformio ci --build-dir="./bin" --keep-build-dir --project-conf=platformio.ini ./src/
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1

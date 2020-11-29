@@ -7,7 +7,7 @@ as either "Pre-release" or final release upon publishing.
 Idea is to delete intermediate releases after a while manually.
 
 Version number major part is defined in 
-`OpenBikeSensorFirmware/OpenBikeSensorFirmware.cpp` as OBSVersion.
+`src/OpenBikeSensorFirmware.cpp` as OBSVersion.
 Just modify the static numeric part, the build script will take
 care for the rest.
 

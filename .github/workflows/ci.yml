@@ -17,7 +17,7 @@ jobs:
       run: |
         mkdir bin
         echo GITHUB Ref: ${{ github.ref }}
-        VERSION_STRING=`grep "const char \*OBSVersion =" OpenBikeSensorFirmware/OpenBikeSensorFirmware.cpp`
+        VERSION_STRING=`grep "const char \*OBSVersion =" src/OpenBikeSensorFirmware.cpp`
         MAJOR=`echo ${VERSION_STRING} | cut -f2 -d\"`
         if [ "${{ github.ref }}" = "refs/heads/master" ]
         then
@@ -53,7 +53,7 @@ jobs:
     - name: Build firmware
       run: |
         ./sonarqube/build-wrapper-linux-x86/build-wrapper-linux-x86-64 --out-dir sonarqube-out \
-          platformio ci --build-dir="./bin" --keep-build-dir --project-conf=platformio.ini ./OpenBikeSensorFirmware/
+          platformio ci --build-dir="./bin" --keep-build-dir --project-conf=platformio.ini ./src/
 
     - name: Package firmware
       run: |
