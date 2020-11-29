@@ -5,8 +5,6 @@
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEDescriptor.h>
-#include <BLEUtils.h>
-#include <BLE2902.h>
 #include <list>
 
 #include "_IBluetoothService.h"
@@ -43,10 +41,10 @@ class BluetoothManager {
 
     /**
      * Processes new sensor values by calling each services with the values.
-     * @param leftValues all sensor values of the left side (might be empty)
-     * @param rightValues all sensor values of the right side (might be empty)
+     * @param leftValue sensor value of the left side (MAX_SENSOR_VALUE for no reading)
+     * @param rightValues sensor value of the right side (MAX_SENSOR_VALUE for no reading)
      */
-    void newSensorValues(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues);
+    void newSensorValues(uint16_t leftValue, uint16_t rightValue);
 
     /**
      * Process the current push button state itself. This will call

@@ -85,6 +85,9 @@ void HCSR04SensorManager::registerSensor(HCSR04SensorInfo sensorInfo) {
   pinMode(sensorInfo.echoPin, INPUT_PULLUP); // hint from https://youtu.be/xwsT-e1D9OY?t=354
   sensorValues.push_back(0); //make sure sensorValues has same size as m_sensors
   assert(sensorValues.size() == m_sensors.size());
+  if (m_sensors[m_sensors.size() - 1].median == nullptr) {
+    m_sensors[m_sensors.size() - 1].median = new Median<uint16_t>(5);
+  }
   // only one interrupt per pin, can not split RISING/FALLING here
   attachInterrupt(sensorInfo.echoPin, std::bind(&HCSR04SensorManager::isr, this, m_sensors.size() - 1), CHANGE);
 }
@@ -184,7 +187,7 @@ void HCSR04SensorManager::waitTillPrimarySensorIsReady() {
 /* Wait till the given sensor is ready.  */
 void HCSR04SensorManager::waitTillSensorIsReady(uint8_t sensorId) {
   while (!isReadyForStart(&m_sensors[sensorId])) {
-    NOP();
+    yield();
   }
 }
 
@@ -222,13 +225,13 @@ boolean HCSR04SensorManager::isReadyForStart(HCSR04SensorInfo* sensor) {
       && (microsBetween(now, start) > SENSOR_QUIET_PERIOD_AFTER_START_MICRO_SEC)) {
       ready = true;
     }
-  } else if (microsBetween(now, start) > MAX_TIMEOUT_MICRO_SEC) {
+  } else if (microsBetween(now, start) > 2 * MAX_TIMEOUT_MICRO_SEC) {
     // signal or interrupt was lost altogether this is an error,
     // should we raise it?? Now pretend the sensor is ready, hope it helps to give it a trigger.
     ready = true;
 #ifdef DEVELOP
-    Serial.printf("!Timeout trigger for %s duration %zu us - echo pin state: %d\n",
-      sensor->sensorLocation, sensor->start - now, digitalRead(sensor->echoPin));
+    Serial.printf("!Timeout trigger for %s duration %u us - echo pin state: %d start: %u end: %u now: %u\n",
+      sensor->sensorLocation, now - start, digitalRead(sensor->echoPin), start, end, now);
 #endif
   }
   return ready;
@@ -272,6 +275,7 @@ void HCSR04SensorManager::collectSensorResult(uint8_t sensorId) {
     dist = static_cast<uint16_t>(duration / MICRO_SEC_TO_CM_DIVIDER);
   }
   sensor->rawDistance = dist;
+  sensor->median->addValue(dist);
   sensorValues[sensorId] =
     sensor->distance = correctSensorOffset(medianMeasure(sensor, dist), sensor->offset);
 
@@ -285,6 +289,10 @@ void HCSR04SensorManager::collectSensorResult(uint8_t sensorId) {
     sensor->minDistance = sensor->distance;
     sensor->lastMinUpdate = millis();
   }
+}
+
+uint16_t HCSR04SensorManager::getRawMedianDistance(uint8_t sensorId) {
+ return m_sensors[sensorId].median->median();
 }
 
 void HCSR04SensorManager::setNoMeasureDate(uint8_t sensorId) {
@@ -343,7 +351,7 @@ void HCSR04SensorManager::waitForEchosOrTimeout(uint8_t sensorId) {
   HCSR04SensorInfo* const sensor = &m_sensors[sensorId];
   while ((sensor->end == MEASUREMENT_IN_PROGRESS)
     && (microsSince(sensor->start) < MAX_DURATION_MICRO_SEC)) { // max duration not expired
-    NOP();
+    yield();
   }
 }
 

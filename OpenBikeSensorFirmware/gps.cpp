@@ -75,6 +75,18 @@ void configureGpsModule() {
 }
 
 void readGPSData() {
+#ifdef DEVELOP
+  if (SerialGPS.available() > 0) {
+    time_t now;
+    char strftime_buf[64];
+    struct tm timeinfo;
+
+    time(&now);
+    localtime_r(&now, &timeinfo);
+    strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+    Serial.printf("readGPSData(%s)\n", strftime_buf);
+  }
+#endif
   while (SerialGPS.available() > 0) {
     if (gps.encode(SerialGPS.read())) {
       // set system time once every minute

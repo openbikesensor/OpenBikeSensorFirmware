@@ -37,7 +37,7 @@ grand_parent: Software
 
 | Characteristic  | UUID                                   | Property         | Value                                     |
 | --------------- | -------------------------------------- | ---------------- | ----------------------------------------- |
-| Heart Rate      | `00002a37-0000-1000-8000-00805f9b34fb` | `READ`, `NOTIFY` | Average distance measured over one second |
+| Heart Rate      | `00002a37-0000-1000-8000-00805f9b34fb` | `READ`, `NOTIFY` | Minimum distance measured over one second |
 | Sensor Location | `00002a38-0000-1000-8000-00805f9b34fb` | `READ`           | `1`                                       |
 
 

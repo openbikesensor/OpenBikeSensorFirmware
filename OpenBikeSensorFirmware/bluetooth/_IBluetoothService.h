@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <BLEService.h>
 #include <list>
+#include "globals.h"
 
 /**
  * This class interface defines how a bluetooth service should work.
@@ -30,10 +31,10 @@ class IBluetoothService {
 
     /**
      * Processes new sensor values from both sides.
-     * @param leftValues sensor values from the left side (might be empty)
-     * @param rightValues sensor values from the right side (might be empty)
+     * @param leftValue sensor value of the left side (MAX_SENSOR_VALUE for no reading)
+     * @param rightValues sensor value of the right side (MAX_SENSOR_VALUE for no reading)
      */
-    virtual void newSensorValues(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues) = 0;
+    virtual void newSensorValues(uint16_t leftValue, uint16_t rightValue) = 0;
 
     /**
      * Processes the event that the push button was just triggered.
@@ -44,31 +45,26 @@ class IBluetoothService {
     /**
      * Joins a list of integers by placing the `glue` string between the members.
      */
-    static String joinList(const std::list<uint8_t>& list, const String& glue) {
-      String s = "";
+    static String joinList(const std::list<uint16_t>& list, const String& glue) {
+      String s;
 
       boolean firstValue = true;
       for (auto value : list) {
-        s += (firstValue ? "" : glue) + String(value);
+        if (!firstValue) {
+          s += glue;
+        }
+        s += String(value);
         firstValue = false;
       }
 
       return s;
     }
 
-    /**
-     * Joins a list of integers by placing the `glue` string between the members.
-     */
-    static String joinList16(const std::list<uint16_t>& list, const String& glue) {
-      String s = "";
-
-      boolean firstValue = true;
-      for (auto value : list) {
-        s += (firstValue ? "" : glue) + String(value);
-        firstValue = false;
+    static String valueAsString(uint16_t value) {
+      if (value == MAX_SENSOR_VALUE) {
+        return "";
       }
-
-      return s;
+      return String(value);
     }
 };
 

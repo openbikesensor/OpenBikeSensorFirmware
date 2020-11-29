@@ -1,6 +1,7 @@
 #ifndef OBS_BLUETOOTH_HEARTRATESERVICE_H
 #define OBS_BLUETOOTH_HEARTRATESERVICE_H
 
+#include "globals.h"
 #include <CircularBuffer.h>
 #include "_IBluetoothService.h"
 
@@ -15,16 +16,15 @@ class HeartRateService : public IBluetoothService {
     void setup(BLEServer *pServer) override;
     bool shouldAdvertise() override;
     BLEService* getService() override;
-
-    void newSensorValues(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues) override;
+    void newSensorValues(uint16_t leftValue, uint16_t rightValue) override;
     void buttonPressed() override;
 
   private:
-    BLEService *mService;
-    BLECharacteristic *mCharacteristic;
+    BLEService *mService = nullptr;
+    BLECharacteristic *mCharacteristic = nullptr;
 
-    unsigned long mCollectionStartTime;
-    CircularBuffer<float, 20> mDistances;
+    unsigned long mCollectionStartTime = 0;
+    uint16_t mMinimumDistance = MAX_SENSOR_VALUE;
 };
 
 #endif

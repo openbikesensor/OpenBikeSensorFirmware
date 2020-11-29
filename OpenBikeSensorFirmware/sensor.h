@@ -25,6 +25,7 @@
 
 #include "globals.h"
 #include "vector.h"
+#include "utils/median.h"
 
 /* About the speed of sound:
    See also http://www.sengpielaudio.com/Rechner-schallgeschw.htm (german)
@@ -68,6 +69,7 @@ struct HCSR04SensorInfo {
   volatile uint32_t end = 1;
 
   int32_t echoDurationMicroseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
+  Median<uint16_t>*median = nullptr;
 };
 
 class HCSR04SensorManager {
@@ -86,6 +88,10 @@ class HCSR04SensorManager {
     uint16_t startOffsetMilliseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
     /* Index for CSV - starts with 1. */
     uint16_t getCurrentMeasureIndex();
+    /* Returns the current raw median distance in cm for the
+     * given sensor.
+     */
+    uint16_t getRawMedianDistance(uint8_t sensorId);
 
   protected:
 

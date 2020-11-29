@@ -50,6 +50,7 @@ VoltageMeter::VoltageMeter() {
   lastSmoothedReading = readRaw();
   for (int i = 0; i < MINIMUM_SAMPLES; i++) {
     readSmoothed();
+    yield();
   }
 #ifdef DEVELOP
   Serial.printf("VoltageMeter initialized got %03.2fV.\n", read());
@@ -68,5 +69,5 @@ int VoltageMeter::readSmoothed() {
 }
 
 int VoltageMeter::readRaw() {
-  return ESP_ERROR_CHECK_WITHOUT_ABORT(adc1_get_raw(BATTERY_ADC_CHANNEL));
+  return adc1_get_raw(BATTERY_ADC_CHANNEL);
 }

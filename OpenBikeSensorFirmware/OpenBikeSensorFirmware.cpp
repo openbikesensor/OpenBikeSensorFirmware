@@ -49,6 +49,10 @@ Config config;
 SSD1306DisplayDevice* displayTest;
 HCSR04SensorManager* sensorManager;
 BluetoothManager* bluetoothManager;
+const long BLUETOOTH_INTERVAL_MILLIS = 150;
+long lastBluetoothInterval = 0;
+
+
 VoltageMeter* voltageMeter;
 
 String esp_chipid;
@@ -157,15 +161,11 @@ void setup() {
   //##############################################################
   // GPS
   //##############################################################
-
   SerialGPS.begin(9600, SERIAL_8N1, 16, 17);
-  // default buffer is 256, would not be to bad to go back to the default in need of memory see gps.cpp
-  SerialGPS.setRxBufferSize(512);
 
   //##############################################################
   // Handle SD
   //##############################################################
-
   // Counter, how often the SD card will be read before writing an error on the display
   int8_t sdCount = 5;
 
@@ -196,7 +196,8 @@ void setup() {
   buttonState = digitalRead(PushButton);
   if (buttonState == HIGH || (!config.simRaMode && displayError != 0)) {
     displayTest->showTextOnGrid(2, 2, "Start Server");
-    esp_bt_mem_release(ESP_BT_MODE_BTDM); // no bluetooth at all here.
+    ESP_ERROR_CHECK_WITHOUT_ABORT(
+      esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
 
     delay(1000); // Added for user experience
 
@@ -210,7 +211,7 @@ void setup() {
     }
   }
   SPIFFS.end();
-  WiFiGenericClass::mode(WIFI_MODE_NULL);
+  WiFiGenericClass::mode(WIFI_OFF);
 
   //##############################################################
   // Init HCSR04
@@ -263,7 +264,6 @@ void setup() {
 
   delay(300);
   while (!validGPSData) {
-    Serial.println("readGPSData()");
     readGPSData();
 
     switch (config.GPSConfig) {
@@ -328,7 +328,8 @@ void setup() {
     bluetoothManager->init();
     bluetoothManager->activateBluetooth();
   } else {
-    esp_bt_mem_release(ESP_BT_MODE_BTDM); // no bluetooth at all here.
+    ESP_ERROR_CHECK_WITHOUT_ABORT(
+      esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
   }
 
   delay(1000); // Added for user experience
@@ -387,12 +388,22 @@ void loop() {
       currentSet->isInsidePrivacyArea
     );
 
-    if (config.bluetooth) {
-      auto leftValues = std::list<uint16_t>();
-      auto rightValues = std::list<uint16_t>();
-      leftValues.push_back(sensorManager->m_sensors[LEFT_SENSOR_ID].rawDistance);
-      rightValues.push_back(sensorManager->m_sensors[RIGHT_SENSOR_ID].rawDistance);
-      bluetoothManager->newSensorValues(leftValues, rightValues);
+    // with alternating measurement we only report every other measurement
+    // TODO: Reduced further, due to testing feedback, if we report
+    //   every 2nd value we should switch to the median measurement!?
+    //   See https://github.com/Friends-of-OpenBikeSensor/OpenBikeSensorFirmware/issues/157
+    if (config.bluetooth
+        && lastBluetoothInterval != currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS) {
+#ifdef DEVELOP
+      Serial.printf("Reporting BT: %d/%d (%d)\n",
+                    sensorManager->m_sensors[LEFT_SENSOR_ID].rawDistance,
+                    sensorManager->m_sensors[RIGHT_SENSOR_ID].rawDistance,
+                    buttonState);
+#endif
+      lastBluetoothInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
+      bluetoothManager->newSensorValues(
+        sensorManager->m_sensors[LEFT_SENSOR_ID].rawDistance,
+        sensorManager->m_sensors[RIGHT_SENSOR_ID].rawDistance);
       bluetoothManager->processButtonState(digitalRead(PushButton));
     }
 

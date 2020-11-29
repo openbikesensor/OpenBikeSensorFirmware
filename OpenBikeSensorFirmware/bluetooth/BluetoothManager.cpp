@@ -5,11 +5,12 @@ std::list<IBluetoothService*> services;
 
 unsigned long lastValueTimestamp = millis();
 boolean buttonWasPressed = false;
-unsigned long buttonPressTimestamp = -1;
+unsigned long buttonPressTimestamp = 0;
 
 void BluetoothManager::init() {
 
-  esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
+  ESP_ERROR_CHECK_WITHOUT_ABORT(
+    esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
   char deviceName[32];
   snprintf(deviceName, sizeof(deviceName), "OpenBikeSensor-%04X", (uint16_t)(ESP.getEfuseMac() >> 32));
   BLEDevice::init(deviceName);
@@ -50,7 +51,6 @@ void BluetoothManager::activateBluetooth() {
       pServer->getAdvertising()->addServiceUUID(service->getService()->getUUID());
     }
   }
-
   pServer->getAdvertising()->start();
 //  digitalWrite(13, HIGH);
 }
@@ -63,7 +63,7 @@ void BluetoothManager::disconnectDevice() {
   pServer->disconnect(pServer->getConnId());
 }
 
-void BluetoothManager::newSensorValues(const std::list<uint16_t>& leftValues, const std::list<uint16_t>& rightValues) {
+void BluetoothManager::newSensorValues(const uint16_t leftValues, const uint16_t rightValues) {
   // Discarding values if they are more recent than 50 ms
   if (millis() - lastValueTimestamp < 50) {
     return;
@@ -82,7 +82,7 @@ void BluetoothManager::newSensorValues(const std::list<uint16_t>& leftValues, co
  * buttonPressed() again.
  *
  * The method is implemented in this way because the `state` can be erroneously
- * set to `LOW` even if the button is still pressed. This implemention fixes
+ * set to `LOW` even if the button is still pressed. This implementation fixes
  * that problem.
  * @param state current state of the push button (LOW or HIGH)
  */
@@ -98,7 +98,7 @@ void BluetoothManager::processButtonState(int state) {
 
   if (buttonWasPressed && (millis() - buttonPressTimestamp) >= 300) {
     buttonWasPressed = false;
-    buttonPressTimestamp = -1;
+    buttonPressTimestamp = 0;
   }
 }
 
