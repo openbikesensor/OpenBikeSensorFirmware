@@ -61,9 +61,6 @@ class IBluetoothService {
     }
 
     static String valueAsString(uint16_t value) {
-      if (value == MAX_SENSOR_VALUE) {
-        return "";
-      }
       return String(value);
     }
 };
