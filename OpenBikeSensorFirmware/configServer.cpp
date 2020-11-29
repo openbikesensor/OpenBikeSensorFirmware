@@ -52,6 +52,9 @@ String style =
   ".deletePrivacyArea:hover {color: red;}"
   "a.previous {text-decoration: none; display: inline-block; padding: 8px 16px;background-color: #f1f1f1; color: black;border-radius: 50%; font-family: Verdana, sans-serif; font-size: 18px}"
   "a.previous:hover {background-color: #ddd; color: black;}"
+  "ul.directory-listing {list-style: none; text-align: left; padding: 0; margin: 0; line-height: 1.5;}"
+  "li.directory a {text-decoration: none; font-weight: bold;}"
+  "li.file a {text-decoration: none;}"
   "</style>";
 
 String previous = "<a href='/' class='previous'>&#8249;</a>";
@@ -161,6 +164,7 @@ String navigationIndex =
   "<h3>Maintenance</h3>"
   "<input type=button onclick=window.location.href='/update' class=btn value='Update Firmware'>"
   "<input type=button onclick=window.location.href='/upload' class=btn value='Upload Tracks'>"
+  "<input type=button onclick=window.location.href='/sd' class=btn value='Show SD Card Contents'>"
   "<input type=button onclick=window.location.href='/reboot' class=btn value='Reboot'>"
   "{dev}"
   + footer;
@@ -1066,6 +1070,89 @@ void startServer() {
   });
 
   server.on("/privacy_action", privacyAction);
+
+  // ###############################################################
+  // SD card file systen access
+  // ###############################################################
+
+  server.on("/sd", []() {
+    String path = "/";
+    if (server.hasArg("path")) {
+      path = server.arg("path");
+    }
+
+    File file = SDFileSystem.open(path);
+
+    if (!file) {
+      server.send(404, "text/plain", "File not found.");
+      return;
+    }
+
+
+    if (file.isDirectory()) {
+      String html = header;
+
+      // Header
+      html.replace("{version}", OBSVersion);
+      html.replace("{subtitle}", "SD Card Contents");
+
+      html += "<ul class=\"directory-listing\">";
+
+      // Iterate over directories
+      File child = file.openNextFile();
+      while(child) {
+        html += ("<li class=\""
+          + String(child.isDirectory() ? "directory" : "file")
+          + "\"><a href=\"/sd?path="
+          + String(child.name())
+          + "\">"
+          + String(child.name()).substring(1)
+          + String(child.isDirectory() ? "/" : "")
+          + "</a></li>");
+
+        child.close();
+        child = file.openNextFile();
+      }
+
+      file.close();
+
+      html += "</ul>";
+      html += footer;
+      server.send(200, "text/html", html);
+
+      return;
+    }
+
+    String dataType;
+    if (path.endsWith(".htm")) {
+      dataType = "text/html";
+    } else if (path.endsWith(".css")) {
+      dataType = "text/css";
+    } else if (path.endsWith(".js")) {
+      dataType = "application/javascript";
+    } else if (path.endsWith(".png")) {
+      dataType = "image/png";
+    } else if (path.endsWith(".gif")) {
+      dataType = "image/gif";
+    } else if (path.endsWith(".jpg")) {
+      dataType = "image/jpeg";
+    } else if (path.endsWith(".ico")) {
+      dataType = "image/x-icon";
+    } else if (path.endsWith(".xml")) {
+      dataType = "text/xml";
+    } else if (path.endsWith(".pdf")) {
+      dataType = "application/pdf";
+    } else if (path.endsWith(".zip")) {
+      dataType = "application/zip";
+    } else {
+      // arbitrary data
+      dataType = "application/octet-stream";
+    }
+
+    server.sendHeader("Content-Disposition", String("attachment; filename=\"") + file.name() + String("\""));
+    server.streamFile(file, dataType);
+    file.close();
+  });
 
   // ###############################################################
   // Default, send 404
