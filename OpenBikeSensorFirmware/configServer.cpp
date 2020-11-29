@@ -1118,7 +1118,6 @@ void startServer() {
       html += footer;
       server.send(200, "text/html", html);
 
-      file.close();
       return;
     }
 
