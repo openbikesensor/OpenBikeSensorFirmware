@@ -21,6 +21,9 @@
 #include "gps.h"
 #include <sys/time.h>
 
+/* Value is in the past (just went by at the time of writing). */
+const time_t PAST_TIME = 1606672131;
+
 HardwareSerial SerialGPS(1);
 TinyGPSPlus gps;
 
@@ -46,6 +49,9 @@ time_t currentTime() {
 }
 
 void configureGpsModule() {
+#ifdef DEVELOP
+  Serial.println("Sending config to GPS module.");
+#endif
   // switch of periodic gps messages that we do not use, leaves GGA and RMC on
   SerialGPS.print(F("$PUBX,40,GSV,0,0,0,0*59\r\n"));
   SerialGPS.print(F("$PUBX,40,GSA,0,0,0,0*4E\r\n"));
@@ -78,29 +84,41 @@ void readGPSData() {
 #ifdef DEVELOP
   if (SerialGPS.available() > 0) {
     time_t now;
-    char strftime_buf[64];
-    struct tm timeinfo;
+    char buffer[64];
+    struct tm timeInfo;
 
     time(&now);
-    localtime_r(&now, &timeinfo);
-    strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
-    Serial.printf("readGPSData(%s)\n", strftime_buf);
+    localtime_r(&now, &timeInfo);
+    strftime(buffer, sizeof(buffer), "%c", &timeInfo);
+    Serial.printf("readGPSData(av: %d bytes, %s)\n",
+                  SerialGPS.available(), buffer);
   }
 #endif
+
+  boolean gotGpsData = false;
   while (SerialGPS.available() > 0) {
     if (gps.encode(SerialGPS.read())) {
+      gotGpsData = true;
       // set system time once every minute
-      if (gps.time.isValid() && gps.time.second() == 0 && gps.time.isUpdated() && gps.time.age() < 100) {
+      if (gps.time.isValid() && gps.date.isValid() && gps.time.isUpdated()
+          && gps.date.month() != 0 && gps.date.day() != 0 && gps.date.year() > 2019
+          && (gps.time.second() == 0 || time(nullptr) < PAST_TIME)
+          && gps.time.age() < 100) {
+        gps.time.value(); // reset "updated" flag
         // We are in the precision of +/- 1 sec, ok for our purpose
         const time_t t = gpsTime();
         const struct timeval now = {.tv_sec = t};
         settimeofday(&now, nullptr);
+#ifdef DEVELOP
+        Serial.printf("Time set %ld.\n", t);
+#endif
       }
     }
   }
 
   // send configuration multiple times after switch on
-  if (gps.passedChecksum() > 1 && gps.passedChecksum() < 100 && 0 == gps.passedChecksum() % 11) {
+  if (gotGpsData &&
+    gps.passedChecksum() > 1 && gps.passedChecksum() < 110 && 0 == gps.passedChecksum() % 11) {
     configureGpsModule();
   }
 }

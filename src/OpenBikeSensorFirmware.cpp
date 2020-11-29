@@ -379,6 +379,7 @@ void loop() {
 
     currentTimeMillis = millis();
     sensorManager->getDistances();
+    readGPSData();
 
     displayTest->showValues(
       sensorManager->m_sensors[LEFT_SENSOR_ID],
