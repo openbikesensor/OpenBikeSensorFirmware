@@ -77,7 +77,7 @@ MultipartDataStream::MultipartDataStream(String name, String fileName, File *con
 
 MultipartStream::MultipartStream(HTTPClient *client) {
   this->httpClient = client;
-  boundary = "----" + String(rand(), 16) + String(rand(), 16);
+  boundary = "----" + String(esp_random(), 16) + String(esp_random(), 16);
   httpClient->addHeader("Content-Type",
     "multipart/form-data; boundary=" + boundary);
 }
