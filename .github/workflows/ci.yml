@@ -73,6 +73,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         # Hack - point sonarqube to the real sources not the copy of it
+        # See also https://community.sonarsource.com/t/scanning-platformio-c-embeded-projects/35141/2
         sed -i 's|OpenBikeSensorFirmware/bin|OpenBikeSensorFirmware|' \
             sonarqube-out/build-wrapper-dump.json
         sed -i 's|.pio/build|bin/.pio/build|' \
