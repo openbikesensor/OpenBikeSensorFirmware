@@ -106,7 +106,9 @@ class SSD1306DisplayDevice : public DisplayDevice {
 
     void showSplashScreen() {
       clear();
-      m_display->drawXbm(32, 0, OBSLogo_width, OBSLogo_height, OBSLogo);
+      showTextOnGrid(0, 0, "Firmware update");
+      showTextOnGrid(0, 1, "in progress");
+      showTextOnGrid(0, 3, "Please wait...");
       m_display->display();
     }
 
