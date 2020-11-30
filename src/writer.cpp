@@ -251,21 +251,22 @@ void CSVFileWriter::writeData(DataSet* set) {
     return;
   }
 
-  const tm* time = localtime(&set->time);
+  tm time;
+  localtime_r(&set->time, &time);
   char date[32];
   snprintf(date, sizeof(date),
     "%02d.%02d.%04d;%02d:%02d:%02d;%u;",
-    time->tm_mday, time->tm_mon + 1, time->tm_year + 1900,
-    time->tm_hour, time->tm_min, time->tm_sec, set->millis);
+    time.tm_mday, time.tm_mon + 1, time.tm_year + 1900,
+    time.tm_hour, time.tm_min, time.tm_sec, set->millis);
 
   dataString += date;
   dataString += set->comment;
 
 #ifdef DEVELOP
-  if (time->tm_sec == 0) {
+  if (time.tm_sec == 0) {
     dataString += "DEVELOP:  GPSMessages: " + String(gps.passedChecksum())
       + " GPS crc errors: " + String(gps.failedChecksum());
-  } else if (time->tm_sec == 1) {
+  } else if (time.tm_sec == 1) {
     dataString += "DEVELOP: Mem: "
       + String(ESP.getFreeHeap() / 1024) + "k Buffer: "
       + String(getDataLength() / 1024) + "k last write time: "
@@ -358,11 +359,12 @@ void GPXFileWriter::writeData(DataSet* set) {
   dataString += "\">";
 
   char dateTimeString[25];
-  const tm* time = localtime(&set->time);
+  tm time;
+  localtime_r(&set->time, &time);
   snprintf(dateTimeString, sizeof(dateTimeString),
     "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ",
-    time->tm_year + 1900, time->tm_mon + 1, time->tm_mday,
-    time->tm_hour, time->tm_min, time->tm_sec, 0);
+    time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
+    time.tm_hour, time.tm_min, time.tm_sec, 0);
   dataString += F("<time>");
   dataString += dateTimeString;
   dataString += F("</time>");
