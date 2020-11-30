@@ -54,7 +54,6 @@ jobs:
       run: |
         ./sonarqube/build-wrapper-linux-x86/build-wrapper-linux-x86-64 --out-dir sonarqube-out \
           platformio ci --build-dir="./bin" --keep-build-dir --project-conf=platformio.ini ./src/
-        ls -l sonarqube-out
 
     - name: Package firmware
       run: |
@@ -96,7 +95,6 @@ jobs:
         name: obs ${{ env.OBS_VERSION }}
         path: |
           bin/.pio/build/esp32dev/firmware.bin
-          sonarqube-out/
         if-no-files-found: error
 
     - name: Create Release
