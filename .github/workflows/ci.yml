@@ -83,7 +83,7 @@ jobs:
           -Dsonar.projectKey=Friends-of-OpenBikeSensor_OpenBikeSensorFirmware \
           -Dsonar.cpd.exclusions=bin/**/* \
           -Dsonar.coverage.exclusions=**/* \
-          -Dsonar.sources=src \
+          -Dsonar.sources=. \
           -Dsonar.sourceEncoding=UTF-8 \
           -Dsonar.cfamily.cache.enabled=false \
           -Dsonar.cfamily.threads=1 \
