@@ -81,9 +81,8 @@ jobs:
           -Dsonar.host.url=https://sonarcloud.io \
           -Dsonar.organization=friends-of-openbikesensor \
           -Dsonar.projectKey=Friends-of-OpenBikeSensor_OpenBikeSensorFirmware \
-          -Dsonar.cpd.exclusions=bin/**/* \
           -Dsonar.coverage.exclusions=**/* \
-          -Dsonar.sources=. \
+          -Dsonar.sources=src \
           -Dsonar.sourceEncoding=UTF-8 \
           -Dsonar.cfamily.cache.enabled=false \
           -Dsonar.cfamily.threads=1 \
