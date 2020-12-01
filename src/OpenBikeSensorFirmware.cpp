@@ -263,6 +263,7 @@ void setup() {
   voltageMeter = new VoltageMeter; // takes a moment, so do it here
 
   delay(300);
+  bool blink = false;
   while (!validGPSData) {
     readGPSData();
 
@@ -303,7 +304,10 @@ void setup() {
     } else {
       satellitesString = String(gps.satellites.value()) + " / " + String(config.satsForFix) + " sats";
     }
+    SpriteIcon icon = blink ? SpriteIcon::SatelliteSearch :  SpriteIcon::Satellite;
+    displayTest->drawIcon(icon, 128 - 17, 64 - 17);
     displayTest->showTextOnGrid(2, 5, satellitesString);
+    blink = !blink;
 
     buttonState = digitalRead(PushButton);
     if (buttonState == HIGH
@@ -361,6 +365,29 @@ void loop() {
   currentSet->validSatellites = gps.satellites.isValid() ? (uint8_t) gps.satellites.value() : 0;
   currentSet->batteryLevel = voltageMeter->read();
   currentSet->isInsidePrivacyArea = isInsidePrivacyArea(currentSet->location);
+
+  // draw top bar
+  uint8_t x = 0;
+  if (currentSet->isInsidePrivacyArea) {
+    displayTest->drawIcon(SpriteIcon::Lock, x, 0);
+    x += 12;
+  }
+  const SpriteIcon satelliteIcon = (
+    currentSet->validSatellites <= 0 ? SpriteIcon::SatelliteX :
+    currentSet->validSatellites <= 2 ? SpriteIcon::Satellite1 :
+    currentSet->validSatellites <= 2 ? SpriteIcon::Satellite2 :
+    currentSet->validSatellites <= 2 ? SpriteIcon::Satellite3 :
+    SpriteIcon::Satellite4);
+  displayTest->drawIcon(satelliteIcon, x, 0);
+  x += 12;
+
+  const SpriteIcon batteryIcon = (SpriteIcon)((int)SpriteIcon::Battery0 +
+     std::min(5, std::max(0,
+        (int)((currentSet->batteryLevel - 3.3) / (4.0 - 3.3) * 5.0))));
+  displayTest->drawIcon(batteryIcon, x, 0);
+  x += 12;
+
+  displayTest->showTextOnGrid(1, 1, String(currentSet->batteryLevel, 2) + "V");
 
   sensorManager->reset();
 

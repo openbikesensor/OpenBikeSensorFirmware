@@ -29,6 +29,7 @@
 #include "globals.h"
 #include "gps.h"
 #include "logo.h"
+#include "icons.h"
 #include "sensor.h"
 
 // Forward declare classes to build (because there is a cyclic dependency between sensor.h and displays.h)
@@ -47,6 +48,7 @@ class DisplayDevice {
     virtual void normalDisplay() = 0;
     virtual void showSplashScreen() = 0;
     virtual void drawProgressBar(uint8_t progress_bar) = 0;
+    virtual void drawIcon(SpriteIcon icon, uint8_t x, uint8_t y) = 0;
     //virtual void drawString(int16_t, int16_t, String) = 0;
     virtual void clear() = 0;
 };
@@ -122,6 +124,20 @@ class SSD1306DisplayDevice : public DisplayDevice {
 
         m_lastProgress = progress;
       }
+    }
+
+    void drawIcon(SpriteIcon icon, uint8_t x, uint8_t y) {
+      // clear the area
+      m_display->setColor(BLACK);
+      m_display->fillRect(x, y, SPRITE_ICON_WIDTH, SPRITE_ICON_HEIGHT);
+      m_display->setColor(WHITE);
+
+      // find pointer to image data in the SPRITE_ICON
+      const unsigned char* icon_ptr = SPRITE_ICON + (int)icon * SPRITE_ICON_WIDTH * SPRITE_ICON_HEIGHT / 8;
+
+      // draw image on screen
+      m_display->drawXbm(x, y, SPRITE_ICON_WIDTH , SPRITE_ICON_HEIGHT, icon_ptr);
+      m_display->display();
     }
 
     //##############################################################
