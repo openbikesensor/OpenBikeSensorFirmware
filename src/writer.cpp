@@ -275,43 +275,37 @@ void CSVFileWriter::writeData(DataSet* set) {
 #endif
   dataString += ";";
 
-  if ((config.privacyConfig & NoPosition) && set->isInsidePrivacyArea
-    && !((config.privacyConfig & OverridePrivacy) && set->confirmed)) {
-    dataString += ";;;";
-  } else if (set->location.isValid()) {
+  if ((!set->location.isValid()) ||
+      ((config.privacyConfig & NoPosition) && set->isInsidePrivacyArea
+    && !((config.privacyConfig & OverridePrivacy) && set->confirmed))) {
+    dataString += ";;;;;";
+  } else {
     dataString += String(set->location.lat(), 6) + ";";
     dataString += String(set->location.lng(), 6) + ";";
     dataString += String(set->altitude.meters(), 1) + ";";
-  } else {
-    dataString += ";;;";
-  }
-  if (set->course.isValid()) {
-    dataString += String(set->course.deg(), 2) + ";";
-  } else {
+    if (set->course.isValid()) {
+      dataString += String(set->course.deg(), 2);
+    }
     dataString += ";";
-  }
-  if (set->speed.isValid()) {
-    dataString += String(set->speed.kmph(), 2) + ";";
-  } else {
+    if (set->speed.isValid()) {
+      dataString += String(set->speed.kmph(), 2);
+    }
     dataString += ";";
   }
   if (set->hdop.isValid()) {
-    dataString += String(set->hdop.hdop(), 2) + ";";
-  } else {
-    dataString += ";";
+    dataString += String(set->hdop.hdop(), 2);
   }
+  dataString += ";";
   dataString += String(set->validSatellites) + ";";
   dataString += String(set->batteryLevel, 2) + ";";
   if (set->sensorValues[LEFT_SENSOR_ID] < MAX_SENSOR_VALUE) {
-    dataString += String(set->sensorValues[LEFT_SENSOR_ID]) + ";";
-  } else {
-    dataString += ";";
+    dataString += String(set->sensorValues[LEFT_SENSOR_ID]);
   }
+  dataString += ";";
   if (set->sensorValues[RIGHT_SENSOR_ID] < MAX_SENSOR_VALUE) {
-    dataString += String(set->sensorValues[RIGHT_SENSOR_ID]) + ";";
-  } else {
-    dataString += ";";
+    dataString += String(set->sensorValues[RIGHT_SENSOR_ID]);
   }
+  dataString += ";";
   dataString += String(set->confirmed) + ";";
   dataString += String(set->marked) + ";";
   dataString += String(set->invalidMeasurement) + ";";
