@@ -404,29 +404,30 @@ void loop() {
       bluetoothManager->processButtonState(digitalRead(PushButton));
     }
 
-    // if there is a sensor value and confirmation was not already triggered
-    if (minDistanceToConfirm != MAX_SENSOR_VALUE) {
-      buttonState = digitalRead(PushButton);
-      // detect state change
-      if (buttonState != lastButtonState) {
-        if (buttonState == LOW) { // after button was released
-          // immediate user feedback - we start the action
-          // invert state might be a bit long - it does not block next confirmation.
-          if (config.displayConfig & DisplayInvert) {
-            displayTest->normalDisplay();
-          } else {
-            displayTest->invert();
-          }
-
-          transmitConfirmedData = true;
-          numButtonReleased++;
-          if (datasetToConfirm != nullptr) {
-            datasetToConfirm->confirmedDistances.push_back(minDistanceToConfirm);
-            datasetToConfirm->confirmedDistancesTimeOffset.push_back(minDistanceToConfirmIndex);
-            datasetToConfirm = nullptr;
-          }
-          minDistanceToConfirm = MAX_SENSOR_VALUE; // ready for next confirmation
+    buttonState = digitalRead(PushButton);
+    // detect state change
+    if (buttonState != lastButtonState) {
+      if (buttonState == LOW) { // after button was released, detect long press here
+        // immediate user feedback - we start the action
+        // invert state might be a bit long - it does not block next confirmation.
+        if (config.displayConfig & DisplayInvert) {
+          displayTest->normalDisplay();
+        } else {
+          displayTest->invert();
         }
+
+        transmitConfirmedData = true;
+        numButtonReleased++;
+        if (datasetToConfirm != nullptr) {
+          datasetToConfirm->confirmedDistances.push_back(minDistanceToConfirm);
+          datasetToConfirm->confirmedDistancesTimeOffset.push_back(minDistanceToConfirmIndex);
+          datasetToConfirm = nullptr;
+        } else { // confirming a overtake without left measure
+          currentSet->confirmedDistances.push_back(MAX_SENSOR_VALUE);
+          currentSet->confirmedDistancesTimeOffset.push_back(
+            sensorManager->getCurrentMeasureIndex());
+        }
+        minDistanceToConfirm = MAX_SENSOR_VALUE; // ready for next confirmation
       }
       lastButtonState = buttonState;
     }
@@ -442,8 +443,6 @@ void loop() {
         minDistanceToConfirmIndex--;
       }
       datasetToConfirm = currentSet;
-      Serial.print("New minDistanceToConfirm=");
-      Serial.println(minDistanceToConfirm);
       timeOfMinimum = currentTimeMillis;
     }
     measurements++;
