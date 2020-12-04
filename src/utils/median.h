@@ -49,7 +49,7 @@ template<typename T> class Median {
     T median() {
       if (!sorted) {
         memcpy(temp, data, sizeof(T) * size); // std:copy needs to much mem
-        std::sort(temp, temp + (size - 1) * sizeof(T));
+        std::sort(&temp[0], &temp[size]);
         sorted = true;
       }
       return temp[mid];
