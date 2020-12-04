@@ -20,6 +20,8 @@
 
 #include "config.h"
 
+const int MAX_CONFIG_FILE_SIZE = 4096;
+
 // Helper: StaticJsonDocument --> Config
 void jsonDocumentToConfig(DynamicJsonDocument &doc, Config &config) {
 
@@ -113,7 +115,7 @@ DynamicJsonDocument configToJsonDocument(const Config &config) {
   // Allocate a temporary JsonDocument
   // Don't forget to change the capacity to match your requirements.
   // Use arduinojson.org/assistant to compute the capacity.
-  DynamicJsonDocument doc(2048);
+  DynamicJsonDocument doc(MAX_CONFIG_FILE_SIZE);
 
   // Set the values in the document
   doc["numSensors"] = config.numSensors;
@@ -170,7 +172,7 @@ String configToJson(Config &config) {
 
 // String -> StaticJsonDocument --> Config
 void jsonToConfig(String json, Config &config) {
-  DynamicJsonDocument doc(2048);
+  DynamicJsonDocument doc(MAX_CONFIG_FILE_SIZE);
 
   // Deserialize the JSON string
   DeserializationError error = deserializeJson(doc, json);
@@ -189,7 +191,7 @@ void loadConfiguration(const char *configFilename, Config &config) {
   // Allocate a temporary JsonDocument
   // Don't forget to change the capacity to match your requirements.
   // Use arduinojson.org/v6/assistant to compute the capacity.
-  DynamicJsonDocument doc(2048);
+  DynamicJsonDocument doc(MAX_CONFIG_FILE_SIZE);
 
   // Deserialize the JSON document
   DeserializationError error = deserializeJson(doc, file);
