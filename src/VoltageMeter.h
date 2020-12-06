@@ -22,7 +22,7 @@ class VoltageMeter {
     esp_adc_cal_characteristics_t adc_chars;
     int16_t lastSmoothedReading;
     int readSmoothed();
-    int readRaw();
+    int readRaw() const;
 };
 
 

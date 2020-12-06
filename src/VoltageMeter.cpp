@@ -68,6 +68,6 @@ int VoltageMeter::readSmoothed() {
   return lastSmoothedReading;
 }
 
-int VoltageMeter::readRaw() {
+int VoltageMeter::readRaw() const {
   return adc1_get_raw(BATTERY_ADC_CHANNEL);
 }
