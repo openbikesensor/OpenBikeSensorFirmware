@@ -1034,28 +1034,9 @@ void startServer() {
     String erase = server.arg("erase");
     if (erase != "") {
       int idx = atoi(erase.c_str());
-      Serial.print(F("Erase idx="));
-      Serial.println(idx);
-
-      // Erase is broken, see #104
-      //if (idx < config.privacyAreas.size())
-      //{
-      //  config.privacyAreas.erase(idx);
-      //}
-      // DEBUG #104 !!!
-      //Serial.print(F("VECTOR SIZE:"));
-      //Serial.println(config.privacyAreas.size());
-
-      // Workaround for #104: Create a new vector and add existing elements
-      Vector<PrivacyArea> privacyAreas;
-      for(int i=0; i<config.privacyAreas.size(); i++) {
-        if(i != idx) {
-          privacyAreas.push_back(config.privacyAreas[i]);
-        }
+      if (idx >= 0 && idx < config.privacyAreas.size()) {
+        config.privacyAreas.erase(config.privacyAreas.begin() + idx);
       }
-      config.privacyAreas = privacyAreas;
-      // Workaround end
-
       config.numPrivacyAreas = config.privacyAreas.size();
     }
 

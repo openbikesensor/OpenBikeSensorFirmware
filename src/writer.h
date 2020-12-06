@@ -25,10 +25,10 @@
 #include <FS.h>
 #include <SD.h>
 #include <TinyGPS++.h>
+#include <vector>
 
 #include "config.h"
 #include "globals.h"
-#include "vector.h"
 
 
 struct DataSet {
@@ -42,9 +42,9 @@ struct DataSet {
   TinyGPSHDOP hdop;
   uint8_t validSatellites;
   double batteryLevel;
-  Vector<uint16_t> sensorValues;
-  Vector<uint16_t> confirmedDistances;
-  Vector<uint16_t> confirmedDistancesTimeOffset;
+  std::vector<uint16_t> sensorValues;
+  std::vector<uint16_t> confirmedDistances;
+  std::vector<uint16_t> confirmedDistancesTimeOffset;
   uint16_t confirmed = 0;
   String marked;
   bool invalidMeasurement = false;

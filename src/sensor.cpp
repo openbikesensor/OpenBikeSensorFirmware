@@ -103,7 +103,7 @@ void HCSR04SensorManager::reset() {
   activeSensor = primarySensor;
 }
 
-void HCSR04SensorManager::setOffsets(Vector<uint16_t> offsets) {
+void HCSR04SensorManager::setOffsets(std::vector<uint16_t> offsets) {
   for (size_t idx = 0; idx < m_sensors.size(); ++idx) {
     if (idx < offsets.size()) {
       m_sensors[idx].offset = offsets[idx];
@@ -209,7 +209,7 @@ void HCSR04SensorManager::sendTriggerToReadySensor() {
  * if there is no ready sensor at all.
  */
 void HCSR04SensorManager::sendTriggerToSensor(uint8_t sensorId) {
-  HCSR04SensorInfo* const sensor = &m_sensors[sensorId];
+  HCSR04SensorInfo* const sensor = &(m_sensors[sensorId]);
   sensor->trigger = sensor->start = micros(); // will be updated with HIGH signal
   sensor->end = MEASUREMENT_IN_PROGRESS; // will be updated with LOW signal
   digitalWrite(sensor->triggerPin, HIGH);

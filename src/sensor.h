@@ -21,10 +21,10 @@
 #ifndef OBS_SENSOR_H
 #define OBS_SENSOR_H
 
+#include <vector>
 #include <Arduino.h>
 
 #include "globals.h"
-#include "vector.h"
 #include "utils/median.h"
 
 /* About the speed of sound:
@@ -59,8 +59,8 @@ struct HCSR04SensorInfo {
   uint16_t rawDistance = 0;
   uint16_t distances[MEDIAN_DISTANCE_MEASURES] = { MAX_SENSOR_VALUE, MAX_SENSOR_VALUE, MAX_SENSOR_VALUE };
   uint16_t nextMedianDistance = 0;
-  uint16_t minDistance=MAX_SENSOR_VALUE;
-  uint16_t distance=MAX_SENSOR_VALUE;
+  uint16_t minDistance = MAX_SENSOR_VALUE;
+  uint16_t distance = MAX_SENSOR_VALUE;
   char* sensorLocation;
   unsigned long lastMinUpdate=0;
   uint32_t trigger = 0;
@@ -76,22 +76,23 @@ class HCSR04SensorManager {
   public:
     HCSR04SensorManager() {}
     virtual ~HCSR04SensorManager() {}
-    Vector<HCSR04SensorInfo> m_sensors;
-    Vector<uint16_t> sensorValues;
     void getDistances();
     void getDistancesParallel();
     void reset();
     void registerSensor(HCSR04SensorInfo);
-    void setOffsets(Vector<uint16_t>);
+    void setOffsets(std::vector<uint16_t>);
     void setPrimarySensor(uint8_t idx);
-    uint16_t lastReadingCount = 0;
-    uint16_t startOffsetMilliseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
-    /* Index for CSV - starts with 1. */
-    uint16_t getCurrentMeasureIndex();
     /* Returns the current raw median distance in cm for the
      * given sensor.
      */
     uint16_t getRawMedianDistance(uint8_t sensorId);
+    /* Index for CSV - starts with 1. */
+    uint16_t getCurrentMeasureIndex();
+
+    std::vector<HCSR04SensorInfo> m_sensors;
+    std::vector<uint16_t> sensorValues;
+    uint16_t lastReadingCount = 0;
+    uint16_t startOffsetMilliseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
 
   protected:
 
