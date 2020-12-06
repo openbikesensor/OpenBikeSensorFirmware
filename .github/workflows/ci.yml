@@ -1,5 +1,12 @@
 name: OpenBikeSensor - CI
-on: [push]
+on:
+  # Trigger when pushing in master or pull requests, and when creating
+  # a pull request.
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
   build:
@@ -35,59 +42,85 @@ jobs:
         echo $VERSION > VERSION
         echo Building OBS Version: $VERSION
         sed -i 's|-DBUILD_NUMBER=\\"-dev\\"|-DBUILD_NUMBER=\\"'${SEPARATOR}${PATCH}'\\"|' platformio.ini
+        echo "SONAR_SCANNER_VERSION=4.5.0.2216" >> $GITHUB_ENV
 
-    - name: Install build dependencies
+    - name: Cache SonarCloud packages
+      id: cache-sonar
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.sonar/cache
+          sonarqube
+        key: ${{ runner.os }}-sonar-${{ env.SONAR_SCANNER_VERSION }}
+        restore-keys: ${{ runner.os }}-sonar-${{ env.SONAR_SCANNER_VERSION }}
+
+    - name: Install SonarQube dependencies
+      if: steps.cache-sonar.outputs.cache-hit != 'true'
       run: |
         mkdir -p sonarqube
         cd sonarqube
         wget --no-verbose https://sonarcloud.io/static/cpp/build-wrapper-linux-x86.zip
         unzip -qq build-wrapper-linux-x86.zip
+        rm build-wrapper-linux-x86.zip
+        wget --no-verbose https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${{ env.SONAR_SCANNER_VERSION }}-linux.zip
+        unzip -qq sonar-scanner-cli-${{ env.SONAR_SCANNER_VERSION }}-linux.zip
+        rm sonar-scanner-cli-${{ env.SONAR_SCANNER_VERSION }}-linux.zip
         cd ..
-        mkdir sonarqube-out
+
+    - name: Install build dependencies
+      run: |
         apt-get update
         apt-get install -qq -y zip
 
     - name: Build firmware
       run: |
+        mkdir sonarqube-out
         ./sonarqube/build-wrapper-linux-x86/build-wrapper-linux-x86-64 --out-dir sonarqube-out \
           platformio ci --build-dir="./bin" --keep-build-dir --project-conf=platformio.ini ./src/
+
+    - name: Package firmware
+      run: |
+        zip --junk-paths obs-${{ env.OBS_VERSION }}.zip \
+          bin/.pio/build/esp32dev/firmware.bin
+
+    - name: Analyze with SonarCloud
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
         # Hack - point sonarqube to the real sources not the copy of it
         # See also https://community.sonarsource.com/t/scanning-platformio-c-embeded-projects/35141/2
         sed -i 's|OpenBikeSensorFirmware/bin|OpenBikeSensorFirmware|' \
             sonarqube-out/build-wrapper-dump.json
         sed -i 's|.pio/build|bin/.pio/build|' \
             sonarqube-out/build-wrapper-dump.json
-        sed -i 's|/__w/OpenBikeSensorFirmware/OpenBikeSensorFirmware|/github/workspace|' \
-            sonarqube-out/build-wrapper-dump.json
-
-    - name: Package firmware
-      run: |
-        zip --junk-paths obs-${{ env.OBS_VERSION }}.zip bin/.pio/build/esp32dev/firmware.bin
-
-    - name: Analyze with SonarCloud
-      uses: sonarsource/sonarcloud-github-action@master
-      env:
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        args: >
-          -Dsonar.organization=friends-of-openbikesensor
-          -Dsonar.projectKey=Friends-of-OpenBikeSensor_OpenBikeSensorFirmware
-          -Dsonar.coverage.exclusions=**/*
-          -Dsonar.sources=src
-          -Dsonar.sourceEncoding=UTF-8
-          -Dsonar.cfamily.cache.enabled=false
-          -Dsonar.cfamily.threads=1
-          -Dsonar.cfamily.build-wrapper-output=sonarqube-out
+        ./sonarqube/sonar-scanner-${{ env.SONAR_SCANNER_VERSION }}-linux/bin/sonar-scanner \
+          -Dsonar.host.url=https://sonarcloud.io \
+          -Dsonar.host.url=https://sonarcloud.io \
+          -Dsonar.organization=friends-of-openbikesensor \
+          -Dsonar.projectKey=Friends-of-OpenBikeSensor_OpenBikeSensorFirmware \
+          -Dsonar.coverage.exclusions=**/* \
+          -Dsonar.sources=src \
+          -Dsonar.sourceEncoding=UTF-8 \
+          -Dsonar.cfamily.cache.enabled=false \
+          -Dsonar.cfamily.threads=1 \
+          -Dsonar.cfamily.build-wrapper-output=sonarqube-out \
           -Dsonar.projectVersion=${{ env.OBS_MAJOR_VERSION }}
 
-    - name: Upload result artifact
+    - name: Upload Build Asset
       uses: actions/upload-artifact@v2
       with:
         name: obs ${{ env.OBS_VERSION }}
         path: |
           bin/.pio/build/esp32dev/firmware.bin
         if-no-files-found: error
+
+    - name: Generate changelog
+      id: changelog
+      if: ${{ env.OBS_PREPARE_RELEASE == 'true' }}
+      uses: metcalfc/changelog-generator@v0.4.4
+      with:
+        myToken: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Create Release
       id: create_release
@@ -100,6 +133,8 @@ jobs:
         release_name: ${{ env.OBS_VERSION }}
         body: |
           Version ${{ env.OBS_VERSION }} based on ${{ github.ref }} ${{ github.sha }}
+
+          ${{ steps.changelog.outputs.changelog }}
         draft: true
         prerelease: true
 
