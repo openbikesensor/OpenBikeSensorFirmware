@@ -8,10 +8,9 @@ jobs:
     # could use a container with sq tools already installed
        image: infinitecoding/platformio-for-ci:latest
     steps:
-    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
       with:
-        fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+        fetch-depth: 0
 
     - name: Prepare source
       run: |
@@ -58,34 +57,29 @@ jobs:
             sonarqube-out/build-wrapper-dump.json
         sed -i 's|.pio/build|bin/.pio/build|' \
             sonarqube-out/build-wrapper-dump.json
+        sed -i 's|/__w/OpenBikeSensorFirmware/OpenBikeSensorFirmware|/github/workspace|' \
+            sonarqube-out/build-wrapper-dump.json
 
     - name: Package firmware
       run: |
         zip --junk-paths obs-${{ env.OBS_VERSION }}.zip bin/.pio/build/esp32dev/firmware.bin
 
-    - name: Cache SonarCloud packages
-      uses: actions/cache@v1
+    - name: Analyze with SonarCloud
+      uses: sonarsource/sonarcloud-github-action@master
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        path: ~/.sonar/cache
-        key: ${{ runner.os }}-sonar
-        restore-keys: ${{ runner.os }}-sonar
-
-  - name: Analyze with SonarCloud
-    uses: sonarsource/sonarcloud-github-action@master
-    env:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    with:
-      args: >
-        -Dsonar.organization=friends-of-openbikesensor \
-        -Dsonar.projectKey=Friends-of-OpenBikeSensor_OpenBikeSensorFirmware \
-        -Dsonar.coverage.exclusions=**/* \
-        -Dsonar.sources=src \
-        -Dsonar.sourceEncoding=UTF-8 \
-        -Dsonar.cfamily.cache.enabled=false \
-        -Dsonar.cfamily.threads=1 \
-        -Dsonar.cfamily.build-wrapper-output=sonarqube-out \
-        -Dsonar.projectVersion=${{ env.OBS_MAJOR_VERSION }}
+        args: >
+          -Dsonar.organization=friends-of-openbikesensor
+          -Dsonar.projectKey=Friends-of-OpenBikeSensor_OpenBikeSensorFirmware
+          -Dsonar.coverage.exclusions=**/*
+          -Dsonar.sources=src
+          -Dsonar.sourceEncoding=UTF-8
+          -Dsonar.cfamily.cache.enabled=false
+          -Dsonar.cfamily.threads=1
+          -Dsonar.cfamily.build-wrapper-output=sonarqube-out
+          -Dsonar.projectVersion=${{ env.OBS_MAJOR_VERSION }}
 
     - name: Upload result artifact
       uses: actions/upload-artifact@v2
@@ -93,6 +87,7 @@ jobs:
         name: obs ${{ env.OBS_VERSION }}
         path: |
           bin/.pio/build/esp32dev/firmware.bin
+          sonarqube-out/build-wrapper-dump.json
         if-no-files-found: error
 
     - name: Create Release
@@ -120,22 +115,3 @@ jobs:
         asset_path: ./obs-${{ env.OBS_VERSION }}.zip
         asset_name: obs-${{ env.OBS_VERSION }}.zip
         asset_content_type: application/zip
-
-#  super-lint:
-#    # Name the Job
-#    name: Lint code base
-#    # Set the type of machine to run on
-#    runs-on: ubuntu-latest
-
-#    steps:
-#      # Checks out a copy of your repository on the ubuntu-latest machine
-#      - name: Checkout code
-#        uses: actions/checkout@v2
-
-      # Runs the Super-Linter action
-#      - name: Run Super-Linter
-#        uses: github/super-linter@v3
-#        env:
-#          DEFAULT_BRANCH: master
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#          FILTER_REGEX_EXCLUDE: .*/\.idea/.*
