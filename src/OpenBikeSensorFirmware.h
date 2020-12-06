@@ -12,7 +12,6 @@
 #include "gps.h"
 #include "ota.h"
 #include "sensor.h"
-#include "vector.h"
 #include "writer.h"
 
 #ifdef BLUETOOTH_ACTIVATED

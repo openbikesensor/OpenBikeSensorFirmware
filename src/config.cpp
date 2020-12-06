@@ -28,12 +28,7 @@ void jsonDocumentToConfig(DynamicJsonDocument &doc, Config &config) {
   // Copy values from the JsonDocument to the Config
   config.numSensors = doc["numSensors"] | 2;
 
-  // Removes all elements from the offset-vector
-  int vector_size_offset = config.sensorOffsets.size();
-  for (size_t idx = 0; idx < vector_size_offset; idx++) {
-    // Rease always from the beginning of the vector
-    config.sensorOffsets.erase(0);
-  }
+  config.sensorOffsets.clear();
 
   // Append new values to the offset-vector
   for (size_t idx = 0; idx < config.numSensors; ++idx) {
@@ -68,13 +63,7 @@ void jsonDocumentToConfig(DynamicJsonDocument &doc, Config &config) {
   config.devConfig = doc["devConfig"] | 0;
 #endif
 
-
-  // Removes all elements from the privacy-vector
-  int vector_size_privacy = config.privacyAreas.size();
-  for (size_t idx = 0; idx < vector_size_privacy; idx++) {
-    // Rease always from the beginning of the vector
-    config.privacyAreas.erase(0);
-  }
+  config.privacyAreas.clear();
 
   // Append new values to the privacy-vector
   for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx) {

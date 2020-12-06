@@ -21,10 +21,10 @@
 #ifndef OBS_SENSOR_H
 #define OBS_SENSOR_H
 
+#include <vector>
 #include <Arduino.h>
 
 #include "globals.h"
-#include "vector.h"
 #include "utils/median.h"
 
 /* About the speed of sound:
@@ -76,13 +76,13 @@ class HCSR04SensorManager {
   public:
     HCSR04SensorManager() {}
     virtual ~HCSR04SensorManager() {}
-    Vector<HCSR04SensorInfo> m_sensors;
-    Vector<uint16_t> sensorValues;
+    std::vector<HCSR04SensorInfo> m_sensors;
+    std::vector<uint16_t> sensorValues;
     void getDistances();
     void getDistancesParallel();
     void reset();
     void registerSensor(HCSR04SensorInfo);
-    void setOffsets(Vector<uint16_t>);
+    void setOffsets(std::vector<uint16_t>);
     void setPrimarySensor(uint8_t idx);
     uint16_t lastReadingCount = 0;
     uint16_t startOffsetMilliseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];

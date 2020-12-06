@@ -24,8 +24,7 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <SPIFFS.h>
-
-#include "vector.h"
+#include <vector>
 
 enum DisplayOptions {
   DisplaySatelites = 0x01,  // 1
@@ -63,7 +62,7 @@ struct PrivacyArea {
 
 struct Config {
   uint8_t numSensors;
-  Vector<uint16_t> sensorOffsets;
+  std::vector<uint16_t> sensorOffsets;
   char ssid[32];
   char password[64];
   char hostname[64];
@@ -80,7 +79,7 @@ struct Config {
   int port;
   int confirmationTimeWindow;
   uint8_t numPrivacyAreas;
-  Vector<PrivacyArea> privacyAreas;
+  std::vector<PrivacyArea> privacyAreas;
 };
 
 #ifdef DEVELOP

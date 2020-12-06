@@ -103,7 +103,7 @@ void HCSR04SensorManager::reset() {
   activeSensor = primarySensor;
 }
 
-void HCSR04SensorManager::setOffsets(Vector<uint16_t> offsets) {
+void HCSR04SensorManager::setOffsets(std::vector<uint16_t> offsets) {
   for (size_t idx = 0; idx < m_sensors.size(); ++idx) {
     if (idx < offsets.size()) {
       m_sensors[idx].offset = offsets[idx];
