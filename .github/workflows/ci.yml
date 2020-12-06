@@ -87,7 +87,6 @@ jobs:
         name: obs ${{ env.OBS_VERSION }}
         path: |
           bin/.pio/build/esp32dev/firmware.bin
-          sonarqube-out/build-wrapper-dump.json
         if-no-files-found: error
 
     - name: Create Release
