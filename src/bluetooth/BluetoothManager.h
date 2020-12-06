@@ -26,18 +26,18 @@ class BluetoothManager {
      * Starts advertising all services that internally implement shouldAdvertise()
      * with `true`. The bluetooth server needs to be started before this method.
      */
-    void activateBluetooth();
+    void activateBluetooth() const;
 
     /**
      * Stops advertising the bluetooth services. The bluetooth server will not be
      * stopped.
      */
-    void deactivateBluetooth();
+    void deactivateBluetooth() const;
 
     /**
      * Disconnects the currently connected device/client.
      */
-    void disconnectDevice();
+    void disconnectDevice() const;
 
     /**
      * Processes new sensor values by calling each services with the values.
@@ -59,7 +59,14 @@ class BluetoothManager {
      * Process the event that the push button was just pressed. This method should
      * only be called if processButtonState() isn't called.
      */
-    void buttonPressed();
+    void buttonPressed() const;
+
+  private:
+    BLEServer *pServer;
+    std::list<IBluetoothService*> services;
+    unsigned long lastValueTimestamp = millis();
+    boolean buttonWasPressed = false;
+    unsigned long buttonPressTimestamp = 0;
 };
 
 #endif

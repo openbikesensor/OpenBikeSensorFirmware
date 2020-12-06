@@ -1,12 +1,5 @@
 #include "BluetoothManager.h"
 
-BLEServer *pServer;
-std::list<IBluetoothService*> services;
-
-unsigned long lastValueTimestamp = millis();
-boolean buttonWasPressed = false;
-unsigned long buttonPressTimestamp = 0;
-
 void BluetoothManager::init() {
 
   ESP_ERROR_CHECK_WITHOUT_ABORT(
@@ -42,7 +35,7 @@ void BluetoothManager::init() {
   }
 }
 
-void BluetoothManager::activateBluetooth() {
+void BluetoothManager::activateBluetooth() const {
   for (auto &service : services) {
     if (service->shouldAdvertise()) {
       pServer->getAdvertising()->addServiceUUID(service->getService()->getUUID());
@@ -51,11 +44,11 @@ void BluetoothManager::activateBluetooth() {
   pServer->getAdvertising()->start();
 }
 
-void BluetoothManager::deactivateBluetooth() {
+void BluetoothManager::deactivateBluetooth() const {
   pServer->getAdvertising()->stop();
 }
 
-void BluetoothManager::disconnectDevice() {
+void BluetoothManager::disconnectDevice() const {
   pServer->disconnect(pServer->getConnId());
 }
 
@@ -99,7 +92,7 @@ void BluetoothManager::processButtonState(int state) {
   }
 }
 
-void BluetoothManager::buttonPressed() {
+void BluetoothManager::buttonPressed() const {
   for (auto &service : services) {
     service->buttonPressed();
   }
