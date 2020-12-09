@@ -315,7 +315,7 @@ void setup() {
     }
   }
 
-  if (gps.satellites.value() == config.satsForFix) {
+  if (gps.satellites.value() >= config.satsForFix) {
     Serial.print("Got GPS Fix: ");
     Serial.println(String(gps.satellites.value()));
     displayTest->showTextOnGrid(2, 5, "Got GPS Fix");

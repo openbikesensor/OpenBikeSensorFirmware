@@ -25,6 +25,7 @@
 #include <FS.h>
 #include <SD.h>
 #include <TinyGPS++.h>
+#include <utility>
 #include <vector>
 
 #include "config.h"
@@ -61,54 +62,66 @@ struct DataSet {
 
 class FileWriter {
   public:
-    FileWriter() {}
-    virtual ~FileWriter() {}
+    FileWriter() :
+      mStartedMillis(millis()),
+      mFinalFileName(false) {};
+    explicit FileWriter(String ext) :
+      mFileExtension(std::move(ext)),
+      mStartedMillis(millis()),
+      mFinalFileName(false) {};
+    virtual ~FileWriter() = default;
     void listDir(fs::FS &fs, const char * dirname, uint8_t levels);
     void createDir(fs::FS &fs, const char * path);
     void removeDir(fs::FS &fs, const char * path);
     void readFile(fs::FS &fs, const char * path);
     void writeFile(fs::FS &fs, const char * path, const char * message);
     void appendFile(fs::FS &fs, const char * path, const char * message);
-    void renameFile(fs::FS &fs, const char * path1, const char * path2);
+    bool renameFile(fs::FS &fs, const char * path1, const char * path2);
     void deleteFile(fs::FS &fs, const char * path);
     void setFileName();
+    String getFileName();
     void writeDataBuffered(DataSet *set);
+    void writeDataToSD();
+    uint16_t getBufferLength() const;
     virtual void init() = 0;
     virtual void writeHeader() = 0;
     virtual void writeData(DataSet*) = 0;
 
-    void writeDataToSD();
-    uint16_t getDataLength();
-
   protected:
-    String m_fileExtension;
-    String m_filename;
-    String dataString = "";
+    unsigned long getWriteTimeMillis();
+    String mBuffer;
 
   private:
+    void storeTrackNumber(int trackNumber) const;
+    int getTrackNumber() const;
+    void correctFilename();
+    String mFileExtension;
+    String mFileName;
+    const unsigned long mStartedMillis;
+    bool mFinalFileName;
+    unsigned long mWriteTimeMillis = 0;
 
 };
 
 class CSVFileWriter : public FileWriter {
   public:
-    CSVFileWriter() : FileWriter() {
-      m_fileExtension = ".csv";
+    CSVFileWriter() : FileWriter(EXTENSION) {}
+    ~CSVFileWriter() override = default;
+    void init() override {
     }
-    ~CSVFileWriter() {}
-    void init() {
-    }
-    void writeHeader();
-    void writeData(DataSet*);
+    void writeHeader() override;
+    void writeData(DataSet*) override;
+    static const String EXTENSION;
 };
 
 class GPXFileWriter : public FileWriter {
   public:
-    GPXFileWriter() : FileWriter() {
-      m_fileExtension = ".gpx";
+    GPXFileWriter() : FileWriter(EXTENSION) {
     }
-    ~GPXFileWriter() {}
-    void writeHeader();
-    void writeData(DataSet*);
+    ~GPXFileWriter() override = default;
+    void writeHeader() override;
+    void writeData(DataSet*) override;
+    static const String EXTENSION;
   protected:
   private:
 };

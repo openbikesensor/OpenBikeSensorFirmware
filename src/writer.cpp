@@ -20,8 +20,8 @@
 
 #include "writer.h"
 
-int writeTimeMillis;
-
+const String GPXFileWriter::EXTENSION = ".gpx";
+const String CSVFileWriter::EXTENSION = ".obsdata.csv";
 
 void FileWriter::listDir(fs::FS &fs, const char * dirname, uint8_t levels) {
   Serial.printf("Listing directory: %s\n", dirname);
@@ -120,13 +120,9 @@ void FileWriter::appendFile(fs::FS &fs, const char * path, const char * message)
   file.close();
 }
 
-void FileWriter::renameFile(fs::FS &fs, const char * path1, const char * path2) {
+bool FileWriter::renameFile(fs::FS &fs, const char * path1, const char * path2) {
   Serial.printf("Renaming file %s to %s\n", path1, path2);
-  if (fs.rename(path1, path2)) {
-    Serial.println("File renamed");
-  } else {
-    Serial.println("Rename failed");
-  }
+  return fs.rename(path1, path2);
 }
 
 void FileWriter::deleteFile(fs::FS &fs, const char * path) {
@@ -138,43 +134,74 @@ void FileWriter::deleteFile(fs::FS &fs, const char * path) {
   }
 }
 
-void FileWriter::setFileName() {
-  int fileSuffix = 0;
+int FileWriter::getTrackNumber() const {
   File numberFile = SD.open("/tracknumber.txt","r");
-  fileSuffix = numberFile.readString().toInt();
+  int trackNumber = numberFile.readString().toInt();
   numberFile.close();
-  fileSuffix++; // use next file number
-  String base_filename = "/sensorData";
-  m_filename = base_filename + String(fileSuffix) + m_fileExtension;
-  while (SD.exists(m_filename.c_str())) {
-    fileSuffix++;
-    m_filename = base_filename + String(fileSuffix) + m_fileExtension;
-  }
-  numberFile = SD.open("/tracknumber.txt","w");
-  numberFile.println(fileSuffix);
+  return trackNumber;
+}
+
+void FileWriter::storeTrackNumber(int trackNumber) const {
+  File numberFile = SD.open("/tracknumber.txt","w");
+  numberFile.println(trackNumber);
   numberFile.close();
 }
 
-uint16_t FileWriter::getDataLength() {
-  return dataString.length();
+void FileWriter::setFileName() {
+  int number = getTrackNumber();
+  String base_filename = "/sensorData";
+  mFileName = base_filename + String(number) + mFileExtension;
+  while (SD.exists(mFileName)) {
+    number++;
+    mFileName = base_filename + String(number) + mFileExtension;
+  }
+  storeTrackNumber(number);
+}
+
+void FileWriter::correctFilename() {
+  tm startTm;
+  auto start = time(nullptr);
+  unsigned long passedSeconds = (millis() - mStartedMillis) / 1000L;
+  start -= passedSeconds;
+  localtime_r(&start, &startTm);
+  if (startTm.tm_year + 1900 > 2019) {
+    char name[32];
+    snprintf(name, sizeof (name), "/%04d-%02d-%02dT%02d.%02d.%02d-%4x",
+             startTm.tm_year + 1900, startTm.tm_mon + 1, startTm.tm_mday,
+             startTm.tm_hour, startTm.tm_min, startTm.tm_sec,
+             (uint16_t)(ESP.getEfuseMac() >> 32));
+    const String newName = name + mFileExtension;
+    if(!SD.exists(mFileName.c_str()) || // already written
+      renameFile(SD, mFileName.c_str(), newName.c_str())) {
+      mFileName = newName;
+      mFinalFileName = true;
+    }
+  }
+}
+
+uint16_t FileWriter::getBufferLength() const {
+  return mBuffer.length();
 }
 
 void FileWriter::writeDataToSD() {
-  const int start = millis();
-  this->appendFile(SD, m_filename.c_str(), dataString.c_str() );
-  writeTimeMillis = millis() - start;
-  dataString.clear();
+  const auto start = millis();
+  appendFile(SD, mFileName.c_str(), mBuffer.c_str() );
+  mBuffer.clear();
+  mWriteTimeMillis = millis() - start;
+  if (!mFinalFileName) {
+    correctFilename();
+  }
 }
 
 void FileWriter::writeDataBuffered(DataSet* set) {
-  if (getDataLength() > 10000 && !(digitalRead(PushButton))) {
+  if (getBufferLength() > 10000 && !(digitalRead(PushButton))) {
 #ifdef DEVELOP
     Serial.printf("File buffer full, writing to file\n");
 #endif
     writeDataToSD();
   }
 
-  if (getDataLength() < 13000) { // do not add data if our buffer is full already. We loose data here!
+  if (getBufferLength() < 11000) { // do not add data if our buffer is full already. We loose data here!
     writeData(set);
   } else {
     // ALERT!! - display?
@@ -184,6 +211,13 @@ void FileWriter::writeDataBuffered(DataSet* set) {
   }
 }
 
+String FileWriter::getFileName() {
+  return mFileName;
+}
+
+unsigned long FileWriter::getWriteTimeMillis() {
+  return mWriteTimeMillis;
+}
 
 void CSVFileWriter::writeHeader() {
   String headerString;
@@ -224,6 +258,8 @@ void CSVFileWriter::writeHeader() {
   }
   headerString += privacyString + "&";
   headerString += "MaximumValidFlightTimeMicroseconds=" + String(MAX_DURATION_MICRO_SEC) + "&";
+  headerString += "BluetoothEnabled=" + String(config.bluetooth) + "&";
+  headerString += "PresetId=default&";
   headerString += "DistanceSensorsUsed=HC-SR04/JSN-SR04T\n";
 
   headerString += "Date;Time;Millis;Comment;Latitude;Longitude;Altitude;"
@@ -236,7 +272,7 @@ void CSVFileWriter::writeHeader() {
     headerString += ";Rus" + number;
   }
   headerString += "\n";
-  this->appendFile(SD, m_filename.c_str(), headerString.c_str() );
+  mBuffer += headerString;
 }
 
 void CSVFileWriter::writeData(DataSet* set) {
@@ -259,75 +295,78 @@ void CSVFileWriter::writeData(DataSet* set) {
     time.tm_mday, time.tm_mon + 1, time.tm_year + 1900,
     time.tm_hour, time.tm_min, time.tm_sec, set->millis);
 
-  dataString += date;
-  dataString += set->comment;
+  mBuffer += date;
+  mBuffer += set->comment;
 
 #ifdef DEVELOP
   if (time.tm_sec == 0) {
-    dataString += "DEVELOP:  GPSMessages: " + String(gps.passedChecksum())
-      + " GPS crc errors: " + String(gps.failedChecksum());
+    mBuffer += "DEVELOP:  GPSMessages: " + String(gps.passedChecksum())
+               + " GPS crc errors: " + String(gps.failedChecksum());
   } else if (time.tm_sec == 1) {
-    dataString += "DEVELOP: Mem: "
-      + String(ESP.getFreeHeap() / 1024) + "k Buffer: "
-      + String(getDataLength() / 1024) + "k last write time: "
-      + String(writeTimeMillis);
+    mBuffer += "DEVELOP: Mem: "
+               + String(ESP.getFreeHeap() / 1024) + "k Buffer: "
+               + String(getBufferLength() / 1024) + "k last write time: "
+               + String(getWriteTimeMillis());
+  } else if (time.tm_sec == 2) {
+    mBuffer += "DEVELOP: Mem min free: "
+      + String(ESP.getMinFreeHeap() / 1024) + "k";
   }
 #endif
-  dataString += ";";
+  mBuffer += ";";
 
   if ((!set->location.isValid()) ||
       ((config.privacyConfig & NoPosition) && set->isInsidePrivacyArea
     && !((config.privacyConfig & OverridePrivacy) && set->confirmed))) {
-    dataString += ";;;;;";
+    mBuffer += ";;;;;";
   } else {
-    dataString += String(set->location.lat(), 6) + ";";
-    dataString += String(set->location.lng(), 6) + ";";
-    dataString += String(set->altitude.meters(), 1) + ";";
+    mBuffer += String(set->location.lat(), 6) + ";";
+    mBuffer += String(set->location.lng(), 6) + ";";
+    mBuffer += String(set->altitude.meters(), 1) + ";";
     if (set->course.isValid()) {
-      dataString += String(set->course.deg(), 2);
+      mBuffer += String(set->course.deg(), 2);
     }
-    dataString += ";";
+    mBuffer += ";";
     if (set->speed.isValid()) {
-      dataString += String(set->speed.kmph(), 2);
+      mBuffer += String(set->speed.kmph(), 2);
     }
-    dataString += ";";
+    mBuffer += ";";
   }
   if (set->hdop.isValid()) {
-    dataString += String(set->hdop.hdop(), 2);
+    mBuffer += String(set->hdop.hdop(), 2);
   }
-  dataString += ";";
-  dataString += String(set->validSatellites) + ";";
-  dataString += String(set->batteryLevel, 2) + ";";
+  mBuffer += ";";
+  mBuffer += String(set->validSatellites) + ";";
+  mBuffer += String(set->batteryLevel, 2) + ";";
   if (set->sensorValues[LEFT_SENSOR_ID] < MAX_SENSOR_VALUE) {
-    dataString += String(set->sensorValues[LEFT_SENSOR_ID]);
+    mBuffer += String(set->sensorValues[LEFT_SENSOR_ID]);
   }
-  dataString += ";";
+  mBuffer += ";";
   if (set->sensorValues[RIGHT_SENSOR_ID] < MAX_SENSOR_VALUE) {
-    dataString += String(set->sensorValues[RIGHT_SENSOR_ID]);
+    mBuffer += String(set->sensorValues[RIGHT_SENSOR_ID]);
   }
-  dataString += ";";
-  dataString += String(set->confirmed) + ";";
-  dataString += String(set->marked) + ";";
-  dataString += String(set->invalidMeasurement) + ";";
-  dataString += String(set->isInsidePrivacyArea) + ";";
-  dataString += String(set->factor) + ";";
-  dataString += String(set->measurements);
+  mBuffer += ";";
+  mBuffer += String(set->confirmed) + ";";
+  mBuffer += String(set->marked) + ";";
+  mBuffer += String(set->invalidMeasurement) + ";";
+  mBuffer += String(set->isInsidePrivacyArea) + ";";
+  mBuffer += String(set->factor) + ";";
+  mBuffer += String(set->measurements);
 
   for (size_t idx = 0; idx < set->measurements; ++idx) {
-    dataString += ";" + String(set->startOffsetMilliseconds[idx]) + ";";
+    mBuffer += ";" + String(set->startOffsetMilliseconds[idx]) + ";";
     if (set->readDurationsLeftInMicroseconds[idx] > 0) {
-      dataString += String(set->readDurationsLeftInMicroseconds[idx]) + ";";
+      mBuffer += String(set->readDurationsLeftInMicroseconds[idx]) + ";";
     } else {
-      dataString += ";";
+      mBuffer += ";";
     }
     if (set->readDurationsRightInMicroseconds[idx] > 0) {
-      dataString += String(set->readDurationsRightInMicroseconds[idx]);
+      mBuffer += String(set->readDurationsRightInMicroseconds[idx]);
     }
   }
   for (size_t idx = set->measurements; idx < MAX_NUMBER_MEASUREMENTS_PER_INTERVAL; ++idx) {
-    dataString += ";;;";
+    mBuffer += ";;;";
   }
-  dataString += "\n";
+  mBuffer += "\n";
 }
 
 
@@ -337,7 +376,7 @@ void GPXFileWriter::writeHeader() {
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
       "<gpx version=\"1.0\">\n"
       "\t<trk><trkseg>\n");
-  this->appendFile(SD, m_filename.c_str(), headerString.c_str() );
+  this->appendFile(SD, getFileName().c_str(), headerString.c_str() );
 }
 
 void GPXFileWriter::writeData(DataSet* set) {
@@ -353,7 +392,7 @@ void GPXFileWriter::writeData(DataSet* set) {
   dataString += "\">";
 
   char dateTimeString[25];
-  tm time;
+  struct tm time;
   localtime_r(&set->time, &time);
   snprintf(dateTimeString, sizeof(dateTimeString),
     "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ",
@@ -369,18 +408,5 @@ void GPXFileWriter::writeData(DataSet* set) {
 
   dataString += F("</trkpt>\n");
 
-  this->appendFile(SD, m_filename.c_str(), dataString.c_str() );
+  this->appendFile(SD, getFileName().c_str(), dataString.c_str() );
 }
-
-/*
-  // call back for timestamps
-  void dateTime(uint16_t* date, uint16_t* time) {
-  DateTime now = RTC.now();
-
-  // return date using FAT_DATE macro to format fields
-   date = FAT_DATE(now.year(), now.month(), now.day());
-
-  // return time using FAT_TIME macro to format fields
-   time = FAT_TIME(now.hour(), now.minute(), now.second());
-  }
-*/

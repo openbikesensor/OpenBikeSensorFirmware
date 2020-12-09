@@ -23,6 +23,7 @@
 #include "config.h"
 #include "globals.h"
 #include "utils/multipart.h"
+#include "writer.h"
 
 #include <WiFi.h>
 #include <WiFiMulti.h>
@@ -101,14 +102,12 @@ uploader::uploader() {
  *
  */
 bool uploader::upload(const String& fileName) {
-  int number=0;
-  if(fileName.substring(0,7)!="/sensor") {
+  if(fileName.substring(0,7) != "/sensor"
+    && !fileName.endsWith(CSVFileWriter::EXTENSION)) {
     Serial.printf(("not sending " + fileName + "\n").c_str());
     return false;
   }
   Serial.printf(("sending " + fileName + "\n").c_str());
-  sscanf(fileName.c_str(),"/sensorData%d",&number);
-
   File csvFile = SD.open(fileName.c_str(), "r");
   if (csvFile) {
     HTTPClient https;
@@ -122,7 +121,8 @@ bool uploader::upload(const String& fileName) {
 
     if (res) { // HTTPS
       MultipartStream mp(&https);
-      MultipartDataString title("title", "AutoUpload " + String(number));
+      MultipartDataString title("title",
+                                "AutoUpload " + fileName.substring(1, 25));
       mp.add(title);
       MultipartDataString description("description", "Uploaded with OpenBikeSensor " + String(OBSVersion));
       mp.add(description);
@@ -134,11 +134,14 @@ bool uploader::upload(const String& fileName) {
         Serial.printf("[HTTPS] POST... code: %d\n", httpCode);
         String payload = https.getString();
         Serial.println(payload);
+        csvFile.close();
         return false;
       }
-      https.end();
+      https.end(); // we could keep the connection!?
+      csvFile.close();
     } else {
       Serial.printf("[HTTPS] Unable to connect\n");
+      csvFile.close();
       return false;
     }
   } else {
