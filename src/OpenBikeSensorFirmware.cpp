@@ -48,7 +48,7 @@ Config config;
 
 SSD1306DisplayDevice* displayTest;
 HCSR04SensorManager* sensorManager;
-BluetoothManager* bluetoothManager;
+BluetoothManager bluetoothManager;
 const long BLUETOOTH_INTERVAL_MILLIS = 150;
 long lastBluetoothInterval = 0;
 
@@ -325,8 +325,8 @@ void setup() {
   // Bluetooth
   //##############################################################
   if (config.bluetooth) {
-    bluetoothManager->init();
-    bluetoothManager->activateBluetooth();
+    bluetoothManager.init();
+    bluetoothManager.activateBluetooth();
   } else {
     ESP_ERROR_CHECK_WITHOUT_ABORT(
       esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
@@ -398,10 +398,10 @@ void loop() {
                     buttonState);
 #endif
       lastBluetoothInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
-      bluetoothManager->newSensorValues(
+      bluetoothManager.newSensorValues(
         sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
         sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median());
-      bluetoothManager->processButtonState(digitalRead(PushButton));
+      bluetoothManager.processButtonState(digitalRead(PushButton));
     }
 
     buttonState = digitalRead(PushButton);
