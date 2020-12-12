@@ -111,6 +111,7 @@ bool uploader::upload(const String& fileName) {
   File csvFile = SD.open(fileName.c_str(), "r");
   if (csvFile) {
     HTTPClient https;
+    https.setTimeout(30 * 1000); // give the api some time
     https.setUserAgent(String("OBS/") + String(OBSVersion));
     boolean res = false;
 
@@ -134,13 +135,14 @@ bool uploader::upload(const String& fileName) {
         Serial.printf("[HTTPS] POST... code: %d\n", httpCode);
         String payload = https.getString();
         Serial.println(payload);
+        https.end();
         csvFile.close();
         return false;
       }
-      https.end(); // we could keep the connection!?
       csvFile.close();
     } else {
       Serial.printf("[HTTPS] Unable to connect\n");
+      https.end();
       csvFile.close();
       return false;
     }
