@@ -20,7 +20,6 @@
 
 #include "writer.h"
 
-const String GPXFileWriter::EXTENSION = ".gpx";
 const String CSVFileWriter::EXTENSION = ".obsdata.csv";
 
 void FileWriter::listDir(fs::FS &fs, const char * dirname, uint8_t levels) {
@@ -104,20 +103,23 @@ void FileWriter::writeFile(fs::FS &fs, const char * path, const char * message) 
   file.close();
 }
 
-void FileWriter::appendFile(fs::FS &fs, const char * path, const char * message) {
+bool FileWriter::appendFile(fs::FS &fs, const char * path, const char * message) {
+  bool result = false;
   Serial.printf("Appending to file: %s\n", path);
 
   File file = fs.open(path, FILE_APPEND);
   if (!file) {
     Serial.println("Failed to open file for appending");
-    return;
+    return false;
   }
   if (file.print(message)) {
+    result = true;
     Serial.println("Message appended");
   } else {
     Serial.println("Append failed");
   }
   file.close();
+  return result;
 }
 
 bool FileWriter::renameFile(fs::FS &fs, const char * path1, const char * path2) {
@@ -183,32 +185,43 @@ uint16_t FileWriter::getBufferLength() const {
   return mBuffer.length();
 }
 
-void FileWriter::writeDataToSD() {
+bool FileWriter::appendString(const String &s) {
+  bool stored = false;
+  if (getBufferLength() < 11000) { // do not add data if our buffer is full already. We loose data here!
+    mBuffer.concat(s);
+    stored = true;
+  }
+  if (getBufferLength() > 10000 && !(digitalRead(PushButton))) {
+    flush();
+  }
+  if (!stored && getBufferLength() < 11000) { // do not add data if our buffer is full already. We loose data here!
+    mBuffer.concat(s);
+    stored = true;
+  } else {
+#ifdef DEVELOP
+    Serial.printf("File buffer overflow, not allowed to write - "
+                  "will skip, memory is at %dk.\n", ESP.getFreeHeap() / 1024);
+#endif
+  }
+  return stored;
+}
+
+bool FileWriter::flush() {
+  bool result;
+#ifdef DEVELOP
+  Serial.printf("Writing to concrete file.\n");
+#endif
   const auto start = millis();
-  appendFile(SD, mFileName.c_str(), mBuffer.c_str() );
+  result = appendFile(SD, mFileName.c_str(), mBuffer.c_str() );
   mBuffer.clear();
   mWriteTimeMillis = millis() - start;
   if (!mFinalFileName) {
     correctFilename();
   }
-}
-
-void FileWriter::writeDataBuffered(DataSet* set) {
-  if (getBufferLength() > 10000 && !(digitalRead(PushButton))) {
 #ifdef DEVELOP
-    Serial.printf("File buffer full, writing to file\n");
+  Serial.printf("Writing to concrete file done took %lums.\n", mWriteTimeMillis);
 #endif
-    writeDataToSD();
-  }
-
-  if (getBufferLength() < 11000) { // do not add data if our buffer is full already. We loose data here!
-    writeData(set);
-  } else {
-    // ALERT!! - display?
-#ifdef DEVELOP
-    Serial.printf("File buffer overflow, not allowed to write - will skip\n");
-#endif
-  }
+  return result;
 }
 
 String FileWriter::getFileName() {
@@ -219,17 +232,17 @@ unsigned long FileWriter::getWriteTimeMillis() {
   return mWriteTimeMillis;
 }
 
-void CSVFileWriter::writeHeader() {
-  String headerString;
-  headerString += "OBSDataFormat=2&";
-  headerString += "OBSFirmwareVersion=" + String(OBSVersion) + "&";
-  headerString += "DeviceId=" + String((uint16_t)(ESP.getEfuseMac() >> 32), 16) + "&";
-  headerString += "DataPerMeasurement=3&";
-  headerString += "MaximumMeasurementsPerLine=" + String(MAX_NUMBER_MEASUREMENTS_PER_INTERVAL) + "&";
-  headerString += "OffsetLeft=" + String(config.sensorOffsets[LEFT_SENSOR_ID]) + "&";
-  headerString += "OffsetRight=" + String(config.sensorOffsets[RIGHT_SENSOR_ID]) + "&";
-  headerString += "NumberOfDefinedPrivacyAreas=" + String((int) config.privacyAreas.size()) + "&";
-  headerString += "PrivacyLevelApplied=";
+bool CSVFileWriter::writeHeader() {
+  String header;
+  header += "OBSDataFormat=2&";
+  header += "OBSFirmwareVersion=" + String(OBSVersion) + "&";
+  header += "DeviceId=" + String((uint16_t)(ESP.getEfuseMac() >> 32), 16) + "&";
+  header += "DataPerMeasurement=3&";
+  header += "MaximumMeasurementsPerLine=" + String(MAX_NUMBER_MEASUREMENTS_PER_INTERVAL) + "&";
+  header += "OffsetLeft=" + String(config.sensorOffsets[LEFT_SENSOR_ID]) + "&";
+  header += "OffsetRight=" + String(config.sensorOffsets[RIGHT_SENSOR_ID]) + "&";
+  header += "NumberOfDefinedPrivacyAreas=" + String((int) config.privacyAreas.size()) + "&";
+  header += "PrivacyLevelApplied=";
 
   String privacyString;
   if (config.privacyConfig & AbsolutePrivacy) {
@@ -251,162 +264,122 @@ void CSVFileWriter::writeHeader() {
     if (!privacyString.isEmpty()) {
       privacyString += "|";
     }
-    headerString += "OverridePrivacy";
+    header += "OverridePrivacy";
   }
   if (privacyString.isEmpty()) {
     privacyString += "NoPrivacy";
   }
-  headerString += privacyString + "&";
-  headerString += "MaximumValidFlightTimeMicroseconds=" + String(MAX_DURATION_MICRO_SEC) + "&";
-  headerString += "BluetoothEnabled=" + String(config.bluetooth) + "&";
-  headerString += "PresetId=default&";
-  headerString += "DistanceSensorsUsed=HC-SR04/JSN-SR04T\n";
+  header += privacyString + "&";
+  header += "MaximumValidFlightTimeMicroseconds=" + String(MAX_DURATION_MICRO_SEC) + "&";
+  header += "BluetoothEnabled=" + String(config.bluetooth) + "&";
+  header += "PresetId=default&";
+  header += "DistanceSensorsUsed=HC-SR04/JSN-SR04T\n";
 
-  headerString += "Date;Time;Millis;Comment;Latitude;Longitude;Altitude;"
+  header += "Date;Time;Millis;Comment;Latitude;Longitude;Altitude;"
     "Course;Speed;HDOP;Satellites;BatteryLevel;Left;Right;Confirmed;Marked;Invalid;"
     "InsidePrivacyArea;Factor;Measurements";
   for (uint16_t idx = 1; idx <= MAX_NUMBER_MEASUREMENTS_PER_INTERVAL; ++idx) {
     String number = String(idx);
-    headerString += ";Tms" + number;
-    headerString += ";Lus" + number;
-    headerString += ";Rus" + number;
+    header += ";Tms" + number;
+    header += ";Lus" + number;
+    header += ";Rus" + number;
   }
-  headerString += "\n";
-  mBuffer += headerString;
+  header += "\n";
+  return appendString(header);
 }
 
-void CSVFileWriter::writeData(DataSet* set) {
+bool CSVFileWriter::append(DataSet &set) {
+  String csv;
   /*
     AbsolutePrivacy : When inside privacy area, the writer does noting, unless overriding is selected and the current set is confirmed
     NoPosition : When inside privacy area, the writer will replace latitude and longitude with NaNs
     NoPrivacy : Privacy areas are ignored, but the value "insidePrivacyArea" will be 1 inside
     OverridePrivacy : When selected, a full set is written, when a value was confirmed, even inside the privacy area
   */
-  if (set->isInsidePrivacyArea
-    && ((config.privacyConfig & AbsolutePrivacy) || ((config.privacyConfig & OverridePrivacy) && !set->confirmed))) {
-    return;
+  if (set.isInsidePrivacyArea
+    && ((config.privacyConfig & AbsolutePrivacy) || ((config.privacyConfig & OverridePrivacy) && !set.confirmed))) {
+    return true;
   }
 
   tm time;
-  localtime_r(&set->time, &time);
+  localtime_r(&set.time, &time);
   char date[32];
   snprintf(date, sizeof(date),
     "%02d.%02d.%04d;%02d:%02d:%02d;%u;",
     time.tm_mday, time.tm_mon + 1, time.tm_year + 1900,
-    time.tm_hour, time.tm_min, time.tm_sec, set->millis);
+    time.tm_hour, time.tm_min, time.tm_sec, set.millis);
 
-  mBuffer += date;
-  mBuffer += set->comment;
+  csv += date;
+  csv += set.comment;
 
 #ifdef DEVELOP
   if (time.tm_sec == 0) {
-    mBuffer += "DEVELOP:  GPSMessages: " + String(gps.passedChecksum())
-               + " GPS crc errors: " + String(gps.failedChecksum());
+    csv += "DEVELOP:  GPSMessages: " + String(gps.passedChecksum())
+           + " GPS crc errors: " + String(gps.failedChecksum());
   } else if (time.tm_sec == 1) {
-    mBuffer += "DEVELOP: Mem: "
-               + String(ESP.getFreeHeap() / 1024) + "k Buffer: "
-               + String(getBufferLength() / 1024) + "k last write time: "
-               + String(getWriteTimeMillis());
+    csv += "DEVELOP: Mem: "
+           + String(ESP.getFreeHeap() / 1024) + "k Buffer: "
+           + String(getBufferLength() / 1024) + "k last write time: "
+           + String(getWriteTimeMillis());
   } else if (time.tm_sec == 2) {
-    mBuffer += "DEVELOP: Mem min free: "
-      + String(ESP.getMinFreeHeap() / 1024) + "k";
+    csv += "DEVELOP: Mem min free: "
+           + String(ESP.getMinFreeHeap() / 1024) + "k";
   }
 #endif
-  mBuffer += ";";
+  csv += ";";
 
-  if ((!set->location.isValid()) ||
-      ((config.privacyConfig & NoPosition) && set->isInsidePrivacyArea
-    && !((config.privacyConfig & OverridePrivacy) && set->confirmed))) {
-    mBuffer += ";;;;;";
+  if ((!set.location.isValid()) ||
+      ((config.privacyConfig & NoPosition) && set.isInsidePrivacyArea
+    && !((config.privacyConfig & OverridePrivacy) && set.confirmed))) {
+    csv += ";;;;;";
   } else {
-    mBuffer += String(set->location.lat(), 6) + ";";
-    mBuffer += String(set->location.lng(), 6) + ";";
-    mBuffer += String(set->altitude.meters(), 1) + ";";
-    if (set->course.isValid()) {
-      mBuffer += String(set->course.deg(), 2);
+    csv += String(set.location.lat(), 6) + ";";
+    csv += String(set.location.lng(), 6) + ";";
+    csv += String(set.altitude.meters(), 1) + ";";
+    if (set.course.isValid()) {
+      csv += String(set.course.deg(), 2);
     }
-    mBuffer += ";";
-    if (set->speed.isValid()) {
-      mBuffer += String(set->speed.kmph(), 2);
+    csv += ";";
+    if (set.speed.isValid()) {
+      csv += String(set.speed.kmph(), 2);
     }
-    mBuffer += ";";
+    csv += ";";
   }
-  if (set->hdop.isValid()) {
-    mBuffer += String(set->hdop.hdop(), 2);
+  if (set.hdop.isValid()) {
+    csv += String(set.hdop.hdop(), 2);
   }
-  mBuffer += ";";
-  mBuffer += String(set->validSatellites) + ";";
-  mBuffer += String(set->batteryLevel, 2) + ";";
-  if (set->sensorValues[LEFT_SENSOR_ID] < MAX_SENSOR_VALUE) {
-    mBuffer += String(set->sensorValues[LEFT_SENSOR_ID]);
+  csv += ";";
+  csv += String(set.validSatellites) + ";";
+  csv += String(set.batteryLevel, 2) + ";";
+  if (set.sensorValues[LEFT_SENSOR_ID] < MAX_SENSOR_VALUE) {
+    csv += String(set.sensorValues[LEFT_SENSOR_ID]);
   }
-  mBuffer += ";";
-  if (set->sensorValues[RIGHT_SENSOR_ID] < MAX_SENSOR_VALUE) {
-    mBuffer += String(set->sensorValues[RIGHT_SENSOR_ID]);
+  csv += ";";
+  if (set.sensorValues[RIGHT_SENSOR_ID] < MAX_SENSOR_VALUE) {
+    csv += String(set.sensorValues[RIGHT_SENSOR_ID]);
   }
-  mBuffer += ";";
-  mBuffer += String(set->confirmed) + ";";
-  mBuffer += String(set->marked) + ";";
-  mBuffer += String(set->invalidMeasurement) + ";";
-  mBuffer += String(set->isInsidePrivacyArea) + ";";
-  mBuffer += String(set->factor) + ";";
-  mBuffer += String(set->measurements);
+  csv += ";";
+  csv += String(set.confirmed) + ";";
+  csv += String(set.marked) + ";";
+  csv += String(set.invalidMeasurement) + ";";
+  csv += String(set.isInsidePrivacyArea) + ";";
+  csv += String(set.factor) + ";";
+  csv += String(set.measurements);
 
-  for (size_t idx = 0; idx < set->measurements; ++idx) {
-    mBuffer += ";" + String(set->startOffsetMilliseconds[idx]) + ";";
-    if (set->readDurationsLeftInMicroseconds[idx] > 0) {
-      mBuffer += String(set->readDurationsLeftInMicroseconds[idx]) + ";";
+  for (size_t idx = 0; idx < set.measurements; ++idx) {
+    csv += ";" + String(set.startOffsetMilliseconds[idx]) + ";";
+    if (set.readDurationsLeftInMicroseconds[idx] > 0) {
+      csv += String(set.readDurationsLeftInMicroseconds[idx]) + ";";
     } else {
-      mBuffer += ";";
+      csv += ";";
     }
-    if (set->readDurationsRightInMicroseconds[idx] > 0) {
-      mBuffer += String(set->readDurationsRightInMicroseconds[idx]);
+    if (set.readDurationsRightInMicroseconds[idx] > 0) {
+      csv += String(set.readDurationsRightInMicroseconds[idx]);
     }
   }
-  for (size_t idx = set->measurements; idx < MAX_NUMBER_MEASUREMENTS_PER_INTERVAL; ++idx) {
-    mBuffer += ";;;";
+  for (size_t idx = set.measurements; idx < MAX_NUMBER_MEASUREMENTS_PER_INTERVAL; ++idx) {
+    csv += ";;;";
   }
-  mBuffer += "\n";
-}
-
-
-void GPXFileWriter::writeHeader() {
-  String headerString;
-  headerString += F(
-      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-      "<gpx version=\"1.0\">\n"
-      "\t<trk><trkseg>\n");
-  this->appendFile(SD, getFileName().c_str(), headerString.c_str() );
-}
-
-void GPXFileWriter::writeData(DataSet* set) {
-  String dataString;
-
-  dataString += "\t\t<trkpt ";
-  dataString += "lat=\"";
-  String latitudeString = String(set->location.lat(), 6);
-  dataString += latitudeString;
-  dataString += "\" lon=\"";
-  String longitudeString = String(set->location.lng(), 6);
-  dataString += longitudeString;
-  dataString += "\">";
-
-  char dateTimeString[25];
-  struct tm time;
-  localtime_r(&set->time, &time);
-  snprintf(dateTimeString, sizeof(dateTimeString),
-    "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ",
-    time.tm_year + 1900, time.tm_mon + 1, time.tm_mday,
-    time.tm_hour, time.tm_min, time.tm_sec, 0);
-  dataString += F("<time>");
-  dataString += dateTimeString;
-  dataString += F("</time>");
-
-  dataString += F("<ele>");
-  dataString += String(set->altitude.meters(), 2);
-  dataString += F("</ele>");
-
-  dataString += F("</trkpt>\n");
-
-  this->appendFile(SD, getFileName().c_str(), dataString.c_str() );
+  csv += "\n";
+  return appendString(csv);
 }

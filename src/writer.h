@@ -62,43 +62,39 @@ struct DataSet {
 
 class FileWriter {
   public:
-    FileWriter() :
-      mStartedMillis(millis()),
-      mFinalFileName(false) {};
+    FileWriter() = default;;
     explicit FileWriter(String ext) :
-      mFileExtension(std::move(ext)),
-      mStartedMillis(millis()),
-      mFinalFileName(false) {};
+      mFileExtension(std::move(ext)) {};
     virtual ~FileWriter() = default;
     void listDir(fs::FS &fs, const char * dirname, uint8_t levels);
     void createDir(fs::FS &fs, const char * path);
     void removeDir(fs::FS &fs, const char * path);
     void readFile(fs::FS &fs, const char * path);
     void writeFile(fs::FS &fs, const char * path, const char * message);
-    void appendFile(fs::FS &fs, const char * path, const char * message);
+    bool appendFile(fs::FS &fs, const char * path, const char * message);
     bool renameFile(fs::FS &fs, const char * path1, const char * path2);
     void deleteFile(fs::FS &fs, const char * path);
     void setFileName();
     String getFileName();
-    void writeDataBuffered(DataSet *set);
-    void writeDataToSD();
-    uint16_t getBufferLength() const;
+    virtual bool writeHeader() = 0;
+    virtual bool append(DataSet &) = 0;
+    bool appendString(const String &s);
+    bool flush();
     virtual void init() = 0;
-    virtual void writeHeader() = 0;
-    virtual void writeData(DataSet*) = 0;
 
   protected:
     unsigned long getWriteTimeMillis();
-    String mBuffer;
+    uint16_t getBufferLength() const;
 
   private:
     void storeTrackNumber(int trackNumber) const;
     int getTrackNumber() const;
     void correctFilename();
+    String mBuffer;
     String mFileExtension;
     String mFileName;
-    const unsigned long mStartedMillis;
-    bool mFinalFileName;
+    const unsigned long mStartedMillis = millis();
+    bool mFinalFileName = false;
     unsigned long mWriteTimeMillis = 0;
 
 };
@@ -109,21 +105,9 @@ class CSVFileWriter : public FileWriter {
     ~CSVFileWriter() override = default;
     void init() override {
     }
-    void writeHeader() override;
-    void writeData(DataSet*) override;
+    bool writeHeader() override;
+    bool append(DataSet&) override;
     static const String EXTENSION;
-};
-
-class GPXFileWriter : public FileWriter {
-  public:
-    GPXFileWriter() : FileWriter(EXTENSION) {
-    }
-    ~GPXFileWriter() override = default;
-    void writeHeader() override;
-    void writeData(DataSet*) override;
-    static const String EXTENSION;
-  protected:
-  private:
 };
 
 #endif
