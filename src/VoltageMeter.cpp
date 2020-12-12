@@ -1,5 +1,5 @@
-#include "OpenBikeSensorFirmware.h"
-
+#include "VoltageMeter.h"
+#include "globals.h"
 
 /* Class to encapsulate voltage readings and smoothing thereof.
  * Still the values are not as accurate as expected, and it is not

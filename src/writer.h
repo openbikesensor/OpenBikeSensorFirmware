@@ -22,12 +22,11 @@
 #define OBS_WRITER_H
 
 #include <Arduino.h>
-#include <FS.h>
 #include <SD.h>
 #include <TinyGPS++.h>
+#include <utility>
 #include <vector>
 
-#include "config.h"
 #include "globals.h"
 
 
@@ -58,59 +57,42 @@ struct DataSet {
   int32_t readDurationsRightInMicroseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
 };
 
-
 class FileWriter {
   public:
-    FileWriter() {}
-    virtual ~FileWriter() {}
-    void listDir(fs::FS &fs, const char * dirname, uint8_t levels);
-    void createDir(fs::FS &fs, const char * path);
-    void removeDir(fs::FS &fs, const char * path);
-    void readFile(fs::FS &fs, const char * path);
-    void writeFile(fs::FS &fs, const char * path, const char * message);
-    void appendFile(fs::FS &fs, const char * path, const char * message);
-    void renameFile(fs::FS &fs, const char * path1, const char * path2);
-    void deleteFile(fs::FS &fs, const char * path);
+    FileWriter() = default;;
+    explicit FileWriter(String ext) :
+      mFileExtension(std::move(ext)) {};
+    virtual ~FileWriter() = default;
     void setFileName();
-    void writeDataBuffered(DataSet *set);
-    virtual void init() = 0;
-    virtual void writeHeader() = 0;
-    virtual void writeData(DataSet*) = 0;
-
-    void writeDataToSD();
-    uint16_t getDataLength();
+    virtual bool writeHeader() = 0;
+    virtual bool append(DataSet &) = 0;
+    bool appendString(const String &s);
+    bool flush();
 
   protected:
-    String m_fileExtension;
-    String m_filename;
-    String dataString = "";
+    uint16_t getBufferLength() const;
+    unsigned long getWriteTimeMillis() const;
 
   private:
+    static void storeTrackNumber(int trackNumber);
+    static int getTrackNumber();
+    void correctFilename();
+    String mBuffer;
+    String mFileExtension;
+    String mFileName;
+    const unsigned long mStartedMillis = millis();
+    bool mFinalFileName = false;
+    unsigned long mWriteTimeMillis = 0;
 
 };
 
 class CSVFileWriter : public FileWriter {
   public:
-    CSVFileWriter() : FileWriter() {
-      m_fileExtension = ".csv";
-    }
-    ~CSVFileWriter() {}
-    void init() {
-    }
-    void writeHeader();
-    void writeData(DataSet*);
-};
-
-class GPXFileWriter : public FileWriter {
-  public:
-    GPXFileWriter() : FileWriter() {
-      m_fileExtension = ".gpx";
-    }
-    ~GPXFileWriter() {}
-    void writeHeader();
-    void writeData(DataSet*);
-  protected:
-  private:
+    CSVFileWriter() : FileWriter(EXTENSION) {}
+    ~CSVFileWriter() override = default;
+    bool writeHeader() override;
+    bool append(DataSet&) override;
+    static const String EXTENSION;
 };
 
 #endif

@@ -37,6 +37,7 @@ understand.
 | `DistanceSensorsUsed` | `HC-SR04/JSN-SR04T` | enum currently only one possible value |
 | `DeviceId` | `affe` | internal Id of the OBS |
 | `PresetId` | `Wade` | Id to identify the selected preset. A owner might define multiple presets |
+| `BluetoothEnabled` | `1` | 1 if bluetooth is enabled, 0 otherwise
 
 ## CSV
 

@@ -315,7 +315,7 @@ void setup() {
     }
   }
 
-  if (gps.satellites.value() == config.satsForFix) {
+  if (gps.satellites.value() >= config.satsForFix) {
     Serial.print("Got GPS Fix: ");
     Serial.println(String(gps.satellites.value()));
     displayTest->showTextOnGrid(2, 5, "Got GPS Fix");
@@ -466,7 +466,7 @@ void loop() {
     && dataBuffer.isEmpty()) {
     Serial.write("Empty Buffer, writing directly ");
     if (writer) {
-      writer->writeDataBuffered(currentSet);
+      writer->append(*currentSet);
     }
     delete currentSet;
   } else {
@@ -489,7 +489,7 @@ void loop() {
       DataSet* dataset = dataBuffer.shift();
       if (dataset->confirmedDistances.size() == 0) {
         if (writer) {
-          writer->writeDataBuffered(dataset);
+          writer->append(*dataset);
         }
       }
       // write record as many times as we have confirmed values
@@ -499,15 +499,15 @@ void loop() {
         dataset->confirmed = dataset->confirmedDistancesTimeOffset[i];
         confirmedMeasurements++;
         if (writer) {
-          writer->writeDataBuffered(dataset);
+          writer->append(*dataset);
         }
       }
       delete dataset;
     }
     if (writer) {  // "flush"
-      writer->writeDataToSD();
+      writer->flush();
     }
-    Serial.printf(">>> writeDataToSD - reset <<<");
+    Serial.printf(">>> flush - reset <<<");
     transmitConfirmedData = false;
     // back to normal display mode
     if (config.displayConfig & DisplayInvert) {
@@ -522,7 +522,7 @@ void loop() {
     DataSet* dataset = dataBuffer.shift();
     Serial.printf("data buffer full, writing set to file buffer\n");
     if (writer) {
-      writer->writeDataBuffered(dataset);
+      writer->append(*dataset);
     }
     // we are about to delete the to be confirmed dataset, so take care for this.
     if (datasetToConfirm == dataset) {

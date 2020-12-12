@@ -96,7 +96,6 @@ size_t StreamOfStreams::readBytes(char *buffer, size_t length) {
 }
 
 Stream *StreamOfStreams::getCurrent() {
-  // FIXME We assume available is 0 only at the very end!
   if (current == nullptr || current->available() == 0) {
     current = getNext();
   }
@@ -105,9 +104,8 @@ Stream *StreamOfStreams::getCurrent() {
 
 Stream *StreamOfStreams::getNext() {
   if (pos < streams.size()) {
-    // TODO: there should be a better method in this vector
-    log_d("About to switch to stream %d/%d", pos, streams.size());
     current = streams.at(pos++);
+    log_d("About to switch to stream %d/%d", pos, streams.size());
   } else {
     current = &EMPTY_STREAM;
   }
