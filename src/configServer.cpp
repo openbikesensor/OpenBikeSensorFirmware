@@ -708,7 +708,13 @@ void startServer() {
         if(uploader::instance()->upload(file.name())) {
 
           SDFileSystem.mkdir("/uploaded");
-          SDFileSystem.rename(file.name(),String("/uploaded")+file.name());
+          int i = 0;
+          while (!SDFileSystem.rename(file.name(), String("/uploaded") + file.name() + (i == 0 ? "" : String(i)))) {
+            i++;
+            if (i > 100) {
+              break;
+            }
+          }
           html += String(file.name());
           html += "<br>";
         }
