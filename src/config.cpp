@@ -18,298 +18,424 @@
   the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <langinfo.h>
 #include "config.h"
+#include "gps.h"
+#include "SPIFFS.h"
+
+/* TODO:
+ *  - PROPERTY_OBS_NAME should be reset if it has the form "OpenBikeSensor-????"
+ *    to have the device Id 8might be was restored from a backup of a different
+ *    OBS unit.
+ *
+ */
 
 const int MAX_CONFIG_FILE_SIZE = 4096;
 
-// Helper: StaticJsonDocument --> Config
-void jsonDocumentToConfig(DynamicJsonDocument &doc, Config &config) {
+const String ObsConfig::PROPERTY_OBS_NAME = String("obsName");
+const String ObsConfig::PROPERTY_NAME = String("name");
+const String ObsConfig::PROPERTY_BLUETOOTH = String("bluetooth");
+const String ObsConfig::PROPERTY_OFFSET = String("offset");
+const String ObsConfig::PROPERTY_SIM_RA = String("simRa");
+const String ObsConfig::PROPERTY_WIFI_SSID = String("wifiSsid");
+const String ObsConfig::PROPERTY_WIFI_PASSWORD = String("wifiPassword");
+const String ObsConfig::PROPERTY_PORTAL_URL = String("portalUrl");
+const String ObsConfig::PROPERTY_PORTAL_TOKEN = String("portalToken");
+const String ObsConfig::PROPERTY_GPS_FIX = String("gpsFix");
+const String ObsConfig::PROPERTY_DISPLAY_CONFIG = String("displayConfig");
+const String ObsConfig::PROPERTY_CONFIRMATION_TIME_SECONDS = String("confirmationTimeSeconds");
+const String ObsConfig::PROPERTY_PRIVACY_CONFIG = String("privacyConfig");
+const String ObsConfig::PROPERTY_DEVELOPER = String("devConfig");
+const String ObsConfig::PROPERTY_SELECTED_PRESET = String("selectedPreset");
+const String ObsConfig::PROPERTY_PRIVACY_AREA = String("privacyArea");
+const String ObsConfig::PROPERTY_PA_LAT = String("lat");
+const String ObsConfig::PROPERTY_PA_LONG = String("long");
+const String ObsConfig::PROPERTY_PA_LAT_T = String("latT");
+const String ObsConfig::PROPERTY_PA_LONG_T = String("longT");
+const String ObsConfig::PROPERTY_PA_RADIUS = String("radius");
 
-  // Copy values from the JsonDocument to the Config
-  config.numSensors = doc["numSensors"] | 2;
+// Filenames 8.3 here!
+const String OLD_CONFIG_FILENAME = "/config.txt";
+const String ObsConfig::CONFIG_OLD_FILENAME = "/cfg.old";
+const String ObsConfig::CONFIG_FILENAME = "/cfg.obs";
 
-  config.sensorOffsets.clear();
+bool ObsConfig::loadConfig() {
+  bool loaded = false;
 
-  // Append new values to the offset-vector
-  for (size_t idx = 0; idx < config.numSensors; ++idx) {
-    uint8_t offsetTemp;
-    String offsetString = "offsetInfo" + String(idx);
-    offsetTemp = doc[offsetString] | 35;
-    config.sensorOffsets.push_back(offsetTemp);
+  jsonData.clear();
+  if (SPIFFS.exists(CONFIG_FILENAME)) {
+    loaded = loadConfig(CONFIG_FILENAME);
   }
+  // problem with the current config, use the last config
+  if (!loaded && SPIFFS.exists(CONFIG_OLD_FILENAME)) {
+    loaded = loadConfig(CONFIG_OLD_FILENAME);
+  }
+  // still no luck, do we have a previous version file?
+  if (!loaded && SPIFFS.exists(OLD_CONFIG_FILENAME)) {
+    loaded = loadOldConfig(OLD_CONFIG_FILENAME);
+  }
+  makeSureSystemDefaultsAreSet();
+  return loaded;
+}
 
-  //Serial.println(">>>");
-  //Serial.println(config.sensorOffsets.size());
-  //Serial.println("<<<");
+bool ObsConfig::saveConfig() const {
+  log_d("Saving config to SPIFFS %s free space %luk", CONFIG_FILENAME.c_str(), SPIFFS.usedBytes() / 1024);
+  SPIFFS.remove(CONFIG_OLD_FILENAME);
+  SPIFFS.rename(CONFIG_FILENAME, CONFIG_OLD_FILENAME);
+  bool result;
+  File file = SPIFFS.open(CONFIG_FILENAME, FILE_WRITE);
+  auto size = serializeJson(jsonData, file);
+  file.close();
+  if (size == 0) {
+    log_i("Failed to write configuration 0 bytes written.");
+    result = false;
+  } else {
+    result = true;
+  }
+  printConfig();
+  log_d("Configuration saved %ld bytes - remaining %luk.",
+        size, SPIFFS.usedBytes() / 1024);
+  // delete old config format file if result == true
+  // TODO: Activate once released
+  //  if (result) {
+  //   SPIFFS.remove(OLD_CONFIG_FILENAME);
+  //  }
+  return result;
+}
 
-  strlcpy(config.ssid, doc["ssid"] | "Freifunk", sizeof(config.ssid));
-  strlcpy(config.password, doc["password"] | "Freifunk", sizeof(config.password));
-  strlcpy(config.obsUserID, doc["obsUserID"] | "5e8f2f43e7e3b3668ca13151", sizeof(config.obsUserID));
-  config.displayConfig = doc["displayConfig"] | DisplaySimple;
-  config.GPSConfig = doc["GPSConfig"] | NumberSatellites;
-  config.port = doc["port"] | 2731;
-  strlcpy(config.hostname,                              // <- destination
-    doc["hostname"] | "openbikesensor.hlrs.de",   // <- source
-    sizeof(config.hostname)                       // <- destination's capacity
-  );
-  config.satsForFix = doc["satsForFix"] | 4;
-  config.confirmationTimeWindow = doc["confirmationTimeWindow"] | 5;
-  config.privacyConfig = doc["privacyConfig"] | AbsolutePrivacy;
+String ObsConfig::asJsonString() const {
+  String result;
+  serializeJson(jsonData, result);
+  return result;
+}
 
-  config.numPrivacyAreas = doc["numPrivacyAreas"] | 0;
-  config.bluetooth = doc["bluetooth"] | false;
-  config.simRaMode = doc["simRaMode"] | false;
+void ObsConfig::resetJson() {
+  jsonData.clear();
+  jsonData.createNestedArray("obs");
+  if (jsonData["obs"].size() == 0) {
+    jsonData["obs"].createNestedObject();
+  }
+}
+
+void ObsConfig::makeSureSystemDefaultsAreSet() {
+  if (!jsonData.containsKey("obs") || !jsonData["obs"].is<JsonArray>()) {
+    jsonData.createNestedArray("obs");
+  }
+  if (jsonData["obs"].size() == 0) {
+    jsonData["obs"].createNestedObject();
+  }
+  JsonObject data = jsonData["obs"][0];
+  ensureSet(data, PROPERTY_OBS_NAME, "OpenBikeSensor-" + String((uint16_t)(ESP.getEfuseMac() >> 32), 16));
+  ensureSet(data, PROPERTY_NAME, "default");
+  ensureSet(data, PROPERTY_SIM_RA, false);
+  ensureSet(data, PROPERTY_BLUETOOTH, false);
+  data[PROPERTY_OFFSET][0] = data[PROPERTY_OFFSET][0] | 35;
+  data[PROPERTY_OFFSET][1] = data[PROPERTY_OFFSET][1] | 35;
+  if (ensureSet(data, PROPERTY_WIFI_SSID, "Freifunk")) {
+    data[PROPERTY_WIFI_PASSWORD] = "Freifunk";
+  }
+  ensureSet(data, PROPERTY_PORTAL_URL, "https://openbikesensor.hlrs.de");
+  ensureSet(data, PROPERTY_PORTAL_TOKEN, "5e8f2f43e7e3b3668ca13151");
+  ensureSet(data, PROPERTY_GPS_FIX, GPS::FIX_POS);
+  ensureSet(data, PROPERTY_DISPLAY_CONFIG, DisplaySimple);
+  if (getProperty<int>(PROPERTY_DISPLAY_CONFIG) == 0) {
+    data[PROPERTY_DISPLAY_CONFIG] = DisplaySimple;
+  }
+  ensureSet(data, PROPERTY_PRIVACY_CONFIG, AbsolutePrivacy);
+  if (getProperty<int>(PROPERTY_PRIVACY_CONFIG) == 0) {
+    data[PROPERTY_PRIVACY_CONFIG] = AbsolutePrivacy;
+  }
+  ensureSet(data, PROPERTY_CONFIRMATION_TIME_SECONDS, 5);
+  if (getProperty<int>(PROPERTY_CONFIRMATION_TIME_SECONDS) == 0) {
+    data[PROPERTY_CONFIRMATION_TIME_SECONDS] = 5;
+  }
+  ensureSet(data, PROPERTY_DEVELOPER, 0);
+  ensureSet(data, PROPERTY_SELECTED_PRESET, 0);
+  if (!data.containsKey(PROPERTY_PRIVACY_AREA)) {
+    data.createNestedArray(PROPERTY_PRIVACY_AREA);
+  }
+}
+
+template< typename T>
+bool ObsConfig::ensureSet(JsonObject data, const String &key, T value) {
+  bool result = !data.containsKey(key) || data[key].isNull() || data[key].as<String>().isEmpty();
+  if (result) {
+    log_d("Value for %s not found, setting to default.", key.c_str());
+    log_d("Testing for null gives %d", data[key] == nullptr);
+    data[key] = value;
+  }
+  return result;
+}
+
+bool ObsConfig::setBitMaskProperty(int profile, String const &key, uint const value, bool state) {
+  const uint currentValue = jsonData["obs"][profile][key];
+  uint newValue;
+  if (state) {
+    newValue = (currentValue | value);
+  } else {
+    newValue = (currentValue & ~value);
+  }
+  jsonData["obs"][profile][key] = newValue;
+  return currentValue != newValue;
+}
+
+uint ObsConfig::getBitMaskProperty(int profile, String const &key, uint const value) const {
+  return ((uint) jsonData["obs"][profile][key]) & value;
+}
+
+template< typename T>
+bool ObsConfig::setProperty(int profile, String const &key, T const &value) {
+  // auto oldValue = jsonData["obs"][profile][key];
+  jsonData["obs"][profile][key] = value;
+  return true; // value == oldValue;
+}
+
+bool ObsConfig::setProperty(int profile, String const &key, String const &value) {
+  auto oldValue = jsonData["obs"][profile][key];
+  jsonData["obs"][profile][key] = value;
+  return value == oldValue;
+}
+
+bool ObsConfig::setOffsets(int profile, const std::vector<int> &offsets) {
+  bool changed = false;
+  auto jOffsets = jsonData["obs"][profile].createNestedArray(PROPERTY_OFFSET);
+  for (int i = 0; i < offsets.size(); i++) {
+    changed = changed | (offsets[i] != jOffsets[i]);
+    jOffsets[i] = offsets[i];
+  }
+  return changed;
+}
+
+bool ObsConfig::removePrivacyArea(int profile, int paId) {
+  getProfile(profile)[PROPERTY_PRIVACY_AREA].remove(paId);
+  return true;
+}
+
+bool ObsConfig::addPrivacyArea(int profile, const PrivacyArea &pa) {
+  auto data = getProfile(profile);
+  return setPrivacyArea(profile, data[PROPERTY_PRIVACY_AREA].size(), pa);
+}
+
+bool ObsConfig::setPrivacyArea(int profile, int paId, const PrivacyArea &pa) {
+  auto paEntry = getProfile(profile)[PROPERTY_PRIVACY_AREA][paId];
+  paEntry[PROPERTY_PA_LAT] = pa.latitude;
+  paEntry[PROPERTY_PA_LONG] = pa.longitude;
+  paEntry[PROPERTY_PA_LAT_T] = pa.transformedLatitude;
+  paEntry[PROPERTY_PA_LONG_T] = pa.transformedLongitude;
+  paEntry[PROPERTY_PA_RADIUS] = pa.radius;
+  return true;
+}
+
+PrivacyArea ObsConfig::getPrivacyArea(int profile, int i) const {
+  auto data = getProfileConst(profile)[PROPERTY_PRIVACY_AREA][i];
+  PrivacyArea pa;
+  pa.longitude = data[PROPERTY_PA_LONG];
+  pa.latitude = data[PROPERTY_PA_LAT];
+  pa.transformedLongitude = data[PROPERTY_PA_LONG_T];
+  pa.transformedLatitude = data[PROPERTY_PA_LAT_T];
+  pa.radius = data[PROPERTY_PA_RADIUS];
+  return pa;
+}
+
+int ObsConfig::getNumberOfPrivacyAreas(int profile) const {
+  return getProfileConst(profile)[PROPERTY_PRIVACY_AREA].size();
+}
+
+JsonObject ObsConfig::getProfile(int profile) {
+  return jsonData["obs"][profile];
+}
+
+JsonObjectConst ObsConfig::getProfileConst(int profile) const {
+  return jsonData["obs"][profile];
+}
+
+void ObsConfig::printConfig() const {
 #ifdef DEVELOP
-  config.devConfig = doc["devConfig"] | 0;
+  Serial.printf(
+    "Dumping current configuration, current selected profile is %d:\n",
+    selectedProfile);
+  serializeJsonPretty(jsonData, Serial);
+  Serial.println();
 #endif
+}
 
-  config.privacyAreas.clear();
+bool ObsConfig::loadOldConfig(const String &filename) {
+  log_d("Loading old config json from %s.", filename.c_str());
+  DynamicJsonDocument doc(MAX_CONFIG_FILE_SIZE);
+  bool success = loadJson(doc, filename);
+  if (success) {
+    parseOldJsonDocument(doc);
+  }
+  return success;
+}
 
+bool ObsConfig::loadConfig(const String &filename) {
+  log_d("Loading config json from %s.", filename.c_str());
+  return loadJson(jsonData, filename);
+}
+
+bool ObsConfig::loadJson(JsonDocument &jsonDocument, const String &filename) {
+  bool success = false;
+  File file = SPIFFS.open(filename);
+  jsonDocument.clear();
+  DeserializationError error = deserializeJson(jsonDocument, file);
+  if (error) {
+    log_w("Failed to read file %s, using default configuration got %s.\n",
+          filename.c_str(), error.c_str());
+  } else {
+    success = true;
+  }
+  file.close();
+
+#ifdef DEVELOP
+  log_d("Config found in file '%s':", filename.c_str());
+  serializeJsonPretty(jsonDocument, Serial);
+  log_d("------------------------------------------");
+#endif
+  return success;
+}
+
+bool ObsConfig::parseJsonFromString(JsonDocument &jsonDocument, const String &jsonAsString) {
+  bool success = false;
+  jsonDocument.clear();
+  DeserializationError error = deserializeJson(jsonDocument, jsonAsString);
+  if (error) {
+    log_w("Failed to parse %s, got %s.\n", jsonAsString.c_str(), error.c_str());
+  } else {
+    success = true;
+  }
+#ifdef DEVELOP
+  log_i("Json data:");
+  serializeJsonPretty(jsonDocument, Serial);
+  log_i("------------------------------------------");
+#endif
+  return success;
+}
+
+void ObsConfig::fill(Config &cfg) const {
+  strlcpy(cfg.obsName, getProperty<const char*>(PROPERTY_OBS_NAME), sizeof(cfg.obsName));
+  cfg.sensorOffsets.clear();
+  for (int i : getIntegersProperty(PROPERTY_OFFSET)) {
+    cfg.sensorOffsets.push_back(i);
+  }
+  strlcpy(cfg.obsUserID, getProperty<const char*>(PROPERTY_PORTAL_TOKEN), sizeof(cfg.obsUserID));
+  strlcpy(cfg.hostname, getProperty<const char*>(PROPERTY_PORTAL_URL), sizeof(cfg.hostname));
+  cfg.displayConfig = getProperty<uint>(PROPERTY_DISPLAY_CONFIG);
+  cfg.confirmationTimeWindow = getProperty<int>(PROPERTY_CONFIRMATION_TIME_SECONDS);
+  cfg.privacyConfig = getProperty<int>(PROPERTY_PRIVACY_CONFIG);
+  cfg.bluetooth = getProperty<bool>(PROPERTY_BLUETOOTH);
+  cfg.simRaMode = getProperty<bool>(PROPERTY_SIM_RA);
+  cfg.devConfig = getProperty<int>(PROPERTY_DEVELOPER);
+  cfg.privacyAreas.clear();
+  if (selectedProfile != 0) { // not sure if we ever support PAs per profile.
+    for (int i = 0; i < jsonData["obs"][selectedProfile][PROPERTY_PRIVACY_AREA].size(); i++) {
+      cfg.privacyAreas.push_back(getPrivacyArea(selectedProfile, i));
+    }
+  }
+  for (int i = 0; i < jsonData["obs"][0][PROPERTY_PRIVACY_AREA].size(); i++) {
+    cfg.privacyAreas.push_back(getPrivacyArea(0, i));
+  }
+}
+
+bool ObsConfig::parseJson(const String &json) {
+  bool result = false;
+  resetJson();
+  // parse also old backups - to be removed in v0.5 or later
+  if (json.indexOf("\"obs\"") == -1) {
+    log_d("Old format detected.");
+    DynamicJsonDocument doc(MAX_CONFIG_FILE_SIZE);
+    if (parseJsonFromString(doc, json)) {
+      parseOldJsonDocument(doc);
+      result = true;
+    }
+  } else {
+    log_d("New format detected.");
+    result = parseJsonFromString(jsonData, json);
+  }
+  makeSureSystemDefaultsAreSet();
+  return result;
+}
+
+void ObsConfig::parseOldJsonDocument(DynamicJsonDocument &doc) {
+  int numSensors = doc["numSensors"] | 2;
+  std::vector<int> offsets;
+  for (int idx = 0; idx < numSensors; ++idx) {
+    int offsetTemp = doc["offsetInfo" + String(idx)] | 35;
+    offsets.push_back(offsetTemp);
+  }
+  setOffsets(0, offsets);
+  setProperty(0, PROPERTY_WIFI_SSID, doc["ssid"] | String("Freifunk"));
+  setProperty(0, PROPERTY_WIFI_PASSWORD, doc["password"] | String("Freifunk"));
+  setProperty(0, PROPERTY_PORTAL_TOKEN, doc["obsUserID"] | String("5e8f2f43e7e3b3668ca13151"));
+  setProperty(0, PROPERTY_DISPLAY_CONFIG, doc["displayConfig"] | DisplaySimple);
+
+  uint16_t gpsConfig = doc["GPSConfig"];
+  if (gpsConfig & GPSOptions::ValidTime) {
+    setProperty(0, PROPERTY_GPS_FIX, GPS::FIX_TIME);
+  } else if (gpsConfig & GPSOptions::ValidLocation) {
+    setProperty(0, PROPERTY_GPS_FIX, GPS::FIX_POS);
+  } else if (gpsConfig & GPSOptions::NumberSatellites) {
+    setProperty(0, PROPERTY_GPS_FIX, doc["satsForFix"] | 4);
+  } else {
+    setProperty(0, PROPERTY_GPS_FIX, GPS::FIX_NO_WAIT);
+  }
+  setProperty(0, PROPERTY_CONFIRMATION_TIME_SECONDS, doc["confirmationTimeWindow"] | 5);
+  setProperty(0, PROPERTY_PRIVACY_CONFIG, doc["privacyConfig"] | AbsolutePrivacy);
+  setProperty(0, PROPERTY_BLUETOOTH, doc["bluetooth"] | false);
+  setProperty(0, PROPERTY_SIM_RA, doc["simRaMode"] | false);
+  setProperty(0, PROPERTY_DEVELOPER, doc["devConfig"] | 0);
+
+  int numPrivacyAreas = doc["numPrivacyAreas"] | 0;
   // Append new values to the privacy-vector
-  for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx) {
+  for (int idx = 0; idx < numPrivacyAreas || doc.containsKey("privacyLatitude" + String(idx)); ++idx) {
     PrivacyArea privacyAreaTemp;
-    // Original coordinates
-    String latitudeString = "privacyLatitude" + String(idx);
-    privacyAreaTemp.latitude = doc[latitudeString] | 51.0;
-    String longitudeString = "privacyLongitude" + String(idx);
-    privacyAreaTemp.longitude = doc[longitudeString] | 9.0;
-
-    // randomly transformed coordinates
-    String transformedLatitudeString = "privacyTransformedLatitude" + String(idx);
-    privacyAreaTemp.transformedLatitude = doc[transformedLatitudeString] | 51.0;
-    String transformedLongitudeString = "privacyTransformedLongitude" + String(idx);
-    privacyAreaTemp.transformedLongitude = doc[transformedLongitudeString] | 9.0;
-
-    // Radius
-    String radiusString = "privacyRadius" + String(idx);
-    privacyAreaTemp.radius = doc[radiusString] | 500.0;
-
-    config.privacyAreas.push_back(privacyAreaTemp);
+    privacyAreaTemp.latitude = doc["privacyLatitude" + String(idx)] | 51.0;
+    privacyAreaTemp.longitude = doc["privacyLongitude" + String(idx)] | 9.0;
+    privacyAreaTemp.transformedLatitude = doc["privacyTransformedLatitude" + String(idx)] | 51.0;
+    privacyAreaTemp.transformedLongitude = doc["privacyTransformedLongitude" + String(idx)] | 9.0;
+    privacyAreaTemp.radius = doc["privacyRadius" + String(idx)] | 500.0;
+    setPrivacyArea(0, idx, privacyAreaTemp);
   }
 
-  // Fix invalid "old" broken configurations, where the default value was 0
-  if(config.privacyConfig == 0) {
-    config.privacyConfig = AbsolutePrivacy;
-  }
-  if(config.displayConfig == 0) {
-    config.displayConfig = DisplaySimple;
-  }
-  if(config.GPSConfig == 0) {
-    config.GPSConfig = NumberSatellites;
-  }
+  // after parseOld
+  log_d("After parse old:");
+  printConfig();
 }
 
-// Helper: Config -> StaticJsonDocument
-DynamicJsonDocument configToJsonDocument(const Config &config) {
-  // Allocate a temporary JsonDocument
-  // Don't forget to change the capacity to match your requirements.
-  // Use arduinojson.org/assistant to compute the capacity.
-  DynamicJsonDocument doc(MAX_CONFIG_FILE_SIZE);
-
-  // Set the values in the document
-  doc["numSensors"] = config.numSensors;
-  for (size_t idx = 0; idx < config.numSensors; ++idx) {
-    String offsetString = "offsetInfo" + String(idx);
-    doc[offsetString] = config.sensorOffsets[idx];
+template<typename T> T ObsConfig::getProperty(const String &key) const {
+  T result;
+  if (jsonData["obs"][selectedProfile].containsKey(key)) {
+    result = jsonData["obs"][selectedProfile][key].as<T>();
+  } else {
+    result = jsonData["obs"][0][key].as<T>();
   }
-  doc["satsForFix"] = config.satsForFix;
-
-  doc["hostname"] = config.hostname;
-  doc["port"] = config.port;
-  doc["ssid"] = config.ssid;
-  doc["password"] = config.password;
-  doc["obsUserID"] = config.obsUserID;
-  doc["displayConfig"] = config.displayConfig;
-  doc["GPSConfig"] = config.GPSConfig;
-  doc["confirmationTimeWindow"] = config.confirmationTimeWindow;
-  doc["privacyConfig"] = config.privacyConfig;
-  doc["bluetooth"] = config.bluetooth;
-  doc["simRaMode"] = config.simRaMode;
-
-#ifdef DEVELOP
-  doc["devConfig"] = config.devConfig;
-#endif
-  doc["numPrivacyAreas"] = config.numPrivacyAreas;
-  for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx) {
-    //String latitudeString = "privacyLatitude" + String(idx);
-    //JsonArray data = doc.createNestedArray(latitudeString);
-
-    String latitudeString = "privacyLatitude" + String(idx);
-    doc[latitudeString] = config.privacyAreas[idx].latitude;
-    String longitudeString = "privacyLongitude" + String(idx);
-    doc[longitudeString] = config.privacyAreas[idx].longitude;
-
-    String transformdedLatitudeString = "privacyTransformedLatitude" + String(idx);
-    doc[transformdedLatitudeString] = config.privacyAreas[idx].transformedLatitude;
-    String transformdedLongitudeString = "privacyTransformedLongitude" + String(idx);
-    doc[transformdedLongitudeString] = config.privacyAreas[idx].transformedLongitude;
-
-    String radiusString = "privacyRadius" + String(idx);
-    doc[radiusString] = config.privacyAreas[idx].radius;
-  }
-
-  return doc;
+  return result;
 }
 
-// Config -> StaticJsonDocument --> String
-String configToJson(Config &config) {
-  DynamicJsonDocument doc = configToJsonDocument(config);
-  String s;
-  serializeJson(doc, s);
-  return s;
+template<> String ObsConfig::getProperty(const String &key) const {
+  String result;
+  if (jsonData["obs"][selectedProfile].containsKey(key)) {
+    result = jsonData["obs"][selectedProfile][key].as<String>();
+  } else {
+    result = jsonData["obs"][0][key].as<String>();
+  }
+  return result;
 }
 
-// String -> StaticJsonDocument --> Config
-void jsonToConfig(String json, Config &config) {
-  DynamicJsonDocument doc(MAX_CONFIG_FILE_SIZE);
-
-  // Deserialize the JSON string
-  DeserializationError error = deserializeJson(doc, json);
-  if (error) {
-    Serial.println(F("Failed to read file, using default configuration"));
+std::vector<int> ObsConfig::getIntegersProperty(const String &key) const {
+  JsonArrayConst ints;
+  if (jsonData["obs"][selectedProfile].containsKey(key)) {
+    ints = jsonData["obs"][selectedProfile][key];
+  } else {
+    ints = jsonData["obs"][0][key];
   }
-
-  jsonDocumentToConfig(doc, config);
+  std::vector<int> result;
+  for (int i : ints) {
+    result.push_back(i);
+  }
+  return result;
 }
 
-void loadConfiguration(const char *configFilename, Config &config) {
-
-  // Open file for reading
-  File file = SPIFFS.open(configFilename);
-
-  // Allocate a temporary JsonDocument
-  // Don't forget to change the capacity to match your requirements.
-  // Use arduinojson.org/v6/assistant to compute the capacity.
-  DynamicJsonDocument doc(MAX_CONFIG_FILE_SIZE);
-
-  // Deserialize the JSON document
-  DeserializationError error = deserializeJson(doc, file);
-  if (error) {
-    Serial.println(F("Failed to read file, using default configuration"));
-  }
-
-  // Close the file (Curiously, File's destructor doesn't close the file)
-  file.close();
-
-  jsonDocumentToConfig(doc, config);
-}
-
-// Saves the configuration to a file
-void saveConfiguration(const char *filename, const Config &config) {
-  // Delete existing file, otherwise the configuration is appended to the file
-  SPIFFS.remove(filename);
-
-  // Open file for writing
-  File file = SPIFFS.open(filename, FILE_WRITE);
-  if (!file) {
-    Serial.println(F("Failed to create file"));
-    return;
-  }
-
-  DynamicJsonDocument doc = configToJsonDocument(config);
-
-  // Serialize JSON to file
-  if (serializeJson(doc, file) == 0) {
-    Serial.println(F("Failed to write to file"));
-  }
-
-  // Close the file
-  file.close();
-}
-
-// Prints the content of a file to the Serial
-void printConfig(Config &config) {
-
-  Serial.println(F("################################"));
-  Serial.print(F("numSensors = "));
-  Serial.println(String(config.numSensors));
-
-  for (size_t idx = 0; idx < config.numSensors; ++idx) {
-    String offsetString = "Offset[" + String(idx) + "] = " + config.sensorOffsets[idx];
-    Serial.println(offsetString);
-  }
-
-  Serial.print(F("satsForFix = "));
-  Serial.println(String(config.satsForFix));
-
-  Serial.print(F("displayConfig = "));
-  Serial.println(String(config.displayConfig));
-
-#ifdef DEVELOP
-  Serial.print(F("devConfig = "));
-  Serial.println(String(config.devConfig));
-#endif
-
-  Serial.print(F("GPSConfig = "));
-  Serial.println(String(config.GPSConfig));
-
-  Serial.print(F("confirmationTimeWindow = "));
-  Serial.println(String(config.confirmationTimeWindow));
-
-  Serial.print(F("hostname = "));
-  Serial.println(String(config.hostname));
-
-  Serial.print(F("port = "));
-  Serial.println(String(config.port));
-
-  Serial.print(F("obsUserID = "));
-  Serial.println(String(config.obsUserID));
-
-  Serial.print(F("SSID = "));
-  Serial.println(String(config.ssid));
-
-  Serial.print(F("bluetooth = "));
-  Serial.println(String(config.bluetooth));
-
-  Serial.print(F("simRaMode = "));
-  Serial.println(String(config.simRaMode));
-
-#ifdef DEVELOP
-  if(config.devConfig & PrintWifiPassword) {
-    Serial.print(F("password = "));
-    Serial.println(String(config.password));
-  }
-#endif
-
-  Serial.print(F("numPrivacyAreas = "));
-  Serial.println(String(config.numPrivacyAreas));
-
-  for (size_t idx = 0; idx < config.numPrivacyAreas; idx++) {
-    String latitudeString = "privacyLatitude[" + String(idx) + "] = " + String(config.privacyAreas[idx].latitude, 7);
-    Serial.println(latitudeString);
-
-    String longitudeString = "privacyLongitude[" + String(idx) + "] = " + String(config.privacyAreas[idx].longitude, 7);
-    Serial.println(longitudeString);
-
-    String transformdedLatitudeString = "privacyTransformedLatitude[" + String(idx) + "] = " + String(config.privacyAreas[idx].transformedLatitude, 7);
-    Serial.println(transformdedLatitudeString);
-
-    String transformdedLongitudeString = "privacyTransformedLongitude[" + String(idx) + "] = " + String(config.privacyAreas[idx].transformedLongitude, 7);
-    Serial.println(transformdedLongitudeString);
-
-    String radiusString = "privacyRadius[" + String(idx) + "] = " + config.privacyAreas[idx].radius;
-    Serial.println(radiusString);
-  }
-
-  Serial.println(F("################################"));
-
-
-  /*
-    // Open file for reading
-    File file = SPIFFS.open(configFilename);
-    if (!file) {
-    Serial.println(F("Failed to read file"));
-    return;
-    }
-
-    // Extract each characters by one by one
-    while (file.available()) {
-    // do not ptrint passwords, please it is bad enough that we save them as plain text anyway...
-    Serial.print((char)file.read());
-    }
-    Serial.println();
-
-    // Close the file
-    file.close();
-  */
+void ObsConfig::releaseJson() {
+  jsonData.clear(); // should we just shrink?
 }

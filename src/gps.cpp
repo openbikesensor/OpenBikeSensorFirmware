@@ -126,9 +126,10 @@ void readGPSData() {
 bool isInsidePrivacyArea(TinyGPSLocation &location) {
   // quite accurate haversine formula
   // consider using simplified flat earth calculation to save time
-  for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx) {
-    double distance = haversine(location.lat(), location.lng(), config.privacyAreas[idx].transformedLatitude, config.privacyAreas[idx].transformedLongitude);
-    if (distance < config.privacyAreas[idx].radius) {
+  for (auto pa : config.privacyAreas) {
+    double distance = haversine(
+      location.lat(), location.lng(), pa.transformedLatitude, pa.transformedLongitude);
+    if (distance < pa.radius) {
       return true;
     }
   }
@@ -198,17 +199,11 @@ void randomOffset(PrivacyArea &p) {
 #endif
 }
 
-void addNewPrivacyArea(double latitude, double longitude, int radius) {
+PrivacyArea newPrivacyArea(double latitude, double longitude, int radius) {
   PrivacyArea newPrivacyArea;
   newPrivacyArea.latitude = latitude;
   newPrivacyArea.longitude = longitude;
   newPrivacyArea.radius = radius;
   randomOffset(newPrivacyArea);
-
-  config.privacyAreas.push_back(newPrivacyArea);
-  config.numPrivacyAreas = config.privacyAreas.size();
-  Serial.println(F("Print config file..."));
-  printConfig(config);
-  Serial.println(F("Saving configuration..."));
-  saveConfiguration(configFilename, config);
+  return newPrivacyArea;
 }
