@@ -22,13 +22,11 @@
 #define OBS_WRITER_H
 
 #include <Arduino.h>
-#include <FS.h>
 #include <SD.h>
 #include <TinyGPS++.h>
 #include <utility>
 #include <vector>
 
-#include "config.h"
 #include "globals.h"
 
 
@@ -59,36 +57,25 @@ struct DataSet {
   int32_t readDurationsRightInMicroseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
 };
 
-
 class FileWriter {
   public:
     FileWriter() = default;;
     explicit FileWriter(String ext) :
       mFileExtension(std::move(ext)) {};
     virtual ~FileWriter() = default;
-    void listDir(fs::FS &fs, const char * dirname, uint8_t levels);
-    void createDir(fs::FS &fs, const char * path);
-    void removeDir(fs::FS &fs, const char * path);
-    void readFile(fs::FS &fs, const char * path);
-    void writeFile(fs::FS &fs, const char * path, const char * message);
-    bool appendFile(fs::FS &fs, const char * path, const char * message);
-    bool renameFile(fs::FS &fs, const char * path1, const char * path2);
-    void deleteFile(fs::FS &fs, const char * path);
     void setFileName();
-    String getFileName();
     virtual bool writeHeader() = 0;
     virtual bool append(DataSet &) = 0;
     bool appendString(const String &s);
     bool flush();
-    virtual void init() = 0;
 
   protected:
-    unsigned long getWriteTimeMillis();
     uint16_t getBufferLength() const;
+    unsigned long getWriteTimeMillis() const;
 
   private:
-    void storeTrackNumber(int trackNumber) const;
-    int getTrackNumber() const;
+    static void storeTrackNumber(int trackNumber);
+    static int getTrackNumber();
     void correctFilename();
     String mBuffer;
     String mFileExtension;
@@ -103,8 +90,6 @@ class CSVFileWriter : public FileWriter {
   public:
     CSVFileWriter() : FileWriter(EXTENSION) {}
     ~CSVFileWriter() override = default;
-    void init() override {
-    }
     bool writeHeader() override;
     bool append(DataSet&) override;
     static const String EXTENSION;
