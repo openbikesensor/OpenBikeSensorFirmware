@@ -13,6 +13,7 @@
 #include "DeviceInfoService.h"
 #include "DistanceService.h"
 #include "HeartRateService.h"
+#include "ObsService.h"
 
 class BluetoothManager {
   public:
@@ -46,6 +47,14 @@ class BluetoothManager {
      * @param rightValues sensor value of the right side (MAX_SENSOR_VALUE for no reading)
      */
     void newSensorValues(const uint32_t millis, uint16_t leftValue, uint16_t rightValue);
+
+    /**
+     * Processes new confirmed overtake event.
+     * @param millis sender millis counter at the time of measurement of the left value
+     * @param leftValue sensor value of the left side (MAX_SENSOR_VALUE for no reading)
+     * @param rightValues sensor value of the right side (MAX_SENSOR_VALUE for no reading)
+     */
+    void newPassEvent(const uint32_t millis, const uint16_t leftValue, const uint16_t rightValue);
 
     /**
      * Process the current push button state itself. This will call

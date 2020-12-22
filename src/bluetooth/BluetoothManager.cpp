@@ -8,24 +8,13 @@ void BluetoothManager::init() {
   snprintf(deviceName, sizeof(deviceName), "OpenBikeSensor-%04X", (uint16_t)(ESP.getEfuseMac() >> 32));
   BLEDevice::init(deviceName);
   pServer = BLEDevice::createServer();
-  //pServer->setCallbacks(new CustomBTCallback());
 
-  // Decide here what services should be instantiated
-#ifdef BLUETOOTH_SERVICE_CLOSEPASS
-  services.push_back(new ClosePassService);
-#endif
-#ifdef BLUETOOTH_SERVICE_CONNECTION
-  services.push_back(new ConnectionService);
-#endif
-#ifdef BLUETOOTH_SERVICE_DEVICEINFO
-  services.push_back(new DeviceInfoService);
-#endif
-#ifdef BLUETOOTH_SERVICE_DISTANCE
-  services.push_back(new DistanceService);
-#endif
-#ifdef BLUETOOTH_SERVICE_HEARTRATE
   services.push_back(new HeartRateService);
-#endif
+//  services.push_back(new DeviceInfoService);
+  services.push_back(new DistanceService);
+  services.push_back(new ConnectionService);
+  services.push_back(new ClosePassService);
+  services.push_back(new ObsService);
 
   for (auto &service : services) {
     service->setup(pServer);
@@ -61,6 +50,13 @@ void BluetoothManager::newSensorValues(const uint32_t millis, const uint16_t lef
 
   for (auto &service : services) {
     service->newSensorValues(millis, leftValues, rightValues);
+  }
+}
+
+void BluetoothManager::newPassEvent(const uint32_t millis, const uint16_t leftValue, const uint16_t rightValue) {
+  buttonPressed();
+  for (auto &service : services) {
+    service->newPassEvent(millis, leftValue, rightValue);
   }
 }
 

@@ -14,6 +14,7 @@ grand_parent: Software
 | Distance    | `1FE7FAF9-CE63-4236-0001-000000000000` | Transmits the current distance every 50ms                          |
 | Connection  | `1FE7FAF9-CE63-4236-0002-000000000000` | Connection status for interactive pairing                          |
 | Close Pass  | `1FE7FAF9-CE63-4236-0003-000000000000` | Detects and transmits possible close passes                        |
+| OBS         | `1FE7FAF9-CE63-4236-0004-000000000000` | Reports distance sensor readings and confirmed close passes        |
 
 
 ## Device Info Service
@@ -71,7 +72,6 @@ The list of sensor values for one side might be empty but the entire transmitted
 | Close Pass Distance | `1FE7FAF9-CE63-4236-0003-000000000001` | `READ`,`NOTIFY` | During a close pass, transmits the current distance of all sensors with a timestamp |
 | Close Pass Events   | `1FE7FAF9-CE63-4236-0003-000000000002` | `READ`,`NOTIFY` | Notifies of new close pass events                                                   |
 
-
 The format of the transmitted string for the *distance characteristic* is `"timestamp;[leftSensor1, leftSensor2, ...];[rightSensor1, rightSensor2, ...]"`, e.g. `"43567893;100,30;400"` or `"43567893;100;"`.
 The list of sensor values for one side might be empty but the entire transmitted string can be safely split on `";"` and each sensor value list safely on `","`.
 
@@ -81,3 +81,25 @@ The following events are defined:
   * Payload: last distance value
 * `avg2s`: Triggered when the average of a two second time window is below the mininum distance threshold of 200 cm
   * Payload: average distance; smallest distance
+
+## OBS Service
+- *Description:* Transmits current sensor readings
+- *UUID:* `1FE7FAF9-CE63-4236-0004-000000000000`
+
+| Characteristic      | UUID                                   | Property        | Value                                                                               |
+| ------------------- | -------------------------------------- | --------------- | ----------------------------------------------------------------------------------- |
+| Time                | `1FE7FAF9-CE63-4236-0004-000000000001` | `READ`          | reports the value of the ms timer of the OBS unit, can be used to synchronize time  |
+| Sensor Distance     | `1FE7FAF9-CE63-4236-0004-000000000002` | `READ`,`NOTIFY` | Gives sensor reading of the left and right sensor.                                  |
+| Close Pass          | `1FE7FAF9-CE63-4236-0004-000000000003` | `READ`,`NOTIFY` | Notifies of button confirmed close pass events.                                     |
+
+The time is sent as uint32. The time counts linear milliseconds from the start 
+of the obs. The value returned is the timer value at the time of the read.
+
+*Sensor Distance* delivers the time of the left measurement with the current values of 
+the left and right sensor. Content is time uint32, left uint16, right uint16. Left 
+and right values are in cm, a value of 0xfff means no measurement.
+
+*Close Pass* events are triggered when a pass was confirmed by button press. The 
+values are same as with the *Sensor Distance* characteristic. Note that this 
+information is sent after confirmation, so the timer information must be used 
+to match the event to the correct time and so location.
