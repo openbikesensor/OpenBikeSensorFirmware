@@ -31,9 +31,6 @@ BLEService *ConnectionService::getService() {
 void ConnectionService::newSensorValues(const uint32_t millis, const uint16_t leftValue, const uint16_t rightValue) {
 }
 
-void ConnectionService::buttonPressed() {
-}
-
 //void ConnectionService::newSensorValue(short value) {
 //    if (gConnectionStatus != CONN_CONNECTING) return;
 //

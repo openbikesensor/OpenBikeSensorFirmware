@@ -312,7 +312,6 @@ void setup() {
         && lastBluetoothInterval != (currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS)) {
       lastBluetoothInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
       bluetoothManager->newSensorValues(currentTimeMillis, MAX_SENSOR_VALUE, MAX_SENSOR_VALUE);
-      bluetoothManager->processButtonState(digitalRead(PushButton));
     }
 
     delay(300);
@@ -411,7 +410,6 @@ void loop() {
         currentTimeMillis,
         sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
         sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median());
-      bluetoothManager->processButtonState(digitalRead(PushButton));
     }
 
     buttonState = digitalRead(PushButton);

@@ -23,12 +23,10 @@ void ClosePassService::newSensorValues(const uint32_t millis, const uint16_t lef
   processValuesForEventChar_MinKalman(millis, leftValue, rightValue);
 }
 
-void ClosePassService::buttonPressed() {
-  auto *payload = new std::list<uint16_t>();
-  payload->push_back(lastValue);
-
-  writeToEventCharacteristic(millis(), "button", payload);
-  delete payload;
+void ClosePassService::newPassEvent(const uint32_t millis, const uint16_t leftValue, const uint16_t rightValue) {
+  std::list<uint16_t> payload;
+  payload.push_back(leftValue);
+  writeToEventCharacteristic(millis, "button", &payload);
 }
 
 void ClosePassService::writeToDistanceCharacteristic(const uint32_t millis, const uint16_t leftValue, const uint16_t rightValue) {

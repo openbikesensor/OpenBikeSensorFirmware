@@ -54,41 +54,7 @@ void BluetoothManager::newSensorValues(const uint32_t millis, const uint16_t lef
 }
 
 void BluetoothManager::newPassEvent(const uint32_t millis, const uint16_t leftValue, const uint16_t rightValue) {
-  buttonPressed();
   for (auto &service : services) {
     service->newPassEvent(millis, leftValue, rightValue);
-  }
-}
-
-/**
- * Triggers the buttonPressed() method if the button is pressed.
- * After a button press, we wait for a time window of 300ms in which no button
- * presses occur. Afterwards, new button presses will result in triggering
- * buttonPressed() again.
- *
- * The method is implemented in this way because the `state` can be erroneously
- * set to `LOW` even if the button is still pressed. This implementation fixes
- * that problem.
- * @param state current state of the push button (LOW or HIGH)
- */
-void BluetoothManager::processButtonState(int state) {
-  if (state == HIGH) {
-    if (!buttonWasPressed) {
-      buttonPressed();
-    }
-
-    buttonWasPressed = true;
-    buttonPressTimestamp = millis();
-  }
-
-  if (buttonWasPressed && (millis() - buttonPressTimestamp) >= 300) {
-    buttonWasPressed = false;
-    buttonPressTimestamp = 0;
-  }
-}
-
-void BluetoothManager::buttonPressed() const {
-  for (auto &service : services) {
-    service->buttonPressed();
   }
 }

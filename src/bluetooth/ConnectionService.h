@@ -13,7 +13,6 @@ class ConnectionService : public IBluetoothService {
     bool shouldAdvertise() override;
     BLEService *getService() override;
     void newSensorValues(uint32_t millis, uint16_t leftValue, uint16_t rightValue) override;
-    void buttonPressed() override;
 
   private:
     bool isSensorCovered();

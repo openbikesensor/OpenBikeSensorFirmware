@@ -21,7 +21,7 @@ class ClosePassService : public IBluetoothService {
     BLEService *getService() override;
 
     void newSensorValues(uint32_t millis, uint16_t leftValue, uint16_t rightValue) override;
-    void buttonPressed() override;
+    void newPassEvent(uint32_t millis, uint16_t leftValue, uint16_t rightValue) override;
 
   private:
     void writeToDistanceCharacteristic(uint32_t millis, uint16_t leftValue, uint16_t rightValue);

@@ -74,12 +74,7 @@ void ObsService::newPassEvent(uint32_t millis, uint16_t leftValue, uint16_t righ
   mButtonCharacteristic.notify();
 }
 
-void ObsService::buttonPressed() {
-}
-
 void ObsTimeServiceCallback::onRead(BLECharacteristic *pCharacteristic) {
-  const uint32_t now = millis();
-  log_d("OBS timer was queried at %u.", now);
-  *mValue = now;
+  *mValue = millis();
   pCharacteristic->setValue(*mValue);
 }

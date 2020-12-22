@@ -47,6 +47,3 @@ void HeartRateService::newSensorValues(const uint32_t millis, const uint16_t lef
   mMinimumDistance = MAX_SENSOR_VALUE;
   mCollectionStartTime = millis;
 }
-
-void HeartRateService::buttonPressed() {
-}

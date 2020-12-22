@@ -21,6 +21,3 @@ void DistanceService::newSensorValues(const uint32_t millis, const uint16_t left
   mCharacteristic->setValue(transmitValue.c_str());
   mCharacteristic->notify();
 }
-
-void DistanceService::buttonPressed() {
-}

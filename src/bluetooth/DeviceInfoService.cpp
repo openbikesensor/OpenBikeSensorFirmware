@@ -36,6 +36,3 @@ BLEService* DeviceInfoService::getService() {
 
 void DeviceInfoService::newSensorValues(const uint32_t millis, const uint16_t leftValue, const uint16_t rightValue) {
 }
-
-void DeviceInfoService::buttonPressed() {
-}

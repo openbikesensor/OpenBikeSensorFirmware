@@ -48,11 +48,6 @@ class IBluetoothService {
      */
     virtual void newPassEvent(uint32_t millis, uint16_t leftValue, uint16_t rightValue) {};
 
-    /**
-     * Processes the event that the push button was just triggered.
-     */
-    virtual void buttonPressed() = 0;
-
   protected:
     /**
      * Joins a list of integers by placing the `glue` string between the members.
