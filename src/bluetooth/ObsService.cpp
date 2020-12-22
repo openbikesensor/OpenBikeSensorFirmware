@@ -72,7 +72,7 @@ void ObsService::newPassEvent(uint32_t millis, uint16_t leftValue, uint16_t righ
   *(uint16_t*) &mButtonValue[6] = rightValue == MAX_SENSOR_VALUE ? 0xffff : rightValue;
   mButtonCharacteristic.setValue(mButtonValue, 8);
   mButtonCharacteristic.notify();
-};
+}
 
 void ObsService::buttonPressed() {
 }

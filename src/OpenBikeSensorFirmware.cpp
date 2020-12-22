@@ -307,7 +307,7 @@ void setup() {
       }
     }
 
-    auto currentTimeMillis = millis();
+    currentTimeMillis = millis();
     if (bluetoothManager
         && lastBluetoothInterval != (currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS)) {
       lastBluetoothInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
