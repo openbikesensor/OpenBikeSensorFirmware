@@ -36,17 +36,6 @@ class ObsTimeServiceCallback : public BLECharacteristicCallbacks {
 
 class ObsService : public IBluetoothService {
   public:
-    ObsService() :
-      mTimeCharacteristic(OBS_TIME_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ),
-      mTimeDescriptor(BLEUUID((uint16_t)0x2901)),
-      mTimeCharacteristicsCallback(&mTimerValue),
-      mDistanceCharacteristic(OBS_DISTANCE_CHARACTERISTIC_UUID,
-                      BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY),
-      mDistanceDescriptor(BLEUUID((uint16_t)0x2901)),
-      mButtonCharacteristic(OBS_BUTTON_CHARACTERISTIC_UUID,
-                              BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY),
-      mButtonDescriptor(BLEUUID((uint16_t)0x2901)) {
-    };
     void setup(BLEServer *pServer) override;
     bool shouldAdvertise() override;
     BLEService* getService() override;
@@ -55,16 +44,18 @@ class ObsService : public IBluetoothService {
 
   private:
     BLEService *mService = nullptr;
-    BLECharacteristic mTimeCharacteristic;
-    uint32_t mTimerValue;
-    BLEDescriptor mTimeDescriptor;
-    ObsTimeServiceCallback mTimeCharacteristicsCallback;
-    BLECharacteristic mDistanceCharacteristic;
-    uint8_t mDistanceValue[8];
-    BLEDescriptor mDistanceDescriptor;
-    BLECharacteristic mButtonCharacteristic;
-    uint8_t mButtonValue[8];
-    BLEDescriptor mButtonDescriptor;
+    BLECharacteristic mTimeCharacteristic = BLECharacteristic(OBS_TIME_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ);
+    uint32_t mTimerValue = 0;
+    BLEDescriptor mTimeDescriptor = BLEUUID((uint16_t)0x2901);
+    ObsTimeServiceCallback mTimeCharacteristicsCallback = ObsTimeServiceCallback(&mTimerValue);
+    BLECharacteristic mDistanceCharacteristic = BLECharacteristic(OBS_DISTANCE_CHARACTERISTIC_UUID,
+      BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+    uint8_t mDistanceValue[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+    BLEDescriptor mDistanceDescriptor = BLEDescriptor(BLEUUID((uint16_t)0x2901));
+    BLECharacteristic mButtonCharacteristic = BLECharacteristic(OBS_BUTTON_CHARACTERISTIC_UUID,
+      BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+    uint8_t mButtonValue[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+    BLEDescriptor mButtonDescriptor = BLEDescriptor(BLEUUID((uint16_t)0x2901));
     static const std::string TIME_DESCRIPTION_TEXT;
     static const std::string DISTANCE_DESCRIPTION_TEXT;
     static const std::string BUTTON_DESCRIPTION_TEXT;

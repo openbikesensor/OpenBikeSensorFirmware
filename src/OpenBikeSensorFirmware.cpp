@@ -85,7 +85,7 @@ const uint8_t displayAddress = 0x3c;
 
 int lastMeasurements = 0 ;
 
-void bluetoothConfirmed(DataSet *dataSet, uint16_t measureIndex);
+void bluetoothConfirmed(const DataSet *dataSet, uint16_t measureIndex);
 
 void setup() {
   Serial.begin(115200);
@@ -547,7 +547,7 @@ void loop() {
   startTimeMillis = (currentTimeMillis / measureInterval) * measureInterval;
 }
 
-void bluetoothConfirmed(DataSet *dataSet, uint16_t measureIndex) {
+void bluetoothConfirmed(const DataSet *dataSet, uint16_t measureIndex) {
   if (bluetoothManager) {
     uint16_t left = dataSet->readDurationsLeftInMicroseconds[measureIndex];
     if (left >= MAX_DURATION_MICRO_SEC && measureIndex > 0) {
