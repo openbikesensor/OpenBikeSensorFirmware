@@ -17,22 +17,22 @@ BLEService* ClosePassService::getService() {
   return mService;
 }
 
-void ClosePassService::newSensorValues(const uint16_t leftValue, const uint16_t rightValue) {
-  processValuesForDistanceChar(leftValue, rightValue);
-  processValuesForEventChar_Avg2s(leftValue, rightValue);
-  processValuesForEventChar_MinKalman(leftValue, rightValue);
+void ClosePassService::newSensorValues(const uint32_t millis, const uint16_t leftValue, const uint16_t rightValue) {
+  processValuesForDistanceChar(millis, leftValue, rightValue);
+  processValuesForEventChar_Avg2s(millis, leftValue, rightValue);
+  processValuesForEventChar_MinKalman(millis, leftValue, rightValue);
 }
 
 void ClosePassService::buttonPressed() {
   auto *payload = new std::list<uint16_t>();
   payload->push_back(lastValue);
 
-  writeToEventCharacteristic("button", payload);
+  writeToEventCharacteristic(millis(), "button", payload);
   delete payload;
 }
 
-void ClosePassService::writeToDistanceCharacteristic(const uint16_t leftValue, const uint16_t rightValue) {
-  auto transmitValue = String(millis()) + ";";
+void ClosePassService::writeToDistanceCharacteristic(const uint32_t millis, const uint16_t leftValue, const uint16_t rightValue) {
+  auto transmitValue = String(millis) + ";";
   transmitValue += valueAsString(leftValue) + ";";
   transmitValue += valueAsString(rightValue);
 
@@ -40,8 +40,8 @@ void ClosePassService::writeToDistanceCharacteristic(const uint16_t leftValue, c
   mDistanceCharacteristic->notify();
 }
 
-void ClosePassService::writeToEventCharacteristic(const String& event, std::list<uint16_t>* payload) {
-  auto transmitValue = String(millis()) + ";";
+void ClosePassService::writeToEventCharacteristic(const uint32_t millis, const String& event, std::list<uint16_t>* payload) {
+  auto transmitValue = String(millis) + ";";
   transmitValue += event + ";";
   if (payload) {
     transmitValue += joinList(*payload, ",");
@@ -51,14 +51,14 @@ void ClosePassService::writeToEventCharacteristic(const String& event, std::list
   mEventCharacteristic->notify();
 }
 
-void ClosePassService::processValuesForDistanceChar(const uint16_t leftValue, const uint16_t rightValue) {
+void ClosePassService::processValuesForDistanceChar(const uint32_t millis, const uint16_t leftValue, const uint16_t rightValue) {
   if (mDistancePhase == PHASE_PRE && leftValue < THRESHOLD_CLOSEPASS) {
     mDistancePhase = PHASE_TRANSMITTING;
   }
 
   if (mDistancePhase == PHASE_TRANSMITTING) {
     // Transmitting the value
-    writeToDistanceCharacteristic(leftValue, rightValue);
+    writeToDistanceCharacteristic(millis, leftValue, rightValue);
     mDistanceBuffer.push(leftValue);
 
     // Either the buffer is full (10s)
@@ -79,7 +79,7 @@ void ClosePassService::processValuesForDistanceChar(const uint16_t leftValue, co
   }
 }
 
-void ClosePassService::processValuesForEventChar_Avg2s(const uint16_t leftValue, const uint16_t rightValue) {
+void ClosePassService::processValuesForEventChar_Avg2s(const uint32_t millis, const uint16_t leftValue, const uint16_t rightValue) {
   mEventAvg2s_Buffer.push(leftValue);
 
   if (!mEventAvg2s_Buffer.isFull()) {
@@ -106,12 +106,12 @@ void ClosePassService::processValuesForEventChar_Avg2s(const uint16_t leftValue,
     payload->push_back((uint16_t) distanceAvg);
     payload->push_back(distanceMin);
 
-    writeToEventCharacteristic("avg2s", payload);
+    writeToEventCharacteristic(millis, "avg2s", payload);
     delete payload;
   }
 }
 
-void ClosePassService::processValuesForEventChar_MinKalman(const uint16_t leftValue, const uint16_t rightValue) {
+void ClosePassService::processValuesForEventChar_MinKalman(const uint32_t millis, const uint16_t leftValue, const uint16_t rightValue) {
   // TODO: test these parameters!!!
   float errMeasure = 10;
   float q = 0.01;
@@ -122,16 +122,16 @@ void ClosePassService::processValuesForEventChar_MinKalman(const uint16_t leftVa
   mEventMinKalman_LastEstimate = mEventMinKalman_CurrentEstimate;
 
   if (mEventMinKalman_CurrentEstimate < mEventMinKalman_Min) {
-    mEventMinKalman_MinTimestamp = millis();
+    mEventMinKalman_MinTimestamp = millis;
     mEventMinKalman_Min = mEventMinKalman_CurrentEstimate;
   }
 
   // Below close pass threshold and last minimum value was more than one second ago
-  if (mEventMinKalman_Min < THRESHOLD_CLOSEPASS && (millis() - mEventMinKalman_MinTimestamp) >= 1000) {
+  if (mEventMinKalman_Min < THRESHOLD_CLOSEPASS && (millis - mEventMinKalman_MinTimestamp) >= 1000) {
     auto *payload = new std::list<uint16_t>();
     payload->push_back((uint16_t) mEventMinKalman_Min);
 
-    writeToEventCharacteristic("min_kalman", payload);
+    writeToEventCharacteristic(millis, "min_kalman", payload);
     mEventMinKalman_Min = UINT8_MAX;
     delete payload;
   }

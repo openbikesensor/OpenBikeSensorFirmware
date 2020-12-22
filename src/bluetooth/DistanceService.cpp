@@ -13,8 +13,8 @@ BLEService* DistanceService::getService() {
   return mService;
 }
 
-void DistanceService::newSensorValues(const uint16_t leftValue, const uint16_t rightValue) {
-  auto transmitValue = String(millis()) + ";";
+void DistanceService::newSensorValues(const uint32_t millis, const uint16_t leftValue, const uint16_t rightValue) {
+  auto transmitValue = String(millis) + ";";
   transmitValue += valueAsString(leftValue) + ";";
   transmitValue += valueAsString(rightValue);
 

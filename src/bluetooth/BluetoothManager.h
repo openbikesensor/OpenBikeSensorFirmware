@@ -41,10 +41,11 @@ class BluetoothManager {
 
     /**
      * Processes new sensor values by calling each services with the values.
+     * @param millis sender millis counter at the time of measurement of the left value
      * @param leftValue sensor value of the left side (MAX_SENSOR_VALUE for no reading)
      * @param rightValues sensor value of the right side (MAX_SENSOR_VALUE for no reading)
      */
-    void newSensorValues(uint16_t leftValue, uint16_t rightValue);
+    void newSensorValues(const uint32_t millis, uint16_t leftValue, uint16_t rightValue);
 
     /**
      * Process the current push button state itself. This will call

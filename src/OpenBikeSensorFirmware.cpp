@@ -399,6 +399,7 @@ void loop() {
 #endif
       lastBluetoothInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
       bluetoothManager.newSensorValues(
+        currentTimeMillis,
         sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
         sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median());
       bluetoothManager.processButtonState(digitalRead(PushButton));

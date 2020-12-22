@@ -12,7 +12,7 @@ class DistanceService : public IBluetoothService {
     bool shouldAdvertise() override;
     BLEService* getService() override;
 
-    void newSensorValues(uint16_t leftValue, uint16_t rightValue) override;
+    void newSensorValues(const uint32_t millis, const uint16_t leftValue, const uint16_t rightValue) override;
     void buttonPressed() override;
 
   private:
