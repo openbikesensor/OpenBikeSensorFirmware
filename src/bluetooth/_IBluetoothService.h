@@ -38,7 +38,9 @@ class IBluetoothService {
      * @param leftValue sensor value of the left side (MAX_SENSOR_VALUE for no reading)
      * @param rightValues sensor value of the right side (MAX_SENSOR_VALUE for no reading)
      */
-    virtual void newSensorValues(uint32_t millis, uint16_t leftValue, uint16_t rightValue) = 0;
+    virtual void newSensorValues(uint32_t millis, uint16_t leftValue, uint16_t rightValue) {
+      // empty default implementation
+    }
 
     /**
      * Processes new confirmed overtake event.
@@ -46,7 +48,9 @@ class IBluetoothService {
      * @param leftValue sensor value of the left side (MAX_SENSOR_VALUE for no reading)
      * @param rightValues sensor value of the right side (MAX_SENSOR_VALUE for no reading)
      */
-    virtual void newPassEvent(uint32_t millis, uint16_t leftValue, uint16_t rightValue) {};
+    virtual void newPassEvent(uint32_t millis, uint16_t leftValue, uint16_t rightValue) {
+      // empty default implementation
+    }
 
   protected:
     /**
