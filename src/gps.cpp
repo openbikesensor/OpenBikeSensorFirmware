@@ -123,7 +123,7 @@ void readGPSData() {
   }
 }
 
-bool isInsidePrivacyArea(TinyGPSLocation location) {
+bool isInsidePrivacyArea(TinyGPSLocation &location) {
   // quite accurate haversine formula
   // consider using simplified flat earth calculation to save time
   for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx) {

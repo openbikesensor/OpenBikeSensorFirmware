@@ -33,7 +33,7 @@ extern HardwareSerial SerialGPS;
 
 time_t currentTime();
 void readGPSData();
-bool isInsidePrivacyArea(TinyGPSLocation location);
+bool isInsidePrivacyArea(TinyGPSLocation &location);
 void addNewPrivacyArea(double latitude, double longitude, int radius);
 double haversine(double lat1, double lon1, double lat2, double lon2);
 

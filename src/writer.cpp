@@ -212,6 +212,8 @@ bool CSVFileWriter::append(DataSet &set) {
   csv += ";";
 
   if ((!set.location.isValid()) ||
+        set.hdop.value() == 9999 ||
+        set.validSatellites == 0 ||
       ((config.privacyConfig & NoPosition) && set.isInsidePrivacyArea
     && !((config.privacyConfig & OverridePrivacy) && set.confirmed))) {
     csv += ";;;;;";
