@@ -18,10 +18,9 @@
 class BluetoothManager {
   public:
     /**
-     * Initializes all defined services (using #ifdef's) and starts the bluetooth
-     * server.
+     * Initializes all defined services and starts the bluetooth server.
      */
-    void init();
+    void init(String obsName, uint16_t leftOffset, uint16_t rightOffset);
 
     /**
      * Starts advertising all services that internally implement shouldAdvertise()
@@ -46,7 +45,7 @@ class BluetoothManager {
      * @param leftValue sensor value of the left side (MAX_SENSOR_VALUE for no reading)
      * @param rightValues sensor value of the right side (MAX_SENSOR_VALUE for no reading)
      */
-    void newSensorValues(const uint32_t millis, uint16_t leftValue, uint16_t rightValue);
+    void newSensorValues(uint32_t millis, uint16_t leftValue, uint16_t rightValue);
 
     /**
      * Processes new confirmed pass event.
@@ -54,7 +53,7 @@ class BluetoothManager {
      * @param leftValue sensor value of the left side (MAX_SENSOR_VALUE for no reading)
      * @param rightValues sensor value of the right side (MAX_SENSOR_VALUE for no reading)
      */
-    void newPassEvent(const uint32_t millis, const uint16_t leftValue, const uint16_t rightValue);
+    void newPassEvent(uint32_t millis, uint16_t leftValue, uint16_t rightValue);
 
   private:
     BLEServer *pServer;

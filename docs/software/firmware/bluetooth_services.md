@@ -21,6 +21,8 @@ grand_parent: Software
 - *Description:* General information about the bluetooth device
 - *UUID:* `0000180A-0000-1000-8000-00805F9B34FB`
 
+Values will change to more actual values we can report!
+
 | Characteristic    | UUID                                   | Property | Value              |
 | ----------------- | -------------------------------------- | -------- | ------------------ |
 | System Id         | `00002a23-0000-1000-8000-00805f9b34fb` | `READ`   | ?                  |
@@ -46,6 +48,8 @@ grand_parent: Software
 - *Description:* Transmits the current distance every 50ms
 - *UUID:* `1FE7FAF9-CE63-4236-0001-000000000000`
 
+Might get removed soon, prefer the "OBS Service".
+
 | Characteristic | UUID                                   | Property         | Value                                            |
 | -------------- | -------------------------------------- | ---------------- | ------------------------------------------------ |
 | Distance 50 ms | `1FE7FAF9-CE63-4236-0001-000000000001` | `READ`, `NOTIFY` | Current distance of all sensors with a timestamp |
@@ -58,6 +62,8 @@ The list of sensor values for one side might be empty but the entire transmitted
 - *Description:* Connection status for interactive pairing
 - *UUID:* `1FE7FAF9-CE63-4236-0002-000000000000`
 
+Might get removed soon.
+
 | Characteristic    | UUID                                   | Property        | Value |
 | ----------------- | -------------------------------------- | --------------- | ----- |
 | Connection Status | `1FE7FAF9-CE63-4236-0002-000000000001` | `READ`,`NOTIFY` | `1`   |
@@ -66,6 +72,8 @@ The list of sensor values for one side might be empty but the entire transmitted
 ## Close Pass Service
 - *Description:* Detects and transmits possible close passes
 - *UUID:* `1FE7FAF9-CE63-4236-0003-000000000000`
+
+Might get removed soon, prefer the "OBS Service".
 
 | Characteristic      | UUID                                   | Property        | Value                                                                               |
 | ------------------- | -------------------------------------- | --------------- | ----------------------------------------------------------------------------------- |
@@ -91,8 +99,12 @@ The following events are defined:
 | Time                | `1FE7FAF9-CE63-4236-0004-000000000001` | `READ`          | reports the value of the ms timer of the OBS unit, can be used to synchronize time  |
 | Sensor Distance     | `1FE7FAF9-CE63-4236-0004-000000000002` | `READ`,`NOTIFY` | Gives sensor reading of the left and right sensor.                                  |
 | Close Pass          | `1FE7FAF9-CE63-4236-0004-000000000003` | `READ`,`NOTIFY` | Notifies of button confirmed close pass events.                                     |
+| Offset              | `1FE7FAF9-CE63-4236-0004-000000000004` | `READ`          | Configured handle bar offset values in cm.                                          |
 
-The time is sent as uint32. The time counts linear milliseconds from the start 
+This service uses binary format to transfer time counter as unit32 and unt16
+for distance in cm. 
+
+*Time* is sent as uint32. The time counts linear milliseconds from the start 
 of the obs. The value returned is the timer value at the time of the read.
 
 *Sensor Distance* delivers the time of the left measurement with the current values of 
@@ -105,3 +117,8 @@ is current at the ESP.
 values are same as with the *Sensor Distance* characteristic. Note that this 
 information is sent after confirmation, so the timer information must be used 
 to match the event to the correct time and so location.
+
+*Offset* reports the configured handle bar offsets in cm on the OBS side. This
+is purely to ease the user configuration. The offset is not considered in any 
+of the other reported values. The service uses 2 uint16 values to report the
+left and right offset in cm in that order.

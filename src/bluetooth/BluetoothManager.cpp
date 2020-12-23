@@ -1,12 +1,10 @@
 #include "BluetoothManager.h"
 
-void BluetoothManager::init() {
+void BluetoothManager::init(const String obsName, const uint16_t leftOffset, const uint16_t rightOffset) {
 
   ESP_ERROR_CHECK_WITHOUT_ABORT(
     esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
-  char deviceName[32];
-  snprintf(deviceName, sizeof(deviceName), "OpenBikeSensor-%04X", (uint16_t)(ESP.getEfuseMac() >> 32));
-  BLEDevice::init(deviceName);
+  BLEDevice::init(obsName.c_str());
   pServer = BLEDevice::createServer();
 
   services.push_back(new HeartRateService);
@@ -14,7 +12,7 @@ void BluetoothManager::init() {
   services.push_back(new DistanceService);
   services.push_back(new ConnectionService);
   services.push_back(new ClosePassService);
-  services.push_back(new ObsService);
+  services.push_back(new ObsService(leftOffset, rightOffset));
 
   for (auto &service : services) {
     service->setup(pServer);

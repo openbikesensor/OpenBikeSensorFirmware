@@ -36,6 +36,7 @@ class ObsTimeServiceCallback : public BLECharacteristicCallbacks {
 
 class ObsService : public IBluetoothService {
   public:
+    ObsService(uint16_t leftOffset, uint16_t rightOffset);
     void setup(BLEServer *pServer) override;
     bool shouldAdvertise() override;
     BLEService* getService() override;
@@ -56,13 +57,19 @@ class ObsService : public IBluetoothService {
       BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
     uint8_t mButtonValue[8] = {0, 0, 0, 0, 0, 0, 0, 0};
     BLEDescriptor mButtonDescriptor = BLEDescriptor(BLEUUID((uint16_t)0x2901));
+    BLECharacteristic mOffsetCharacteristic
+      = BLECharacteristic(OBS_OFFSET_CHARACTERISTIC_UUID,BLECharacteristic::PROPERTY_READ);
+    uint8_t mOffsetValue[4] = {0, 0, 0, 0};
+    BLEDescriptor mOffsetDescriptor = BLEDescriptor(BLEUUID((uint16_t)0x2901));
     static const std::string TIME_DESCRIPTION_TEXT;
     static const std::string DISTANCE_DESCRIPTION_TEXT;
     static const std::string BUTTON_DESCRIPTION_TEXT;
+    static const std::string OFFSET_DESCRIPTION_TEXT;
     static const BLEUUID OBS_SERVICE_UUID;
     static const BLEUUID OBS_TIME_CHARACTERISTIC_UUID;
     static const BLEUUID OBS_DISTANCE_CHARACTERISTIC_UUID;
     static const BLEUUID OBS_BUTTON_CHARACTERISTIC_UUID;
+    static const BLEUUID OBS_OFFSET_CHARACTERISTIC_UUID;
 };
 
 #endif

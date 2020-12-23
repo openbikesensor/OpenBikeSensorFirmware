@@ -266,8 +266,14 @@ void setup() {
   // Bluetooth
   //##############################################################
   if (config.bluetooth) {
+    // TODO: Use new config name
+    char deviceName[32];
+    snprintf(deviceName, sizeof(deviceName), "OpenBikeSensor-%04X", (uint16_t)(ESP.getEfuseMac() >> 32));
     bluetoothManager = new BluetoothManager;
-    bluetoothManager->init();
+    bluetoothManager->init(
+      deviceName,
+      config.sensorOffsets[LEFT_SENSOR_ID],
+      config.sensorOffsets[RIGHT_SENSOR_ID]);
     bluetoothManager->activateBluetooth();
   } else {
     bluetoothManager = nullptr;

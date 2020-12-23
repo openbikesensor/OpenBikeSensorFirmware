@@ -24,10 +24,18 @@ const std::string ObsService::DISTANCE_DESCRIPTION_TEXT(
   "obs time ms uint32; left distance cm uint16; right distance cm uint16; 0xffff = no reading");
 const std::string ObsService::BUTTON_DESCRIPTION_TEXT(
   "Confirmed event: ms timer uint32; left distance cm uint16; right distance cm uint16; 0xffff = no reading");
+const std::string ObsService::OFFSET_DESCRIPTION_TEXT(
+  "Configured OBS offsets, left offset cm uint16, right offset cm uint16");
 const BLEUUID ObsService::OBS_SERVICE_UUID = BLEUUID("1FE7FAF9-CE63-4236-0004-000000000000");
 const BLEUUID ObsService::OBS_TIME_CHARACTERISTIC_UUID = BLEUUID("1FE7FAF9-CE63-4236-0004-000000000001");
 const BLEUUID ObsService::OBS_DISTANCE_CHARACTERISTIC_UUID = BLEUUID("1FE7FAF9-CE63-4236-0004-000000000002");
 const BLEUUID ObsService::OBS_BUTTON_CHARACTERISTIC_UUID = BLEUUID("1FE7FAF9-CE63-4236-0004-000000000003");
+const BLEUUID ObsService::OBS_OFFSET_CHARACTERISTIC_UUID = BLEUUID("1FE7FAF9-CE63-4236-0004-000000000004");
+
+ObsService::ObsService(const uint16_t leftOffset, const uint16_t rightOffset) {
+  *(uint16_t*) mOffsetValue = leftOffset;
+  *(uint16_t*) &mOffsetValue[2] = rightOffset;
+}
 
 void ObsService::setup(BLEServer *pServer) {
   mService = pServer->createService(OBS_SERVICE_UUID);
@@ -47,7 +55,12 @@ void ObsService::setup(BLEServer *pServer) {
   mButtonDescriptor.setValue(BUTTON_DESCRIPTION_TEXT);
   mButtonCharacteristic.addDescriptor(new BLE2902);
 
+  mService->addCharacteristic(&mOffsetCharacteristic);
+  mOffsetCharacteristic.addDescriptor(&mOffsetDescriptor);
+  mOffsetDescriptor.setValue(OFFSET_DESCRIPTION_TEXT);
+
   // init values
+  mOffsetCharacteristic.setValue(mOffsetValue, 4);
 }
 
 bool ObsService::shouldAdvertise() {
