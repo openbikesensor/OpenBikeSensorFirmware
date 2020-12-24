@@ -5,8 +5,8 @@ void SSD1306DisplayDevice::showNumConfirmed() {
   if (confirmedMeasurements <= 9) {
     val = "0" + val;
   }
-  this->showTextOnGrid(2, 4, val, Dialog_plain_20);
-  this->showTextOnGrid(3, 5, "conf");
+  this->prepareTextOnGrid(2, 4, val, Dialog_plain_20);
+  this->prepareTextOnGrid(3, 5, "conf");
 }
 
 void SSD1306DisplayDevice::showNumButtonPressed() {
@@ -14,8 +14,8 @@ void SSD1306DisplayDevice::showNumButtonPressed() {
   if (numButtonReleased <= 9) {
     val = "0" + val;
   }
-  this->showTextOnGrid(0, 4, val, Dialog_plain_20);
-  this->showTextOnGrid(1, 5, "press");
+  this->prepareTextOnGrid(0, 4, val, Dialog_plain_20);
+  this->prepareTextOnGrid(1, 5, "press");
 }
 
 void SSD1306DisplayDevice::showValues(
@@ -35,11 +35,11 @@ void SSD1306DisplayDevice::showValues(
 
     // Do not show location, when DisplaySimple is configured
     if (!(config.displayConfig & DisplaySimple)) {
-      this->showTextOnGrid(0, 0, loc1);
+      this->prepareTextOnGrid(0, 0, loc1);
     }
 
     if (value1 == MAX_SENSOR_VALUE) {
-      this->showTextOnGrid(0, 1, "---", Dialog_plain_30);
+      this->prepareTextOnGrid(0, 1, "---", Dialog_plain_30);
     } else {
       String val = String(value1);
       if (value1 <= 9) {
@@ -48,11 +48,11 @@ void SSD1306DisplayDevice::showValues(
         val = "0" + val;
       }
 
-      this->showTextOnGrid(0, 1, val, Dialog_plain_30);
+      this->prepareTextOnGrid(0, 1, val, Dialog_plain_30);
     }
 
     if (config.displayConfig & DisplaySimple) {
-      this->showTextOnGrid(2, 2, "cm", Dialog_plain_20);
+      this->prepareTextOnGrid(2, 2, "cm", Dialog_plain_20);
     }
   }
 
@@ -63,9 +63,9 @@ void SSD1306DisplayDevice::showValues(
       uint16_t value2 = sensor2.distance;
       String loc2 = sensor2.sensorLocation;
 
-      this->showTextOnGrid(2, 0, loc2);
+      this->prepareTextOnGrid(2, 0, loc2);
       if (value2 == MAX_SENSOR_VALUE) {
-        this->showTextOnGrid(2, 1, "---", Dialog_plain_30);
+        this->prepareTextOnGrid(2, 1, "---", Dialog_plain_30);
       } else {
         String val = String(value2);
         if (value2 <= 9) {
@@ -73,7 +73,7 @@ void SSD1306DisplayDevice::showValues(
         } else if (value2 >= 10 && value2 <= 99) {
           val = "0" + val;
         }
-        this->showTextOnGrid(2, 1, val, Dialog_plain_30);
+        this->prepareTextOnGrid(2, 1, val, Dialog_plain_30);
       }
     }
     if (config.displayConfig & DisplayDistanceDetail) {
@@ -86,13 +86,13 @@ void SSD1306DisplayDevice::showValues(
 //      snprintf(buffer, bufSize - 1, "%03d|%02d|%3.2fV", sensor1.rawDistance,
 //               lastMeasurements, voltageMeter->read());
 
-      this->showTextOnGrid(0, 4, buffer, Dialog_plain_20);
+      this->prepareTextOnGrid(0, 4, buffer, Dialog_plain_20);
     } else if (config.displayConfig & DisplayNumConfirmed) {
       showNumButtonPressed();
       showNumConfirmed();
     } else {
       // Show GPS info, when DisplaySatellites is configured
-      if (config.displayConfig & DisplaySatelites) {
+      if (config.displayConfig & DisplaySatellites) {
         showGPS();
       }
 
@@ -116,8 +116,8 @@ void SSD1306DisplayDevice::showGPS() {
   if (sats <= 9) {
     val = "0" + val;
   }
-  this->showTextOnGrid(2, 4, val, Dialog_plain_20);
-  this->showTextOnGrid(3, 5, "sats");
+  this->prepareTextOnGrid(2, 4, val, Dialog_plain_20);
+  this->prepareTextOnGrid(3, 5, "sats");
 }
 
 void SSD1306DisplayDevice::showVelocity(double velocity) {
@@ -128,6 +128,6 @@ void SSD1306DisplayDevice::showVelocity(double velocity) {
   } else {
     snprintf(buffer, bufSize - 1, "--");
   }
-  this->showTextOnGrid(0, 4, buffer, Dialog_plain_20);
-  this->showTextOnGrid(1, 5, "km/h");
+  this->prepareTextOnGrid(0, 4, buffer, Dialog_plain_20);
+  this->prepareTextOnGrid(1, 5, "km/h");
 }

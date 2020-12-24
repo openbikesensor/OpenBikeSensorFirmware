@@ -42,7 +42,7 @@
 //DNSServer dnsServer;
 
 extern WebServer server;
-void startServer();
+void startServer(ObsConfig *pConfig);
 void createPrivacyPage();
 
 #endif

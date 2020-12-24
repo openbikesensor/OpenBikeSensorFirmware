@@ -20,6 +20,8 @@
 
 #include "OpenBikeSensorFirmware.h"
 
+#include "SPIFFS.h"
+
 #ifndef BUILD_NUMBER
 #define BUILD_NUMBER "local"
 #endif
@@ -63,7 +65,6 @@ unsigned long timeOfMinimum = esp_timer_get_time(); //  millis();
 unsigned long startTimeMillis = 0;
 unsigned long currentTimeMillis = millis();
 
-bool usingSD = false;
 String text = "";
 uint16_t minDistanceToConfirm = MAX_SENSOR_VALUE;
 uint16_t minDistanceToConfirmIndex = 0;
@@ -126,23 +127,25 @@ void setup() {
     displayTest->showTextOnGrid(2, 1, "Config... error ");
     return;
   }
-  // Should load default config if run for the first time
+
   Serial.println(F("Load config"));
-  loadConfiguration(configFilename, config);
+  ObsConfig cfg; // this one is valid in setup!
+  if (!cfg.loadConfig()) {
+    displayTest->showTextOnGrid(2, 1, "Config...RESET");
+    delay(1000); // resetting config once, wait a moment
+  }
 
   // Dump config file
-  Serial.println(F("Print config file..."));
-  printConfig(config);
+  log_d("Print config file...");
+  cfg.printConfig();
 
-  // Save the config. This ensures, that new options exist as well
-  saveConfiguration(configFilename, config);
+  // TODO: Select Profile missing here or below!
+  // Copy data to static view on config!
+  cfg.fill(config);
 
-#ifdef DEVELOP
   if(config.devConfig & ShowGrid) {
     displayTest->showGrid(true);
   }
-#endif
-
   if (config.displayConfig & DisplayInvert) {
     displayTest->invert();
   } else {
@@ -204,7 +207,7 @@ void setup() {
 
     delay(1000); // Added for user experience
 
-    startServer();
+    startServer(&cfg);
     OtaInit(esp_chipid);
 
     while (true) {
@@ -285,34 +288,36 @@ void setup() {
       esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
   }
   readGPSData();
+  int gpsWaitFor = cfg.getProperty<int>(ObsConfig::PROPERTY_GPS_FIX);
   while (!validGPSData) {
     readGPSData();
 
-    switch (config.GPSConfig) {
-      case ValidLocation: {
-        validGPSData = gps.location.isValid();
+    switch (gpsWaitFor) {
+      case GPS::FIX_POS:
+        validGPSData = gps.sentencesWithFix() > 0;
         if (validGPSData) {
           Serial.println("Got location...");
         }
         break;
-      }
-      case ValidTime: {
-        validGPSData = gps.time.isValid();
+      case GPS::FIX_TIME:
+        validGPSData = gps.time.isValid()
+          && !(gps.time.second() == 00 && gps.time.minute() == 00 && gps.time.hour() == 00);
         if (validGPSData) {
           Serial.println("Got time...");
         }
         break;
-      }
-      case NumberSatellites: {
-        validGPSData = gps.satellites.value() >= config.satsForFix;
+      case GPS::FIX_NO_WAIT:
+        validGPSData = true;
+        if (validGPSData) {
+          Serial.println("GPS, no wait");
+        }
+        break;
+      default:
+        validGPSData = gps.satellites.value() >= gpsWaitFor;
         if (validGPSData) {
           Serial.println("Got required number of satellites...");
         }
         break;
-      }
-      default: {
-        validGPSData = false;
-      }
     }
 
     currentTimeMillis = millis();
@@ -322,15 +327,19 @@ void setup() {
       bluetoothManager->newSensorValues(currentTimeMillis, MAX_SENSOR_VALUE, MAX_SENSOR_VALUE);
     }
 
-    delay(300);
+    delay(50);
 
     String satellitesString;
     if (gps.passedChecksum() == 0) { // could not get any valid char from GPS module
       satellitesString = "OFF?";
-    } else if (!gps.time.isValid()) {
+    } else if (!gps.time.isValid()
+        || (gps.time.second() == 00 && gps.time.minute() == 00 && gps.time.hour() == 00)) {
       satellitesString = "no time";
     } else {
-      satellitesString = String(gps.satellites.value()) + " / " + String(config.satsForFix) + " sats";
+      char timeStr[32];
+      snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d %dsa",
+               gps.time.hour(), gps.time.minute(), gps.time.second(), gps.satellites.value());
+      satellitesString = String(timeStr);
     }
     displayTest->showTextOnGrid(2, 5, satellitesString);
 
@@ -342,12 +351,6 @@ void setup() {
       displayTest->showTextOnGrid(2, 5, "...skipped");
       break;
     }
-  }
-
-  if (gps.satellites.value() >= config.satsForFix) {
-    Serial.print("Got GPS Fix: ");
-    Serial.println(String(gps.satellites.value()));
-    displayTest->showTextOnGrid(2, 5, "Got GPS Fix");
   }
 
   delay(1000); // Added for user experience
@@ -467,8 +470,8 @@ void loop() {
   } // end measureInterval while
 
   // Write the minimum values of the while-loop to a set
-  for (size_t idx = 0; idx < sensorManager->m_sensors.size(); ++idx) {
-    currentSet->sensorValues.push_back(sensorManager->m_sensors[idx].minDistance);
+  for (auto & m_sensor : sensorManager->m_sensors) {
+    currentSet->sensorValues.push_back(m_sensor.minDistance);
   }
   currentSet->measurements = sensorManager->lastReadingCount;
   memcpy(&(currentSet->readDurationsRightInMicroseconds),
@@ -505,7 +508,7 @@ void loop() {
     // Empty buffer by writing it, after confirmation it will be written to SD card directly so no confirmed sets will be lost
     while (!dataBuffer.isEmpty() && dataBuffer.first() != datasetToConfirm) {
       DataSet* dataset = dataBuffer.shift();
-      if (dataset->confirmedDistances.size() == 0) {
+      if (dataset->confirmedDistances.empty()) {
         if (writer) {
           writer->append(*dataset);
         }

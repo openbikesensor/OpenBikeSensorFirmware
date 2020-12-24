@@ -139,11 +139,15 @@ class SSD1306DisplayDevice : public DisplayDevice {
     // | (0,5) | (1,5) | (2,5) | (3,5) |
     // ---------------------------------
 
-    void showTextOnGrid(int16_t x, int16_t y, String text) {
-      this->showTextOnGrid(x, y, text, ArialMT_Plain_10);
+    void showTextOnGrid(int16_t x, int16_t y, String text, const uint8_t* font = ArialMT_Plain_10) {
+      if (prepareTextOnGrid(x, y, text, font)) {
+        m_display->display();
+      }
     }
 
-    void showTextOnGrid(int16_t x, int16_t y, String text, const uint8_t* font) {
+    bool prepareTextOnGrid(
+      int16_t x, int16_t y, String text, const uint8_t* font = ArialMT_Plain_10) {
+      bool changed = false;
       if (!text.equals(gridText[x][y])) {
         m_display->setFont(font);
 
@@ -158,8 +162,9 @@ class SSD1306DisplayDevice : public DisplayDevice {
         // 3 => 8 - (3*2) = 2
         int x_offset = 8 - (x * 2);
         m_display->drawString(x * 32 + x_offset, y * 10 + 1, gridText[x][y]);
-        m_display->display();
+        changed = true;
       }
+      return changed;
     }
 
     void cleanGrid() {

@@ -28,13 +28,19 @@
 #include "config.h"
 #include "globals.h"
 
+namespace GPS {
+  const int FIX_NO_WAIT = 0;
+  const int FIX_TIME = -1;
+  const int FIX_POS = -2;
+}
+
 extern TinyGPSPlus gps;
 extern HardwareSerial SerialGPS;
 
 time_t currentTime();
 void readGPSData();
-bool isInsidePrivacyArea(TinyGPSLocation location);
-void addNewPrivacyArea(double latitude, double longitude, int radius);
+bool isInsidePrivacyArea(TinyGPSLocation &location);
+PrivacyArea newPrivacyArea(double latitude, double longitude, int radius);
 double haversine(double lat1, double lon1, double lat2, double lon2);
 
 #endif

@@ -84,12 +84,14 @@ bool FileWriter::appendString(const String &s) {
   if (!stored && getBufferLength() < 11000) { // do not add data if our buffer is full already. We loose data here!
     mBuffer.concat(s);
     stored = true;
-  } else {
-#ifdef DEVELOP
-    Serial.printf("File buffer overflow, not allowed to write - "
-                  "will skip, memory is at %dk.\n", ESP.getFreeHeap() / 1024);
-#endif
   }
+#ifdef DEVELOP
+  if (!stored) {
+    Serial.printf("File buffer overflow, not allowed to write - "
+                  "will skip, memory is at %dk, buffer at %u.\n",
+                  ESP.getFreeHeap() / 1024, getBufferLength());
+  }
+#endif
   return stored;
 }
 
@@ -212,6 +214,8 @@ bool CSVFileWriter::append(DataSet &set) {
   csv += ";";
 
   if ((!set.location.isValid()) ||
+        set.hdop.value() == 9999 ||
+        set.validSatellites == 0 ||
       ((config.privacyConfig & NoPosition) && set.isInsidePrivacyArea
     && !((config.privacyConfig & OverridePrivacy) && set.confirmed))) {
     csv += ";;;;;";
