@@ -35,8 +35,7 @@ Currently not available.
 
 | Characteristic  | UUID                                   | Property         | Value                                     |
 | --------------- | -------------------------------------- | ---------------- | ----------------------------------------- |
-| Heart Rate      | `00002a37-0000-1000-8000-00805f9b34fb` | `READ`, `NOTIFY` | Minimum distance measured over one second |
-| Sensor Location | `00002a38-0000-1000-8000-00805f9b34fb` | `READ`           | `1`                                       |
+| Heart Rate      | `00002a37-0000-1000-8000-00805f9b34fb` | `NOTIFY`         | Minimum distance measured over one second |
 
 
 ## Distance Service
