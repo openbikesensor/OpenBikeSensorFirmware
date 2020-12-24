@@ -21,17 +21,12 @@ grand_parent: Software
 - *Description:* General information about the bluetooth device
 - *UUID:* `0000180A-0000-1000-8000-00805F9B34FB`
 
-Values will change to more actual values we can report!
+Currently not available.
 
 | Characteristic    | UUID                                   | Property | Value              |
 | ----------------- | -------------------------------------- | -------- | ------------------ |
-| System Id         | `00002a23-0000-1000-8000-00805f9b34fb` | `READ`   | ?                  |
-| Model Number      | `00002a24-0000-1000-8000-00805f9b34fb` | `READ`   | `H7`               |
-| Serial Number     | `00002a25-0000-1000-8000-00805f9b34fb` | `READ`   | `20182DBA0B`       |
-| Firmware Revision | `00002a26-0000-1000-8000-00805f9b34fb` | `READ`   | `1.4.0`            |
-| Hardware Revision | `00002a27-0000-1000-8000-00805f9b34fb` | `READ`   | `39044024.10`      |
-| Software Revision | `00002a28-0000-1000-8000-00805f9b34fb` | `READ`   | `H7 3.1.0`         |
-| Manufacturer Name | `00002a29-0000-1000-8000-00805f9b34fb` | `READ`   | `Polar Electro Oy` |
+| Firmware Revision | `00002a26-0000-1000-8000-00805f9b34fb` | `READ`   | `vX.Y.ZZZZ`        |
+| Manufacturer Name | `00002a29-0000-1000-8000-00805f9b34fb` | `READ`   | `openbikesensor.org` |
 
 
 ## Heart Rate Service
