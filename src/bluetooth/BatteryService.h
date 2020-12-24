@@ -22,7 +22,7 @@ class BatteryLevelCallback : public BLECharacteristicCallbacks {
 
 class BatteryService : public IBluetoothService {
   public:
-    BatteryService(std::function<uint8_t()> getLevel) : mBatteryLevelCallback(&mBatteryLevelValue, getLevel)  { };
+    explicit BatteryService(std::function<uint8_t()> getLevel) : mBatteryLevelCallback(&mBatteryLevelValue, getLevel)  { };
     void setup(BLEServer *pServer) override;
     bool shouldAdvertise() override;
     BLEService* getService() override;
