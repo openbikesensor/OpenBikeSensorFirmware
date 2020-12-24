@@ -23,11 +23,10 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
-#include <SPIFFS.h>
 #include <vector>
 
 enum DisplayOptions {
-  DisplaySatelites = 0x01,  // 1
+  DisplaySatellites = 0x01,  // 1
   DisplayVelocity = 0x02,   // 2
   DisplayLeft = 0x04,       // 4
   DisplayRight = 0x08,      // 8
@@ -60,42 +59,102 @@ struct PrivacyArea {
   double radius;
 };
 
+// Most values should be moved away from here to the concrete implementation
+// which uses the value
 struct Config {
-  uint8_t numSensors;
+  char obsName[32];
   std::vector<uint16_t> sensorOffsets;
-  char ssid[32];
-  char password[64];
   char hostname[64];
   char obsUserID[64];
   uint displayConfig;
-  boolean bluetooth;
-  boolean simRaMode;
-#ifdef DEVELOP
+  bool bluetooth;
+  bool simRaMode;
   int devConfig;
-#endif
-  int GPSConfig;
   int privacyConfig;
-  int satsForFix;
-  int port;
   int confirmationTimeWindow;
-  uint8_t numPrivacyAreas;
   std::vector<PrivacyArea> privacyAreas;
 };
 
-#ifdef DEVELOP
 enum DevOptions {
   ShowGrid = 0x01,
   PrintWifiPassword = 0x02
 };
-#endif
 
-void printConfig(Config &config);
+class ObsConfig {
+  public:
+    ObsConfig() : jsonData(4096) {};
+    ~ObsConfig() = default;
+    bool loadConfig();
+    bool saveConfig() const;
+    void printConfig() const;
 
-// SPIFFS
-void loadConfiguration(const char *configFilename, Config &config);
-void saveConfiguration(const char *filename, const Config &config);
+    std::vector<int> getIntegersProperty(String const &name) const;
+    template<typename T> T getProperty(const String &key) const;
+    bool setBitMaskProperty(int profile, const String &key, uint value, bool state);
+    uint getBitMaskProperty(int profile, const String &key, uint mask) const;
 
-String configToJson(Config &config);
-void jsonToConfig(String json, Config &config);
+    bool setProperty(int profile, const String &key, String const &value);
+    template<typename T> bool setProperty(int profile, const String &key, T const &value);
+    bool setOffsets(int profile, std::vector<int> const &value);
+
+    bool setPrivacyArea(int profile, int paId, PrivacyArea const &pa);
+    bool addPrivacyArea(int profile, PrivacyArea const &pa);
+    bool removePrivacyArea(int profile, int paId);
+    PrivacyArea getPrivacyArea(int profile, int paId) const;
+    int getNumberOfPrivacyAreas(int profile) const;
+
+    int getNumberOfProfiles() const;
+    int addProfile();
+    bool deleteProfile(int profile);
+    bool selectProfile(int profile);
+    int getSelectedProfile() const;
+    String getProfileName(int profile); // = getProperty(profile, "name")
+
+    void fill(Config &cfg) const;
+    /* free memory allocated by json document. */
+    void releaseJson();
+    String asJsonString() const;
+    bool parseJson(const String &json);
+
+    static const String PROPERTY_OBS_NAME;
+    static const String PROPERTY_NAME;
+    static const String PROPERTY_BLUETOOTH;
+    static const String PROPERTY_OFFSET;
+    static const String PROPERTY_SIM_RA;
+    static const String PROPERTY_WIFI_SSID;
+    static const String PROPERTY_WIFI_PASSWORD;
+    static const String PROPERTY_PORTAL_TOKEN;
+    static const String PROPERTY_PORTAL_URL;
+    static const String PROPERTY_GPS_FIX;
+    static const String PROPERTY_DISPLAY_CONFIG;
+    static const String PROPERTY_CONFIRMATION_TIME_SECONDS;
+    static const String PROPERTY_PRIVACY_CONFIG;
+    static const String PROPERTY_DEVELOPER;
+    static const String PROPERTY_SELECTED_PRESET;
+    static const String PROPERTY_PRIVACY_AREA;
+    static const String PROPERTY_PA_LAT;
+    static const String PROPERTY_PA_LONG;
+    static const String PROPERTY_PA_LAT_T;
+    static const String PROPERTY_PA_LONG_T;
+    static const String PROPERTY_PA_RADIUS;
+
+  private:
+    static bool loadJson(JsonDocument &jsonDocument, const String &filename);
+    static bool parseJsonFromString(JsonDocument &jsonDocument, const String &jsonAsString);
+    bool loadOldConfig(const String &filename);
+    bool loadConfig(const String &filename);
+    void parseOldJsonDocument(DynamicJsonDocument &document);
+    void makeSureSystemDefaultsAreSet();
+    template<typename T> bool ensureSet(JsonObject data, const String &key, T value);
+    JsonObject getProfile(int profile);
+    JsonObjectConst getProfileConst(int profile) const;
+    void resetJson();
+
+    static const String CONFIG_OLD_FILENAME;
+    static const String CONFIG_FILENAME;
+
+    DynamicJsonDocument jsonData;
+    int selectedProfile = 0;
+};
 
 #endif

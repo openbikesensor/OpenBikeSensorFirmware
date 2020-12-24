@@ -29,6 +29,10 @@
 #include <uploader.h>
 
 const char* host = "openbikesensor";
+
+// Todo: find a good name
+ObsConfig *theObsConfig;
+
 WebServer server(80);
 String json_buffer;
 
@@ -244,16 +248,12 @@ String configIndex =
   "Swap Sensors (Left &#8660; Right)<input type='checkbox' name='displaySwapSensors' {displaySwapSensors}>"
   ""
   "<h3>GPS</h3>"
-  "<label for='location'>Valid Location</label>"
-  "<input type='radio' id='location' name='validGPS' value='validLocation' {validLocation}>"
-  "<hr>"
-  "<label for='female'>Valid Time</label>"
-  "<input type='radio' id='time' name='validGPS' value='validTime' {validTime}> "
-  "<hr>"
-  "<label for='other'>Number of satellites</label> "
-  "<input type='radio' id='numsatellites' name='validGPS' value='numberSatellites' {numberSatellites}>"
-  "<hr>"
-  "Number of Satellites for fix<input name='satsForFix' placeholder='Number of Satellites for fix' value='{satsForFix}'>"
+  "<label for='gpsFix'>GPS to wait for</label> "
+  "<select id='gpsFix' name='gpsFix'>"
+  "<option value='-2' {fixPos}>position</option>"
+  "<option value='-1' {fixTime}>time only</option>"
+  "<option value='0' {fixNoWait}>no wait</option>"
+  "</select>"
   ""
   "<h3>Generic Display</h3>"
   "Invert<br>(black &#8660; white)<input type='checkbox' name='displayInvert' {displayInvert}>"
@@ -337,218 +337,85 @@ void handle_NotFound() {
 }
 
 // #########################################
-
-#ifdef DEVELOP
-
 void devAction() {
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DEVELOPER, ShowGrid,
+    server.arg("showGrid") == "on");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DEVELOPER, PrintWifiPassword,
+                                   server.arg("printWifiPassword") == "on");
 
-  String showGrid = server.arg("showGrid");
-  if (showGrid == "on") {
-    config.devConfig |= ShowGrid;
-  } else {
-    config.devConfig &= ~ShowGrid;
-  }
-
-  String printWifiPassword = server.arg("printWifiPassword");
-  if (printWifiPassword == "on") {
-    config.devConfig |= PrintWifiPassword;
-  } else {
-    config.devConfig &= ~PrintWifiPassword;
-  }
-
-  // Print and safe config
-  Serial.println(F("Print config file..."));
-  printConfig(config);
-  Serial.println(F("Saving configuration..."));
-  saveConfiguration(configFilename, config);
-
+  theObsConfig->saveConfig();
   String s = "<meta http-equiv='refresh' content='0; url=/settings/development'><a href='/settings/development'>Go Back</a>";
   server.send(200, "text/html", s); //Send web page
 }
 
-#endif
-
 void configAction() {
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplaySatellites,
+                                   server.arg("displayGPS") == "on");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayVelocity,
+                                   server.arg("displayVELO") == "on");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplaySimple,
+                                   server.arg("displaySimple") == "on");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayLeft,
+                                   server.arg("displayLeft") == "on");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayRight,
+                                   server.arg("displayRight") == "on");
+  // NOT a display setting!?
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplaySwapSensors,
+                                   server.arg("displaySwapSensors") == "on");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayInvert,
+                                   server.arg("displayInvert") == "on");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayFlip,
+                                   server.arg("displayFlip") == "on");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayNumConfirmed,
+                                   server.arg("displayNumConfirmed") == "on");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayDistanceDetail,
+                                   server.arg("displayDistanceDetail") == "on");
+  theObsConfig->setProperty(0, ObsConfig::PROPERTY_CONFIRMATION_TIME_SECONDS,
+                            atoi(server.arg("confirmationTimeWindow").c_str()));
+  theObsConfig->setProperty(0, ObsConfig::PROPERTY_BLUETOOTH,
+                            (bool) (server.arg("bluetooth") == "on"));
+  theObsConfig->setProperty(0, ObsConfig::PROPERTY_SIM_RA,
+                            (bool) (server.arg("simRaMode") == "on"));
+  theObsConfig->setProperty(0, ObsConfig::PROPERTY_PORTAL_TOKEN,
+                            server.arg("obsUserID"));
+  theObsConfig->setProperty(0, ObsConfig::PROPERTY_PORTAL_URL,
+                            server.arg("hostname"));
 
-  String offsetS1 = server.arg("offsetS1");
-  String offsetS2 = server.arg("offsetS2");
-  String satsForFix = server.arg("satsForFix");
-  String confirmationTimeWindow = server.arg("confirmationTimeWindow");
+  std::vector<int> offsets;
+  offsets.push_back(atoi(server.arg("offsetS2").c_str()));
+  offsets.push_back(atoi(server.arg("offsetS1").c_str()));
+  theObsConfig->setOffsets(0, offsets);
 
-  String displaySimple = server.arg("displaySimple") == "on" ? "on" : "off";
-  String displayGPS = server.arg("displayGPS") == "on" ? "on" : "off";
-  String displayVELO = server.arg("displayVELO") == "on" ? "on" : "off";
-  String displayLeft = server.arg("displayLeft") == "on" ? "on" : "off";
-  String displayRight = server.arg("displayRight") == "on" ? "on" : "off";
-  String displaySwapSensors = server.arg("displaySwapSensors") == "on" ? "on" : "off";
-  String displayInvert = server.arg("displayInvert") == "on" ? "on" : "off";
-  String displayFlip = server.arg("displayFlip") == "on" ? "on" : "off";
-  String displayNumConfirmed = server.arg("displayNumConfirmed") == "on" ? "on" : "off";
-  String displayDistanceDetail = server.arg("displayDistanceDetail") == "on" ? "on" : "off";
-  String bluetooth = server.arg("bluetooth") == "on" ? "on" : "off";
-  String simRaMode = server.arg("simRaMode") == "on" ? "on" : "off";
+  const String gpsFix = server.arg("gpsFix");
+  theObsConfig->setProperty(0, ObsConfig::PROPERTY_GPS_FIX,
+                            atoi(server.arg("gpsFix").c_str()));
 
-  String validGPS = server.arg("validGPS");
+  // TODO: cleanup
+  const String privacyOptions = server.arg("privacyOptions");
+  const String overridePrivacy = server.arg("overridePrivacy");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_PRIVACY_CONFIG, AbsolutePrivacy,
+                                   privacyOptions == "absolutePrivacy");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_PRIVACY_CONFIG, NoPosition,
+                                   privacyOptions == "noPosition");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_PRIVACY_CONFIG, NoPrivacy,
+                                   privacyOptions == "noPrivacy");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_PRIVACY_CONFIG, OverridePrivacy,
+                                   overridePrivacy == "on");
 
-  String privacyOptions = server.arg("privacyOptions");
-  String overridePrivacy = server.arg("overridePrivacy");
-
-  String obsUserID = server.arg("obsUserID");
-  String hostname = server.arg("hostname");
-
-  //String confirmation = server.arg("confirmation");
-
-  /* displayTest->clear();
-    displayTest->drawString(64, 36, "displayConfig");
-    displayTest->drawString(64, 48, displayGPS);*/
-  if (displayGPS == "on") {
-    config.displayConfig |= DisplaySatelites;
-  } else {
-    config.displayConfig &= ~DisplaySatelites;
-  }
-
-  if (displaySimple == "on") {
-    config.displayConfig |= DisplaySimple;
-  } else {
-    config.displayConfig &= ~DisplaySimple;
-  }
-
-  if (displayVELO == "on") {
-    config.displayConfig |= DisplayVelocity;
-  } else {
-    config.displayConfig &= ~DisplayVelocity;
-  }
-
-  if (displayLeft == "on") {
-    config.displayConfig |= DisplayLeft;
-  } else {
-    config.displayConfig &= ~DisplayLeft;
-  }
-
-  if (displayRight == "on") {
-    config.displayConfig |= DisplayRight;
-  } else {
-    config.displayConfig &= ~DisplayRight;
-  }
-
-  if (displaySwapSensors == "on") {
-    config.displayConfig |= DisplaySwapSensors;
-  } else {
-    config.displayConfig &= ~DisplaySwapSensors;
-  }
-
-  if (displayInvert == "on") {
-    config.displayConfig |= DisplayInvert;
-  } else {
-    config.displayConfig &= ~DisplayInvert;
-  }
-
-  if (displayFlip == "on") {
-    config.displayConfig |= DisplayFlip;
-  } else {
-    config.displayConfig &= ~DisplayFlip;
-  }
-
-  if (displayNumConfirmed == "on") {
-    config.displayConfig |= DisplayNumConfirmed;
-  } else {
-    config.displayConfig &= ~DisplayNumConfirmed;
-  }
-
-  if (displayDistanceDetail == "on") {
-    config.displayConfig |= DisplayDistanceDetail;
-  } else {
-    config.displayConfig &= ~DisplayDistanceDetail;
-  }
-
-  config.bluetooth = (bluetooth == "on");
-  config.simRaMode = (simRaMode == "on");
-
-  if (validGPS == "validLocation") {
-    config.GPSConfig = ValidLocation;
-  }
-
-  if (validGPS == "validTime") {
-    config.GPSConfig = ValidTime;
-  }
-
-  if (validGPS == "numberSatellites") {
-    config.GPSConfig = NumberSatellites;
-  }
-
-  if (privacyOptions == "absolutePrivacy") {
-    config.privacyConfig |= AbsolutePrivacy;
-  } else {
-    config.privacyConfig &= ~AbsolutePrivacy;
-  }
-
-  if (privacyOptions == "noPosition") {
-    config.privacyConfig |= NoPosition;
-  } else {
-    config.privacyConfig &= ~NoPosition;
-  }
-
-  if (privacyOptions == "noPrivacy") {
-    config.privacyConfig |= NoPrivacy;
-  } else {
-    config.privacyConfig &= ~NoPrivacy;
-  }
-
-  if (privacyOptions == "noPrivacy") {
-    config.privacyConfig |= NoPrivacy;
-  } else {
-    config.privacyConfig &= ~NoPrivacy;
-  }
-
-  if (overridePrivacy == "on") {
-    config.privacyConfig |= OverridePrivacy;
-  } else {
-    config.privacyConfig &= ~OverridePrivacy;
-  }
-
-  config.sensorOffsets[LEFT_SENSOR_ID] = atoi(offsetS1.c_str());
-  config.sensorOffsets[RIGHT_SENSOR_ID] = atoi(offsetS2.c_str());
-  config.satsForFix = atoi(satsForFix.c_str());
-  config.confirmationTimeWindow = atoi(confirmationTimeWindow.c_str());
-
-  strlcpy(config.hostname, hostname.c_str(), sizeof(config.hostname));
-  strlcpy(config.obsUserID, obsUserID.c_str(), sizeof(config.obsUserID));
-
-  // Print and safe config
-  Serial.println(F("Print config file..."));
-  printConfig(config);
-  Serial.println(F("Saving configuration..."));
-  saveConfiguration(configFilename, config);
+  theObsConfig->saveConfig();
 
   String s = "<meta http-equiv='refresh' content='0; url=/settings/general'><a href='/settings/general'>Go Back</a>";
   server.send(200, "text/html", s); //Send web page
 }
 
 void wifiAction() {
-  String ssid = server.arg("ssid");
-  String password = server.arg("pass");
-
-  Serial.print("ssid:");
-  Serial.println(ssid);
-
-#ifdef DEVELOP
-  if(config.devConfig & PrintWifiPassword) {
-    Serial.print(F("password = "));
-    Serial.println(password);
-  }
-#endif
-
-  // Write always both data, thus the WIFI config can be overwritten
-  strlcpy(config.ssid, ssid.c_str(), sizeof(config.ssid));
+  const String ssid = server.arg("ssid");
+  const String password = server.arg("pass");
+  theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_SSID, ssid);
   if(strcmp(password.c_str(), "******") != 0) {
-    strlcpy(config.password, password.c_str(), sizeof(config.password));
+    theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_PASSWORD, password);
   }
-
-  // Print and safe config
-  Serial.println(F("Print config file..."));
-  printConfig(config);
-  Serial.println(F("Saving configuration..."));
-  saveConfiguration(configFilename, config);
+  theObsConfig->saveConfig();
 
   String s = "<meta http-equiv='refresh' content='0; url=/settings/wifi'><a href='/settings/wifi'>Go Back</a>";
   server.send(200, "text/html", s);
@@ -564,7 +431,8 @@ void privacyAction() {
 
   if ( (latitude != "") && (longitude != "") && (radius != "") ) {
     Serial.println(F("Valid privacyArea!"));
-    addNewPrivacyArea(atof(latitude.c_str()), atof(longitude.c_str()), atoi(radius.c_str()));
+    theObsConfig->addPrivacyArea(0,
+      newPrivacyArea(atof(latitude.c_str()), atof(longitude.c_str()), atoi(radius.c_str())));
   }
 
   String s = "<meta http-equiv='refresh' content='0; url=/settings/privacy'><a href='/settings/privacy'>Go Back</a>";
@@ -609,7 +477,9 @@ bool CreateWifiSoftAP(String chipID) {
   return SoftAccOK;
 }
 
-void startServer() {
+void startServer(ObsConfig *obsConfig) {
+  theObsConfig = obsConfig;
+
 #if defined(ESP32)
   uint64_t chipid_num;
   chipid_num = ESP.getEfuseMac();
@@ -622,13 +492,15 @@ void startServer() {
   displayTest->showTextOnGrid(1, 0, OBSVersion);
 
   displayTest->showTextOnGrid(0, 1, "SSID:");
-  displayTest->showTextOnGrid(1, 1, config.ssid);
+  displayTest->showTextOnGrid(1, 1,
+                              theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID));
 
 
   // Connect to WiFi network
   Serial.println("Trying to connect to");
-  Serial.println(config.ssid);
-  WiFi.begin(config.ssid, config.password);
+  Serial.println(theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID));
+  WiFi.begin(theObsConfig->getProperty<const char*>(ObsConfig::PROPERTY_WIFI_SSID),
+                        theObsConfig->getProperty<const char*>(ObsConfig::PROPERTY_WIFI_PASSWORD));
   Serial.println("ChipID  ");
   Serial.println(esp_chipid.c_str());
   // Wait for connection
@@ -645,7 +517,7 @@ void startServer() {
   } else {
     Serial.println("");
     Serial.print("Connected to ");
-    Serial.println(config.ssid);
+    Serial.println(WiFi.SSID());
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
 
@@ -656,7 +528,7 @@ void startServer() {
   /*use mdns for host name resolution*/
   if (!MDNS.begin(host)) { //http://openbikesensor.local
     Serial.println("Error setting up MDNS responder!");
-    while (1) {
+    while (true) {
       delay(1000);
     }
   }
@@ -765,13 +637,13 @@ void startServer() {
   });
 
   server.on("/settings/backup.json", HTTP_GET, []() {
-    String json = configToJson(config);
-    String version = (String) OBSVersion;
-
-    // Add Header https://stackoverflow.com/a/11545741/605890
-    server.sendHeader("Content-disposition", "attachment; filename=OpenBikeSensorConfig-" + version + ".json", false);
+    const String fileName
+      = String(theObsConfig->getProperty<String>(ObsConfig::PROPERTY_OBS_NAME)) + "-" + OBSVersion;
+    server.sendHeader("Content-disposition", "attachment; filename=" + fileName + ".json", false);
     server.sendHeader("Content-type", "application/json", false);
-    server.send(200, "text/html", json);
+    log_d("Sending config for backup:");
+    theObsConfig->printConfig();
+    server.send(200, "text/html", theObsConfig->asJsonString());
   });
 
   // Handling uploading firmware file
@@ -791,13 +663,12 @@ void startServer() {
       }
 
     } else if (upload.status == UPLOAD_FILE_END) {
-      jsonToConfig(json_buffer, config);
-
-      Serial.println(F("Print config file..."));
-      printConfig(config);
+      theObsConfig->parseJson(json_buffer);
+      theObsConfig->fill(config); // OK here??
+      theObsConfig->printConfig();
 
       Serial.println(F("Saving configuration..."));
-      saveConfiguration(configFilename, config);
+      theObsConfig->saveConfig();
     }
   });
 
@@ -814,13 +685,12 @@ void startServer() {
     html.replace("{version}", OBSVersion);
     html.replace("{subtitle}", "Wifi");
     // Form data
-    html.replace("{ssid}", config.ssid);
-    if(sizeof(config.password) > 0) {
+    html.replace("{ssid}", theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID));
+    if(theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID).length() > 0) {
       html.replace("{password}", "******");
     } else {
       html.replace("{password}", "");
     }
-
     server.send(200, "text/html", html);
   });
 
@@ -839,10 +709,12 @@ void startServer() {
     html.replace("{subtitle}", "Development Settings");
 
     // SHOWGRID
-    bool showGrid = config.devConfig & ShowGrid;
+    bool showGrid = theObsConfig->getBitMaskProperty(
+      0, ObsConfig::PROPERTY_DEVELOPER, ShowGrid);
     html.replace("{showGrid}", showGrid ? "checked" : "");
 
-    bool printWifiPassword = config.devConfig & PrintWifiPassword;
+    bool printWifiPassword = theObsConfig->getBitMaskProperty(
+      0, ObsConfig::PROPERTY_DEVELOPER, PrintWifiPassword);
     html.replace("{printWifiPassword}", printWifiPassword ? "checked" : "");
 
     server.send(200, "text/html", html);
@@ -862,24 +734,31 @@ void startServer() {
     html.replace("{action}", "/settings/general/action");
     html.replace("{version}", OBSVersion);
     html.replace("{subtitle}", "General");
-    // Form data
-    html.replace("{offset1}", String(config.sensorOffsets[LEFT_SENSOR_ID]));
-    html.replace("{offset2}", String(config.sensorOffsets[RIGHT_SENSOR_ID]));
-    html.replace("{satsForFix}", String(config.satsForFix));
-    html.replace("{hostname}", String(config.hostname));
-    html.replace("{userId}", String(config.obsUserID));
-    html.replace("{confirmationTimeWindow}", String(config.confirmationTimeWindow));
 
-    bool displaySimple = config.displayConfig & DisplaySimple;
-    bool displayGPS = config.displayConfig & DisplaySatelites;
-    bool displayLeft = config.displayConfig & DisplayLeft;
-    bool displayRight = config.displayConfig & DisplayRight;
-    bool displayVelo = config.displayConfig & DisplayVelocity;
-    bool displaySwapSensors = config.displayConfig & DisplaySwapSensors;
-    bool displayInvert = config.displayConfig & DisplayInvert;
-    bool displayFlip = config.displayConfig & DisplayFlip;
-    bool displayNumConfirmed = config.displayConfig & DisplayNumConfirmed;
-    bool displayDistanceDetail = config.displayConfig & DisplayDistanceDetail;
+    // Form data
+    const std::vector<int> offsets
+      = theObsConfig->getIntegersProperty(ObsConfig::PROPERTY_OFFSET);
+    html.replace("{offset1}", String(offsets[LEFT_SENSOR_ID]));
+    html.replace("{offset2}", String(offsets[RIGHT_SENSOR_ID]));
+    html.replace("{hostname}",
+                 theObsConfig->getProperty<String>(ObsConfig::PROPERTY_PORTAL_URL));
+    html.replace("{userId}",
+                theObsConfig->getProperty<String>(ObsConfig::PROPERTY_PORTAL_TOKEN));
+    html.replace("{confirmationTimeWindow}",
+                 String(theObsConfig->getProperty<String>(ObsConfig::PROPERTY_CONFIRMATION_TIME_SECONDS)));
+
+    const uint displayConfig = (uint) theObsConfig->getProperty<uint>(
+      ObsConfig::PROPERTY_DISPLAY_CONFIG);
+    bool displaySimple = displayConfig & DisplaySimple;
+    bool displayGPS = displayConfig & DisplaySatellites;
+    bool displayLeft = displayConfig & DisplayLeft;
+    bool displayRight = displayConfig & DisplayRight;
+    bool displayVelo = displayConfig & DisplayVelocity;
+    bool displaySwapSensors = displayConfig & DisplaySwapSensors;
+    bool displayInvert = displayConfig & DisplayInvert;
+    bool displayFlip = displayConfig & DisplayFlip;
+    bool displayNumConfirmed = displayConfig & DisplayNumConfirmed;
+    bool displayDistanceDetail = displayConfig & DisplayDistanceDetail;
 
     html.replace("{displaySimple}", displaySimple ? "checked" : "");
     html.replace("{displayGPS}", displayGPS ? "checked" : "");
@@ -891,21 +770,23 @@ void startServer() {
     html.replace("{displayFlip}", displayFlip ? "checked" : "");
     html.replace("{displayNumConfirmed}", displayNumConfirmed ? "checked" : "");
     html.replace("{displayDistanceDetail}", displayDistanceDetail ? "checked" : "");
-    html.replace("{bluetooth}", config.bluetooth ? "checked" : "");
-    html.replace("{simRaMode}", config.simRaMode ? "checked" : "");
 
-    bool validLocation = config.GPSConfig & ValidLocation;
-    bool validTime = config.GPSConfig & ValidTime;
-    bool numberSatellites = config.GPSConfig & NumberSatellites;
+    html.replace("{bluetooth}",
+                 theObsConfig->getProperty<bool>(ObsConfig::PROPERTY_BLUETOOTH) ? "checked" : "");
+    html.replace("{simRaMode}",
+                 theObsConfig->getProperty<bool>(ObsConfig::PROPERTY_SIM_RA) ? "checked" : "");
 
-    html.replace("{validLocation}", validLocation ? "checked" : "");
-    html.replace("{validTime}", validTime ? "checked" : "");
-    html.replace("{numberSatellites}", numberSatellites ? "checked" : "");
+    int gpsFix = theObsConfig->getProperty<int>(ObsConfig::PROPERTY_GPS_FIX);
+    html.replace("{fixPos}", gpsFix == GPS::FIX_POS || gpsFix > 0 ? "selected" : "");
+    html.replace("{fixTime}", gpsFix == GPS::FIX_TIME ? "selected" : "");
+    html.replace("{fixNoWait}", gpsFix == GPS::FIX_NO_WAIT ? "selected" : "");
 
-    bool absolutePrivacy = config.privacyConfig & AbsolutePrivacy;
-    bool noPosition = config.privacyConfig & NoPosition;
-    bool noPrivacy = config.privacyConfig & NoPrivacy;
-    bool overridePrivacy = config.privacyConfig & OverridePrivacy;
+    const uint privacyConfig = (uint) theObsConfig->getProperty<int>(
+      ObsConfig::PROPERTY_PRIVACY_CONFIG);
+    const bool absolutePrivacy = privacyConfig & AbsolutePrivacy;
+    const bool noPosition = privacyConfig & NoPosition;
+    const bool noPrivacy = privacyConfig & NoPrivacy;
+    const bool overridePrivacy = privacyConfig & OverridePrivacy;
 
     html.replace("{absolutePrivacy}", absolutePrivacy ? "checked" : "");
     html.replace("{noPosition}", noPosition ? "checked" : "");
@@ -957,7 +838,7 @@ void startServer() {
       }
     } else if (upload.status == UPLOAD_FILE_END) {
       if (Update.end(true)) { //true to set the size to the current progress
-        Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
+        Serial.printf("Update Success: %ul\nRebooting...\n", upload.totalSize);
       } else {
         Update.printError(Serial);
       }
@@ -988,7 +869,7 @@ void startServer() {
       validGPSData = gps.location.isValid();
       if (validGPSData) {
         Serial.println("GPSData valid");
-        addNewPrivacyArea(gps.location.lat(), gps.location.lng(), 500);
+        newPrivacyArea(gps.location.lat(), gps.location.lng(), 500);
       }
       delay(300);
     }
@@ -1010,12 +891,15 @@ void startServer() {
 
     String privacyPage = html;
 
-
-    for (size_t idx = 0; idx < config.numPrivacyAreas; ++idx) {
-      privacyPage += "<h3>Privacy Area #" + String(idx) + "</h3>";
-      privacyPage += "Latitude <input name=latitude" + String(idx) + " placeholder='latitude' value='" + String(config.privacyAreas[idx].latitude, 7) + "'disabled>";
-      privacyPage += "Longitude <input name=longitude" + String(idx) + "placeholder='longitude' value='" + String(config.privacyAreas[idx].longitude, 7) + "'disabled>";
-      privacyPage += "Radius (m) <input name=radius" + String(idx) + "placeholder='radius' value='" + String(config.privacyAreas[idx].radius) + "'disabled>";
+    for (int idx = 0; idx < theObsConfig->getNumberOfPrivacyAreas(0); ++idx) {
+      auto pa = theObsConfig->getPrivacyArea(0, idx);
+      privacyPage += "<h3>Privacy Area #" + String(idx + 1) + "</h3>";
+      privacyPage += "Latitude <input name=latitude" + String(idx)
+        + " placeholder='latitude' value='" + String(pa.latitude, 7) + "'disabled>";
+      privacyPage += "Longitude <input name=longitude" + String(idx)
+        + "placeholder='longitude' value='" + String(pa.longitude, 7) + "'disabled>";
+      privacyPage += "Radius (m) <input name=radius" + String(idx)
+        + "placeholder='radius' value='" + String(pa.radius) + "'disabled>";
       privacyPage += "<a class=\"deletePrivacyArea\" href=\"/privacy_delete?erase=" + String(idx) + "\">&#x2716;</a>";
     }
 
@@ -1040,18 +924,9 @@ void startServer() {
 
     String erase = server.arg("erase");
     if (erase != "") {
-      int idx = atoi(erase.c_str());
-      if (idx >= 0 && idx < config.privacyAreas.size()) {
-        config.privacyAreas.erase(config.privacyAreas.begin() + idx);
-      }
-      config.numPrivacyAreas = config.privacyAreas.size();
+      theObsConfig->removePrivacyArea(0, atoi(erase.c_str()));
+      theObsConfig->saveConfig();
     }
-
-    // Print and save configuration
-    Serial.println(F("Print config file..."));
-    printConfig(config); // This crashes the ESP
-    Serial.println(F("Saving configuration..."));
-    saveConfiguration(configFilename, config);
 
     String s = "<meta http-equiv='refresh' content='0; url=/settings/privacy'><a href='/settings/privacy'>Go Back</a>";
     server.send(200, "text/html", s);

@@ -92,7 +92,7 @@ void SSD1306DisplayDevice::showValues(
       showNumConfirmed();
     } else {
       // Show GPS info, when DisplaySatellites is configured
-      if (config.displayConfig & DisplaySatelites) {
+      if (config.displayConfig & DisplaySatellites) {
         showGPS();
       }
 
