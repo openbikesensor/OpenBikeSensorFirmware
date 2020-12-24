@@ -10,7 +10,7 @@ void BluetoothManager::init(
   BLEDevice::init(obsName.c_str());
   pServer = BLEDevice::createServer();
 
-// DeviceInfoService disabled for now.
+// DeviceInfoService disabled for now, max 6 services
 //  services.push_back(new DeviceInfoService);
   services.push_back(new HeartRateService);
   services.push_back(new BatteryService(batteryPercentage));
