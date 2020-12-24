@@ -6,22 +6,23 @@
 #define OPENBIKESENSORFIRMWARE_BATTERYSERVICE_H
 
 #include "_IBluetoothService.h"
+#include <functional>
 
 class BatteryLevelCallback : public BLECharacteristicCallbacks {
   public:
-    BatteryLevelCallback(uint8_t *value, uint8_t (*getLevel)()) :
+    explicit BatteryLevelCallback(uint8_t *value, std::function<uint8_t()> getLevel) :
       mValue(value), mGetLevel(getLevel) {};
+
     void onRead(BLECharacteristic *pCharacteristic) override;
 
   private:
     uint8_t *mValue;
-    uint8_t (*mGetLevel)();
-
+    const std::function<uint8_t()> mGetLevel;
 };
 
 class BatteryService : public IBluetoothService {
   public:
-    BatteryService(uint8_t (*getLevel)()) : mBatteryLevelCallback(&mBatteryLevelValue, getLevel)  { };
+    BatteryService(std::function<uint8_t()> getLevel) : mBatteryLevelCallback(&mBatteryLevelValue, getLevel)  { };
     void setup(BLEServer *pServer) override;
     bool shouldAdvertise() override;
     BLEService* getService() override;

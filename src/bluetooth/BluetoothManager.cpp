@@ -1,9 +1,9 @@
 #include "BluetoothManager.h"
 
 void BluetoothManager::init(
-  const String obsName,
+  const String &obsName,
   const uint16_t leftOffset, const uint16_t rightOffset,
-  uint8_t (*batteryPercentage)()) {
+  std::function<uint8_t()> batteryPercentage) {
 
   ESP_ERROR_CHECK_WITHOUT_ABORT(
     esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));

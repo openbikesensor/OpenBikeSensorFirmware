@@ -21,9 +21,9 @@ class BluetoothManager {
     /**
      * Initializes all defined services and starts the bluetooth server.
      */
-    void init(String obsName,
+    void init(const String &obsName,
               uint16_t leftOffset, uint16_t rightOffset,
-              uint8_t (*batteryPercentage)());
+              std::function<uint8_t()> batteryPercentage);
 
     /**
      * Starts advertising all services that internally implement shouldAdvertise()

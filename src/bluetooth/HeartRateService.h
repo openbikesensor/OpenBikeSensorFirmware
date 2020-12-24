@@ -5,10 +5,6 @@
 
 class HeartRateService : public IBluetoothService {
   public:
-    HeartRateService() :
-      mHeartRateMeasurementCharacteristics(
-        BLEUUID((uint16_t)0x2A37), BLECharacteristic::PROPERTY_NOTIFY),
-      mHeartRateDescriptor(BLEUUID((uint16_t)0x2901)) {}
     void setup(BLEServer *pServer) override;
     bool shouldAdvertise() override;
     BLEService* getService() override;
@@ -16,8 +12,10 @@ class HeartRateService : public IBluetoothService {
 
   private:
     BLEService *mService = nullptr;
-    BLECharacteristic mHeartRateMeasurementCharacteristics;
-    BLEDescriptor mHeartRateDescriptor;
+    BLECharacteristic mHeartRateMeasurementCharacteristics
+      = BLECharacteristic(BLEUUID((uint16_t)0x2A37), BLECharacteristic::PROPERTY_NOTIFY);
+    BLEDescriptor mHeartRateDescriptor
+      = BLEDescriptor(BLEUUID((uint16_t)0x2901));
     unsigned long mCollectionStartTime = 0;
     uint16_t mMinimumDistance = MAX_SENSOR_VALUE;
     uint8_t mValue[4];
