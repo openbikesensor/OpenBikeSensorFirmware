@@ -135,6 +135,18 @@ jobs:
           Version ${{ env.OBS_VERSION }} based on ${{ github.ref }} ${{ github.sha }}
 
           ${{ steps.changelog.outputs.changelog }}
+          
+          ## :tada: Major features and improvements
+
+          ## :rocket: New features and improvements 
+
+          ## :bug: Bug Fixes
+
+          ## :ghost: Maintenance
+
+          ## :package: Dependency updates
+
+          ## :construction_worker: Changes for developers / internal
         draft: true
         prerelease: true
 
