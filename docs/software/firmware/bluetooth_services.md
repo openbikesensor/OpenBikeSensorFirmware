@@ -91,8 +91,8 @@ The following events are defined:
 | Characteristic      | UUID                                   | Property        | Value                                                                               |
 | ------------------- | -------------------------------------- | --------------- | ----------------------------------------------------------------------------------- |
 | Time                | `1FE7FAF9-CE63-4236-0004-000000000001` | `READ`          | reports the value of the ms timer of the OBS unit, can be used to synchronize time  |
-| Sensor Distance     | `1FE7FAF9-CE63-4236-0004-000000000002` | `READ`,`NOTIFY` | Gives sensor reading of the left and right sensor.                                  |
-| Close Pass          | `1FE7FAF9-CE63-4236-0004-000000000003` | `READ`,`NOTIFY` | Notifies of button confirmed close pass events.                                     |
+| Sensor Distance     | `1FE7FAF9-CE63-4236-0004-000000000002` | `NOTIFY`        | Gives sensor reading of the left and right sensor.                                  |
+| Close Pass          | `1FE7FAF9-CE63-4236-0004-000000000003` | `NOTIFY`        | Notifies of button confirmed close pass events.                                     |
 | Offset              | `1FE7FAF9-CE63-4236-0004-000000000004` | `READ`          | Configured handle bar offset values in cm.                                          |
 
 This service uses binary format to transfer time counter as unit32 and unt16

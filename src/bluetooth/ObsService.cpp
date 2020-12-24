@@ -23,7 +23,7 @@ const std::string ObsService::TIME_DESCRIPTION_TEXT("obs ms timer uint32");
 const std::string ObsService::DISTANCE_DESCRIPTION_TEXT(
   "obs time ms uint32; left distance cm uint16; right distance cm uint16; 0xffff = no reading");
 const std::string ObsService::BUTTON_DESCRIPTION_TEXT(
-  "Confirmed event: ms timer uint32; left distance cm uint16; right distance cm uint16; 0xffff = no reading");
+  "Confirmed pass event: ms time uint32; left cm uint16; right cm uint16; 0xffff = no reading");
 const std::string ObsService::OFFSET_DESCRIPTION_TEXT(
   "Configured OBS offsets, left offset cm uint16, right offset cm uint16");
 const BLEUUID ObsService::OBS_SERVICE_UUID = BLEUUID("1FE7FAF9-CE63-4236-0004-000000000000");
@@ -59,7 +59,6 @@ void ObsService::setup(BLEServer *pServer) {
   mOffsetCharacteristic.addDescriptor(&mOffsetDescriptor);
   mOffsetDescriptor.setValue(OFFSET_DESCRIPTION_TEXT);
 
-  // init values
   mOffsetCharacteristic.setValue(mOffsetValue, 4);
 }
 

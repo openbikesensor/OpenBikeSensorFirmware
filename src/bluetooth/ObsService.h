@@ -45,22 +45,27 @@ class ObsService : public IBluetoothService {
 
   private:
     BLEService *mService = nullptr;
-    BLECharacteristic mTimeCharacteristic = BLECharacteristic(OBS_TIME_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ);
+    BLECharacteristic mTimeCharacteristic
+      = BLECharacteristic(OBS_TIME_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ);
     uint32_t mTimerValue = 0;
     BLEDescriptor mTimeDescriptor = BLEUUID((uint16_t)0x2901);
     ObsTimeServiceCallback mTimeCharacteristicsCallback = ObsTimeServiceCallback(&mTimerValue);
-    BLECharacteristic mDistanceCharacteristic = BLECharacteristic(OBS_DISTANCE_CHARACTERISTIC_UUID,
-      BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+
+    BLECharacteristic mDistanceCharacteristic
+      = BLECharacteristic(OBS_DISTANCE_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_NOTIFY);
     uint8_t mDistanceValue[8] = {0, 0, 0, 0, 0, 0, 0, 0};
     BLEDescriptor mDistanceDescriptor = BLEDescriptor(BLEUUID((uint16_t)0x2901));
-    BLECharacteristic mButtonCharacteristic = BLECharacteristic(OBS_BUTTON_CHARACTERISTIC_UUID,
-      BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+
+    BLECharacteristic mButtonCharacteristic
+      = BLECharacteristic(OBS_BUTTON_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_NOTIFY);
     uint8_t mButtonValue[8] = {0, 0, 0, 0, 0, 0, 0, 0};
     BLEDescriptor mButtonDescriptor = BLEDescriptor(BLEUUID((uint16_t)0x2901));
+
     BLECharacteristic mOffsetCharacteristic
       = BLECharacteristic(OBS_OFFSET_CHARACTERISTIC_UUID,BLECharacteristic::PROPERTY_READ);
     uint8_t mOffsetValue[4] = {0, 0, 0, 0};
     BLEDescriptor mOffsetDescriptor = BLEDescriptor(BLEUUID((uint16_t)0x2901));
+
     static const std::string TIME_DESCRIPTION_TEXT;
     static const std::string DISTANCE_DESCRIPTION_TEXT;
     static const std::string BUTTON_DESCRIPTION_TEXT;
