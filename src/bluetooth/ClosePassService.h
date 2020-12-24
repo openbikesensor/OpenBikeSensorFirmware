@@ -20,15 +20,15 @@ class ClosePassService : public IBluetoothService {
     bool shouldAdvertise() override;
     BLEService *getService() override;
 
-    void newSensorValues(uint16_t leftValue, uint16_t rightValue) override;
-    void buttonPressed() override;
+    void newSensorValues(uint32_t millis, uint16_t leftValue, uint16_t rightValue) override;
+    void newPassEvent(uint32_t millis, uint16_t leftValue, uint16_t rightValue) override;
 
   private:
-    void writeToDistanceCharacteristic(uint16_t leftValue, uint16_t rightValue);
-    void writeToEventCharacteristic(const String& event, std::list<uint16_t>* payload);
-    void processValuesForDistanceChar(uint16_t leftValue, uint16_t rightValue);
-    void processValuesForEventChar_Avg2s(uint16_t leftValue, uint16_t rightValue);
-    void processValuesForEventChar_MinKalman(uint16_t leftValue, uint16_t rightValue);
+    void writeToDistanceCharacteristic(uint32_t millis, uint16_t leftValue, uint16_t rightValue);
+    void writeToEventCharacteristic(uint32_t millis, const String& event, std::list<uint16_t>* payload);
+    void processValuesForDistanceChar(uint32_t millis, uint16_t leftValue, uint16_t rightValue);
+    void processValuesForEventChar_Avg2s(uint32_t millis, uint16_t leftValue, uint16_t rightValue);
+    void processValuesForEventChar_MinKalman(uint32_t millis, uint16_t leftValue, uint16_t rightValue);
 
     BLEService *mService;
     BLECharacteristic *mDistanceCharacteristic;

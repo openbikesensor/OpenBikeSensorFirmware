@@ -2,7 +2,10 @@
 #define OBS_BLUETOOTH_IBLUETOOTHSERVICE_H
 
 #include <Arduino.h>
-#include <BLEService.h>
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEServer.h>
+#include <BLE2902.h>
 #include <list>
 #include "globals.h"
 
@@ -31,15 +34,23 @@ class IBluetoothService {
 
     /**
      * Processes new sensor values from both sides.
+     * @param millis sender millis counter at the time of measurement of the left value
      * @param leftValue sensor value of the left side (MAX_SENSOR_VALUE for no reading)
      * @param rightValues sensor value of the right side (MAX_SENSOR_VALUE for no reading)
      */
-    virtual void newSensorValues(uint16_t leftValue, uint16_t rightValue) = 0;
+    virtual void newSensorValues(uint32_t millis, uint16_t leftValue, uint16_t rightValue) {
+      // empty default implementation
+    }
 
     /**
-     * Processes the event that the push button was just triggered.
+     * Processes new confirmed overtake event.
+     * @param millis sender millis counter at the time of measurement of the left value
+     * @param leftValue sensor value of the left side (MAX_SENSOR_VALUE for no reading)
+     * @param rightValues sensor value of the right side (MAX_SENSOR_VALUE for no reading)
      */
-    virtual void buttonPressed() = 0;
+    virtual void newPassEvent(uint32_t millis, uint16_t leftValue, uint16_t rightValue) {
+      // empty default implementation
+    }
 
   protected:
     /**

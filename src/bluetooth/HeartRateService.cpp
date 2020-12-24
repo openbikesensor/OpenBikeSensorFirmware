@@ -2,19 +2,20 @@
 
 const unsigned long measurementInterval = 1000;
 
+const BLEUUID HeartRateService::SERVICE_UUID = BLEUUID((uint16_t)0x180d);
+const char * HeartRateService::DESCRIPTION_TEXT =
+  "Minimum left sensor distance during the last second in cm. "
+  "Range 0cm to 999cm. 999 means infinity.";
+
 void HeartRateService::setup(BLEServer *pServer) {
-  mService = pServer->createService(SERVICE_HEARTRATE_UUID);
-  mCharacteristic = mService->createCharacteristic(SERVICE_HEARTRATE_CHAR_HEARTRATE_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
-
-  auto *pDescriptor = new BLEDescriptor(SERVICE_HEARTRATE_DESCRIPTOR_UUID);
-  mCharacteristic->addDescriptor(pDescriptor);
-  uint8_t descriptorBuffer = 1;
-  pDescriptor->setValue(&descriptorBuffer, 1);
-
-  BLECharacteristic *pSensorLocationCharacteristic
-    = mService->createCharacteristic(SERVICE_HEARTRATE_CHAR_SENSORLOCATION_UUID, BLECharacteristic::PROPERTY_READ);
-  uint8_t locationValue = SERVICE_HEARTRATE_CHAR_SENSORLOCATION_VALUE;
-  pSensorLocationCharacteristic->setValue(&locationValue, 1);
+  mService = pServer->createService(SERVICE_UUID);
+  mService->addCharacteristic(&mHeartRateMeasurementCharacteristics);
+  mHeartRateDescriptor.setValue(DESCRIPTION_TEXT);
+  mHeartRateDescriptor.setAccessPermissions(ESP_GATT_PERM_READ);
+  mHeartRateMeasurementCharacteristics.addDescriptor(&mHeartRateDescriptor);
+  mHeartRateMeasurementCharacteristics.addDescriptor(new BLE2902());
+  mValue[0] = mValue[1] = mValue[2] = 0;
+  mHeartRateMeasurementCharacteristics.setValue(mValue, 2);
 
   mCollectionStartTime = millis();
 }
@@ -27,27 +28,24 @@ BLEService* HeartRateService::getService() {
   return mService;
 }
 
-void HeartRateService::newSensorValues(const uint16_t leftValue, const uint16_t rightValue) {
-  const unsigned long now = millis();
+void HeartRateService::newSensorValues(
+    const uint32_t millis, const uint16_t leftValue, const uint16_t rightValue) {
   if (leftValue < mMinimumDistance) {
     mMinimumDistance = leftValue;
   }
-  if ((now - mCollectionStartTime) < measurementInterval) {
+  if ((millis - mCollectionStartTime) < measurementInterval) {
     return;
   }
 
-  uint8_t data[3];
-  data[0] = mMinimumDistance <= UINT8_MAX ? 0 : 1; // 8/16 bit data no other flags set;
-  data[1] = mMinimumDistance & 0xFFu;
-  data[2] = mMinimumDistance >> 8u;
+  mValue[0] = mMinimumDistance <= UINT8_MAX ? 0 : 1; // 8/16 bit data no other flags set;
+  mValue[1] = mMinimumDistance & 0xFFu;
+  mValue[2] = mMinimumDistance >> 8u;
 
-  mCharacteristic->setValue(data, mMinimumDistance <= UINT8_MAX ? 2 : 3);
-  mCharacteristic->notify();
+  mHeartRateMeasurementCharacteristics.setValue(mValue, mMinimumDistance <= UINT8_MAX ? 2 : 3);
+  mHeartRateMeasurementCharacteristics.notify();
 
   // Reset values
   mMinimumDistance = MAX_SENSOR_VALUE;
-  mCollectionStartTime = now;
+  mCollectionStartTime = millis;
 }
 
-void HeartRateService::buttonPressed() {
-}

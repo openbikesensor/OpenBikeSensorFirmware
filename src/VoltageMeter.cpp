@@ -62,6 +62,18 @@ double VoltageMeter::read() {
     * 3.0 / 2000.0; // voltage divider @ OSB PCB
 }
 
+uint8_t VoltageMeter::readPercentage() {
+  // TODO: Better formula from Benjamin!
+  // 4.22 == 100% / 3.5 = 0%
+  int16_t result = ((read() - 3.5) / 0.0072);
+  if (result < 0) {
+    result = 0;
+  } else if (result > 100) {
+    result = 100;
+  }
+  return (uint8_t) result;
+}
+
 int VoltageMeter::readSmoothed() {
   lastSmoothedReading =
     (lastSmoothedReading * (SAMPLES_DIVIDE - 1) + readRaw()) / SAMPLES_DIVIDE;
@@ -71,3 +83,4 @@ int VoltageMeter::readSmoothed() {
 int VoltageMeter::readRaw() const {
   return adc1_get_raw(BATTERY_ADC_CHANNEL);
 }
+

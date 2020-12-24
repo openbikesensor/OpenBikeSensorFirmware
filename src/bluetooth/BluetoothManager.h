@@ -13,14 +13,17 @@
 #include "DeviceInfoService.h"
 #include "DistanceService.h"
 #include "HeartRateService.h"
+#include "BatteryService.h"
+#include "ObsService.h"
 
 class BluetoothManager {
   public:
     /**
-     * Initializes all defined services (using #ifdef's) and starts the bluetooth
-     * server.
+     * Initializes all defined services and starts the bluetooth server.
      */
-    void init();
+    void init(const String &obsName,
+              uint16_t leftOffset, uint16_t rightOffset,
+              std::function<uint8_t()> batteryPercentage);
 
     /**
      * Starts advertising all services that internally implement shouldAdvertise()
@@ -41,32 +44,24 @@ class BluetoothManager {
 
     /**
      * Processes new sensor values by calling each services with the values.
+     * @param millis sender millis counter at the time of measurement of the left value
      * @param leftValue sensor value of the left side (MAX_SENSOR_VALUE for no reading)
      * @param rightValues sensor value of the right side (MAX_SENSOR_VALUE for no reading)
      */
-    void newSensorValues(uint16_t leftValue, uint16_t rightValue);
+    void newSensorValues(uint32_t millis, uint16_t leftValue, uint16_t rightValue);
 
     /**
-     * Process the current push button state itself. This will call
-     * buttonPressed() internally. Alternatively, the method buttonPressed() could
-     * be called instead if the button press detection is calculated somewhere
-     * else.
-     * @param state current button state (LOW or HIGH)
+     * Processes new confirmed pass event.
+     * @param millis sender millis counter at the time of measurement of the left value
+     * @param leftValue sensor value of the left side (MAX_SENSOR_VALUE for no reading)
+     * @param rightValues sensor value of the right side (MAX_SENSOR_VALUE for no reading)
      */
-    void processButtonState(int state);
-
-    /**
-     * Process the event that the push button was just pressed. This method should
-     * only be called if processButtonState() isn't called.
-     */
-    void buttonPressed() const;
+    void newPassEvent(uint32_t millis, uint16_t leftValue, uint16_t rightValue);
 
   private:
     BLEServer *pServer;
     std::list<IBluetoothService*> services;
     unsigned long lastValueTimestamp = millis();
-    boolean buttonWasPressed = false;
-    unsigned long buttonPressTimestamp = 0;
 };
 
 #endif

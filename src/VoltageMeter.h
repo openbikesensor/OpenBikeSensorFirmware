@@ -9,6 +9,7 @@ class VoltageMeter {
     VoltageMeter();
     /* Returns the (smoothed) value in Volts. */
     double read();
+    uint8_t readPercentage();
 
   private:
     /* This one is typically NOT used, our ESP32 dos have

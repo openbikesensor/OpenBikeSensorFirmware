@@ -50,8 +50,8 @@ Config config;
 
 SSD1306DisplayDevice* displayTest;
 HCSR04SensorManager* sensorManager;
-BluetoothManager bluetoothManager;
-const long BLUETOOTH_INTERVAL_MILLIS = 150;
+BluetoothManager* bluetoothManager;
+const long BLUETOOTH_INTERVAL_MILLIS = 200;
 long lastBluetoothInterval = 0;
 
 
@@ -85,6 +85,9 @@ const uint8_t displayAddress = 0x3c;
 //#define DEVELOP
 
 int lastMeasurements = 0 ;
+
+void bluetoothConfirmed(const DataSet *dataSet, uint16_t measureIndex);
+uint8_t batteryPercentage();
 
 void setup() {
   Serial.begin(115200);
@@ -262,10 +265,26 @@ void setup() {
   Serial.println("Waiting for GPS fix...");
   bool validGPSData = false;
   readGPSData();
-
   voltageMeter = new VoltageMeter; // takes a moment, so do it here
+  readGPSData();
 
-  delay(300);
+  //##############################################################
+  // Bluetooth
+  //##############################################################
+  if (cfg.getProperty<bool>(ObsConfig::PROPERTY_BLUETOOTH)) {
+    bluetoothManager = new BluetoothManager;
+    bluetoothManager->init(
+      cfg.getProperty<String>(ObsConfig::PROPERTY_OBS_NAME),
+      config.sensorOffsets[LEFT_SENSOR_ID],
+      config.sensorOffsets[RIGHT_SENSOR_ID],
+      batteryPercentage);
+    bluetoothManager->activateBluetooth();
+  } else {
+    bluetoothManager = nullptr;
+    ESP_ERROR_CHECK_WITHOUT_ABORT(
+      esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
+  }
+  readGPSData();
   int gpsWaitFor = cfg.getProperty<int>(ObsConfig::PROPERTY_GPS_FIX);
   while (!validGPSData) {
     readGPSData();
@@ -297,6 +316,14 @@ void setup() {
         }
         break;
     }
+
+    currentTimeMillis = millis();
+    if (bluetoothManager
+        && lastBluetoothInterval != (currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS)) {
+      lastBluetoothInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
+      bluetoothManager->newSensorValues(currentTimeMillis, MAX_SENSOR_VALUE, MAX_SENSOR_VALUE);
+    }
+
     delay(50);
 
     String satellitesString;
@@ -321,17 +348,6 @@ void setup() {
       displayTest->showTextOnGrid(2, 5, "...skipped");
       break;
     }
-  }
-
-  //##############################################################
-  // Bluetooth
-  //##############################################################
-  if (config.bluetooth) {
-    bluetoothManager.init();
-    bluetoothManager.activateBluetooth();
-  } else {
-    ESP_ERROR_CHECK_WITHOUT_ABORT(
-      esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
   }
 
   delay(1000); // Added for user experience
@@ -391,19 +407,17 @@ void loop() {
       currentSet->isInsidePrivacyArea
     );
 
-    if (config.bluetooth
+    if (bluetoothManager
         && lastBluetoothInterval != (currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS)) {
-#ifdef DEVELOP
-      Serial.printf("Reporting BT: %d/%d Button: %d\n",
+      log_d("Reporting BT: %d/%d Button: %d\n",
                     sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
                     sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median(),
                     buttonState);
-#endif
       lastBluetoothInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
-      bluetoothManager.newSensorValues(
+      bluetoothManager->newSensorValues(
+        currentTimeMillis,
         sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
         sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median());
-      bluetoothManager.processButtonState(digitalRead(PushButton));
     }
 
     buttonState = digitalRead(PushButton);
@@ -423,11 +437,13 @@ void loop() {
         if (datasetToConfirm != nullptr) {
           datasetToConfirm->confirmedDistances.push_back(minDistanceToConfirm);
           datasetToConfirm->confirmedDistancesTimeOffset.push_back(minDistanceToConfirmIndex);
+          bluetoothConfirmed(datasetToConfirm, minDistanceToConfirmIndex);
           datasetToConfirm = nullptr;
         } else { // confirming a overtake without left measure
           currentSet->confirmedDistances.push_back(MAX_SENSOR_VALUE);
           currentSet->confirmedDistancesTimeOffset.push_back(
             sensorManager->getCurrentMeasureIndex());
+          bluetoothConfirmed(currentSet, sensorManager->getCurrentMeasureIndex());
         }
         minDistanceToConfirm = MAX_SENSOR_VALUE; // ready for next confirmation
       }
@@ -537,4 +553,39 @@ void loop() {
   Serial.printf("Time elapsed %lu milliseconds\n", currentTimeMillis - startTimeMillis);
   // synchronize to full measureIntervals
   startTimeMillis = (currentTimeMillis / measureInterval) * measureInterval;
+}
+
+void bluetoothConfirmed(const DataSet *dataSet, uint16_t measureIndex) {
+  if (bluetoothManager) {
+    uint16_t left = dataSet->readDurationsLeftInMicroseconds[measureIndex];
+    if (left >= MAX_DURATION_MICRO_SEC && measureIndex > 0) {
+      measureIndex--;
+      left = dataSet->readDurationsLeftInMicroseconds[measureIndex];
+    }
+    uint16_t right = dataSet->readDurationsRightInMicroseconds[measureIndex];
+    if (right >= MAX_DURATION_MICRO_SEC && measureIndex > 0) {
+      right = dataSet->readDurationsLeftInMicroseconds[measureIndex - 1];
+    }
+    if (left > MAX_DURATION_MICRO_SEC || left <= 0) {
+      left = MAX_SENSOR_VALUE;
+    } else {
+      left /= MICRO_SEC_TO_CM_DIVIDER;
+    }
+    if (right > MAX_DURATION_MICRO_SEC || right <= 0) {
+      right = MAX_SENSOR_VALUE;
+    } else {
+      right /= MICRO_SEC_TO_CM_DIVIDER;
+    }
+    bluetoothManager->newPassEvent(
+      dataSet->millis + (uint32_t) dataSet->startOffsetMilliseconds[measureIndex],
+      left, right);
+  }
+}
+
+uint8_t batteryPercentage() {
+  uint8_t result = 0;
+  if (voltageMeter) {
+    result = voltageMeter->readPercentage();
+  }
+  return result;
 }
