@@ -271,13 +271,10 @@ void setup() {
   //##############################################################
   // Bluetooth
   //##############################################################
-  if (config.bluetooth) {
-    // TODO: Use new config name
-    char deviceName[32];
-    snprintf(deviceName, sizeof(deviceName), "OpenBikeSensor-%04X", (uint16_t)(ESP.getEfuseMac() >> 32));
+  if (cfg.getProperty<bool>(ObsConfig::PROPERTY_BLUETOOTH)) {
     bluetoothManager = new BluetoothManager;
     bluetoothManager->init(
-      deviceName,
+      cfg.getProperty<String>(ObsConfig::PROPERTY_OBS_NAME),
       config.sensorOffsets[LEFT_SENSOR_ID],
       config.sensorOffsets[RIGHT_SENSOR_ID],
       batteryPercentage);
