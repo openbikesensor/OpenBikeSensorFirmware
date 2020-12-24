@@ -49,7 +49,7 @@ Config config;
 SSD1306DisplayDevice* displayTest;
 HCSR04SensorManager* sensorManager;
 BluetoothManager* bluetoothManager;
-const long BLUETOOTH_INTERVAL_MILLIS = 150;
+const long BLUETOOTH_INTERVAL_MILLIS = 200;
 long lastBluetoothInterval = 0;
 
 
@@ -86,6 +86,7 @@ const uint8_t displayAddress = 0x3c;
 int lastMeasurements = 0 ;
 
 void bluetoothConfirmed(const DataSet *dataSet, uint16_t measureIndex);
+uint8_t batteryPercentage();
 
 void setup() {
   Serial.begin(115200);
@@ -261,6 +262,8 @@ void setup() {
   Serial.println("Waiting for GPS fix...");
   bool validGPSData = false;
   readGPSData();
+  voltageMeter = new VoltageMeter; // takes a moment, so do it here
+  readGPSData();
 
   //##############################################################
   // Bluetooth
@@ -273,15 +276,14 @@ void setup() {
     bluetoothManager->init(
       deviceName,
       config.sensorOffsets[LEFT_SENSOR_ID],
-      config.sensorOffsets[RIGHT_SENSOR_ID]);
+      config.sensorOffsets[RIGHT_SENSOR_ID],
+      batteryPercentage);
     bluetoothManager->activateBluetooth();
   } else {
     bluetoothManager = nullptr;
     ESP_ERROR_CHECK_WITHOUT_ABORT(
       esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
   }
-  readGPSData();
-  voltageMeter = new VoltageMeter; // takes a moment, so do it here
   readGPSData();
   while (!validGPSData) {
     readGPSData();
@@ -578,4 +580,12 @@ void bluetoothConfirmed(const DataSet *dataSet, uint16_t measureIndex) {
       dataSet->millis + (uint32_t) dataSet->startOffsetMilliseconds[measureIndex],
       left, right);
   }
+}
+
+uint8_t batteryPercentage() {
+  uint8_t result = 0;
+  if (voltageMeter) {
+    result = voltageMeter->readPercentage();
+  }
+  return result;
 }

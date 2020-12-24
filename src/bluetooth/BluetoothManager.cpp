@@ -1,6 +1,9 @@
 #include "BluetoothManager.h"
 
-void BluetoothManager::init(const String obsName, const uint16_t leftOffset, const uint16_t rightOffset) {
+void BluetoothManager::init(
+  const String obsName,
+  const uint16_t leftOffset, const uint16_t rightOffset,
+  uint8_t (*batteryPercentage)()) {
 
   ESP_ERROR_CHECK_WITHOUT_ABORT(
     esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
@@ -8,6 +11,7 @@ void BluetoothManager::init(const String obsName, const uint16_t leftOffset, con
   pServer = BLEDevice::createServer();
 
   services.push_back(new HeartRateService);
+  services.push_back(new BatteryService(batteryPercentage));
 //  services.push_back(new DeviceInfoService);
   services.push_back(new DistanceService);
   services.push_back(new ConnectionService);

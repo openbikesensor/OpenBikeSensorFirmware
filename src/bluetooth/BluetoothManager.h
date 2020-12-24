@@ -13,6 +13,7 @@
 #include "DeviceInfoService.h"
 #include "DistanceService.h"
 #include "HeartRateService.h"
+#include "BatteryService.h"
 #include "ObsService.h"
 
 class BluetoothManager {
@@ -20,7 +21,9 @@ class BluetoothManager {
     /**
      * Initializes all defined services and starts the bluetooth server.
      */
-    void init(String obsName, uint16_t leftOffset, uint16_t rightOffset);
+    void init(String obsName,
+              uint16_t leftOffset, uint16_t rightOffset,
+              uint8_t (*batteryPercentage)());
 
     /**
      * Starts advertising all services that internally implement shouldAdvertise()
