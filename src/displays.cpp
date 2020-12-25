@@ -6,7 +6,7 @@ void SSD1306DisplayDevice::showNumConfirmed() {
     val = "0" + val;
   }
   this->prepareTextOnGrid(2, 4, val, Dialog_plain_20);
-  this->prepareTextOnGrid(3, 5, "conf");
+  this->prepareTextOnGrid(3, 5, "conf",DEFAULT_FONT);
 }
 
 void SSD1306DisplayDevice::showNumButtonPressed() {
@@ -15,11 +15,11 @@ void SSD1306DisplayDevice::showNumButtonPressed() {
     val = "0" + val;
   }
   this->prepareTextOnGrid(0, 4, val, Dialog_plain_20);
-  this->prepareTextOnGrid(1, 5, "press");
+  this->prepareTextOnGrid(1, 5, "press",DEFAULT_FONT);
 }
 
 void SSD1306DisplayDevice::showValues(
-  HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2, uint16_t minDistanceToConfirm,
+  HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2, uint16_t minDistanceToConfirm,  int16_t BatterieVolt,
   int lastMeasurements, boolean insidePrivacyArea) {
   // Show sensor1, when DisplaySimple or DisplayLeft is configured
   if (config.displayConfig & DisplaySimple || config.displayConfig & DisplayLeft) {
@@ -35,7 +35,7 @@ void SSD1306DisplayDevice::showValues(
 
     // Do not show location, when DisplaySimple is configured
     if (!(config.displayConfig & DisplaySimple)) {
-      this->prepareTextOnGrid(0, 0, loc1);
+      this->prepareTextOnGrid(0, 0, loc1,DEFAULT_FONT);
     }
 
     if (value1 == MAX_SENSOR_VALUE) {
@@ -63,7 +63,7 @@ void SSD1306DisplayDevice::showValues(
       uint16_t value2 = sensor2.distance;
       String loc2 = sensor2.sensorLocation;
 
-      this->prepareTextOnGrid(2, 0, loc2);
+      this->prepareTextOnGrid(2, 0, loc2,DEFAULT_FONT);
       if (value2 == MAX_SENSOR_VALUE) {
         this->prepareTextOnGrid(2, 1, "---", Dialog_plain_30);
       } else {
@@ -104,10 +104,17 @@ void SSD1306DisplayDevice::showValues(
           showVelocity(-1);
         }
       }
+
+
     }
   }
+  // Show Batterie voltage
+  #warning not checked if colliding with other stuff
+	if(BatterieVolt >=-1)
+      showBatterieValue((BatterieVolt));
 
   m_display->display();
+
 }
 
 void SSD1306DisplayDevice::showGPS() {
@@ -117,8 +124,65 @@ void SSD1306DisplayDevice::showGPS() {
     val = "0" + val;
   }
   this->prepareTextOnGrid(2, 4, val, Dialog_plain_20);
-  this->prepareTextOnGrid(3, 5, "sats");
+  this->prepareTextOnGrid(3, 5, "sats",DEFAULT_FONT);
 }
+
+void SSD1306DisplayDevice::showBatterieValue(int16_t input_val){
+
+    uint8_t x_offset_batterie_logo = 97;
+    uint8_t y_offset_batterie_logo = 2;
+    //cleanGridCellcomplete(3,0);
+
+/*     if(input_val == -1){
+      cleanBatterie(x_offset_batterie_logo, y_offset_batterie_logo);
+      m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo6);
+      m_display->setColor(BLACK);
+      this->showTextOnGrid(3, 0, " " + String(0) + "%", Dialog_plain_8,3,0);
+      m_display->setColor(WHITE);
+      m_display->display();
+      this->showTextOnGrid(3, 0, "calc", Dialog_plain_8,6,0);
+    }else{
+      m_display->setColor(BLACK);
+      this->showTextOnGrid(3, 0, "calc", Dialog_plain_8,6,0);
+      m_display->setColor(WHITE);
+      m_display->display();
+    } */
+		if(input_val >= 0){
+			String val = String(input_val);
+
+
+      //showLogo(true);
+			this->showTextOnGrid(3, 0, " " + val + "%", Dialog_plain_8,3,0);
+       //m_display[0]->drawXbm(192, 0, 8, 9, BatterieLogo1);
+
+       if(input_val > 90){
+         cleanBatterie(x_offset_batterie_logo, y_offset_batterie_logo);
+         m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo1);
+       }else if (input_val > 68)
+       {
+         cleanBatterie(x_offset_batterie_logo, y_offset_batterie_logo);
+         m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo2);
+       }else if (input_val> 50)
+       {
+         cleanBatterie(x_offset_batterie_logo, y_offset_batterie_logo);
+         m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo3);
+       }else if (input_val > 30)
+       {
+         cleanBatterie(x_offset_batterie_logo, y_offset_batterie_logo);
+         m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo4);
+       }else if (input_val >10)
+       {
+         cleanBatterie(x_offset_batterie_logo, y_offset_batterie_logo);
+         m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo5);
+       }else
+       {
+         cleanBatterie(x_offset_batterie_logo, y_offset_batterie_logo);
+         m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo6);
+       }
+
+		}
+    //m_display->display();
+	}
 
 void SSD1306DisplayDevice::showVelocity(double velocity) {
   const int bufSize = 4;
@@ -129,5 +193,5 @@ void SSD1306DisplayDevice::showVelocity(double velocity) {
     snprintf(buffer, bufSize - 1, "--");
   }
   this->prepareTextOnGrid(0, 4, buffer, Dialog_plain_20);
-  this->prepareTextOnGrid(1, 5, "km/h");
+  this->prepareTextOnGrid(1, 5, "km/h",DEFAULT_FONT);
 }

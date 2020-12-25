@@ -31,6 +31,8 @@
 #include "logo.h"
 #include "sensor.h"
 
+#define DEFAULT_FONT ArialMT_Plain_10
+
 // Forward declare classes to build (because there is a cyclic dependency between sensor.h and displays.h)
 class HCSR04SensorInfo;
 
@@ -139,20 +141,29 @@ class SSD1306DisplayDevice : public DisplayDevice {
     // | (0,5) | (1,5) | (2,5) | (3,5) |
     // ---------------------------------
 
-    void showTextOnGrid(int16_t x, int16_t y, String text, const uint8_t* font = ArialMT_Plain_10) {
-      if (prepareTextOnGrid(x, y, text, font)) {
+    void showTextOnGrid(int16_t x, int16_t y, String text, const uint8_t* font) {
+      this->showTextOnGrid(x,y,text,font,0,0);
+    }
+
+    void showTextOnGrid(int16_t x, int16_t y, String text, const uint8_t* font, uint8_t offset_x_, uint8_t offset_y_) {
+      if (prepareTextOnGrid(x, y, text, font,offset_x_,offset_y_)) {
         m_display->display();
       }
     }
 
     bool prepareTextOnGrid(
-      int16_t x, int16_t y, String text, const uint8_t* font = ArialMT_Plain_10) {
+      int16_t x, int16_t y, String text, const uint8_t* font) {
+        return this->prepareTextOnGrid(x,y,text,font,0,0);
+    }
+
+    bool prepareTextOnGrid(
+      int16_t x, int16_t y, String text, const uint8_t* font,uint8_t offset_x_, uint8_t offset_y_) {
       bool changed = false;
       if (!text.equals(gridText[x][y])) {
         m_display->setFont(font);
 
         // Override the existing text with the inverted color
-        this->cleanGridCell(x, y);
+        this->cleanGridCell(x, y,offset_x_,offset_y_);
 
         // Write the new text
         gridText[x][y] = text;
@@ -161,7 +172,7 @@ class SSD1306DisplayDevice : public DisplayDevice {
         // 2 => 8 - (2*2) = 4
         // 3 => 8 - (3*2) = 2
         int x_offset = 8 - (x * 2);
-        m_display->drawString(x * 32 + x_offset, y * 10 + 1, gridText[x][y]);
+        m_display->drawString(x * 32 + x_offset + offset_x_, y * 10 + 1 + offset_y_, gridText[x][y]);
         changed = true;
       }
       return changed;
@@ -179,9 +190,19 @@ class SSD1306DisplayDevice : public DisplayDevice {
 
     // Override the existing WHITE text with BLACK
     void cleanGridCell(int16_t x, int16_t y) {
+        this->cleanGridCell(x,y,0,0);
+    }
+
+    void cleanGridCell(int16_t x, int16_t y,uint8_t offset_x_, uint8_t offset_y_) {
       m_display->setColor(BLACK);
       int x_offset = 8 - (x * 2);
-      m_display->drawString(x * 32 + x_offset, y * 10 + 1, gridText[x][y]);
+      m_display->drawString(x * 32 + x_offset + offset_x_, y * 10 + 1 + offset_y_, gridText[x][y]);
+      m_display->setColor(WHITE);
+    }
+
+    void cleanBatterie(int16_t x, int16_t y){
+      m_display->setColor(BLACK);
+      m_display->drawXbm(x, y, 8, 9, BatterieLogo1);
       m_display->setColor(WHITE);
     }
 
@@ -195,13 +216,15 @@ class SSD1306DisplayDevice : public DisplayDevice {
 
     void showVelocity(double velocity);
 
+    void showBatterieValue(int16_t input_val);
+
     void showNumConfirmed();
 
     void showNumButtonPressed();
 
     void showValues(
       HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2,
-      uint16_t minDistanceToConfirm, int lastMeasurements, boolean insidePrivacyArea);
+      uint16_t minDistanceToConfirm,int16_t BatterieVolt, int lastMeasurements, boolean insidePrivacyArea);
 
 };
 

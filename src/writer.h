@@ -40,6 +40,7 @@ struct DataSet {
   TinyGPSSpeed speed;
   TinyGPSHDOP hdop;
   uint8_t validSatellites;
+  float BatterieVoltage;
   double batteryLevel;
   std::vector<uint16_t> sensorValues;
   std::vector<uint16_t> confirmedDistances;

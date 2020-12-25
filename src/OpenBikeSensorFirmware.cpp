@@ -28,7 +28,7 @@
 
 // --- Global variables ---
 // Version only change the "vN.M" part if needed.
-const char *OBSVersion = "v0.4" BUILD_NUMBER;
+const char *OBSVersion = "v0.4.1" BUILD_NUMBER;
 
 const int LEFT_SENSOR_ID = 1;
 const int RIGHT_SENSOR_ID = 0;
@@ -38,6 +38,7 @@ const int RIGHT_SENSOR_ID = 0;
 // PINs
 const int PushButton = 2;
 const uint8_t GPS_POWER = 12;
+const uint8_t BatterieVoltage = 34;
 
 int confirmedMeasurements = 0;
 int numButtonReleased = 0;
@@ -54,10 +55,16 @@ BluetoothManager* bluetoothManager;
 const long BLUETOOTH_INTERVAL_MILLIS = 200;
 long lastBluetoothInterval = 0;
 
+float BatteryValue = -1;
+
 
 VoltageMeter* voltageMeter;
 
 String esp_chipid;
+
+#ifdef DEVELOP
+Adafruit_BMP280 bmp280(&Wire);
+#endif
 
 // --- Local variables ---
 unsigned long measureInterval = 1000;
@@ -89,6 +96,15 @@ int lastMeasurements = 0 ;
 void bluetoothConfirmed(const DataSet *dataSet, uint16_t measureIndex);
 uint8_t batteryPercentage();
 
+// The BMP280 can keep up to 3.4MHz I2C speed, so no need for an individual slower speed
+
+void switch_wire_speed_to_VL53(){
+	Wire.setClock(400000);
+}
+void switch_wire_speed_to_SSD1306(){
+	Wire.setClock(700000);
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -99,6 +115,7 @@ void setup() {
   //##############################################################
 
   pinMode(PushButton, INPUT);
+  pinMode(BatterieVoltage, INPUT);
   pinMode(GPS_POWER, OUTPUT);
   digitalWrite(GPS_POWER,HIGH);
 
@@ -114,24 +131,24 @@ void setup() {
   displayTest = new SSD1306DisplayDevice;
 
   displayTest->showLogo(true);
-  displayTest->showTextOnGrid(2, 0, OBSVersion);
+  displayTest->showTextOnGrid(2, 0, OBSVersion,DEFAULT_FONT);
 
   //##############################################################
   // Load, print and save config
   //##############################################################
 
-  displayTest->showTextOnGrid(2, 1, "Config... ");
+  displayTest->showTextOnGrid(2, 1, "Config... ",DEFAULT_FONT);
 
   if (!SPIFFS.begin(true)) {
     Serial.println("An Error has occurred while mounting SPIFFS");
-    displayTest->showTextOnGrid(2, 1, "Config... error ");
+    displayTest->showTextOnGrid(2, 1, "Config... error ",DEFAULT_FONT);
     return;
   }
 
   Serial.println(F("Load config"));
   ObsConfig cfg; // this one is valid in setup!
   if (!cfg.loadConfig()) {
-    displayTest->showTextOnGrid(2, 1, "Config...RESET");
+    displayTest->showTextOnGrid(2, 1, "Config...RESET",DEFAULT_FONT);
     delay(1000); // resetting config once, wait a moment
   }
 
@@ -161,7 +178,7 @@ void setup() {
   snprintf(buffer, sizeof(buffer), "<%02d| |%02d>",
     config.sensorOffsets[LEFT_SENSOR_ID],
     config.sensorOffsets[RIGHT_SENSOR_ID]);
-  displayTest->showTextOnGrid(2, 1, buffer);
+  displayTest->showTextOnGrid(2, 1, buffer,DEFAULT_FONT);
 
 
   //##############################################################
@@ -175,12 +192,12 @@ void setup() {
   // Counter, how often the SD card will be read before writing an error on the display
   int8_t sdCount = 5;
 
-  displayTest->showTextOnGrid(2, 2, "SD...");
+  displayTest->showTextOnGrid(2, 2, "SD...",DEFAULT_FONT);
   while (!SD.begin()) {
     if(sdCount > 0) {
       sdCount--;
     } else {
-      displayTest->showTextOnGrid(2, 2, "SD... error");
+      displayTest->showTextOnGrid(2, 2, "SD... error",DEFAULT_FONT);
       if (config.simRaMode || digitalRead(PushButton) == HIGH) {
         break;
       }
@@ -191,7 +208,7 @@ void setup() {
   delay(333); // Added for user experience
   if (SD.begin()) {
     Serial.println("Card Mount Succeeded");
-    displayTest->showTextOnGrid(2, 2, "SD... ok");
+    displayTest->showTextOnGrid(2, 2, "SD... ok",DEFAULT_FONT);
   }
 
   //##############################################################
@@ -201,7 +218,7 @@ void setup() {
 
   buttonState = digitalRead(PushButton);
   if (buttonState == HIGH || (!config.simRaMode && displayError != 0)) {
-    displayTest->showTextOnGrid(2, 2, "Start Server");
+    displayTest->showTextOnGrid(2, 2, "Start Server",DEFAULT_FONT);
     ESP_ERROR_CHECK_WITHOUT_ABORT(
       esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
 
@@ -245,28 +262,38 @@ void setup() {
   // Prepare CSV file
   //##############################################################
 
-  displayTest->showTextOnGrid(2, 3, "CSV file...");
+  displayTest->showTextOnGrid(2, 3, "CSV file...",DEFAULT_FONT);
 
   if (SD.begin()) {
     writer = new CSVFileWriter;
     writer->setFileName();
     writer->writeHeader();
-    displayTest->showTextOnGrid(2, 3, "CSV file... ok");
+    displayTest->showTextOnGrid(2, 3, "CSV file... ok",DEFAULT_FONT);
     Serial.println("File initialised");
   } else {
-    displayTest->showTextOnGrid(2, 3, "CSV. skipped");
+    displayTest->showTextOnGrid(2, 3, "CSV. skipped",DEFAULT_FONT);
   }
 
   //##############################################################
   // GPS
   //##############################################################
 
-  displayTest->showTextOnGrid(2, 4, "Wait for GPS");
+  displayTest->showTextOnGrid(2, 4, "Wait for GPS",DEFAULT_FONT);
   Serial.println("Waiting for GPS fix...");
   bool validGPSData = false;
   readGPSData();
   voltageMeter = new VoltageMeter; // takes a moment, so do it here
   readGPSData();
+
+  //##############################################################
+  // Temperatur Sensor BMP280
+  //##############################################################
+
+  #ifdef DEVELOP
+
+  bmp280.begin(BMP280_ADDRESS_ALT,BMP280_CHIPID);
+  float temp_read = bmp280.readTemperature();
+  #endif
 
   //##############################################################
   // Bluetooth
@@ -338,14 +365,14 @@ void setup() {
                gps.time.hour(), gps.time.minute(), gps.time.second(), gps.satellites.value());
       satellitesString = String(timeStr);
     }
-    displayTest->showTextOnGrid(2, 5, satellitesString);
+    displayTest->showTextOnGrid(2, 5, satellitesString,DEFAULT_FONT);
 
     buttonState = digitalRead(PushButton);
     if (buttonState == HIGH
       || (config.simRaMode && gps.passedChecksum() == 0) // no module && simRaMode
     ) {
       Serial.println("Skipped get GPS...");
-      displayTest->showTextOnGrid(2, 5, "...skipped");
+      displayTest->showTextOnGrid(2, 5, "...skipped",DEFAULT_FONT);
       break;
     }
   }
@@ -355,6 +382,7 @@ void setup() {
   // Clear the display once!
   displayTest->clear();
 }
+
 
 void loop() {
 
@@ -403,6 +431,7 @@ void loop() {
       sensorManager->m_sensors[LEFT_SENSOR_ID],
       sensorManager->m_sensors[RIGHT_SENSOR_ID],
       minDistanceToConfirm,
+      BatteryValue,
       lastMeasurements,
       currentSet->isInsidePrivacyArea
     );
@@ -464,6 +493,20 @@ void loop() {
       timeOfMinimum = currentTimeMillis;
     }
     measurements++;
+
+      // #######################################################
+      // Batterievoltage
+      // #######################################################
+
+      if (voltageBuffer.available() == 0)
+      {
+        BatteryValue = (float) movingaverage(&voltageBuffer,&BatterieVoltage_movav,batterie_voltage_read(BatterieVoltage));
+        BatteryValue = (float)get_batterie_percent((uint16_t)BatteryValue);
+        currentSet->batteryLevel = BatteryValue;
+        }else{
+        (float) movingaverage(&voltageBuffer,&BatterieVoltage_movav,BatterieVoltage_value);
+        BatteryValue = -1;
+      }
   } // end measureInterval while
 
   // Write the minimum values of the while-loop to a set
