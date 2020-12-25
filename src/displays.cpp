@@ -20,7 +20,7 @@ void SSD1306DisplayDevice::showNumButtonPressed() {
 
 void SSD1306DisplayDevice::showValues(
   HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2, uint16_t minDistanceToConfirm,  int16_t BatterieVolt,
-  int lastMeasurements, boolean insidePrivacyArea) {
+  int16_t TemperaturValue, int lastMeasurements, boolean insidePrivacyArea) {
   // Show sensor1, when DisplaySimple or DisplayLeft is configured
   if (config.displayConfig & DisplaySimple || config.displayConfig & DisplayLeft) {
     uint16_t value1 = sensor1.minDistance;
@@ -39,7 +39,7 @@ void SSD1306DisplayDevice::showValues(
     }
 
     if (value1 == MAX_SENSOR_VALUE) {
-      this->prepareTextOnGrid(0, 1, "---", Dialog_plain_30);
+      this->prepareTextOnGrid(0, 1, "---", Dialog_plain_26);
     } else {
       String val = String(value1);
       if (value1 <= 9) {
@@ -48,11 +48,11 @@ void SSD1306DisplayDevice::showValues(
         val = "0" + val;
       }
 
-      this->prepareTextOnGrid(0, 1, val, Dialog_plain_30);
+      this->prepareTextOnGrid(0, 1, val, Dialog_plain_26);
     }
 
     if (config.displayConfig & DisplaySimple) {
-      this->prepareTextOnGrid(2, 2, "cm", Dialog_plain_20);
+      this->prepareTextOnGrid(2, 2, "cm", Dialog_plain_20,5,0);
     }
   }
 
@@ -63,9 +63,9 @@ void SSD1306DisplayDevice::showValues(
       uint16_t value2 = sensor2.distance;
       String loc2 = sensor2.sensorLocation;
 
-      this->prepareTextOnGrid(2, 0, loc2,DEFAULT_FONT);
+      this->prepareTextOnGrid(3, 0, loc2,DEFAULT_FONT);
       if (value2 == MAX_SENSOR_VALUE) {
-        this->prepareTextOnGrid(2, 1, "---", Dialog_plain_30);
+        this->prepareTextOnGrid(2, 1, "---", Dialog_plain_26,5,0);
       } else {
         String val = String(value2);
         if (value2 <= 9) {
@@ -73,7 +73,7 @@ void SSD1306DisplayDevice::showValues(
         } else if (value2 >= 10 && value2 <= 99) {
           val = "0" + val;
         }
-        this->prepareTextOnGrid(2, 1, val, Dialog_plain_30);
+        this->prepareTextOnGrid(2, 1, val, Dialog_plain_26,5,0);
       }
     }
     if (config.displayConfig & DisplayDistanceDetail) {
@@ -113,6 +113,8 @@ void SSD1306DisplayDevice::showValues(
 	if(BatterieVolt >=-1)
       showBatterieValue((BatterieVolt));
 
+  showTemperatureValue(0);
+
   m_display->display();
 
 }
@@ -129,7 +131,7 @@ void SSD1306DisplayDevice::showGPS() {
 
 void SSD1306DisplayDevice::showBatterieValue(int16_t input_val){
 
-    uint8_t x_offset_batterie_logo = 97;
+    uint8_t x_offset_batterie_logo = 65;
     uint8_t y_offset_batterie_logo = 2;
     //cleanGridCellcomplete(3,0);
 
@@ -152,7 +154,7 @@ void SSD1306DisplayDevice::showBatterieValue(int16_t input_val){
 
 
       //showLogo(true);
-			this->showTextOnGrid(3, 0, " " + val + "%", Dialog_plain_8,3,0);
+			this->showTextOnGrid(2, 0, " " + val + "%", Dialog_plain_8,3,0);
        //m_display[0]->drawXbm(192, 0, 8, 9, BatterieLogo1);
 
        if(input_val > 90){
@@ -183,6 +185,15 @@ void SSD1306DisplayDevice::showBatterieValue(int16_t input_val){
 		}
     //m_display->display();
 	}
+
+void SSD1306DisplayDevice::showTemperatureValue(int16_t input_val){
+    uint8_t x_offset_temp_logo = 33;
+    uint8_t y_offset_temp_logo = 2;
+    cleanTemperatur(x_offset_temp_logo,y_offset_temp_logo);
+    m_display->drawXbm(x_offset_temp_logo, y_offset_temp_logo, 8, 9, TempLogo);
+    String val = String(input_val);
+    this->showTextOnGrid(1, 0, " " + val + "°C", Dialog_plain_8,3,0);
+}
 
 void SSD1306DisplayDevice::showVelocity(double velocity) {
   const int bufSize = 4;

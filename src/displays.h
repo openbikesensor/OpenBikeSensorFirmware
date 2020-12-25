@@ -206,6 +206,12 @@ class SSD1306DisplayDevice : public DisplayDevice {
       m_display->setColor(WHITE);
     }
 
+    void cleanTemperatur(int16_t x, int16_t y){
+      m_display->setColor(BLACK);
+      m_display->drawXbm(x, y, 8, 9, TempLogo);
+      m_display->setColor(WHITE);
+    }
+
     //##############################################################
     // Other
     //##############################################################
@@ -218,13 +224,15 @@ class SSD1306DisplayDevice : public DisplayDevice {
 
     void showBatterieValue(int16_t input_val);
 
+    void showTemperatureValue(int16_t input_val);
+
     void showNumConfirmed();
 
     void showNumButtonPressed();
 
     void showValues(
       HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2,
-      uint16_t minDistanceToConfirm,int16_t BatterieVolt, int lastMeasurements, boolean insidePrivacyArea);
+      uint16_t minDistanceToConfirm,int16_t BatterieVolt, int16_t TemperaturValue, int lastMeasurements, boolean insidePrivacyArea);
 
 };
 

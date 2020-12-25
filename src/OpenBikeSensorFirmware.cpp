@@ -25,10 +25,11 @@
 #ifndef BUILD_NUMBER
 #define BUILD_NUMBER "local"
 #endif
+#define DEVELOP
 
 // --- Global variables ---
 // Version only change the "vN.M" part if needed.
-const char *OBSVersion = "v0.4.1" BUILD_NUMBER;
+const char *OBSVersion = "v0.4.2" BUILD_NUMBER;
 
 const int LEFT_SENSOR_ID = 1;
 const int RIGHT_SENSOR_ID = 0;
@@ -56,6 +57,7 @@ const long BLUETOOTH_INTERVAL_MILLIS = 200;
 long lastBluetoothInterval = 0;
 
 float BatteryValue = -1;
+float TempertureValue = -1;
 
 
 VoltageMeter* voltageMeter;
@@ -292,7 +294,7 @@ void setup() {
   #ifdef DEVELOP
 
   bmp280.begin(BMP280_ADDRESS_ALT,BMP280_CHIPID);
-  float temp_read = bmp280.readTemperature();
+  float TemperatureValue = bmp280.readTemperature();
   #endif
 
   //##############################################################
@@ -427,14 +429,29 @@ void loop() {
     sensorManager->getDistances();
     readGPSData();
 
+    #ifndef DEVELOP
     displayTest->showValues(
       sensorManager->m_sensors[LEFT_SENSOR_ID],
       sensorManager->m_sensors[RIGHT_SENSOR_ID],
       minDistanceToConfirm,
       BatteryValue,
+      0,
       lastMeasurements,
       currentSet->isInsidePrivacyArea
     );
+    #endif
+
+    #ifdef DEVELOP
+    displayTest->showValues(
+      sensorManager->m_sensors[LEFT_SENSOR_ID],
+      sensorManager->m_sensors[RIGHT_SENSOR_ID],
+      minDistanceToConfirm,
+      BatteryValue,
+      (int16_t)TempertureValue,
+      lastMeasurements,
+      currentSet->isInsidePrivacyArea
+    );
+    #endif
 
     if (bluetoothManager
         && lastBluetoothInterval != (currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS)) {
@@ -507,6 +524,10 @@ void loop() {
         (float) movingaverage(&voltageBuffer,&BatterieVoltage_movav,BatterieVoltage_value);
         BatteryValue = -1;
       }
+
+      #ifdef DEVELOP
+        TempertureValue = bmp280.readTemperature();
+      #endif
   } // end measureInterval while
 
   // Write the minimum values of the while-loop to a set
