@@ -1027,19 +1027,19 @@ void tryWiFiConnect(const ObsConfig *obsConfig) {
   const uint16_t timeout = 10000;
   // Connect to WiFi network
   while ((WiFi.status() != WL_CONNECTED) && (( millis() - startTime) <= timeout)) {
-    log_v("Trying to connect to %s",
+    log_d("Trying to connect to %s",
       theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_SSID));
     wl_status_t status = WiFi.begin(
       theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_SSID),
       theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_PASSWORD));
-    log_e("WiFi status after begin is %d", status);
+    log_d("WiFi status after begin is %d", status);
     status = static_cast<wl_status_t>(WiFi.waitForConnectResult());
-    log_e("WiFi status after wait is %d", status);
+    log_d("WiFi status after wait is %d", status);
     if (status >= WL_CONNECT_FAILED) {
-      log_e("WiFi resetting connection for retry.");
+      log_d("WiFi resetting connection for retry.");
       WiFi.disconnect(true, true);
     } else if (status == WL_NO_SSID_AVAIL){
-      log_e("WiFi SSID not found - try rescan.");
+      log_d("WiFi SSID not found - try rescan.");
       WiFi.scanNetworks(false);
     }
     delay(250);
