@@ -57,7 +57,7 @@ const long BLUETOOTH_INTERVAL_MILLIS = 200;
 long lastBluetoothInterval = 0;
 
 float BatteryValue = -1;
-float TempertureValue = -101;
+float TemperatureValue = -101;
 
 
 VoltageMeter* voltageMeter;
@@ -294,8 +294,8 @@ void setup() {
 
   #ifdef DEVELOP
 
-  TempertureValue = bmp280.begin(BMP280_ADDRESS_ALT,BMP280_CHIPID);
-  TempertureValue = bmp280.readTemperature();
+  TemperatureValue = bmp280.begin(BMP280_ADDRESS_ALT,BMP280_CHIPID);
+  TemperatureValue = bmp280.readTemperature();
   #endif
 
   //##############################################################
@@ -448,7 +448,7 @@ void loop() {
       sensorManager->m_sensors[RIGHT_SENSOR_ID],
       minDistanceToConfirm,
       BatteryValue,
-      (int16_t) TempertureValue,
+      (int16_t) TemperatureValue,
       lastMeasurements,
       currentSet->isInsidePrivacyArea
     );
@@ -527,7 +527,7 @@ void loop() {
       }
 
       #ifdef DEVELOP
-        TempertureValue = bmp280.readTemperature();
+        TemperatureValue = bmp280.readTemperature();
       #endif
   } // end measureInterval while
 
