@@ -113,7 +113,9 @@ void SSD1306DisplayDevice::showValues(
 	if(BatterieVolt >=-1)
       showBatterieValue((BatterieVolt));
 
-  showTemperatureValue(0);
+  #ifdef DEVELOP
+  showTemperatureValue(TemperaturValue);
+  #endif
 
   m_display->display();
 
@@ -160,7 +162,7 @@ void SSD1306DisplayDevice::showBatterieValue(int16_t input_val){
        if(input_val > 90){
          cleanBatterie(x_offset_batterie_logo, y_offset_batterie_logo);
          m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo1);
-       }else if (input_val > 68)
+       }else if (input_val > 70)
        {
          cleanBatterie(x_offset_batterie_logo, y_offset_batterie_logo);
          m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo2);
@@ -192,7 +194,7 @@ void SSD1306DisplayDevice::showTemperatureValue(int16_t input_val){
     cleanTemperatur(x_offset_temp_logo,y_offset_temp_logo);
     m_display->drawXbm(x_offset_temp_logo, y_offset_temp_logo, 8, 9, TempLogo);
     String val = String(input_val);
-    this->showTextOnGrid(1, 0, " " + val + "°C", Dialog_plain_8,3,0);
+    this->showTextOnGrid(1, 0, " " + val + "°C", Dialog_plain_8,0,0);
 }
 
 void SSD1306DisplayDevice::showVelocity(double velocity) {

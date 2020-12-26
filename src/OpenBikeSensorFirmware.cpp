@@ -25,11 +25,11 @@
 #ifndef BUILD_NUMBER
 #define BUILD_NUMBER "local"
 #endif
-#define DEVELOP
+//#define DEVELOP
 
 // --- Global variables ---
 // Version only change the "vN.M" part if needed.
-const char *OBSVersion = "v0.4.2" BUILD_NUMBER;
+const char *OBSVersion = "v0.4" BUILD_NUMBER;
 
 const int LEFT_SENSOR_ID = 1;
 const int RIGHT_SENSOR_ID = 0;
@@ -104,7 +104,7 @@ void switch_wire_speed_to_VL53(){
 	Wire.setClock(400000);
 }
 void switch_wire_speed_to_SSD1306(){
-	Wire.setClock(700000);
+	Wire.setClock(500000);
 }
 
 void setup() {
@@ -125,6 +125,7 @@ void setup() {
   // Setup display
   //##############################################################
   Wire.begin();
+  switch_wire_speed_to_SSD1306();
   Wire.beginTransmission(displayAddress);
   byte displayError = Wire.endTransmission();
   if (displayError != 0) {
@@ -293,8 +294,8 @@ void setup() {
 
   #ifdef DEVELOP
 
-  bmp280.begin(BMP280_ADDRESS_ALT,BMP280_CHIPID);
-  float TemperatureValue = bmp280.readTemperature();
+  TempertureValue = bmp280.begin(BMP280_ADDRESS_ALT,BMP280_CHIPID);
+  TempertureValue = bmp280.readTemperature();
   #endif
 
   //##############################################################
@@ -447,7 +448,7 @@ void loop() {
       sensorManager->m_sensors[RIGHT_SENSOR_ID],
       minDistanceToConfirm,
       BatteryValue,
-      (int16_t)TempertureValue,
+      (int16_t) TempertureValue,
       lastMeasurements,
       currentSet->isInsidePrivacyArea
     );
