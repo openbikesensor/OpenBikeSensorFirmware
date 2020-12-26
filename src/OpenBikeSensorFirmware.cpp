@@ -57,7 +57,7 @@ const long BLUETOOTH_INTERVAL_MILLIS = 200;
 long lastBluetoothInterval = 0;
 
 float BatteryValue = -1;
-float TempertureValue = -1;
+float TempertureValue = -101;
 
 
 VoltageMeter* voltageMeter;
@@ -436,7 +436,7 @@ void loop() {
       sensorManager->m_sensors[RIGHT_SENSOR_ID],
       minDistanceToConfirm,
       BatteryValue,
-      0,
+      -101,
       lastMeasurements,
       currentSet->isInsidePrivacyArea
     );

@@ -113,9 +113,8 @@ void SSD1306DisplayDevice::showValues(
 	if(BatterieVolt >=-1)
       showBatterieValue((BatterieVolt));
 
-  #ifdef DEVELOP
-  showTemperatureValue(TemperaturValue);
-  #endif
+  if(TemperaturValue > -100)
+    showTemperatureValue(TemperaturValue);
 
   m_display->display();
 
