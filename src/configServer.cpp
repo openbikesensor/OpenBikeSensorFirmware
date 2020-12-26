@@ -332,6 +332,8 @@ String makeCurrentLocationPrivateIndex =
 
 // #########################################
 
+void tryWiFiConnect(const ObsConfig *obsConfig);
+
 void handle_NotFound() {
   server.send(404, "text/plain", "Not found");
 }
@@ -480,38 +482,21 @@ bool CreateWifiSoftAP(String chipID) {
 void startServer(ObsConfig *obsConfig) {
   theObsConfig = obsConfig;
 
-#if defined(ESP32)
   uint64_t chipid_num;
   chipid_num = ESP.getEfuseMac();
   esp_chipid = String((uint16_t)(chipid_num >> 32), HEX);
   esp_chipid += String((uint32_t)chipid_num, HEX);
-#endif
 
   displayTest->clear();
-  displayTest->showTextOnGrid(0, 0, "Ver.:",DEFAULT_FONT);
-  displayTest->showTextOnGrid(1, 0, OBSVersion,DEFAULT_FONT);
+  displayTest->showTextOnGrid(0, 0, "Ver.:", DEFAULT_FONT);
+  displayTest->showTextOnGrid(1, 0, OBSVersion, DEFAULT_FONT);
 
-  displayTest->showTextOnGrid(0, 1, "SSID:",DEFAULT_FONT);
+  displayTest->showTextOnGrid(0, 1, "SSID:", DEFAULT_FONT);
   displayTest->showTextOnGrid(1, 1,
-                              theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID),DEFAULT_FONT);
+                              theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID), DEFAULT_FONT);
 
+  tryWiFiConnect(obsConfig);
 
-  // Connect to WiFi network
-  Serial.println("Trying to connect to");
-  Serial.println(theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID));
-  WiFi.begin(theObsConfig->getProperty<const char*>(ObsConfig::PROPERTY_WIFI_SSID),
-                        theObsConfig->getProperty<const char*>(ObsConfig::PROPERTY_WIFI_PASSWORD));
-  Serial.println("ChipID  ");
-  Serial.println(esp_chipid.c_str());
-  // Wait for connection
-  uint16_t startTime = millis();
-  uint16_t timeout = 10000;
-  Serial.printf("Timeout %u\n", timeout);
-  Serial.printf("startTime %u\n", startTime);
-  while ((WiFi.status() != WL_CONNECTED) && (( millis() - startTime) <= timeout)) {
-    delay(1000);
-    Serial.print(".");
-  }
   if (WiFi.status() != WL_CONNECTED) {
     CreateWifiSoftAP(esp_chipid);
   } else {
@@ -521,18 +506,18 @@ void startServer(ObsConfig *obsConfig) {
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
 
-    displayTest->showTextOnGrid(0, 2, "IP:",DEFAULT_FONT);
-    displayTest->showTextOnGrid(1, 2, WiFi.localIP().toString().c_str(),DEFAULT_FONT);
+    displayTest->showTextOnGrid(0, 2, "IP:", DEFAULT_FONT);
+    displayTest->showTextOnGrid(1, 2, WiFi.localIP().toString().c_str(), DEFAULT_FONT);
   }
 
   /*use mdns for host name resolution*/
-  if (!MDNS.begin(host)) { //http://openbikesensor.local
-    Serial.println("Error setting up MDNS responder!");
-    while (true) {
-      delay(1000);
+  if (WiFi.getMode() != WIFI_MODE_STA) {
+    if (!MDNS.begin(host)) { //http://openbikesensor.local
+      log_e("Error setting up MDNS responder for %s!", host);
+    } else {
+      log_i("mDNS responder started for %s!", host);
     }
   }
-  Serial.println("mDNS responder started");
   /*return index page which is stored in serverIndex */
 
 
@@ -1026,4 +1011,37 @@ void startServer(ObsConfig *obsConfig) {
   server.begin();
   Serial.println("Server Ready");
 
+}
+
+void tryWiFiConnect(const ObsConfig *obsConfig) {
+  if (!WiFi.mode(WIFI_MODE_STA)) {
+    log_e("Failed to enable WiFi station mode.");
+  }
+  const char* hostname
+    = obsConfig->getProperty<const char *>(ObsConfig::PROPERTY_OBS_NAME);
+  if (!WiFi.setHostname(hostname)) {
+    log_e("Failed to set hostname to %s.", hostname);
+  }
+
+  const uint16_t startTime = millis();
+  const uint16_t timeout = 10000;
+  // Connect to WiFi network
+  while ((WiFi.status() != WL_CONNECTED) && (( millis() - startTime) <= timeout)) {
+    log_v("Trying to connect to %s",
+      theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_SSID));
+    wl_status_t status = WiFi.begin(
+      theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_SSID),
+      theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_PASSWORD));
+    log_e("WiFi status after begin is %d", status);
+    status = static_cast<wl_status_t>(WiFi.waitForConnectResult());
+    log_e("WiFi status after wait is %d", status);
+    if (status >= WL_CONNECT_FAILED) {
+      log_e("WiFi resetting connection for retry.");
+      WiFi.disconnect(true, true);
+    } else if (status == WL_NO_SSID_AVAIL){
+      log_e("WiFi SSID not found - try rescan.");
+      WiFi.scanNetworks(false);
+    }
+    delay(250);
+  }
 }
