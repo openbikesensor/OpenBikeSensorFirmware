@@ -511,7 +511,7 @@ void startServer(ObsConfig *obsConfig) {
   }
 
   /*use mdns for host name resolution*/
-  if (WiFi.getMode() != WIFI_MODE_STA) {
+  if (WiFiGenericClass::getMode() != WIFI_MODE_STA) {
     if (!MDNS.begin(host)) { //http://openbikesensor.local
       log_e("Error setting up MDNS responder for %s!", host);
     } else {
@@ -1014,7 +1014,7 @@ void startServer(ObsConfig *obsConfig) {
 }
 
 void tryWiFiConnect(const ObsConfig *obsConfig) {
-  if (!WiFi.mode(WIFI_MODE_STA)) {
+  if (!WiFiGenericClass::mode(WIFI_MODE_STA)) {
     log_e("Failed to enable WiFi station mode.");
   }
   const char* hostname
