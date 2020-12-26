@@ -15,7 +15,7 @@
 extern const char *OBSVersion;
 
 // PINs
-extern const int PushButton;
+extern const int PushButton_PIN;
 
 extern int confirmedMeasurements;
 extern int numButtonReleased;

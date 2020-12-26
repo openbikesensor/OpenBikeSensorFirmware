@@ -37,9 +37,9 @@ const int RIGHT_SENSOR_ID = 0;
 
 
 // PINs
-const int PushButton = 2;
-const uint8_t GPS_POWER = 12;
-const uint8_t BatterieVoltage = 34;
+const int PushButton_PIN = 2;
+const uint8_t GPS_POWER_PIN = 12;
+const uint8_t BatterieVoltage_PIN = 34;
 
 int confirmedMeasurements = 0;
 int numButtonReleased = 0;
@@ -116,10 +116,10 @@ void setup() {
   // Configure button pin as INPUT
   //##############################################################
 
-  pinMode(PushButton, INPUT);
-  pinMode(BatterieVoltage, INPUT);
-  pinMode(GPS_POWER, OUTPUT);
-  digitalWrite(GPS_POWER,HIGH);
+  pinMode(PushButton_PIN, INPUT);
+  pinMode(BatterieVoltage_PIN, INPUT);
+  pinMode(GPS_POWER_PIN, OUTPUT);
+  digitalWrite(GPS_POWER_PIN,HIGH);
 
   //##############################################################
   // Setup display
@@ -201,7 +201,7 @@ void setup() {
       sdCount--;
     } else {
       displayTest->showTextOnGrid(2, 2, "SD... error",DEFAULT_FONT);
-      if (config.simRaMode || digitalRead(PushButton) == HIGH) {
+      if (config.simRaMode || digitalRead(PushButton_PIN) == HIGH) {
         break;
       }
     }
@@ -219,7 +219,7 @@ void setup() {
   // Enter configuration mode and enable OTA
   //##############################################################
 
-  buttonState = digitalRead(PushButton);
+  buttonState = digitalRead(PushButton_PIN);
   if (buttonState == HIGH || (!config.simRaMode && displayError != 0)) {
     displayTest->showTextOnGrid(2, 2, "Start Server",DEFAULT_FONT);
     ESP_ERROR_CHECK_WITHOUT_ABORT(
@@ -370,7 +370,7 @@ void setup() {
     }
     displayTest->showTextOnGrid(2, 5, satellitesString,DEFAULT_FONT);
 
-    buttonState = digitalRead(PushButton);
+    buttonState = digitalRead(PushButton_PIN);
     if (buttonState == HIGH
       || (config.simRaMode && gps.passedChecksum() == 0) // no module && simRaMode
     ) {
@@ -467,7 +467,7 @@ void loop() {
         sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median());
     }
 
-    buttonState = digitalRead(PushButton);
+    buttonState = digitalRead(PushButton_PIN);
     // detect state change
     if (buttonState != lastButtonState) {
       if (buttonState == LOW) { // after button was released, detect long press here
@@ -518,11 +518,11 @@ void loop() {
 
       if (voltageBuffer.available() == 0)
       {
-        BatteryValue = (float) movingaverage(&voltageBuffer,&BatterieVoltage_movav,batterie_voltage_read(BatterieVoltage));
+        BatteryValue = (float) movingaverage(&voltageBuffer,&BatterieVoltage_movav,batterie_voltage_read(BatterieVoltage_PIN));
         BatteryValue = (float)get_batterie_percent((uint16_t)BatteryValue);
         currentSet->batteryLevel = BatteryValue;
         }else{
-        (float) movingaverage(&voltageBuffer,&BatterieVoltage_movav,BatterieVoltage_value);
+        (float) movingaverage(&voltageBuffer,&BatterieVoltage_movav,batterie_voltage_read(BatterieVoltage_PIN));
         BatteryValue = -1;
       }
 

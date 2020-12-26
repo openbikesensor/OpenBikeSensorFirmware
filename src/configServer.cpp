@@ -861,10 +861,10 @@ void startServer(ObsConfig *obsConfig) {
     server.send(200, "text/html", html);
 
     bool validGPSData = false;
-    buttonState = digitalRead(PushButton);
+    buttonState = digitalRead(PushButton_PIN);
     while (!validGPSData && (buttonState == LOW)) {
       Serial.println("GPSData not valid");
-      buttonState = digitalRead(PushButton);
+      buttonState = digitalRead(PushButton_PIN);
       readGPSData();
       validGPSData = gps.location.isValid();
       if (validGPSData) {
