@@ -51,8 +51,8 @@ jobs:
         path: |
           ~/.sonar/cache
           sonarqube
-        key: ${{ runner.os }}-sonar-${{ env.SONAR_SCANNER_VERSION }}
-        restore-keys: ${{ runner.os }}-sonar-${{ env.SONAR_SCANNER_VERSION }}
+        key: ${{ runner.os }}-sonar-${{ env.SONAR_SCANNER_VERSION }}-ng
+        restore-keys: ${{ runner.os }}-sonar-${{ env.SONAR_SCANNER_VERSION }}-ng
 
     - name: Install SonarQube dependencies
       if: steps.cache-sonar.outputs.cache-hit != 'true'
