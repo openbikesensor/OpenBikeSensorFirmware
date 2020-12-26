@@ -145,7 +145,7 @@ class SSD1306DisplayDevice : public DisplayDevice {
       this->showTextOnGrid(x,y,text,font,0,0);
     }
 
-    void showTextOnGrid(int16_t x, int16_t y, String text, const uint8_t* font, uint8_t offset_x_, uint8_t offset_y_) {
+    void showTextOnGrid(int16_t x, int16_t y, String text, const uint8_t* font, int8_t offset_x_, int8_t offset_y_) {
       if (prepareTextOnGrid(x, y, text, font,offset_x_,offset_y_)) {
         m_display->display();
       }
@@ -157,7 +157,7 @@ class SSD1306DisplayDevice : public DisplayDevice {
     }
 
     bool prepareTextOnGrid(
-      int16_t x, int16_t y, String text, const uint8_t* font,uint8_t offset_x_, uint8_t offset_y_) {
+      int16_t x, int16_t y, String text, const uint8_t* font,int8_t offset_x_, int8_t offset_y_) {
       bool changed = false;
       if (!text.equals(gridText[x][y])) {
         m_display->setFont(font);
@@ -193,7 +193,7 @@ class SSD1306DisplayDevice : public DisplayDevice {
         this->cleanGridCell(x,y,0,0);
     }
 
-    void cleanGridCell(int16_t x, int16_t y,uint8_t offset_x_, uint8_t offset_y_) {
+    void cleanGridCell(int16_t x, int16_t y,int8_t offset_x_, int8_t offset_y_) {
       m_display->setColor(BLACK);
       int x_offset = 8 - (x * 2);
       m_display->drawString(x * 32 + x_offset + offset_x_, y * 10 + 1 + offset_y_, gridText[x][y]);

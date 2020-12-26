@@ -188,12 +188,12 @@ void SSD1306DisplayDevice::showBatterieValue(int16_t input_val){
 	}
 
 void SSD1306DisplayDevice::showTemperatureValue(int16_t input_val){
-    uint8_t x_offset_temp_logo = 33;
+    uint8_t x_offset_temp_logo = 30;
     uint8_t y_offset_temp_logo = 2;
     cleanTemperatur(x_offset_temp_logo,y_offset_temp_logo);
     m_display->drawXbm(x_offset_temp_logo, y_offset_temp_logo, 8, 9, TempLogo);
     String val = String(input_val);
-    this->showTextOnGrid(1, 0, " " + val + "°C", Dialog_plain_8,0,0);
+    this->showTextOnGrid(1, 0, " " + val + "°C", Dialog_plain_8,-3,0);
 }
 
 void SSD1306DisplayDevice::showVelocity(double velocity) {
