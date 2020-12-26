@@ -261,7 +261,7 @@ String configIndex =
   "Flip<br>(upside down &#8661;)<input type='checkbox' name='displayFlip' {displayFlip}>"
   ""
   "<h3>Measurement Display</h3>"
-  "Confirmation Time Window<br>(time in seconds to confirm until a new measurement starts)<input name='confirmationTimeWindow' placeholder='Milliseconds' value='{confirmationTimeWindow}'>"
+  "Confirmation Time Window<br>(time in seconds to confirm until a new measurement starts)<input name='confirmationTimeWindow' placeholder='Seconds' value='{confirmationTimeWindow}'>"
   "<hr>"
   "Simple Mode<br>(all measurement display options below are ignored)<input type='checkbox' name='displaySimple' {displaySimple}>"
   "<hr>"
