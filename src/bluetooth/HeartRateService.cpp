@@ -2,7 +2,7 @@
 
 const unsigned long measurementInterval = 1000;
 
-const BLEUUID HeartRateService::SERVICE_UUID = BLEUUID((uint16_t)0x180d);
+const BLEUUID HeartRateService::SERVICE_UUID = BLEUUID((uint16_t)ESP_GATT_UUID_HEART_RATE_SVC);
 const char * HeartRateService::DESCRIPTION_TEXT =
   "Minimum left sensor distance during the last second in cm. "
   "Range 0cm to 999cm. 999 means infinity.";
