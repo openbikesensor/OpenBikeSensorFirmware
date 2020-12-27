@@ -26,19 +26,24 @@ const std::string ObsService::BUTTON_DESCRIPTION_TEXT(
   "Confirmed pass event: ms time uint32; left cm uint16; right cm uint16; 0xffff = no reading");
 const std::string ObsService::OFFSET_DESCRIPTION_TEXT(
   "Configured OBS offsets, left offset cm uint16, right offset cm uint16");
+const std::string ObsService::TRACK_ID_DESCRIPTION_TEXT(
+  "Textual UUID assigned to the current track recording");
 const BLEUUID ObsService::OBS_SERVICE_UUID = BLEUUID("1FE7FAF9-CE63-4236-0004-000000000000");
 const BLEUUID ObsService::OBS_TIME_CHARACTERISTIC_UUID = BLEUUID("1FE7FAF9-CE63-4236-0004-000000000001");
 const BLEUUID ObsService::OBS_DISTANCE_CHARACTERISTIC_UUID = BLEUUID("1FE7FAF9-CE63-4236-0004-000000000002");
 const BLEUUID ObsService::OBS_BUTTON_CHARACTERISTIC_UUID = BLEUUID("1FE7FAF9-CE63-4236-0004-000000000003");
 const BLEUUID ObsService::OBS_OFFSET_CHARACTERISTIC_UUID = BLEUUID("1FE7FAF9-CE63-4236-0004-000000000004");
+const BLEUUID ObsService::OBS_TRACK_ID_CHARACTERISTIC_UUID = BLEUUID("1FE7FAF9-CE63-4236-0004-000000000005");
 
-ObsService::ObsService(const uint16_t leftOffset, const uint16_t rightOffset) {
+ObsService::ObsService(const uint16_t leftOffset, const uint16_t rightOffset, const String &trackId) {
   *(uint16_t*) mOffsetValue = leftOffset;
   *(uint16_t*) &mOffsetValue[2] = rightOffset;
+  strncpy(reinterpret_cast<char *>(&mTrackIdValue), trackId.c_str(), sizeof(mTrackIdValue));
 }
 
 void ObsService::setup(BLEServer *pServer) {
-  mService = pServer->createService(OBS_SERVICE_UUID);
+  // Each characteristic needs 2 handles and descriptor 1 handle.
+  mService = pServer->createService(OBS_SERVICE_UUID, 32);
 
   mService->addCharacteristic(&mTimeCharacteristic);
   mTimeCharacteristic.addDescriptor(&mTimeDescriptor);
@@ -58,8 +63,12 @@ void ObsService::setup(BLEServer *pServer) {
   mService->addCharacteristic(&mOffsetCharacteristic);
   mOffsetCharacteristic.addDescriptor(&mOffsetDescriptor);
   mOffsetDescriptor.setValue(OFFSET_DESCRIPTION_TEXT);
-
   mOffsetCharacteristic.setValue(mOffsetValue, 4);
+
+  mService->addCharacteristic(&mTrackIdCharacteristic);
+  mTrackIdCharacteristic.addDescriptor(&mTrackIdDescriptor);
+  mTrackIdDescriptor.setValue(TRACK_ID_DESCRIPTION_TEXT);
+  mTrackIdCharacteristic.setValue(mTrackIdValue, 36);
 }
 
 bool ObsService::shouldAdvertise() {

@@ -23,7 +23,8 @@ class BluetoothManager {
      */
     void init(const String &obsName,
               uint16_t leftOffset, uint16_t rightOffset,
-              std::function<uint8_t()> batteryPercentage);
+              std::function<uint8_t()> batteryPercentage,
+              const String &trackId);
 
     /**
      * Starts advertising all services that internally implement shouldAdvertise()

@@ -18,6 +18,7 @@
   the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <utils/obsutils.h>
 #include "OpenBikeSensorFirmware.h"
 
 #include "SPIFFS.h"
@@ -267,10 +268,12 @@ void setup() {
 
   displayTest->showTextOnGrid(2, 3, "CSV file...",DEFAULT_FONT);
 
+  const String trackUniqueIdentifier = ObsUtils::createTrackUuid();
+
   if (SD.begin()) {
     writer = new CSVFileWriter;
     writer->setFileName();
-    writer->writeHeader();
+    writer->writeHeader(trackUniqueIdentifier);
     displayTest->showTextOnGrid(2, 3, "CSV file... ok",DEFAULT_FONT);
     Serial.println("File initialised");
   } else {
@@ -307,7 +310,8 @@ void setup() {
       cfg.getProperty<String>(ObsConfig::PROPERTY_OBS_NAME),
       config.sensorOffsets[LEFT_SENSOR_ID],
       config.sensorOffsets[RIGHT_SENSOR_ID],
-      batteryPercentage);
+      batteryPercentage,
+      trackUniqueIdentifier);
     bluetoothManager->activateBluetooth();
   } else {
     bluetoothManager = nullptr;

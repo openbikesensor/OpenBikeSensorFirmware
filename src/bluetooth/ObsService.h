@@ -36,7 +36,7 @@ class ObsTimeServiceCallback : public BLECharacteristicCallbacks {
 
 class ObsService : public IBluetoothService {
   public:
-    ObsService(uint16_t leftOffset, uint16_t rightOffset);
+    ObsService(uint16_t leftOffset, uint16_t rightOffset, const String &trackId);
     void setup(BLEServer *pServer) override;
     bool shouldAdvertise() override;
     BLEService* getService() override;
@@ -48,7 +48,7 @@ class ObsService : public IBluetoothService {
     BLECharacteristic mTimeCharacteristic
       = BLECharacteristic(OBS_TIME_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ);
     uint32_t mTimerValue = 0;
-    BLEDescriptor mTimeDescriptor = BLEUUID((uint16_t)0x2901);
+    BLEDescriptor mTimeDescriptor = BLEUUID((uint16_t)ESP_GATT_UUID_CHAR_DESCRIPTION);
     ObsTimeServiceCallback mTimeCharacteristicsCallback = ObsTimeServiceCallback(&mTimerValue);
 
     BLECharacteristic mDistanceCharacteristic
@@ -59,22 +59,29 @@ class ObsService : public IBluetoothService {
     BLECharacteristic mButtonCharacteristic
       = BLECharacteristic(OBS_BUTTON_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_NOTIFY);
     uint8_t mButtonValue[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-    BLEDescriptor mButtonDescriptor = BLEDescriptor(BLEUUID((uint16_t)0x2901));
+    BLEDescriptor mButtonDescriptor = BLEDescriptor(BLEUUID((uint16_t)ESP_GATT_UUID_CHAR_DESCRIPTION));
 
     BLECharacteristic mOffsetCharacteristic
       = BLECharacteristic(OBS_OFFSET_CHARACTERISTIC_UUID,BLECharacteristic::PROPERTY_READ);
     uint8_t mOffsetValue[4] = {0, 0, 0, 0};
-    BLEDescriptor mOffsetDescriptor = BLEDescriptor(BLEUUID((uint16_t)0x2901));
+    BLEDescriptor mOffsetDescriptor = BLEDescriptor(BLEUUID((uint16_t)ESP_GATT_UUID_CHAR_DESCRIPTION));
+
+    BLECharacteristic mTrackIdCharacteristic
+      = BLECharacteristic(OBS_TRACK_ID_CHARACTERISTIC_UUID,BLECharacteristic::PROPERTY_READ);
+    uint8_t mTrackIdValue[36];
+    BLEDescriptor mTrackIdDescriptor = BLEDescriptor(BLEUUID((uint16_t)ESP_GATT_UUID_CHAR_DESCRIPTION));
 
     static const std::string TIME_DESCRIPTION_TEXT;
     static const std::string DISTANCE_DESCRIPTION_TEXT;
     static const std::string BUTTON_DESCRIPTION_TEXT;
     static const std::string OFFSET_DESCRIPTION_TEXT;
+    static const std::string TRACK_ID_DESCRIPTION_TEXT;
     static const BLEUUID OBS_SERVICE_UUID;
     static const BLEUUID OBS_TIME_CHARACTERISTIC_UUID;
     static const BLEUUID OBS_DISTANCE_CHARACTERISTIC_UUID;
     static const BLEUUID OBS_BUTTON_CHARACTERISTIC_UUID;
     static const BLEUUID OBS_OFFSET_CHARACTERISTIC_UUID;
+    static const BLEUUID OBS_TRACK_ID_CHARACTERISTIC_UUID;
 };
 
 #endif

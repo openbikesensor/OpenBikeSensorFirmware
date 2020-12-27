@@ -65,7 +65,7 @@ class FileWriter {
       mFileExtension(std::move(ext)) {};
     virtual ~FileWriter() = default;
     void setFileName();
-    virtual bool writeHeader() = 0;
+    virtual bool writeHeader(String trackId) = 0;
     virtual bool append(DataSet &) = 0;
     bool appendString(const String &s);
     bool flush();
@@ -91,7 +91,7 @@ class CSVFileWriter : public FileWriter {
   public:
     CSVFileWriter() : FileWriter(EXTENSION) {}
     ~CSVFileWriter() override = default;
-    bool writeHeader() override;
+    bool writeHeader(String trackId) override;
     bool append(DataSet&) override;
     static const String EXTENSION;
 };
