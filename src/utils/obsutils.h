@@ -20,7 +20,7 @@
 #ifndef OPENBIKESENSORFIRMWARE_OBSUTILS_H
 #define OPENBIKESENSORFIRMWARE_OBSUTILS_H
 
-#include <arduino.h>
+#include <Arduino.h>
 
 /**
  * Class for internal - static only methods.
