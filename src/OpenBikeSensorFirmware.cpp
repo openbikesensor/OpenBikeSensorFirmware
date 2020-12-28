@@ -204,7 +204,7 @@ void setup() {
       displayTest->showTextOnGrid(2, 2, "SD... error",DEFAULT_FONT);
       if (config.simRaMode || digitalRead(PushButton_PIN) == HIGH) {
         break;
-      }
+      }  // FIXME: Stop trying!!?
     }
     Serial.println("Card Mount Failed");
     //delay(100);

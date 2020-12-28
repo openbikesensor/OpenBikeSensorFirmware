@@ -47,12 +47,11 @@ class ObsService : public IBluetoothService {
     BLECharacteristic mTimeCharacteristic
       = BLECharacteristic(OBS_TIME_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ);
     BLEDescriptor mTimeDescriptor = BLEUUID((uint16_t)ESP_GATT_UUID_CHAR_DESCRIPTION);
-    ObsTimeServiceCallback mTimeCharacteristicsCallback = ObsTimeServiceCallback(&mTimerValue);
+    ObsTimeServiceCallback mTimeCharacteristicsCallback;
 
     BLECharacteristic mDistanceCharacteristic
       = BLECharacteristic(OBS_DISTANCE_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_NOTIFY);
-    uint8_t mDistanceValue[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-    BLEDescriptor mDistanceDescriptor = BLEDescriptor(BLEUUID((uint16_t)0x2901));
+    BLEDescriptor mDistanceDescriptor = BLEDescriptor(BLEUUID((uint16_t)ESP_GATT_UUID_CHAR_DESCRIPTION));
 
     BLECharacteristic mButtonCharacteristic
       = BLECharacteristic(OBS_BUTTON_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_NOTIFY);

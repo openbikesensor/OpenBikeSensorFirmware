@@ -46,12 +46,6 @@ void BluetoothManager::disconnectDevice() const {
 }
 
 void BluetoothManager::newSensorValues(const uint32_t millis, const uint16_t leftValues, const uint16_t rightValues) {
-  // Discarding values if they are more recent than 50 ms
-  if (millis - lastValueTimestamp < 50) {
-    return;
-  }
-  lastValueTimestamp = millis;
-
   for (auto &service : services) {
     service->newSensorValues(millis, leftValues, rightValues);
   }
