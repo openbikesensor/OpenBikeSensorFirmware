@@ -16,3 +16,23 @@
 ; === build_flags ===
 ; build with development option
 ; build_flags = -D DEVELOP
+
+;;;; Loglevel for debugging ;;;;
+
+; None
+;build_flags = -DCORE_DEBUG_LEVEL=0
+
+; Error
+;build_flags = -DCORE_DEBUG_LEVEL=1
+
+; Warn
+;build_flags = -DCORE_DEBUG_LEVEL=2
+
+; Info
+;build_flags = -DCORE_DEBUG_LEVEL=3
+
+; Debug
+;build_flags = -DCORE_DEBUG_LEVEL=4
+
+; Verbose
+;build_flags = -DCORE_DEBUG_LEVEL=5

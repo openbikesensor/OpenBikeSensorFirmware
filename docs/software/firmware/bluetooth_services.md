@@ -94,6 +94,7 @@ The following events are defined:
 | Sensor Distance     | `1FE7FAF9-CE63-4236-0004-000000000002` | `NOTIFY`        | Gives sensor reading of the left and right sensor.                                  |
 | Close Pass          | `1FE7FAF9-CE63-4236-0004-000000000003` | `NOTIFY`        | Notifies of button confirmed close pass events.                                     |
 | Offset              | `1FE7FAF9-CE63-4236-0004-000000000004` | `READ`          | Configured handle bar offset values in cm.                                          |
+| Track Id            | `1FE7FAF9-CE63-4236-0004-000000000005` | `READ`          | UUID as text to uniquely identify the current recorded track.                       |
 
 This service uses binary format to transfer time counter as unit32 and unt16
 for distance in cm. 
@@ -116,3 +117,7 @@ to match the event to the correct time and so location.
 is purely to ease the user configuration. The offset is not considered in any 
 of the other reported values. The service uses 2 uint16 values to report the
 left and right offset in cm in that order.
+
+*Tack Id* holds a UUID as String representation that can be used to uniquely
+identify the recorded track. If the value changes, a new track is recorded, and
+the millisecond counter on the OBS likely is restarted. 
