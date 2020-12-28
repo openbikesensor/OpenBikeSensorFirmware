@@ -36,14 +36,16 @@ const BLEUUID ObsService::OBS_OFFSET_CHARACTERISTIC_UUID = BLEUUID("1FE7FAF9-CE6
 const BLEUUID ObsService::OBS_TRACK_ID_CHARACTERISTIC_UUID = BLEUUID("1FE7FAF9-CE63-4236-0004-000000000005");
 
 ObsService::ObsService(const uint16_t leftOffset, const uint16_t rightOffset, const String &trackId) {
-  *(uint16_t*) mOffsetValue = leftOffset;
-  *(uint16_t*) &mOffsetValue[2] = rightOffset;
-  strncpy(reinterpret_cast<char *>(&mTrackIdValue), trackId.c_str(), sizeof(mTrackIdValue));
+  uint8_t offsets[4];
+  memcpy(offsets, &leftOffset, 2);
+  memcpy(&offsets[2], &rightOffset, 2);
+  mOffsetCharacteristic.setValue(offsets, 4);
+  mTrackIdCharacteristic.setValue(trackId.c_str());
 }
 
 void ObsService::setup(BLEServer *pServer) {
   // Each characteristic needs 2 handles and descriptor 1 handle.
-  mService = pServer->createService(OBS_SERVICE_UUID, 32);
+  mService = pServer->createService(OBS_SERVICE_UUID, 18);
 
   mService->addCharacteristic(&mTimeCharacteristic);
   mTimeCharacteristic.addDescriptor(&mTimeDescriptor);
@@ -63,12 +65,10 @@ void ObsService::setup(BLEServer *pServer) {
   mService->addCharacteristic(&mOffsetCharacteristic);
   mOffsetCharacteristic.addDescriptor(&mOffsetDescriptor);
   mOffsetDescriptor.setValue(OFFSET_DESCRIPTION_TEXT);
-  mOffsetCharacteristic.setValue(mOffsetValue, 4);
 
   mService->addCharacteristic(&mTrackIdCharacteristic);
   mTrackIdCharacteristic.addDescriptor(&mTrackIdDescriptor);
   mTrackIdDescriptor.setValue(TRACK_ID_DESCRIPTION_TEXT);
-  mTrackIdCharacteristic.setValue(mTrackIdValue, 36);
 }
 
 bool ObsService::shouldAdvertise() {
@@ -80,22 +80,29 @@ BLEService* ObsService::getService() {
 }
 
 void ObsService::newSensorValues(uint32_t millis, uint16_t leftValue, uint16_t rightValue) {
-  *(uint32_t*) mDistanceValue = millis;
-  *(uint16_t*) &mDistanceValue[4] = leftValue == MAX_SENSOR_VALUE ? 0xffff : leftValue;
-  *(uint16_t*) &mDistanceValue[6] = rightValue == MAX_SENSOR_VALUE ? 0xffff : rightValue;
-  mDistanceCharacteristic.setValue(mDistanceValue, 8);
-  mDistanceCharacteristic.notify();
+  sendEventData(&mDistanceCharacteristic, millis, leftValue, rightValue);
 }
 
 void ObsService::newPassEvent(uint32_t millis, uint16_t leftValue, uint16_t rightValue) {
-  *(uint32_t*) mButtonValue = millis;
-  *(uint16_t*) &mButtonValue[4] = leftValue == MAX_SENSOR_VALUE ? 0xffff : leftValue;
-  *(uint16_t*) &mButtonValue[6] = rightValue == MAX_SENSOR_VALUE ? 0xffff : rightValue;
-  mButtonCharacteristic.setValue(mButtonValue, 8);
-  mButtonCharacteristic.notify();
+  sendEventData(&mButtonCharacteristic, millis, leftValue, rightValue);
 }
 
 void ObsTimeServiceCallback::onRead(BLECharacteristic *pCharacteristic) {
-  *mValue = millis();
-  pCharacteristic->setValue(*mValue);
+  uint32_t value = millis();
+  pCharacteristic->setValue(value);
+}
+
+void ObsService::sendEventData(BLECharacteristic *characteristic, uint32_t millis, uint16_t leftValue, uint16_t rightValue) {
+  uint8_t event[8];
+  memcpy(event, &millis, sizeof(millis));
+  if (leftValue == MAX_SENSOR_VALUE) {
+    leftValue = 0xffff;
+  }
+  memcpy(&event[4], &leftValue, sizeof(leftValue));
+  if (rightValue == MAX_SENSOR_VALUE) {
+    rightValue = 0xffff;
+  }
+  memcpy(&event[6], &rightValue, sizeof(rightValue));
+  characteristic->setValue(event, 8);
+  characteristic->notify();
 }

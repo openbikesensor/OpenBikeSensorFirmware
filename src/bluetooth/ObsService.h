@@ -25,12 +25,7 @@
 
 class ObsTimeServiceCallback : public BLECharacteristicCallbacks {
   public:
-    explicit ObsTimeServiceCallback(uint32_t *value) : mValue(value) {};
     void onRead(BLECharacteristic *pCharacteristic) override;
-
-  private:
-    uint32_t *mValue;
-
 };
 
 
@@ -44,10 +39,13 @@ class ObsService : public IBluetoothService {
     void newPassEvent(uint32_t millis, uint16_t leftValue, uint16_t rightValue) override;
 
   private:
+    void sendEventData(BLECharacteristic *characteristic,
+                       uint32_t millis, uint16_t leftValue, uint16_t rightValue);
+
     BLEService *mService = nullptr;
+
     BLECharacteristic mTimeCharacteristic
       = BLECharacteristic(OBS_TIME_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ);
-    uint32_t mTimerValue = 0;
     BLEDescriptor mTimeDescriptor = BLEUUID((uint16_t)ESP_GATT_UUID_CHAR_DESCRIPTION);
     ObsTimeServiceCallback mTimeCharacteristicsCallback = ObsTimeServiceCallback(&mTimerValue);
 
@@ -58,17 +56,14 @@ class ObsService : public IBluetoothService {
 
     BLECharacteristic mButtonCharacteristic
       = BLECharacteristic(OBS_BUTTON_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_NOTIFY);
-    uint8_t mButtonValue[8] = {0, 0, 0, 0, 0, 0, 0, 0};
     BLEDescriptor mButtonDescriptor = BLEDescriptor(BLEUUID((uint16_t)ESP_GATT_UUID_CHAR_DESCRIPTION));
 
     BLECharacteristic mOffsetCharacteristic
       = BLECharacteristic(OBS_OFFSET_CHARACTERISTIC_UUID,BLECharacteristic::PROPERTY_READ);
-    uint8_t mOffsetValue[4] = {0, 0, 0, 0};
     BLEDescriptor mOffsetDescriptor = BLEDescriptor(BLEUUID((uint16_t)ESP_GATT_UUID_CHAR_DESCRIPTION));
 
     BLECharacteristic mTrackIdCharacteristic
       = BLECharacteristic(OBS_TRACK_ID_CHARACTERISTIC_UUID,BLECharacteristic::PROPERTY_READ);
-    uint8_t mTrackIdValue[36];
     BLEDescriptor mTrackIdDescriptor = BLEDescriptor(BLEUUID((uint16_t)ESP_GATT_UUID_CHAR_DESCRIPTION));
 
     static const std::string TIME_DESCRIPTION_TEXT;

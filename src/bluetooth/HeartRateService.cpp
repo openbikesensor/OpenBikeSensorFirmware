@@ -8,7 +8,7 @@ const char * HeartRateService::DESCRIPTION_TEXT =
   "Range 0cm to 999cm. 999 means infinity.";
 
 void HeartRateService::setup(BLEServer *pServer) {
-  mService = pServer->createService(SERVICE_UUID);
+  mService = pServer->createService(SERVICE_UUID, 5);
   mService->addCharacteristic(&mHeartRateMeasurementCharacteristics);
   mHeartRateDescriptor.setValue(DESCRIPTION_TEXT);
   mHeartRateDescriptor.setAccessPermissions(ESP_GATT_PERM_READ);
