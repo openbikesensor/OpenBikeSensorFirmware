@@ -117,7 +117,7 @@ unsigned long FileWriter::getWriteTimeMillis() const {
   return mWriteTimeMillis;
 }
 
-bool CSVFileWriter::writeHeader() {
+bool CSVFileWriter::writeHeader(String trackId) {
   String header;
   header += "OBSDataFormat=2&";
   header += "OBSFirmwareVersion=" + String(OBSVersion) + "&";
@@ -127,6 +127,7 @@ bool CSVFileWriter::writeHeader() {
   header += "OffsetLeft=" + String(config.sensorOffsets[LEFT_SENSOR_ID]) + "&";
   header += "OffsetRight=" + String(config.sensorOffsets[RIGHT_SENSOR_ID]) + "&";
   header += "NumberOfDefinedPrivacyAreas=" + String((int) config.privacyAreas.size()) + "&";
+  header += "TrackId=" + trackId + "&";
   header += "PrivacyLevelApplied=";
 
   String privacyString;

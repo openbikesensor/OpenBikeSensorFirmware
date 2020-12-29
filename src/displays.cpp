@@ -110,11 +110,14 @@ void SSD1306DisplayDevice::showValues(
   }
   // Show Batterie voltage
   #warning not checked if colliding with other stuff
-	if(BatterieVolt >=-1)
-      showBatterieValue((BatterieVolt));
 
-  if(TemperaturValue > -100)
-    showTemperatureValue(TemperaturValue);
+    if(BatterieVolt >=-1)
+        showBatterieValue((BatterieVolt));
+
+  if (!(config.displayConfig & DisplaySimple)){
+    if(TemperaturValue > -100)
+      showTemperatureValue(TemperaturValue);
+  }
 
   m_display->display();
 
@@ -134,6 +137,13 @@ void SSD1306DisplayDevice::showBatterieValue(int16_t input_val){
 
     uint8_t x_offset_batterie_logo = 65;
     uint8_t y_offset_batterie_logo = 2;
+    int8_t xlocation = 2;
+
+     if ((config.displayConfig & DisplaySimple)){
+       x_offset_batterie_logo += 32;
+       xlocation += 1;
+     }
+
     //cleanGridCellcomplete(3,0);
 
 /*     if(input_val == -1){
@@ -152,10 +162,8 @@ void SSD1306DisplayDevice::showBatterieValue(int16_t input_val){
     } */
 		if(input_val >= 0){
 			String val = String(input_val);
-
-
       //showLogo(true);
-			this->showTextOnGrid(2, 0, " " + val + "%", Dialog_plain_8,3,0);
+			this->showTextOnGrid(xlocation, 0, " " + val + "%", Dialog_plain_8,3,0);
        //m_display[0]->drawXbm(192, 0, 8, 9, BatterieLogo1);
 
        if(input_val > 90){

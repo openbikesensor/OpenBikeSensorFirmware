@@ -38,6 +38,7 @@ understand.
 | `DeviceId` | `affe` | internal Id of the OBS |
 | `PresetId` | `Wade` | Id to identify the selected preset. A owner might define multiple presets |
 | `BluetoothEnabled` | `1` | 1 if bluetooth is enabled, 0 otherwise
+| `TrackId` | `38605ba-76...` | A uuid that can be used to uniquely identify the track.
 
 ## CSV
 

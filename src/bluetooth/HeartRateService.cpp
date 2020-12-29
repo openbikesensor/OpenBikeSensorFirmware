@@ -2,13 +2,13 @@
 
 const unsigned long measurementInterval = 1000;
 
-const BLEUUID HeartRateService::SERVICE_UUID = BLEUUID((uint16_t)0x180d);
+const BLEUUID HeartRateService::SERVICE_UUID = BLEUUID((uint16_t)ESP_GATT_UUID_HEART_RATE_SVC);
 const char * HeartRateService::DESCRIPTION_TEXT =
   "Minimum left sensor distance during the last second in cm. "
   "Range 0cm to 999cm. 999 means infinity.";
 
 void HeartRateService::setup(BLEServer *pServer) {
-  mService = pServer->createService(SERVICE_UUID);
+  mService = pServer->createService(SERVICE_UUID, 5);
   mService->addCharacteristic(&mHeartRateMeasurementCharacteristics);
   mHeartRateDescriptor.setValue(DESCRIPTION_TEXT);
   mHeartRateDescriptor.setAccessPermissions(ESP_GATT_PERM_READ);

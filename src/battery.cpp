@@ -19,6 +19,9 @@ int8_t get_batterie_percent(uint16_t adc_value){
     }else if (adc_value > 2370)
     {
       return 0.1 * adc_value - 237;
+    }else if(adc_value <= 2370)
+    {
+      return 0;
     }
 
     return -1;
