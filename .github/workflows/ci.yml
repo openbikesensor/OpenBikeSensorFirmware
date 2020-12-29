@@ -124,17 +124,23 @@ jobs:
     - name: Upload Build Asset
       uses: actions/upload-artifact@v2
       with:
-        name: obs ${{ env.OBS_VERSION }}
+        name: obs-${{ env.OBS_VERSION }}
         path: |
           bin/.pio/build/esp32dev/firmware.bin
+          COPYRIGHT-ESP.html
+          LICENSE-ARDUINO-ESP32.md
+          LICENSE
         if-no-files-found: error
 
     - name: Upload Build Asset Full Flash
       uses: actions/upload-artifact@v2
       with:
-        name: obs ${{ env.OBS_VERSION }} full flash
+        name: obs-${{ env.OBS_VERSION }}-initial-flash
         path: |
           0x*.bin
+          COPYRIGHT-ESP.html
+          LICENSE-ARDUINO-ESP32.md
+          LICENSE
         if-no-files-found: error
 
     - name: Generate changelog
