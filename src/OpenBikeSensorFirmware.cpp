@@ -232,6 +232,7 @@ void setup() {
     OtaInit(esp_chipid);
 
     while (true) {
+      readGPSData();
       server.handleClient();
       delay(1);
       ArduinoOTA.handle();
