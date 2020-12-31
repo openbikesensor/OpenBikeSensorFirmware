@@ -84,6 +84,8 @@ If all fails, use the OBS Slack to get some help.
 Currently, there is not much troubleshooting info collected, 
 but this will change.
 
+Now you can continue at the user documentation at 
+[OBS - User Guide - Configuration](https://www.openbikesensor.org/user-guide/configuration.html).
 
 ## Licenses
 
