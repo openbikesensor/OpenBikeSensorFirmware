@@ -63,7 +63,7 @@ String style =
   "li.file a {text-decoration: none;}"
   "</style>";
 
-String previous = "<a href=\"javascript:history.back()\" class='previous'>&#8249;</a>";
+const String previous = "<a href=\"javascript:history.back()\" class='previous'>&#8249;</a>";
 
 String header =
   "<!DOCTYPE html>\n"
@@ -84,7 +84,7 @@ String header =
   "<p>Firmware version: {version}</p>"
   + previous;
 
-String footer = "</form></body></html>";
+const String footer = "</form></body></html>";
 
 // #########################################
 // Upload form
@@ -292,7 +292,7 @@ String configIndex =
 // #########################################
 
 /* Server Index Page */
-String uploadIndex = "<h3>Update</h3>";
+const String uploadIndex = "<h3>Update</h3>";
 
 // #########################################
 // Privacy
@@ -441,6 +441,19 @@ void aboutPage() {
   page += keyValue("App MD5", ESP.getSketchMD5());
   page += keyValue("Flash size", String(ESP.getFlashChipSize() / 1024), "kb");
   page += keyValue("Flash speed", String(ESP.getFlashChipSpeed() / 1000 / 1000), "MHz");
+  page += keyValue("App 'DEVELOP'",
+#ifdef DEVELOP
+                   "true"
+#else
+                        "false"
+#endif
+  );
+#ifdef CONFIG_LOG_DEFAULT_LEVEL
+  page += keyValue("Log default level", String(CONFIG_LOG_DEFAULT_LEVEL));
+#endif
+#ifdef CORE_DEBUG_LEVEL
+  page += keyValue("Core debug level", String(CORE_DEBUG_LEVEL));
+#endif
 
   esp_chip_info_t ci;
   esp_chip_info(&ci);
@@ -469,6 +482,7 @@ void aboutPage() {
 
   page += "<h3>TOF Sensors</h3>";
   page += "<h3>GPS</h3>";
+  page += keyValue("TinyGPSPlus version", TinyGPSPlus::libraryVersion());
   page += "<h3>Display / Button</h3>";
 
   page = createPage(page);
