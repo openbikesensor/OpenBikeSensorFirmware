@@ -28,6 +28,7 @@
 class ObsUtils {
   public:
     static String createTrackUuid();
+    static String dateTimeToString(time_t time = 0);
 };
 
 

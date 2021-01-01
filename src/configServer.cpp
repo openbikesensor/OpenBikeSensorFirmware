@@ -24,9 +24,14 @@
 // only if provided appropriate credit to the author and link to the original article.
 
 #include "configServer.h"
+#include "OpenBikeSensorFirmware.h"
 #include <SD.h>
 #include <FS.h>
 #include <uploader.h>
+#include <utils/obsutils.h>
+#include "SPIFFS.h"
+
+extern std::vector<String> gpsMessages;
 
 const char* host = "openbikesensor";
 
@@ -37,12 +42,16 @@ WebServer server(80);
 String json_buffer;
 
 /* Style */
+// TODO
+//  - Fix CSS Style for mobile && desktop
+//  - a vs. button
+//  - back navigation after save
 String style =
   "<style>"
   "#file-input,input, button {width:100%;height:44px;border-radius:4px;margin:10px auto;font-size:15px;}"
-  "input, button, a.back {background:#f1f1f1;border:0;padding:0 15px;text-align:center;}"
-  "body {background:#3498db;font-family:sans-serif;font-size:14px;color:#777}"
-  "#file-input {padding:0 5;border:1px solid #ddd;line-height:44px;text-align:left;display:block;cursor:pointer}"
+  "input, button, a.back {background:#f1f1f1;border:0;padding:0;text-align:center;}"
+  "body {background:#3498db;font-family:sans-serif;font-size:12px;color:#777}"
+  "#file-input {padding:0 5px;border:1px solid #ddd;line-height:44px;text-align:left;display:block;cursor:pointer}"
   "#bar,#prgbar {background-color:#f1f1f1;border-radius:10px}"
   "#bar {background-color:#3498db;width:0%;height:10px}"
   "form {background:#fff;max-width:258px;margin:75px auto;padding:30px;border-radius:5px;text-align:center}"
@@ -61,21 +70,20 @@ String style =
   "li.file a {text-decoration: none;}"
   "</style>";
 
-String previous = "<a href='/' class='previous'>&#8249;</a>";
+const String previous = "<a href=\"javascript:history.back()\" class='previous'>&#8249;</a>";
 
 String header =
+  "<!DOCTYPE html>\n"
+  "<html lang=\"en\"><head><meta charset=\"utf-8\"/><title>{title}</title>" + style + ""
   "<script>"
   "window.onload = function() {"
-  "  console.log(window.location.pathname);"
   "  if (window.location.pathname == '/') {"
-  "    console.log('Hide previous');"
   "    document.querySelectorAll('.previous')[0].style.display = 'none';"
   "  } else {"
-  "    console.log('Show previous');"
   "    document.querySelectorAll('.previous')[0].style.display = '';"
   "  }"
   "}"
-  "</script>"
+  "</script></head><body>"
   ""
   "<form action='{action}'>"
   "<h1><a href='/'>OpenBikeSensor</a></h1>"
@@ -83,8 +91,7 @@ String header =
   "<p>Firmware version: {version}</p>"
   + previous;
 
-String footer = "</form>"
-  + style;
+const String footer = "</form></body></html>";
 
 // #########################################
 // Upload form
@@ -95,7 +102,7 @@ String xhrUpload =   "<input type='file' name='upload' id='file' accept='{accept
   "<input id='btn' type='submit' class=btn value='Upload'>"
   "<br><br>"
   "<div id='prg'></div>"
-  "<br><div id='prgbar'><div id='bar'></div></div><br></form>"
+  "<br><div id='prgbar'><div id='bar'></div></div><br>" // </form>"
   "<script>"
   ""
   "function hide(x) { x.style.display = 'none'; }"
@@ -159,19 +166,18 @@ String xhrUpload =   "<input type='file' name='upload' id='file' accept='{accept
 // #########################################
 
 String navigationIndex =
-  header +
+  "<input type=button onclick=\"window.location.href='/upload'\" class=btn value='Upload Tracks'>"
   "<h3>Settings</h3>"
-  "<input type=button onclick=window.location.href='/settings/general' class=btn value='General'>"
-  "<input type=button onclick=window.location.href='/settings/privacy' class=btn value='Privacy Zones'>"
-  "<input type=button onclick=window.location.href='/settings/wifi' class=btn value='Wifi'>"
-  "<input type=button onclick=window.location.href='/settings/backup' class=btn value='Backup &amp; Restore'>"
+  "<input type=button onclick=\"window.location.href='/settings/general'\" class=btn value='General'>"
+  "<input type=button onclick=\"window.location.href='/settings/privacy'\" class=btn value='Privacy Zones'>"
+  "<input type=button onclick=\"window.location.href='/settings/wifi'\" class=btn value='Wifi'>"
+  "<input type=button onclick=\"window.location.href='/settings/backup'\" class=btn value='Backup &amp; Restore'>"
   "<h3>Maintenance</h3>"
-  "<input type=button onclick=window.location.href='/update' class=btn value='Update Firmware'>"
-  "<input type=button onclick=window.location.href='/upload' class=btn value='Upload Tracks'>"
-  "<input type=button onclick=window.location.href='/sd' class=btn value='Show SD Card Contents'>"
-  "<input type=button onclick=window.location.href='/reboot' class=btn value='Reboot'>"
-  "{dev}"
-  + footer;
+  "<input type=button onclick=\"window.location.href='/update'\" class=btn value='Update Firmware'>"
+  "<input type=button onclick=\"window.location.href='/sd'\" class=btn value='Show SD Card Contents'>"
+  "<input type=button onclick=\"window.location.href='/about'\" class=btn value='About'>"
+  "<input type=button onclick=\"window.location.href='/reboot'\" class=btn value='Reboot'>"
+  "{dev}";
 
 // #########################################
 // Development
@@ -179,24 +185,20 @@ String navigationIndex =
 
 String development =
   "<h3>Development</h3>"
-  "<input type=button onclick=window.location.href='/settings/development' class=btn value='Development'>"
-  + footer;
+  "<input type=button onclick=\"window.location.href='/settings/development'\" class=btn value='Development'>";
 
 // #########################################
 // Reboot
 // #########################################
 
 String rebootIndex =
-  header +
-  "<div>Device reboots now.</div>"
-  + footer;
+  "<div>Device reboots now.</div>";
 
 // #########################################
 // Wifi
 // #########################################
 
 String wifiSettingsIndex =
-  header +
   "<script>"
   "function resetPassword() { document.getElementById('pass').value = ''; }"
   "</script>"
@@ -205,41 +207,34 @@ String wifiSettingsIndex =
   "<input name=ssid placeholder='ssid' value='{ssid}'>"
   "Password"
   "<input id=pass name=pass placeholder='password' type='Password' value='{password}' onclick='resetPassword()'>"
-  "<input type=submit class=btn value=Save>"
-  + footer;
+  "<input type=submit class=btn value=Save>";
 
 // #########################################
 // Backup and Restore
 // #########################################
 
 String backupIndex =
-  header +
   "<p>This backups and restores the device configuration incl. the Basic Config, Privacy Zones and Wifi Settings.</p>"
   "<h3>Backup</h3>"
-  "<a href='/settings/backup.json'><button type='button' class='btn'>Download</button></a>"
-  "<h3>Restore</h3>"
-  + xhrUpload
-  + footer;
+  "<input type='submit' onclick=\"window.location.href='/settings/backup.json'\" class=btn value='Download' />"
+  "<h3>Restore</h3>";
 
 // #########################################
 // Development Index
 // #########################################
 
 String devIndex =
-  header +
   "<h3>Display</h3>"
   "Show Grid<br><input type='checkbox' name='showGrid' {showGrid}>"
   "Print WLAN password to serial<br><input type='checkbox' name='printWifiPassword' {printWifiPassword}>"
   "<input type=submit class=btn value=Save>"
-  "<hr>"
-  + footer;
+  "<hr>";
 
 // #########################################
 // Config
 // #########################################
 
 String configIndex =
-  header +
   "<h3>Sensor</h3>"
   "Offset Sensor Left<input name='offsetS1' placeholder='Offset Sensor Left' value='{offset1}'>"
   "<hr>"
@@ -279,13 +274,13 @@ String configIndex =
   "<small>Displays raw, unfiltered distance sensor reading in cm (L=left/R=right) "
   "and reading-cycles per second (F) in the form <code>LLL|FF|RRR</code> in the 2nd display line.</small>"
   "<h3>Privacy Options</h3>"
-  "<label for='location'>Dont record at all in privacy areas</label>"
+  "<label for='absolutePrivacy'>Dont record at all in privacy areas</label>"
   "<input type='radio' id='absolutePrivacy' name='privacyOptions' value='absolutePrivacy' {absolutePrivacy}>"
   "<hr>"
-  "<label for='location'>Dont record position in privacy areas</label>"
+  "<label for='noPosition'>Dont record position in privacy areas</label>"
   "<input type='radio' id='noPosition' name='privacyOptions' value='noPosition' {noPosition}>"
   "<hr>"
-  "<label for='location'>Record even in privacy areas</label>"
+  "<label for='noPrivacy'>Record even in privacy areas</label>"
   "<input type='radio' id='noPrivacy' name='privacyOptions' value='noPrivacy' {noPrivacy}>"
   "<hr>"
   "Override Privacy when Pushing the Button<input type='checkbox' name='overridePrivacy' {overridePrivacy}>"
@@ -297,42 +292,49 @@ String configIndex =
   "Enable Bluetooth <input type='checkbox' name='bluetooth' {bluetooth}>"
   "<hr>"
   "SimRa Mode <input type='checkbox' name='simRaMode' {simRaMode}>"
-  "<input type=submit class=btn value=Save>"
-  + footer;
+  "<input type=submit class=btn value=Save>";
 
 // #########################################
 // Upload
 // #########################################
 
 /* Server Index Page */
-String uploadIndex =
-  header +
-  "<h3>Update</h3>" +
-  xhrUpload +
-  footer;
+const String uploadIndex = "<h3>Update</h3>";
 
 // #########################################
 // Privacy
 // #########################################
 
-String privacyIndexPrefix =
-  header;
-
 String privacyIndexPostfix =
-  "<input type=submit onclick=window.location.href='/' class=btn value=Save>"
-  "<input type=button onclick=window.location.href='/settings/privacy/makeCurrentLocationPrivate' class=btn value='Make current location private'>"
-  "</form>"
-  + style;
+  "<input type=submit onclick=\"window.location.href='/'\" class=btn value=Save>"
+  "<input type=button onclick=\"window.location.href='/settings/privacy/makeCurrentLocationPrivate'\" class=btn value='Make current location private'>";
 
 
 String makeCurrentLocationPrivateIndex =
-  header +
-  "<div>Making current location private, waiting for fix. Press device button to cancel.</div>"
-  + footer;
+  "<div>Making current location private, waiting for fix. Press device button to cancel.</div>";
 
 // #########################################
 
 void tryWiFiConnect(const ObsConfig *obsConfig);
+
+String createPage(String content, String additionalContent = "") {
+  String result;
+  result += header;
+  result += content;
+  result += additionalContent;
+  result += footer;
+
+  return result;
+}
+
+String replaceDefault(String html, String subTitle, String action = "#") {
+  html.replace("{title}",
+               theObsConfig->getProperty<String>(ObsConfig::PROPERTY_OBS_NAME) + " - " + subTitle);
+  html.replace("{version}", OBSVersion);
+  html.replace("{subtitle}", subTitle);
+  html.replace("{action}", action);
+  return html;
+}
 
 void handle_NotFound() {
   server.send(404, "text/plain", "Not found");
@@ -423,6 +425,127 @@ void wifiAction() {
   server.send(200, "text/html", s);
 }
 
+String keyValue(String key, String value, String suffix = "") {
+  return "<b>" + key + ":</b> " + value + suffix + "<br />";
+}
+
+void aboutPage() {
+  String page;
+
+  page += "<h3>ESP32</h3>"; // SPDIFF
+  page += keyValue("Heap size", String(ESP.getHeapSize() / 1024), "kb");
+  page += keyValue("Free heap", String(ESP.getFreeHeap() / 1024), "kb");
+  page += keyValue("Min. free heap", String(ESP.getMinFreeHeap() / 1024), "kb");
+  String chipId = String((uint32_t) ESP.getEfuseMac(), HEX) + String((uint32_t) (ESP.getEfuseMac() >> 32), HEX);
+  chipId.toUpperCase();
+  page += keyValue("Chip id", chipId);
+  page += keyValue("IDF Version", esp_get_idf_version());
+
+//  page += keyValue("Chip model", ESP.getChipModel());
+  page += keyValue("Chip revision", String(ESP.getChipRevision()));
+  page += keyValue("App size", String(ESP.getSketchSize() / 1024), "kb");
+  page += keyValue("App space", String(ESP.getFreeSketchSpace() / 1024), "kb");
+// Needs to much RAM:   page += keyValue("App MD5", ESP.getSketchMD5());
+  page += keyValue("Flash size", String(ESP.getFlashChipSize() / 1024), "kb");
+  page += keyValue("Flash speed", String(ESP.getFlashChipSpeed() / 1000 / 1000), "MHz");
+  page += keyValue("App 'DEVELOP'",
+#ifdef DEVELOP
+                   "true"
+#else
+                        "false"
+#endif
+  );
+#ifdef CONFIG_LOG_DEFAULT_LEVEL
+  page += keyValue("Log default level", String(CONFIG_LOG_DEFAULT_LEVEL));
+#endif
+#ifdef CORE_DEBUG_LEVEL
+  page += keyValue("Core debug level", String(CORE_DEBUG_LEVEL));
+#endif
+
+  esp_chip_info_t ci;
+  esp_chip_info(&ci);
+  page += keyValue("Cores", String(ci.cores));
+  page += keyValue("CPU frequency", String(ESP.getCpuFreqMHz()), "MHz");
+
+  page += keyValue("SPIFFS size", String((uint32_t) (SPIFFS.totalBytes() / 1024)), "KB");
+  page += keyValue("SPIFFS used", String((uint32_t) (SPIFFS.usedBytes() / 1024)), "KB");
+
+  String files;
+  auto dir = SPIFFS.open("/");
+  auto file = dir.openNextFile();
+  while(file) {
+    files += "<br />";
+    files += file.name();
+    files += " ";
+    files +=  String((uint32_t) (file.size() / 1024));
+    files += "kb ";
+    files += ObsUtils::dateTimeToString(file.getLastWrite());
+    file = dir.openNextFile();
+  }
+  dir.close();
+  page += keyValue("SPIFFS files", files);
+  page += keyValue("System date time", ObsUtils::dateTimeToString(file.getLastWrite()));
+  page += keyValue("System millis", String(millis()));
+
+  if (voltageMeter) {
+    page += keyValue("Battery voltage", String(voltageMeter->read(), 2), "V");
+  }
+
+  page += "<h3>SD Card</h3>";
+
+  page += keyValue("SD card size", String((uint32_t) (SD.cardSize() / 1024 / 1024)), "MB");
+
+  String sdCardType;
+  switch (SD.cardType()) {
+    case CARD_NONE: sdCardType = "NONE"; break;
+    case CARD_MMC:  sdCardType = "MMC"; break;
+    case CARD_SD:   sdCardType = "SD"; break;
+    case CARD_SDHC: sdCardType = "SDHC"; break;
+    default:        sdCardType = "UNKNOWN"; break;
+  }
+
+  page += keyValue("SD card type", sdCardType);
+  page += keyValue("SD fs size", String((uint32_t) (SD.totalBytes() / 1024 / 1024)), "MB");
+  page += keyValue("SD fs used", String((uint32_t) (SD.usedBytes() / 1024 / 1024)), "MB");
+
+  page += "<h3>TOF Sensors</h3>";
+  page += keyValue("Left Sensor raw", String(sensorManager->getRawMedianDistance(LEFT_SENSOR_ID)), "cm");
+  page += keyValue("Left Sensor max duration", String(sensorManager->getMaxDurationUs(LEFT_SENSOR_ID)), "&#xB5;s");
+  page += keyValue("Left Sensor min duration", String(sensorManager->getMinDurationUs(LEFT_SENSOR_ID)), "&#xB5;s");
+  page += keyValue("Left Sensor last start delay", String(sensorManager->getLastDelayTillStartUs(LEFT_SENSOR_ID)), "&#xB5;s");
+  page += keyValue("Right Sensor raw", String(sensorManager->getRawMedianDistance(RIGHT_SENSOR_ID)), "cm");
+  page += keyValue("Right Sensor max duration", String(sensorManager->getMaxDurationUs(RIGHT_SENSOR_ID)), "&#xB5;s");
+  page += keyValue("Right Sensor min duration", String(sensorManager->getMinDurationUs(RIGHT_SENSOR_ID)), "&#xB5;s");
+  page += keyValue("Right Sensor last start delay", String(sensorManager->getLastDelayTillStartUs(RIGHT_SENSOR_ID)), "&#xB5;s");
+
+  page += "<h3>GPS</h3>";
+  page += keyValue("TinyGPSPlus version", TinyGPSPlus::libraryVersion());
+  page += keyValue("GPS chars processed", String(gps.charsProcessed()));
+  page += keyValue("GPS valid checksum", String(gps.passedChecksum()));
+  page += keyValue("GPS failed checksum", String(gps.failedChecksum()));
+  page += keyValue("GPS sentences with fix", String(gps.sentencesWithFix()));
+  page += keyValue("GPS time", String(gps.time.value())); // fill all digits?
+  page += keyValue("GPS date", String(gps.date.value())); // fill all digits?
+  page += keyValue("GPS hdop", String(gps.hdop.value())); // fill all digits?
+
+  String theGpsMessage = "";
+  for (String msg : gpsMessages) {
+    theGpsMessage += "<br/>";
+    theGpsMessage += msg;
+  }
+  page += keyValue("GPS messages", theGpsMessage);
+
+  page += "<h3>Display / Button</h3>";
+  page += keyValue("Button State", String(digitalRead(PushButton_PIN)));
+  page += keyValue("Display i2c last error", String(Wire.lastError()));
+  page += keyValue("Display i2c speed", String((uint32_t) Wire.getClock() / 1000), "KHz");
+  page += keyValue("Display i2c timeout", String((uint32_t) Wire.getTimeOut()), "ms");
+
+  page = createPage(page);
+  page = replaceDefault(page, "About");
+  server.send(200, "text/html", page);
+}
+
 void privacyAction() {
 
   String latitude = server.arg("newlatitude");
@@ -482,6 +605,7 @@ bool CreateWifiSoftAP(String chipID) {
 void startServer(ObsConfig *obsConfig) {
   theObsConfig = obsConfig;
 
+  readGPSData();
   uint64_t chipid_num;
   chipid_num = ESP.getEfuseMac();
   esp_chipid = String((uint16_t)(chipid_num >> 32), HEX);
@@ -520,6 +644,13 @@ void startServer(ObsConfig *obsConfig) {
   }
   /*return index page which is stored in serverIndex */
 
+  readGPSData();
+  uploader::instance()->setClock();
+  readGPSData();
+  if (!voltageMeter) {
+    voltageMeter = new VoltageMeter();
+  }
+  readGPSData();
 
   // #############################################
   // Handle web pages
@@ -529,42 +660,41 @@ void startServer(ObsConfig *obsConfig) {
 
   server.on("/reboot", HTTP_GET, []() {
 
-    String html = rebootIndex;
-    // Header
-    html.replace("{action}", "");
-    html.replace("{version}", OBSVersion);
-    html.replace("{subtitle}", "Reboot");
-
+    String html = createPage(rebootIndex);
+    html = replaceDefault(html, "Reboot");
     server.send(200, "text/html", html);
-
     delay(100);
     ESP.restart();
   });
 
-  server.on("/upload", HTTP_GET, []() {
-
-    String html = header+"<div>";
-
-    html.replace("{action}", "");
-    html.replace("{version}", OBSVersion);
-    html.replace("{subtitle}", "Upload Tracks");
-
+  server.on("/upload", []() {
+    SDFileSystem.mkdir("/uploaded");
     File root = SDFileSystem.open("/");
     if (!root) {
-      Serial.println("Failed to open directory");
+      server.send(500, "text/plain", "Failed to open SD directory");
       return;
     }
     if (!root.isDirectory()) {
-      Serial.println("Not a directory");
+      server.send(500, "text/plain", "SD root is not a directory?");
       return;
     }
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    server.send(200, "text/html");
 
-    File file = root.openNextFile();
+    String html;
+    html = replaceDefault(header, "Upload Tracks");
+    html += "<div>";
+    server.sendContent(html);
+    html.clear();
+
+    File file = root.openNextFile("r");
     while (file) {
-      if (!file.isDirectory()) {
+      String fileName = String(file.name());
+      fileName = fileName.substring(fileName.lastIndexOf("/") + 1);
+      log_d("Upload file: %s", fileName.c_str());
+      if (!file.isDirectory()
+        && fileName.endsWith(CSVFileWriter::EXTENSION)) {
         if(uploader::instance()->upload(file.name())) {
-
-          SDFileSystem.mkdir("/uploaded");
           int i = 0;
           while (!SDFileSystem.rename(file.name(), String("/uploaded") + file.name() + (i == 0 ? "" : String(i)))) {
             i++;
@@ -572,17 +702,22 @@ void startServer(ObsConfig *obsConfig) {
               break;
             }
           }
-          html += String(file.name());
-          html += "<br>";
+          html += "&#x2705;"; // OK mark
+        } else {
+          html += "&#x274C;"; // failed cross
         }
+        html += fileName;
+        html += "<br />\n";
+        server.sendContent(html);
+        html.clear();
       }
-      file = root.openNextFile();
+      file.close();
+      file = root.openNextFile("r");
     }
     root.close();
 
     html += "</div>" + footer;
-
-    server.send(200, "text/html", html);
+    server.sendContent(html);
   });
 
   // ###############################################################
@@ -590,12 +725,8 @@ void startServer(ObsConfig *obsConfig) {
   // ###############################################################
 
   server.on("/", HTTP_GET, []() {
-    String html = navigationIndex;
-
-    // Header
-    html.replace("{action}", "");
-    html.replace("{version}", OBSVersion);
-    html.replace("{subtitle}", "Navigation");
+    String html = createPage(navigationIndex);
+    html = replaceDefault(html, "Navigation");
 #ifdef DEVELOP
     html.replace("{dev}", development);
 #else
@@ -610,14 +741,10 @@ void startServer(ObsConfig *obsConfig) {
   // ###############################################################
 
   server.on("/settings/backup", HTTP_GET, []() {
-    String html = backupIndex;
-    // Header
-    html.replace("{action}", "");
-    html.replace("{version}", OBSVersion);
-    html.replace("{subtitle}", "Backup & Restore");
+    String html = createPage(backupIndex, xhrUpload);
+    html = replaceDefault(html, "Backup & Restore");
     html.replace("{method}", "/settings/restore");
     html.replace("{accept}", ".json");
-
     server.send(200, "text/html", html);
   });
 
@@ -626,7 +753,7 @@ void startServer(ObsConfig *obsConfig) {
       = String(theObsConfig->getProperty<String>(ObsConfig::PROPERTY_OBS_NAME)) + "-" + OBSVersion;
     server.sendHeader("Content-disposition", "attachment; filename=" + fileName + ".json", false);
     server.sendHeader("Content-type", "application/json", false);
-    log_d("Sending config for backup:");
+    log_d("Sending config for backup %s:", fileName.c_str());
     theObsConfig->printConfig();
     server.send(200, "text/html", theObsConfig->asJsonString());
   });
@@ -651,8 +778,7 @@ void startServer(ObsConfig *obsConfig) {
       theObsConfig->parseJson(json_buffer);
       theObsConfig->fill(config); // OK here??
       theObsConfig->printConfig();
-
-      Serial.println(F("Saving configuration..."));
+      log_d("Saving configuration...");
       theObsConfig->saveConfig();
     }
   });
@@ -664,11 +790,9 @@ void startServer(ObsConfig *obsConfig) {
   server.on("/settings/wifi/action", wifiAction);
 
   server.on("/settings/wifi", HTTP_GET, []() {
-    String html = wifiSettingsIndex;
-    // Header
-    html.replace("{action}", "/settings/wifi/action");
-    html.replace("{version}", OBSVersion);
-    html.replace("{subtitle}", "Wifi");
+    String html = createPage(wifiSettingsIndex);
+    html = replaceDefault(html, "WiFi", "/settings/wifi/action");
+
     // Form data
     html.replace("{ssid}", theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID));
     if(theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID).length() > 0) {
@@ -687,11 +811,8 @@ void startServer(ObsConfig *obsConfig) {
   server.on("/settings/development/action", devAction);
 
   server.on("/settings/development", HTTP_GET, []() {
-    String html = devIndex;
-    // Header
-    html.replace("{action}", "/settings/development/action"); // Handled by XHR
-    html.replace("{version}", OBSVersion);
-    html.replace("{subtitle}", "Development Settings");
+    String html = createPage(devIndex);
+    html = replaceDefault(html, "Development Setting", "/settings/development/action");
 
     // SHOWGRID
     bool showGrid = theObsConfig->getBitMaskProperty(
@@ -714,11 +835,8 @@ void startServer(ObsConfig *obsConfig) {
   server.on("/settings/general/action", configAction);
 
   server.on("/settings/general", HTTP_GET, []() {
-    String html = configIndex;
-    // Header
-    html.replace("{action}", "/settings/general/action");
-    html.replace("{version}", OBSVersion);
-    html.replace("{subtitle}", "General");
+    String html = createPage(configIndex);
+    html = replaceDefault(html, "General", "/settings/general/action");
 
     // Form data
     const std::vector<int> offsets
@@ -786,11 +904,8 @@ void startServer(ObsConfig *obsConfig) {
   // ###############################################################
 
   server.on("/update", HTTP_GET, []() {
-    String html = uploadIndex;
-    // Header
-    html.replace("{action}", ""); // Handled by XHR
-    html.replace("{version}", OBSVersion);
-    html.replace("{subtitle}", "Update Firmware");
+    String html = createPage(uploadIndex, xhrUpload);
+    html = replaceDefault(html, "Update Firmware");
     html.replace("{method}", "/update");
     html.replace("{accept}", ".bin");
 
@@ -837,11 +952,8 @@ void startServer(ObsConfig *obsConfig) {
   // Make current location private
   server.on("/settings/privacy/makeCurrentLocationPrivate", HTTP_GET, []() {
 
-    String html = makeCurrentLocationPrivateIndex;
-    // Header
-    html.replace("{action}", "");
-    html.replace("{version}", OBSVersion);
-    html.replace("{subtitle}", "MakeLocationPrivate");
+    String html = createPage(makeCurrentLocationPrivateIndex);
+    html = replaceDefault(html, "MakeLocationPrivate");
 
     server.send(200, "text/html", html);
 
@@ -866,43 +978,34 @@ void startServer(ObsConfig *obsConfig) {
   });
 
   server.on("/settings/privacy", HTTP_GET, []() {
-
-    String html = privacyIndexPrefix;
-
-    // Header
-    html.replace("{action}", "/privacy_action");
-    html.replace("{version}", OBSVersion);
-    html.replace("{subtitle}", "Privacy Zones");
-
-    String privacyPage = html;
-
+    String privacyPage;
     for (int idx = 0; idx < theObsConfig->getNumberOfPrivacyAreas(0); ++idx) {
       auto pa = theObsConfig->getPrivacyArea(0, idx);
       privacyPage += "<h3>Privacy Area #" + String(idx + 1) + "</h3>";
       privacyPage += "Latitude <input name=latitude" + String(idx)
-        + " placeholder='latitude' value='" + String(pa.latitude, 7) + "'disabled>";
-      privacyPage += "Longitude <input name=longitude" + String(idx)
-        + "placeholder='longitude' value='" + String(pa.longitude, 7) + "'disabled>";
-      privacyPage += "Radius (m) <input name=radius" + String(idx)
-        + "placeholder='radius' value='" + String(pa.radius) + "'disabled>";
-      privacyPage += "<a class=\"deletePrivacyArea\" href=\"/privacy_delete?erase=" + String(idx) + "\">&#x2716;</a>";
+        + " placeholder='latitude' value='" + String(pa.latitude, 7) + "' disabled />";
+      privacyPage += "Longitude <input name='longitude" + String(idx)
+        + "' placeholder='longitude' value='" + String(pa.longitude, 7) + "' disabled />";
+      privacyPage += "Radius (m) <input name='radius" + String(idx)
+        + "' placeholder='radius' value='" + String(pa.radius) + "' disabled />";
+      privacyPage += "<a class='deletePrivacyArea' href='/privacy_delete?erase=" + String(idx) + "'>&#x2716;</a>";
     }
 
-    privacyPage += "<h3>New Privacy Area</h3>";
-
+    privacyPage += "<h3>New Privacy Area  <a href='javascript:window.location.reload()'>&#8635;</a></h3>";
     readGPSData();
     bool validGPSData = gps.location.isValid();
     if (validGPSData) {
-      privacyPage += "Latitude<input name=newlatitude value='" + String(gps.location.lat(), 7) + "'>";
-      privacyPage += "Longitude<input name=newlongitude value='" + String(gps.location.lng(), 7) + "'>";
+      privacyPage += "Latitude<input name='newlatitude' value='" + String(gps.location.lat(), 7) + "' />";
+      privacyPage += "Longitude<input name='newlongitude' value='" + String(gps.location.lng(), 7) + "' />";
     } else {
-      privacyPage += "Latitude<input name=newlatitude placeholder='48.12345'>";
-      privacyPage += "Longitude<input name=newlongitude placeholder='9.12345'>";
+      privacyPage += "Latitude<input name='newlatitude' placeholder='48.12345' />";
+      privacyPage += "Longitude<input name='newlongitude' placeholder='9.12345' />";
     }
-    privacyPage += "Radius (m)<input name=newradius placeholder='radius' value='500'>";
+    privacyPage += "Radius (m)<input name='newradius' placeholder='radius' value='500' />";
 
-    privacyPage += privacyIndexPostfix;
-    server.send(200, "text/html", privacyPage);
+    String html = createPage(privacyPage, privacyIndexPostfix);
+    html = replaceDefault(html, "Privacy Zones", "/privacy_action");
+    server.send(200, "text/html", html);
   });
 
   server.on("/privacy_delete", HTTP_GET, []() {
@@ -916,6 +1019,8 @@ void startServer(ObsConfig *obsConfig) {
     String s = "<meta http-equiv='refresh' content='0; url=/settings/privacy'><a href='/settings/privacy'>Go Back</a>";
     server.send(200, "text/html", s);
   });
+
+  server.on("/about", aboutPage);
 
   server.on("/privacy_action", privacyAction);
 
@@ -938,36 +1043,46 @@ void startServer(ObsConfig *obsConfig) {
 
 
     if (file.isDirectory()) {
+      server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+      server.send(200, "text/html");
+
       String html = header;
-
-      // Header
-      html.replace("{version}", OBSVersion);
-      html.replace("{subtitle}", "SD Card Contents");
-
+      html = replaceDefault(html, "SD Card Contents " + String(file.name()));
       html += "<ul class=\"directory-listing\">";
+      server.sendContent(html);
+      html.clear();
 
       // Iterate over directories
       File child = file.openNextFile();
-      while(child) {
-        html += ("<li class=\""
-          + String(child.isDirectory() ? "directory" : "file")
+      while (child) {
+        String fileName = String(child.name());
+        fileName = fileName.substring(fileName.lastIndexOf("/") + 1);
+        bool isDirectory = child.isDirectory();
+        html +=
+          ("<li class=\""
+          + String(isDirectory ? "directory" : "file")
           + "\"><a href=\"/sd?path="
           + String(child.name())
           + "\">"
-          + String(child.name()).substring(1)
-          + String(child.isDirectory() ? "/" : "")
+          + String(isDirectory ? "&#x1F4C1;" : "&#x1F4C4;")
+          + fileName
+          + String(isDirectory ? "/" : "")
           + "</a></li>");
 
         child.close();
         child = file.openNextFile();
+
+        if (html.length() >= (HTTP_UPLOAD_BUFLEN - 80)) {
+          server.sendContent(html);
+          html.clear();
+        }
       }
 
       file.close();
 
-      html += "</ul>";
+      html = "</ul>";
       html += footer;
-      server.send(200, "text/html", html);
-
+      server.sendContent(html);
       return;
     }
 
@@ -992,12 +1107,16 @@ void startServer(ObsConfig *obsConfig) {
       dataType = "application/pdf";
     } else if (path.endsWith(".zip")) {
       dataType = "application/zip";
+    } else if (path.endsWith(".csv")) {
+      dataType = "text/csv";
     } else {
       // arbitrary data
       dataType = "application/octet-stream";
     }
 
-    server.sendHeader("Content-Disposition", String("attachment; filename=\"") + file.name() + String("\""));
+    String fileName = String(file.name());
+    fileName = fileName.substring(fileName.lastIndexOf("/") + 1);
+    server.sendHeader("Content-Disposition", String("attachment; filename=\"") + fileName + String("\""));
     server.streamFile(file, dataType);
     file.close();
   });

@@ -27,6 +27,16 @@ const time_t PAST_TIME = 1606672131;
 HardwareSerial SerialGPS(1);
 TinyGPSPlus gps;
 
+TinyGPSCustom gpsTxtCount(gps, "GPTXT", 1); // $GPGSA sentence, 15th element
+TinyGPSCustom gpsTxtSeq(gps, "GPTXT", 2); // $GPGSA sentence, 16th element
+TinyGPSCustom gpsTxtSeverity(gps, "GPTXT", 3); // $GPGSA sentence, 17th element
+TinyGPSCustom gpsTxtMessage(gps, "GPTXT", 4); // $GPGSA sentence, 17th element
+
+// TODO: Must be private member of a class not a global!
+String gpsMessage;
+std::vector<String> gpsMessages;
+
+
 time_t gpsTime() {
   struct tm t;
   t.tm_year = gps.date.year() - 1900;
@@ -113,6 +123,31 @@ void readGPSData() {
         Serial.printf("Time set %ld.\n", t);
 #endif
       }
+      if (gpsTxtMessage.isUpdated()) {
+        log_i("GPX Text SEQ %s, CNT %s, SEVERITY: %s, Message %s",
+              gpsTxtSeq.value(), gpsTxtCount.value(), gpsTxtSeverity.value(), gpsTxtMessage.value());
+        // We only get start of the message, cause tiny gps limits it.
+        if (String("01") == gpsTxtSeq.value()) {
+          gpsMessage = gpsTxtMessage.value();
+        } else {
+          gpsMessage += gpsTxtMessage.value();
+        }
+        if (String(gpsTxtCount.value()) == String(gpsTxtSeq.value())) {
+          for (String message : gpsMessages) {
+            if (message == gpsMessage) {
+              gpsMessage.clear();
+              break;
+            }
+          }
+          if (!gpsMessage.isEmpty()) {
+            gpsMessages.push_back(gpsMessage);
+          }
+          gpsMessage.clear();
+          if (gpsMessages.size() > 10) {
+            gpsMessages.erase(gpsMessages.cbegin());
+          }
+        }
+      }
     }
   }
 
@@ -137,6 +172,7 @@ bool isInsidePrivacyArea(TinyGPSLocation &location) {
 }
 
 double haversine(double lat1, double lon1, double lat2, double lon2) {
+  // TODO: There is also TinyGPSPlus::distanceBetween()
   // https://www.geeksforgeeks.org/haversine-formula-to-find-distance-between-two-points-on-a-sphere/
   // distance between latitudes and longitudes
   double dLat = (lat2 - lat1) * M_PI / 180.0;
