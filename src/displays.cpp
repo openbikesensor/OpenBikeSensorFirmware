@@ -115,7 +115,7 @@ void SSD1306DisplayDevice::showValues(
         showBatterieValue((BatterieVolt));
 
   if (!(config.displayConfig & DisplaySimple)){
-    if(TemperaturValue > -100)
+    if(BMP280_active == true)
       showTemperatureValue(TemperaturValue);
   }
 

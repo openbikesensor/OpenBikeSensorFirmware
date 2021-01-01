@@ -58,16 +58,15 @@ const long BLUETOOTH_INTERVAL_MILLIS = 200;
 long lastBluetoothInterval = 0;
 
 float BatteryValue = -1;
-float TemperatureValue = -101;
+float TemperatureValue = -1;
 
 
 VoltageMeter* voltageMeter;
 
 String esp_chipid;
 
-#ifdef DEVELOP
 Adafruit_BMP280 bmp280(&Wire);
-#endif
+bool BMP280_active = false;
 
 // --- Local variables ---
 unsigned long measureInterval = 1000;
@@ -295,11 +294,9 @@ void setup() {
   // Temperatur Sensor BMP280
   //##############################################################
 
-  #ifdef DEVELOP
+  BMP280_active = TemperatureValue = bmp280.begin(BMP280_ADDRESS_ALT,BMP280_CHIPID);
+  if(BMP280_active == true) TemperatureValue = bmp280.readTemperature();
 
-  TemperatureValue = bmp280.begin(BMP280_ADDRESS_ALT,BMP280_CHIPID);
-  TemperatureValue = bmp280.readTemperature();
-  #endif
 
   //##############################################################
   // Bluetooth
@@ -434,19 +431,6 @@ void loop() {
     sensorManager->getDistances();
     readGPSData();
 
-    #ifndef DEVELOP
-    displayTest->showValues(
-      sensorManager->m_sensors[LEFT_SENSOR_ID],
-      sensorManager->m_sensors[RIGHT_SENSOR_ID],
-      minDistanceToConfirm,
-      BatteryValue,
-      -101,
-      lastMeasurements,
-      currentSet->isInsidePrivacyArea
-    );
-    #endif
-
-    #ifdef DEVELOP
     displayTest->showValues(
       sensorManager->m_sensors[LEFT_SENSOR_ID],
       sensorManager->m_sensors[RIGHT_SENSOR_ID],
@@ -456,7 +440,7 @@ void loop() {
       lastMeasurements,
       currentSet->isInsidePrivacyArea
     );
-    #endif
+
 
     if (bluetoothManager
         && lastBluetoothInterval != (currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS)) {
@@ -530,9 +514,7 @@ void loop() {
         BatteryValue = -1;
       }
 
-      #ifdef DEVELOP
-        TemperatureValue = bmp280.readTemperature();
-      #endif
+       if(BMP280_active == true)  TemperatureValue = bmp280.readTemperature();
   } // end measureInterval while
 
   // Write the minimum values of the while-loop to a set

@@ -41,6 +41,8 @@ const int DIO = 25; //Set the DIO pin connection to the display
 //Segments for line of dashes on display
 //uint8_t segments[] = {64, 64, 64, 64};
 
+extern bool BMP280_active;
+
 class DisplayDevice {
   public:
     DisplayDevice() {}
