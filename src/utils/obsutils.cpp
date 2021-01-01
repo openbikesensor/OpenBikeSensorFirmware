@@ -26,3 +26,17 @@ String ObsUtils::createTrackUuid() {
   esp_fill_random(data, 16);
   return String(BLEUUID(data, 16, false).toString().c_str());
 }
+
+String ObsUtils::dateTimeToString(time_t theTime) {
+  char date[32];
+  if (theTime == 0) {
+    theTime = time(nullptr);
+  }
+  tm timeStruct;
+  localtime_r(&theTime, &timeStruct);
+  snprintf(date, sizeof(date),
+           "%02d.%02d.%04dT%02d:%02d:%02dZ",
+           timeStruct.tm_mday, timeStruct.tm_mon + 1, timeStruct.tm_year + 1900,
+           timeStruct.tm_hour, timeStruct.tm_min, timeStruct.tm_sec);
+  return String(date);
+}

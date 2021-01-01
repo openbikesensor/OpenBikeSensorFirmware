@@ -70,6 +70,10 @@ struct HCSR04SensorInfo {
 
   int32_t echoDurationMicroseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
   Median<uint16_t>*median = nullptr;
+  // statistics
+  uint32_t maxDurationUs = 0;
+  uint32_t minDurationUs = UINT32_MAX;
+  uint32_t lastDelayTillStartUs = 0;
 };
 
 class HCSR04SensorManager {
@@ -78,6 +82,7 @@ class HCSR04SensorManager {
     virtual ~HCSR04SensorManager() {}
     void getDistances();
     void getDistancesParallel();
+    void getDistancesNoWait();
     void reset();
     void registerSensor(HCSR04SensorInfo);
     void setOffsets(std::vector<uint16_t>);
@@ -88,6 +93,9 @@ class HCSR04SensorManager {
     uint16_t getRawMedianDistance(uint8_t sensorId);
     /* Index for CSV - starts with 1. */
     uint16_t getCurrentMeasureIndex();
+    uint32_t getMaxDurationUs(uint8_t sensorId);
+    uint32_t getMinDurationUs(uint8_t sensorId);
+    uint32_t getLastDelayTillStartUs(uint8_t sensorId);
 
     std::vector<HCSR04SensorInfo> m_sensors;
     std::vector<uint16_t> sensorValues;
@@ -116,10 +124,12 @@ class HCSR04SensorManager {
     static uint32_t microsBetween(uint32_t a, uint32_t b);
     static uint32_t microsSince(uint32_t a);
     static uint16_t millisSince(uint16_t milliseconds);
+    void updateStatistics(HCSR04SensorInfo *sensor);
     uint16_t startReadingMilliseconds = 0;
     /* The currently used sensor for alternating use. */
     uint32_t activeSensor = 0;
     uint8_t primarySensor = 1;
+
 };
 
 #endif

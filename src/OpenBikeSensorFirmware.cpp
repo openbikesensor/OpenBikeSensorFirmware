@@ -216,32 +216,6 @@ void setup() {
   }
 
   //##############################################################
-  // Check, if the button is pressed
-  // Enter configuration mode and enable OTA
-  //##############################################################
-
-  buttonState = digitalRead(PushButton_PIN);
-  if (buttonState == HIGH || (!config.simRaMode && displayError != 0)) {
-    displayTest->showTextOnGrid(2, 2, "Start Server",DEFAULT_FONT);
-    ESP_ERROR_CHECK_WITHOUT_ABORT(
-      esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
-
-    delay(1000); // Added for user experience
-
-    startServer(&cfg);
-    OtaInit(esp_chipid);
-
-    while (true) {
-      readGPSData();
-      server.handleClient();
-      delay(1);
-      ArduinoOTA.handle();
-    }
-  }
-  SPIFFS.end();
-  WiFiGenericClass::mode(WIFI_OFF);
-
-  //##############################################################
   // Init HCSR04
   //##############################################################
 
@@ -262,6 +236,33 @@ void setup() {
   sensorManager->setOffsets(config.sensorOffsets);
 
   sensorManager->setPrimarySensor(LEFT_SENSOR_ID);
+
+  //##############################################################
+  // Check, if the button is pressed
+  // Enter configuration mode and enable OTA
+  //##############################################################
+
+  buttonState = digitalRead(PushButton_PIN);
+  if (buttonState == HIGH || (!config.simRaMode && displayError != 0)) {
+    displayTest->showTextOnGrid(2, 2, "Start Server",DEFAULT_FONT);
+    ESP_ERROR_CHECK_WITHOUT_ABORT(
+      esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
+
+    delay(1000); // Added for user experience
+
+    startServer(&cfg);
+    OtaInit(esp_chipid);
+
+    while (true) {
+      readGPSData();
+      server.handleClient();
+      delay(1);
+      ArduinoOTA.handle();
+      sensorManager->getDistancesNoWait();
+    }
+  }
+  SPIFFS.end();
+  WiFiGenericClass::mode(WIFI_OFF);
 
   //##############################################################
   // Prepare CSV file

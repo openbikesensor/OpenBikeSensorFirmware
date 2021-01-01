@@ -28,7 +28,10 @@
 #include <SD.h>
 #include <FS.h>
 #include <uploader.h>
+#include <utils/obsutils.h>
 #include "SPIFFS.h"
+
+extern std::vector<String> gpsMessages;
 
 const char* host = "openbikesensor";
 
@@ -39,6 +42,10 @@ WebServer server(80);
 String json_buffer;
 
 /* Style */
+// TODO
+//  - Fix CSS Style for mobile && desktop
+//  - a vs. button
+//  - back navigation after save
 String style =
   "<style>"
   "#file-input,input, button {width:100%;height:44px;border-radius:4px;margin:10px auto;font-size:15px;}"
@@ -419,7 +426,7 @@ void wifiAction() {
 }
 
 String keyValue(String key, String value, String suffix = "") {
-  return key + ": " + value + suffix + "<br />";
+  return "<b>" + key + ":</b> " + value + suffix + "<br />";
 }
 
 void aboutPage() {
@@ -438,7 +445,7 @@ void aboutPage() {
   page += keyValue("Chip revision", String(ESP.getChipRevision()));
   page += keyValue("App size", String(ESP.getSketchSize() / 1024), "kb");
   page += keyValue("App space", String(ESP.getFreeSketchSpace() / 1024), "kb");
-  page += keyValue("App MD5", ESP.getSketchMD5());
+// Needs to much RAM:   page += keyValue("App MD5", ESP.getSketchMD5());
   page += keyValue("Flash size", String(ESP.getFlashChipSize() / 1024), "kb");
   page += keyValue("Flash speed", String(ESP.getFlashChipSpeed() / 1000 / 1000), "MHz");
   page += keyValue("App 'DEVELOP'",
@@ -463,6 +470,27 @@ void aboutPage() {
   page += keyValue("SPIFFS size", String((uint32_t) (SPIFFS.totalBytes() / 1024)), "KB");
   page += keyValue("SPIFFS used", String((uint32_t) (SPIFFS.usedBytes() / 1024)), "KB");
 
+  String files;
+  auto dir = SPIFFS.open("/");
+  auto file = dir.openNextFile();
+  while(file) {
+    files += "<br />";
+    files += file.name();
+    files += " ";
+    files +=  String((uint32_t) (file.size() / 1024));
+    files += "kb ";
+    files += ObsUtils::dateTimeToString(file.getLastWrite());
+    file = dir.openNextFile();
+  }
+  dir.close();
+  page += keyValue("SPIFFS files", files);
+  page += keyValue("System date time", ObsUtils::dateTimeToString(file.getLastWrite()));
+  page += keyValue("System millis", String(millis()));
+
+  if (voltageMeter) {
+    page += keyValue("Battery voltage", String(voltageMeter->read(), 2), "V");
+  }
+
   page += "<h3>SD Card</h3>";
 
   page += keyValue("SD card size", String((uint32_t) (SD.cardSize() / 1024 / 1024)), "MB");
@@ -481,9 +509,37 @@ void aboutPage() {
   page += keyValue("SD fs used", String((uint32_t) (SD.usedBytes() / 1024 / 1024)), "MB");
 
   page += "<h3>TOF Sensors</h3>";
+  page += keyValue("Left Sensor raw", String(sensorManager->getRawMedianDistance(LEFT_SENSOR_ID)), "cm");
+  page += keyValue("Left Sensor max duration", String(sensorManager->getMaxDurationUs(LEFT_SENSOR_ID)), "&#xB5;s");
+  page += keyValue("Left Sensor min duration", String(sensorManager->getMinDurationUs(LEFT_SENSOR_ID)), "&#xB5;s");
+  page += keyValue("Left Sensor last start delay", String(sensorManager->getLastDelayTillStartUs(LEFT_SENSOR_ID)), "&#xB5;s");
+  page += keyValue("Right Sensor raw", String(sensorManager->getRawMedianDistance(RIGHT_SENSOR_ID)), "cm");
+  page += keyValue("Right Sensor max duration", String(sensorManager->getMaxDurationUs(RIGHT_SENSOR_ID)), "&#xB5;s");
+  page += keyValue("Right Sensor min duration", String(sensorManager->getMinDurationUs(RIGHT_SENSOR_ID)), "&#xB5;s");
+  page += keyValue("Right Sensor last start delay", String(sensorManager->getLastDelayTillStartUs(RIGHT_SENSOR_ID)), "&#xB5;s");
+
   page += "<h3>GPS</h3>";
   page += keyValue("TinyGPSPlus version", TinyGPSPlus::libraryVersion());
+  page += keyValue("GPS chars processed", String(gps.charsProcessed()));
+  page += keyValue("GPS valid checksum", String(gps.passedChecksum()));
+  page += keyValue("GPS failed checksum", String(gps.failedChecksum()));
+  page += keyValue("GPS sentences with fix", String(gps.sentencesWithFix()));
+  page += keyValue("GPS time", String(gps.time.value())); // fill all digits?
+  page += keyValue("GPS date", String(gps.date.value())); // fill all digits?
+  page += keyValue("GPS hdop", String(gps.hdop.value())); // fill all digits?
+
+  String theGpsMessage = "";
+  for (String msg : gpsMessages) {
+    theGpsMessage += "<br/>";
+    theGpsMessage += msg;
+  }
+  page += keyValue("GPS messages", theGpsMessage);
+
   page += "<h3>Display / Button</h3>";
+  page += keyValue("Button State", String(digitalRead(PushButton_PIN)));
+  page += keyValue("Display i2c last error", String(Wire.lastError()));
+  page += keyValue("Display i2c speed", String((uint32_t) Wire.getClock() / 1000), "KHz");
+  page += keyValue("Display i2c timeout", String((uint32_t) Wire.getTimeOut()), "ms");
 
   page = createPage(page);
   page = replaceDefault(page, "About");
@@ -549,6 +605,7 @@ bool CreateWifiSoftAP(String chipID) {
 void startServer(ObsConfig *obsConfig) {
   theObsConfig = obsConfig;
 
+  readGPSData();
   uint64_t chipid_num;
   chipid_num = ESP.getEfuseMac();
   esp_chipid = String((uint16_t)(chipid_num >> 32), HEX);
@@ -587,6 +644,13 @@ void startServer(ObsConfig *obsConfig) {
   }
   /*return index page which is stored in serverIndex */
 
+  readGPSData();
+  uploader::instance()->setClock();
+  readGPSData();
+  if (!voltageMeter) {
+    voltageMeter = new VoltageMeter();
+  }
+  readGPSData();
 
   // #############################################
   // Handle web pages
@@ -927,7 +991,7 @@ void startServer(ObsConfig *obsConfig) {
       privacyPage += "<a class='deletePrivacyArea' href='/privacy_delete?erase=" + String(idx) + "'>&#x2716;</a>";
     }
 
-    privacyPage += "<h3>New Privacy Area  <a href='/settings/privacy'>&#8635;</a></h3>";
+    privacyPage += "<h3>New Privacy Area  <a href='javascript:window.location.reload()'>&#8635;</a></h3>";
     readGPSData();
     bool validGPSData = gps.location.isValid();
     if (validGPSData) {

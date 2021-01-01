@@ -21,6 +21,21 @@
 
 #include "sensor.h"
 #include "FunctionalInterrupt.h"
+/*
+ * Sensor types:
+ *  getLastDelayTillStartUs:
+ *  - HC-SR04       = ~2900us
+ *  - JSN-SR04T-2.0 =  ~290us
+ *
+ *  getMaxDurationUs:
+ *  - HC-SR04       =   70800us (102804µs!?)
+ *  - JSN-SR04T-2.0 =  ~58200us
+ *
+ *  getMinDurationUs:
+ *  - HC-SR04       =     82us
+ *  - JSN-SR04T-2.0 =  ~1125us
+ */
+
 
 const uint16_t MIN_DISTANCE_MEASURED_CM =   2;
 const uint16_t MAX_DISTANCE_MEASURED_CM = 320; // candidate to check I could not get good readings above 300
@@ -150,6 +165,22 @@ void HCSR04SensorManager::getDistances() {
   }
 }
 
+/* Triggers or collects sensor data if available.
+ */
+void HCSR04SensorManager::getDistancesNoWait() {
+  // only start if both are ready:
+  for (size_t idx = 0; idx < m_sensors.size(); ++idx) {
+    HCSR04SensorInfo* const sensor = &m_sensors[idx];
+    if(!isReadyForStart(sensor)) {
+      return;
+    }
+  }
+  setSensorTriggersToLow();
+  collectSensorResults();
+  sendTriggerToReadySensor();
+  delayMicroseconds(20);
+  setSensorTriggersToLow();
+}
 
 /* Method that reads the sensors in parallel. We observed false readings
  * that are likely caused by both sensors operated at the same time.
@@ -198,9 +229,7 @@ void HCSR04SensorManager::sendTriggerToReadySensor() {
   for (size_t idx = 0; idx < m_sensors.size(); ++idx) {
     HCSR04SensorInfo* const sensor = &m_sensors[idx];
     if (idx == primarySensor || isReadyForStart(sensor)) {
-      sensor->trigger = sensor->start = micros(); // will be updated with HIGH signal
-      sensor->end = MEASUREMENT_IN_PROGRESS; // will be updated with LOW signal
-      digitalWrite(sensor->triggerPin, HIGH);
+      sendTriggerToSensor(idx);
     }
   }
 }
@@ -209,7 +238,8 @@ void HCSR04SensorManager::sendTriggerToReadySensor() {
  * if there is no ready sensor at all.
  */
 void HCSR04SensorManager::sendTriggerToSensor(uint8_t sensorId) {
-  HCSR04SensorInfo* const sensor = &(m_sensors[sensorId]);
+  HCSR04SensorInfo* sensor = &(m_sensors[sensorId]);
+  updateStatistics(sensor);
   sensor->trigger = sensor->start = micros(); // will be updated with HIGH signal
   sensor->end = MEASUREMENT_IN_PROGRESS; // will be updated with LOW signal
   digitalWrite(sensor->triggerPin, HIGH);
@@ -242,7 +272,7 @@ void HCSR04SensorManager::collectSensorResults() {
     collectSensorResult(idx);
   }
   startOffsetMilliseconds[lastReadingCount] = millisSince(startReadingMilliseconds);
-  if (lastReadingCount < MAX_NUMBER_MEASUREMENTS_PER_INTERVAL) {
+  if (lastReadingCount < MAX_NUMBER_MEASUREMENTS_PER_INTERVAL - 1) {
     lastReadingCount++;
   }
 }
@@ -293,6 +323,18 @@ void HCSR04SensorManager::collectSensorResult(uint8_t sensorId) {
 
 uint16_t HCSR04SensorManager::getRawMedianDistance(uint8_t sensorId) {
  return m_sensors[sensorId].median->median();
+}
+
+uint32_t HCSR04SensorManager::getMaxDurationUs(uint8_t sensorId) {
+  return m_sensors[sensorId].maxDurationUs;
+}
+
+uint32_t HCSR04SensorManager::getMinDurationUs(uint8_t sensorId) {
+  return m_sensors[sensorId].minDurationUs;
+}
+
+uint32_t HCSR04SensorManager::getLastDelayTillStartUs(uint8_t sensorId) {
+  return m_sensors[sensorId].lastDelayTillStartUs;
 }
 
 void HCSR04SensorManager::setNoMeasureDate(uint8_t sensorId) {
@@ -352,6 +394,22 @@ void HCSR04SensorManager::waitForEchosOrTimeout(uint8_t sensorId) {
   while ((sensor->end == MEASUREMENT_IN_PROGRESS)
     && (microsSince(sensor->start) < MAX_DURATION_MICRO_SEC)) { // max duration not expired
     yield();
+  }
+}
+
+void HCSR04SensorManager::updateStatistics(HCSR04SensorInfo *sensor) {
+  if (sensor->end != MEASUREMENT_IN_PROGRESS) {
+    const uint32_t startDelay = sensor->start - sensor->trigger;
+    if (startDelay != 0) {
+      const uint32_t duration = sensor->end - sensor->start;
+      if (duration > sensor->maxDurationUs) {
+        sensor->maxDurationUs = duration;
+      }
+      if (duration < sensor->minDurationUs && duration > 1) {
+        sensor->minDurationUs = duration;
+      }
+      sensor->lastDelayTillStartUs = startDelay;
+    }
   }
 }
 
