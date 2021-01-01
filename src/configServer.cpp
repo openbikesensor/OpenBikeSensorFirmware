@@ -694,6 +694,7 @@ void startServer(ObsConfig *obsConfig) {
       log_d("Upload file: %s", fileName.c_str());
       if (!file.isDirectory()
         && fileName.endsWith(CSVFileWriter::EXTENSION)) {
+        server.sendContent(fileName);
         if(uploader::instance()->upload(file.name())) {
           int i = 0;
           while (!SDFileSystem.rename(file.name(), String("/uploaded") + file.name() + (i == 0 ? "" : String(i)))) {
@@ -706,7 +707,6 @@ void startServer(ObsConfig *obsConfig) {
         } else {
           html += "&#x274C;"; // failed cross
         }
-        html += fileName;
         html += "<br />\n";
         server.sendContent(html);
         html.clear();
@@ -716,7 +716,9 @@ void startServer(ObsConfig *obsConfig) {
     }
     root.close();
 
-    html += "</div>" + footer;
+    html += "</div><h3>All files done</h3/>";
+    html += "<input type=button onclick=\"window.location.href='/'\" class='btn' value='OK' />";
+    html += footer;
     server.sendContent(html);
   });
 
@@ -1080,7 +1082,7 @@ void startServer(ObsConfig *obsConfig) {
 
       file.close();
 
-      html = "</ul>";
+      html += "</ul>";
       html += footer;
       server.sendContent(html);
       return;
