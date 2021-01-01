@@ -80,14 +80,22 @@ jobs:
 
     - name: Package firmware
       run: |
-        zip --junk-paths obs-${{ env.OBS_VERSION }}.zip \
-          bin/.pio/build/esp32dev/firmware.bin
         cp /github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/bin/bootloader_dio_40m.bin 0x01000.bin
         cp bin/.pio/build/esp32dev/partitions.bin 0x08000.bin
         cp /github/home/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin 0x0e000.bin
         cp bin/.pio/build/esp32dev/firmware.bin 0x10000.bin
-        zip --junk-paths obs-${{ env.OBS_VERSION }}-full-flash.zip \
-          0x*.bin
+        wget --no-verbose -O COPYRIGHT-ESP.html https://docs.espressif.com/projects/esp-idf/en/latest/esp32/COPYRIGHT.html
+        wget --no-verbose -O LICENSE-ARDUINO-ESP32.md https://github.com/espressif/arduino-esp32/raw/master/LICENSE.md
+        zip --junk-paths obs-${{ env.OBS_VERSION }}-initial-flash.zip \
+          0x*.bin \
+          COPYRIGHT-ESP.html \
+          LICENSE-ARDUINO-ESP32.md \
+          LICENSE
+        zip --junk-paths obs-${{ env.OBS_VERSION }}.zip \
+          bin/.pio/build/esp32dev/firmware.bin \
+          COPYRIGHT-ESP.html \
+          LICENSE-ARDUINO-ESP32.md \
+          LICENSE
 
     - name: Analyze with SonarCloud
       env:
@@ -116,17 +124,23 @@ jobs:
     - name: Upload Build Asset
       uses: actions/upload-artifact@v2
       with:
-        name: obs ${{ env.OBS_VERSION }}
+        name: obs-${{ env.OBS_VERSION }}
         path: |
           bin/.pio/build/esp32dev/firmware.bin
+          COPYRIGHT-ESP.html
+          LICENSE-ARDUINO-ESP32.md
+          LICENSE
         if-no-files-found: error
 
-    - name: Upload Build Asset Full Flash
+    - name: Upload Build Asset Initial Flash
       uses: actions/upload-artifact@v2
       with:
-        name: obs ${{ env.OBS_VERSION }} full flash
+        name: obs-${{ env.OBS_VERSION }}-initial-flash
         path: |
           0x*.bin
+          COPYRIGHT-ESP.html
+          LICENSE-ARDUINO-ESP32.md
+          LICENSE
         if-no-files-found: error
 
     - name: Generate changelog
@@ -176,14 +190,14 @@ jobs:
         asset_name: obs-${{ env.OBS_VERSION }}.zip
         asset_content_type: application/zip
 
-    - name: Upload Release Asset Full Flash
-      id: upload-release-asset-full-flash
+    - name: Upload Release Asset Initial Flash
+      id: upload-release-asset-initial-flash
       if: ${{ env.OBS_PREPARE_RELEASE == 'true' }}
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./obs-${{ env.OBS_VERSION }}-full-flash.zip
-        asset_name: obs-${{ env.OBS_VERSION }}-full-flash.zip
+        asset_path: ./obs-${{ env.OBS_VERSION }}-initial-flash.zip
+        asset_name: obs-${{ env.OBS_VERSION }}-initial-flash.zip
         asset_content_type: application/zip

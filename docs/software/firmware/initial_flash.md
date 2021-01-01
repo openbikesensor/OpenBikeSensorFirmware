@@ -6,7 +6,7 @@ want to start using the OBS this way might be more straight forward.
 As of today, this thing is foe Windows only.
 
 Other than for the next updates that you can do over the air using 
-the small release package, you need the "full flash" zip file, and 
+the small release package, you need the "initial flash" zip file, and 
 the _Flash Download Tools_ from
 [ESPRESSIF](https://www.espressif.com/en/support/download/other-tools?keys=&field_type_tid%5B%5D=13)
 
@@ -14,7 +14,7 @@ the _Flash Download Tools_ from
 
 Download the latest release archive from 
 [OpenBikeSensorFirmware at GITHub](https://github.com/openbikesensor/OpenBikeSensorFirmware/releases). 
-You need the larger ZIP file named `obs-v9.9.9999-full-flash.zip`.
+You need the larger ZIP file named `obs-v9.9.9999-initial-flash.zip`.
 Extract the files in a temporary folder, they are named like 
 0x??????.bin. The numbers are the base address where the data should 
 be flashed. Don`t worry this will make sense in the next steps.
@@ -84,6 +84,8 @@ If all fails, use the OBS Slack to get some help.
 Currently, there is not much troubleshooting info collected, 
 but this will change.
 
+Now you can continue at the user documentation at 
+[OBS - User Guide - Configuration](https://www.openbikesensor.org/user-guide/configuration.html).
 
 ## Licenses
 
