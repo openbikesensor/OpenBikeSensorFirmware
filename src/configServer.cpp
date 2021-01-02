@@ -333,6 +333,13 @@ String replaceDefault(String html, String subTitle, String action = "#") {
   html.replace("{version}", OBSVersion);
   html.replace("{subtitle}", subTitle);
   html.replace("{action}", action);
+  displayTest->clear();
+  displayTest->showTextOnGrid(0, 0,
+                              theObsConfig->getProperty<String>(ObsConfig::PROPERTY_OBS_NAME));
+  displayTest->showTextOnGrid(0, 1, "IP:");
+  displayTest->showTextOnGrid(1, 1, WiFi.localIP().toString());
+  displayTest->showTextOnGrid(0, 2, "Menu");
+  displayTest->showTextOnGrid(1, 2, subTitle);
   return html;
 }
 
@@ -688,12 +695,32 @@ void startServer(ObsConfig *obsConfig) {
     html.clear();
 
     File file = root.openNextFile("r");
+    uint16_t numberOfFiles = 0;
+    while (file) {
+      String fileName = String(file.name());
+      if (!file.isDirectory()
+          && fileName.endsWith(CSVFileWriter::EXTENSION)) {
+        numberOfFiles++;
+        displayTest->drawWaitBar(4, numberOfFiles);
+      }
+      file = root.openNextFile();
+    }
+    root.close();
+    displayTest->clearProgressBar(4);
+    root = SDFileSystem.open("/");
+    file = root.openNextFile();
+    uint16_t currentFileIndex = 0;
+    uint16_t okCount = 0;
+    uint16_t failedCount = 0;
     while (file) {
       String fileName = String(file.name());
       fileName = fileName.substring(fileName.lastIndexOf("/") + 1);
       log_d("Upload file: %s", fileName.c_str());
       if (!file.isDirectory()
         && fileName.endsWith(CSVFileWriter::EXTENSION)) {
+        fileName = fileName.substring(0, fileName.length() - CSVFileWriter::EXTENSION.length());
+        displayTest->showTextOnGrid(0, 4, fileName);
+        displayTest->drawProgressBar(3, ++currentFileIndex, numberOfFiles);
         server.sendContent(fileName);
         if(uploader::instance()->upload(file.name())) {
           int i = 0;
@@ -704,18 +731,28 @@ void startServer(ObsConfig *obsConfig) {
             }
           }
           html += "&#x2705;"; // OK mark
+          okCount++;
         } else {
           html += "&#x274C;"; // failed cross
+          failedCount++;
         }
         html += "<br />\n";
         server.sendContent(html);
         html.clear();
+        displayTest->clearProgressBar(5);
       }
       file.close();
-      file = root.openNextFile("r");
+      file = root.openNextFile();
     }
     root.close();
 
+    displayTest->clearProgressBar(3);
+    displayTest->showTextOnGrid(0, 4, "");
+    displayTest->showTextOnGrid(1, 3, "Upload done.");
+    displayTest->showTextOnGrid(0, 5, "OK:");
+    displayTest->showTextOnGrid(1, 5, String(okCount));
+    displayTest->showTextOnGrid(2, 5, "Failed:");
+    displayTest->showTextOnGrid(3, 5, String(failedCount));
     html += "</div><h3>All files done</h3/>";
     html += "<input type=button onclick=\"window.location.href='/'\" class='btn' value='OK' />";
     html += footer;
@@ -1053,10 +1090,15 @@ void startServer(ObsConfig *obsConfig) {
       html += "<ul class=\"directory-listing\">";
       server.sendContent(html);
       html.clear();
+      displayTest->showTextOnGrid(0, 3, "Path:");
+      displayTest->showTextOnGrid(1, 3, path);
 
       // Iterate over directories
       File child = file.openNextFile();
+      int counter = 0;
       while (child) {
+        displayTest->drawWaitBar(5, counter++);
+
         String fileName = String(child.name());
         fileName = fileName.substring(fileName.lastIndexOf("/") + 1);
         bool isDirectory = child.isDirectory();
@@ -1079,12 +1121,11 @@ void startServer(ObsConfig *obsConfig) {
           html.clear();
         }
       }
-
       file.close();
-
       html += "</ul>";
       html += footer;
       server.sendContent(html);
+      displayTest->clearProgressBar(5);
       return;
     }
 

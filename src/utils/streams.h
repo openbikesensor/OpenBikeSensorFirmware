@@ -62,12 +62,17 @@ class StreamOfStreams : public Stream {
 
     size_t write(uint8_t) override;
 
+    void setProgressListener(std::function<void(size_t pos)>);
+
     size_t readBytes(char *buffer, size_t length) override;
 
   private:
     Stream *current = nullptr;
     std::vector<Stream *> streams;
     size_t pos = 0;
+    std::function<void(size_t pos)> progressListener = nullptr;
+    size_t overallBytePos = 0;
+
 
     Stream *getCurrent();
 

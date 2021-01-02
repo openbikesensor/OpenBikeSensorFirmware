@@ -98,6 +98,8 @@ class MultipartStream : public Stream {
 
     size_t readBytes(char *buffer, size_t length) override;
 
+    void setProgressListener(std::function<void(size_t pos)>);
+
   private:
     HTTPClient *httpClient;
     StreamOfStreams streams;

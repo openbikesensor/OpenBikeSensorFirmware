@@ -58,6 +58,7 @@ class SSD1306DisplayDevice : public DisplayDevice {
   private:
     SSD1306* m_display;
     String gridText[ 4 ][ 6 ];
+    uint8_t mLastProgress = 255;
 
   public:
     SSD1306DisplayDevice() : DisplayDevice() {
@@ -143,23 +144,14 @@ class SSD1306DisplayDevice : public DisplayDevice {
     // | (0,5) | (1,5) | (2,5) | (3,5) |
     // ---------------------------------
 
-    void showTextOnGrid(int16_t x, int16_t y, String text, const uint8_t* font) {
-      this->showTextOnGrid(x,y,text,font,0,0);
-    }
-
-    void showTextOnGrid(int16_t x, int16_t y, String text, const uint8_t* font, int8_t offset_x_, int8_t offset_y_) {
+    void showTextOnGrid(int16_t x, int16_t y, String text, const uint8_t* font = DEFAULT_FONT, int8_t offset_x_ = 0, int8_t offset_y_ = 0) {
       if (prepareTextOnGrid(x, y, text, font,offset_x_,offset_y_)) {
         m_display->display();
       }
     }
 
     bool prepareTextOnGrid(
-      int16_t x, int16_t y, String text, const uint8_t* font) {
-        return this->prepareTextOnGrid(x,y,text,font,0,0);
-    }
-
-    bool prepareTextOnGrid(
-      int16_t x, int16_t y, String text, const uint8_t* font,int8_t offset_x_, int8_t offset_y_) {
+      int16_t x, int16_t y, String text, const uint8_t* font = DEFAULT_FONT ,int8_t offset_x_ = 0, int8_t offset_y_ = 0) {
       bool changed = false;
       if (!text.equals(gridText[x][y])) {
         m_display->setFont(font);
@@ -212,6 +204,50 @@ class SSD1306DisplayDevice : public DisplayDevice {
       m_display->setColor(BLACK);
       m_display->drawXbm(x, y, 8, 9, TempLogo);
       m_display->setColor(WHITE);
+    }
+
+    void drawProgressBar(uint8_t y, uint32_t current, uint32_t target) {
+      uint8_t progress;
+      if (target > 0) {
+        progress = (100 * current) / target;
+      } else {
+        progress = 100;
+      }
+      drawProgressBar(y, progress);
+    }
+
+    void drawProgressBar(uint8_t y, uint8_t progress) {
+      uint16_t rowOffset = y * 10 + 3;
+
+      if (mLastProgress != progress) {
+        m_display->drawRect(12, rowOffset, 104, 8);
+        if (progress != 0) {
+          m_display->fillRect(14, rowOffset + 2, progress > 100 ? 100 : progress, 4);
+        }
+        m_display->display();
+        mLastProgress = progress;
+      }
+    }
+
+    void drawWaitBar(uint8_t y, uint16_t tick) {
+      uint16_t rowOffset = y * 10 + 3;
+      m_display->drawRect(12, rowOffset, 104, 8);
+      m_display->setColor(BLACK);
+      m_display->fillRect(14, rowOffset + 2, 100, 4);
+      m_display->setColor(WHITE);
+
+      int16_t pos = 45 + (45.0 * sin(tick / 10.0));
+      m_display->fillRect(14 + pos, rowOffset + 2, 10, 4);
+      m_display->display();
+    }
+
+    void clearProgressBar(uint8_t y) {
+      uint16_t rowOffset = y * 10 + 3;
+      m_display->setColor(BLACK);
+      m_display->fillRect(12, rowOffset, 104, 8);
+      m_display->setColor(WHITE);
+      m_display->display();
+      mLastProgress = UINT8_MAX;
     }
 
     //##############################################################

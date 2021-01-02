@@ -130,7 +130,13 @@ bool uploader::upload(const String& fileName) {
       MultipartDataStream data("body", fileName, &csvFile, "text/csv");
       mp.add(data);
       mp.last();
-      int httpCode = https.sendRequest("POST", &mp, mp.predictSize());
+
+      const size_t contentLength = mp.predictSize();
+      mp.setProgressListener([contentLength](size_t pos) {
+        displayTest->drawProgressBar(5, pos, contentLength);
+      });
+
+      int httpCode = https.sendRequest("POST", &mp, contentLength);
       if (httpCode != 200) {
         Serial.printf("[HTTPS] POST... code: %d\n", httpCode);
         String payload = https.getString();

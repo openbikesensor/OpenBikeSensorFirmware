@@ -136,3 +136,7 @@ size_t MultipartStream::write(uint8_t) {
 size_t MultipartStream::readBytes(char *buffer, size_t readLength) {
   return streams.readBytes(buffer, readLength);
 }
+
+void MultipartStream::setProgressListener(std::function<void(size_t pos)> listener) {
+  streams.setProgressListener(listener);
+}
