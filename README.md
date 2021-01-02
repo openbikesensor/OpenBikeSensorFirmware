@@ -1,12 +1,18 @@
 # OpenBikeSensor
 
 [![GitHub version](https://img.shields.io/github/v/release/openbikesensor/OpenBikeSensorFirmware?sort=semver)](https://github.com/openbikesensor/OpenBikeSensorFirmware/releases/latest)
+[![GitHub version](https://img.shields.io/github/release-date/openbikesensor/OpenBikeSensorFirmware?sort=semver)](https://github.com/openbikesensor/OpenBikeSensorFirmware/releases/latest)
 [![GitHub version](https://img.shields.io/github/v/release/openbikesensor/OpenBikeSensorFirmware?sort=semver&include_prereleases&label=pre-release)](https://github.com/openbikesensor/OpenBikeSensorFirmware/releases)
+[![GitHub version](https://img.shields.io/github/release-date-pre/openbikesensor/OpenBikeSensorFirmware?label=pre-release+date)](https://github.com/openbikesensor/OpenBikeSensorFirmware/releases/latest)
+[![GitHub last commit](https://img.shields.io/github/last-commit/openbikesensor/OpenBikeSensorFirmware)](https://github.com/openbikesensor/OpenBikeSensorFirmware/commits/master)
 
 [![OpenBikeSensor - CI](https://github.com/openbikesensor/OpenBikeSensorFirmware/workflows/OpenBikeSensor%20-%20CI/badge.svg)](https://github.com/openbikesensor/OpenBikeSensorFirmware/actions?query=workflow%3A%22OpenBikeSensor+-+CI%22)
 [![Open Issues](https://img.shields.io/github/issues/openbikesensor/OpenBikeSensorFirmware)](https://github.com/openbikesensor/OpenBikeSensorFirmware/issues)
+[![Contributors](https://img.shields.io/github/contributors/openbikesensor/OpenBikeSensorFirmware)](https://github.com/openbikesensor/OpenBikeSensorFirmware/contributors)
 [![quality gate](https://sonarcloud.io/api/project_badges/measure?project=Friends-of-OpenBikeSensor_OpenBikeSensorFirmware&metric=alert_status)](https://sonarcloud.io/dashboard?id=Friends-of-OpenBikeSensor_OpenBikeSensorFirmware    )
 [![bugs](https://sonarcloud.io/api/project_badges/measure?project=Friends-of-OpenBikeSensor_OpenBikeSensorFirmware&metric=bugs)](https://sonarcloud.io/project/issues?id=Friends-of-OpenBikeSensor_OpenBikeSensorFirmware&resolved=false&types=BUG)
+[![Slack](https://img.shields.io/badge/Slack-chat-success)](https://www.openbikesensor.org/slack/)
+
 
 Platform for measuring data on a bicycle and collecting it.
 Currently, we measure the distance with either HC-SR04 or JSN-SR04T 
