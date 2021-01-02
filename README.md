@@ -1,35 +1,53 @@
 # OpenBikeSensor
 
-[![OpenBikeSensor - CI](https://github.com/Friends-of-OpenBikeSensor/OpenBikeSensorFirmware/workflows/OpenBikeSensor%20-%20CI/badge.svg)](https://github.com/Friends-of-OpenBikeSensor/OpenBikeSensorFirmware/actions?query=workflow%3A%22OpenBikeSensor+-+CI%22) [![GitHub version](https://badge.fury.io/gh/Friends-of-openbikesensor%2FOpenBikeSensorFirmware.svg)](https://badge.fury.io/gh/Friends-of-openbikesensor%2FOpenBikeSensorFirmware)
+[![GitHub version](https://img.shields.io/github/v/release/openbikesensor/OpenBikeSensorFirmware?sort=semver)](https://github.com/openbikesensor/OpenBikeSensorFirmware/releases/latest)
+[![GitHub version](https://img.shields.io/github/v/release/openbikesensor/OpenBikeSensorFirmware?sort=semver&include_prereleases&label=pre-release)](https://github.com/openbikesensor/OpenBikeSensorFirmware/releases)
 
-Platform for measuring data on a bicyle and collecting it.
-Currently we measure the distance with either HC-SR04 or JSN-SR04T ultrasonic sensors connected to an ESP32.
+[![OpenBikeSensor - CI](https://github.com/openbikesensor/OpenBikeSensorFirmware/workflows/OpenBikeSensor%20-%20CI/badge.svg)](https://github.com/openbikesensor/OpenBikeSensorFirmware/actions?query=workflow%3A%22OpenBikeSensor+-+CI%22)
+[![Open Issues](https://img.shields.io/github/issues/openbikesensor/OpenBikeSensorFirmware)](https://github.com/openbikesensor/OpenBikeSensorFirmware/issues)
+[![quality gate](https://sonarcloud.io/api/project_badges/measure?project=Friends-of-OpenBikeSensor_OpenBikeSensorFirmware&metric=alert_status)](https://sonarcloud.io/dashboard?id=Friends-of-OpenBikeSensor_OpenBikeSensorFirmware    )
+[![bugs](https://sonarcloud.io/api/project_badges/measure?project=Friends-of-OpenBikeSensor_OpenBikeSensorFirmware&metric=bugs)](https://sonarcloud.io/project/issues?id=Friends-of-OpenBikeSensor_OpenBikeSensorFirmware&resolved=false&types=BUG)
+
+Platform for measuring data on a bicycle and collecting it.
+Currently, we measure the distance with either HC-SR04 or JSN-SR04T 
+ultrasonic sensors connected to an ESP32.
+
 
 ## Description
 
-Inspired by the Berlin project Radmesser. This version uses a simple push button at the handle bar to confirm distance-measures were actually overtaking vehicles. It has its own GPS and a SD card for logging, so it does not require any additional hardware (like a smartphone).
+Inspired by the Berlin project Radmesser. This version uses a simple push 
+button at the handle bar to confirm distance-measures were actually overtaking 
+vehicles. It has its own GPS, and a SD card for logging, so it does not 
+require any additional hardware (like a smartphone).
 
-With version v0.3 on the firmware also exposes the measured data via buetooth.
-You can use this to feed data to [SimRa](https://www.mcc.tu-berlin.de/menue/forschung/projekte/simra/) App.
+Starting with version v0.3 the firmware also exposes the measured data via 
+[BLE bluetooth](https://github.com/openbikesensor/OpenBikeSensorFirmware/blob/master/docs/software/firmware/bluetooth_services.md).
+You can use this to feed data to the
+[SimRa](https://www.mcc.tu-berlin.de/menue/forschung/projekte/simra/) App or
+any other app collecting heart-rate BLE data.
+
 
 ## Updating
 
-Because the version v0.3 and up uses a different partitioning schema for the
-ESP32, this update cannot be done over the air. THis needs a onetime update 
-via USB cable connection. Once this was done you can OTA update again with
-all versions (even back to v0.2.x).   
+Once installed you can update the firmware using the built in over-the-air
+update functionality. For the 1st flashing of the firmware or the update
+from a version prior v0.3.x you have to plug in USB.
+See [flash documentation](https://github.com/openbikesensor/OpenBikeSensorFirmware/blob/master/docs/software/firmware/initial_flash.md)   
+for a documentation how to do a manual flash it if you do not want to 
+set up an IDE as described below.
 
 
 ## Find the documentation
 
 You can find the OpenBikeSensor documentation under:
+* [openbikesensor.org](https://www.openbikesensor.org/)
 
-* https://Friends-of-OpenBikeSensor.github.io
 
 ## Getting Started
 
-1. You need a OpenBikeSensor in order to try work on the Firmware. [Head over to our Hardware Guide to assemble one](https://friends-of-openbikesensor.github.io/hardware/hardware.html) (attention, under construction!).
-2. Clone this repo: `git clone https://github.com/Friends-of-OpenBikeSensor/OpenBikeSensorFirmware.git` and `cd` into it.
-3. Choose between developing with recommended [VSCode](https://friends-of-openbikesensor.github.io/software/firmware/setup.html#vscode) (easiest setup) or [CLion](https://friends-of-openbikesensor.github.io/software/firmware/setup.html#clion) (license required), respectively [Arduino IDE](https://friends-of-openbikesensor.github.io/software/firmware/setup.html#arduino-ide) (discouraged).
-4. Happy Coding! 🎉
-
+1. You need a OpenBikeSensor in order to try work on the Firmware. [Head over to our Hardware Guide to assemble one](https://www.openbikesensor.org/hardware/).
+2. Clone this repo: `git clone https://github.com/openbikesensor/OpenBikeSensorFirmware.git` and `cd` into it.
+3. Choose between developing with recommended [VSCode](https://www.openbikesensor.org/software/firmware/setup.html#vscode), 
+   or [CLion](https://www.openbikesensor.org/software/firmware/setup.html#clion) (license required), 
+   respectively [Arduino IDE](https://www.openbikesensor.org/software/firmware/setup.html#clion) (discouraged).
+4. Happy Coding! :tada: We are open for your pull request.
