@@ -35,6 +35,7 @@ const char *OBSVersion = "v0.4" BUILD_NUMBER;
 const int LEFT_SENSOR_ID = 1;
 const int RIGHT_SENSOR_ID = 0;
 
+const uint32_t BUTTON_PRESS_TIME_FOR_AUTO_UPLOAD_MS = 5000;
 
 
 // PINs
@@ -252,12 +253,37 @@ void setup() {
     startServer(&cfg);
     OtaInit(esp_chipid);
 
+    uint32_t lastButtonLow = millis();
     while (true) {
       readGPSData();
       server.handleClient();
       delay(1);
       ArduinoOTA.handle();
       sensorManager->getDistancesNoWait();
+      buttonState = digitalRead(PushButton_PIN);
+      if (!configServerWasConnectedViaHttp()) {
+        displayTest->showTextOnGrid(0,3, "Keep button pressed");
+        displayTest->showTextOnGrid(0,4, "for automatic track upload.");
+      }
+      const uint32_t now = millis();
+      if (buttonState != lastButtonState) {
+        if (buttonState == HIGH) {
+          lastButtonLow = now;
+        } else {
+          if (!configServerWasConnectedViaHttp()) {
+            displayTest->clearProgressBar(5);
+          }
+        }
+        lastButtonState = buttonState;
+      }
+      if (!configServerWasConnectedViaHttp() &&
+        buttonState == HIGH) {
+        const uint32_t buttonPressedMs = now - lastButtonLow;
+        displayTest->drawProgressBar(5, buttonPressedMs, BUTTON_PRESS_TIME_FOR_AUTO_UPLOAD_MS);
+        if (buttonPressedMs > BUTTON_PRESS_TIME_FOR_AUTO_UPLOAD_MS) {
+          uploadTracks(false);
+        }
+      }
     }
   }
   SPIFFS.end();

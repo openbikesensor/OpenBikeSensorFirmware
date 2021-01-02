@@ -43,6 +43,8 @@
 
 extern WebServer server;
 void startServer(ObsConfig *pConfig);
+bool configServerWasConnectedViaHttp();
+void uploadTracks(bool httpRequest = true);
 void createPrivacyPage();
 
 #endif

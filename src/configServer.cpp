@@ -315,9 +315,15 @@ String makeCurrentLocationPrivateIndex =
 
 // #########################################
 
+bool configServerWasConnectedViaHttpFlag = false;
+
+bool configServerWasConnectedViaHttp() {
+  return configServerWasConnectedViaHttpFlag;
+}
 void tryWiFiConnect(const ObsConfig *obsConfig);
 
 String createPage(String content, String additionalContent = "") {
+  configServerWasConnectedViaHttpFlag = true;
   String result;
   result += header;
   result += content;
@@ -328,6 +334,7 @@ String createPage(String content, String additionalContent = "") {
 }
 
 String replaceDefault(String html, String subTitle, String action = "#") {
+  configServerWasConnectedViaHttpFlag = true;
   html.replace("{title}",
                theObsConfig->getProperty<String>(ObsConfig::PROPERTY_OBS_NAME) + " - " + subTitle);
   html.replace("{version}", OBSVersion);
@@ -341,6 +348,10 @@ String replaceDefault(String html, String subTitle, String action = "#") {
   displayTest->showTextOnGrid(0, 2, "Menu");
   displayTest->showTextOnGrid(1, 2, subTitle);
   return html;
+}
+
+void handleUpload() {
+  uploadTracks(true);
 }
 
 void handle_NotFound() {
@@ -674,90 +685,7 @@ void startServer(ObsConfig *obsConfig) {
     ESP.restart();
   });
 
-  server.on("/upload", []() {
-    SDFileSystem.mkdir("/uploaded");
-    File root = SDFileSystem.open("/");
-    if (!root) {
-      server.send(500, "text/plain", "Failed to open SD directory");
-      return;
-    }
-    if (!root.isDirectory()) {
-      server.send(500, "text/plain", "SD root is not a directory?");
-      return;
-    }
-    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
-    server.send(200, "text/html");
-
-    String html;
-    html = replaceDefault(header, "Upload Tracks");
-    html += "<div>";
-    server.sendContent(html);
-    html.clear();
-
-    File file = root.openNextFile("r");
-    uint16_t numberOfFiles = 0;
-    while (file) {
-      String fileName = String(file.name());
-      if (!file.isDirectory()
-          && fileName.endsWith(CSVFileWriter::EXTENSION)) {
-        numberOfFiles++;
-        displayTest->drawWaitBar(4, numberOfFiles);
-      }
-      file = root.openNextFile();
-    }
-    root.close();
-    displayTest->clearProgressBar(4);
-    root = SDFileSystem.open("/");
-    file = root.openNextFile();
-    uint16_t currentFileIndex = 0;
-    uint16_t okCount = 0;
-    uint16_t failedCount = 0;
-    while (file) {
-      String fileName = String(file.name());
-      fileName = fileName.substring(fileName.lastIndexOf("/") + 1);
-      log_d("Upload file: %s", fileName.c_str());
-      if (!file.isDirectory()
-        && fileName.endsWith(CSVFileWriter::EXTENSION)) {
-        fileName = fileName.substring(0, fileName.length() - CSVFileWriter::EXTENSION.length());
-        displayTest->showTextOnGrid(0, 4, fileName);
-        displayTest->drawProgressBar(3, ++currentFileIndex, numberOfFiles);
-        server.sendContent(fileName);
-        if(uploader::instance()->upload(file.name())) {
-          int i = 0;
-          while (!SDFileSystem.rename(file.name(), String("/uploaded") + file.name() + (i == 0 ? "" : String(i)))) {
-            i++;
-            if (i > 100) {
-              break;
-            }
-          }
-          html += "&#x2705;"; // OK mark
-          okCount++;
-        } else {
-          html += "&#x274C;"; // failed cross
-          failedCount++;
-        }
-        html += "<br />\n";
-        server.sendContent(html);
-        html.clear();
-        displayTest->clearProgressBar(5);
-      }
-      file.close();
-      file = root.openNextFile();
-    }
-    root.close();
-
-    displayTest->clearProgressBar(3);
-    displayTest->showTextOnGrid(0, 4, "");
-    displayTest->showTextOnGrid(1, 3, "Upload done.");
-    displayTest->showTextOnGrid(0, 5, "OK:");
-    displayTest->showTextOnGrid(1, 5, String(okCount));
-    displayTest->showTextOnGrid(2, 5, "Failed:");
-    displayTest->showTextOnGrid(3, 5, String(failedCount));
-    html += "</div><h3>All files done</h3/>";
-    html += "<input type=button onclick=\"window.location.href='/'\" class='btn' value='OK' />";
-    html += footer;
-    server.sendContent(html);
-  });
+  server.on("/upload", handleUpload);
 
   // ###############################################################
   // ### Index ###
@@ -1174,6 +1102,107 @@ void startServer(ObsConfig *obsConfig) {
   Serial.println("Server Ready");
 
 }
+
+// TODO: Split this thing!
+void uploadTracks(bool httpRequest) {
+  configServerWasConnectedViaHttpFlag = true;
+  SDFileSystem.mkdir("/uploaded");
+  File root = SDFileSystem.open("/");
+  if (!root) {
+    if (httpRequest) {
+      server.send(500, "text/plain", "Failed to open SD directory");
+    }
+    return;
+  }
+  if (!root.isDirectory()) {
+    if (httpRequest) {
+      server.send(500, "text/plain", "SD root is not a directory?");
+    }
+    return;
+  }
+  String html;
+  if (httpRequest) {
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    server.send(200, "text/html");
+  }
+  html = replaceDefault(header, "Upload Tracks");
+  html += "<div>";
+  if (httpRequest) {
+    server.sendContent(html);
+  }
+  html.clear();
+
+  File file = root.openNextFile("r");
+  uint16_t numberOfFiles = 0;
+  while (file) {
+    String fileName = String(file.name());
+    if (!file.isDirectory()
+        && fileName.endsWith(CSVFileWriter::EXTENSION)) {
+      numberOfFiles++;
+      displayTest->drawWaitBar(4, numberOfFiles);
+    }
+    file = root.openNextFile();
+  }
+  root.close();
+  displayTest->clearProgressBar(4);
+  root = SDFileSystem.open("/");
+  file = root.openNextFile();
+  uint16_t currentFileIndex = 0;
+  uint16_t okCount = 0;
+  uint16_t failedCount = 0;
+  while (file) {
+    String fileName = String(file.name());
+    fileName = fileName.substring(fileName.lastIndexOf("/") + 1);
+    log_d("Upload file: %s", fileName.c_str());
+    if (!file.isDirectory()
+        && fileName.endsWith(CSVFileWriter::EXTENSION)) {
+      fileName = fileName.substring(0, fileName.length() - CSVFileWriter::EXTENSION.length());
+      displayTest->showTextOnGrid(0, 4, fileName);
+      displayTest->drawProgressBar(3, ++currentFileIndex, numberOfFiles);
+      if (httpRequest) {
+        server.sendContent(fileName);
+      }
+      if (uploader::instance()->upload(file.name())) {
+        int i = 0;
+        while (!SDFileSystem.rename(file.name(), String("/uploaded") + file.name() + (i == 0 ? "" : String(i)))) {
+          i++;
+          if (i > 100) {
+            break;
+          }
+        }
+        html += "&#x2705;"; // OK mark
+        okCount++;
+      } else {
+        html += "&#x274C;"; // failed cross
+        failedCount++;
+      }
+      if (httpRequest) {
+        html += "<br />\n";
+        server.sendContent(html);
+      }
+      html.clear();
+      displayTest->clearProgressBar(5);
+    }
+    file.close();
+    file = root.openNextFile();
+  }
+  root.close();
+
+  displayTest->clearProgressBar(3);
+  displayTest->showTextOnGrid(0, 4, "");
+  displayTest->showTextOnGrid(1, 3, "Upload done.");
+  displayTest->showTextOnGrid(0, 5, "OK:");
+  displayTest->showTextOnGrid(1, 5, String(okCount));
+  displayTest->showTextOnGrid(2, 5, "Failed:");
+  displayTest->showTextOnGrid(3, 5, String(failedCount));
+  if (httpRequest) {
+    html += "</div><h3>All files done</h3/>";
+    html += "<input type=button onclick=\"window.location.href='/'\" class='btn' value='OK' />";
+    html += footer;
+    server.sendContent(html);
+  }
+}
+
 
 void tryWiFiConnect(const ObsConfig *obsConfig) {
   if (!WiFiGenericClass::mode(WIFI_MODE_STA)) {
