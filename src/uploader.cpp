@@ -24,12 +24,6 @@
 #include "utils/multipart.h"
 #include "writer.h"
 
-#include <HTTPClient.h>
-#include <SD.h>
-#include <FS.h>
-
-#include <utility>
-
 static char const *const HTTP_LOCATION_HEADER = "location";
 
 // Telekom rootCA certificate
@@ -115,15 +109,14 @@ bool Uploader::uploadFile(File &file) {
 
     int httpCode = https.sendRequest("POST", &mp, contentLength);
 
-    // TODO: This might be a lot! Could be any wrong web url configured!
-    if (httpCode >= 0) {
-      if (https.getSize() < 1024) {
-        mLastStatusMessage = String(httpCode) + ": " + https.getString();
-      } else {
-        mLastStatusMessage = String(httpCode) + ": Length: " + https.getSize();
-      }
+    mLastStatusMessage = String(httpCode) + ": ";
+    if (httpCode < 0) {
+      mLastStatusMessage += HTTPClient::errorToString(httpCode);
+    // This might be a large body, could be any wrong web url configured!
+    } else if (https.getSize() < 1024) {
+      mLastStatusMessage += https.getString();
     } else {
-      mLastStatusMessage = String(httpCode) + ": " + HTTPClient::errorToString(httpCode);
+      mLastStatusMessage += "Length: " + String(https.getSize());
     }
     mLastLocation = https.header(HTTP_LOCATION_HEADER);
     if (httpCode == 200 || httpCode == 201) {
@@ -141,10 +134,10 @@ bool Uploader::uploadFile(File &file) {
   return success;
 }
 
-String Uploader::getLastStatusMessage() {
+String Uploader::getLastStatusMessage() const {
   return mLastStatusMessage;
 }
 
-String Uploader::getLastLocation() {
+String Uploader::getLastLocation() const {
   return mLastLocation;
 }

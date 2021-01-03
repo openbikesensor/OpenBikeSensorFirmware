@@ -12,8 +12,8 @@ class Uploader {
      * moves it to uploaded directory and
      * returns true if successful, otherwise false */
     bool upload(const String& fileName);
-    String getLastStatusMessage();
-    String getLastLocation();
+    String getLastStatusMessage() const;
+    String getLastLocation() const;
 
   private:
     const String mPortalUrl;
