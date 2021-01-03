@@ -29,6 +29,10 @@ class ObsUtils {
   public:
     static String createTrackUuid();
     static String dateTimeToString(time_t time = 0);
+    /* Strips technical details like extension or '/' from the file name. */
+    static String stripCsvFileName(const String &fileName);
+    static void setClockByNtp();
+    static void setClockByNtpAndWait();
 };
 
 

@@ -56,98 +56,85 @@ static const char *const rootCACertificate =
   "BSeOE6Fuwg==\n"
   "-----END CERTIFICATE-----\n";
 
-// Not sure if WiFiClientSecure checks the validity date of the certificate.
-// Setting clock just to be sure...
-void Uploader::setClock() {
-  configTime(0, 0, "rustime01.rus.uni-stuttgart.de", "time.nist.gov");
-
-  log_d("Waiting for NTP time sync: ");
-  time_t nowSecs = time(nullptr);
-  while (nowSecs < 8 * 3600 * 2) {
-    delay(500);
-    log_v(".");
-    yield();
-    nowSecs = time(nullptr);
-  }
-  log_i("NTP time set got %s.", ObsUtils::dateTimeToString(nowSecs).c_str());
-}
-
-Uploader::Uploader(String portalUrl, String userToken) :
+Uploader::Uploader(String &portalUrl, String &userToken) :
     mPortalUrl(portalUrl),
     mPortalUserToken(userToken) {
-  setClock();
+  ObsUtils::setClockByNtpAndWait();
   mWiFiClient.setCACert(rootCACertificate);
 }
 
 /* Upload file as track data to "The Portal" as multipart form data.
  */
 bool Uploader::upload(const String& fileName) {
-  if(fileName.substring(0,7) != "/sensor"
-    && !fileName.endsWith(CSVFileWriter::EXTENSION)) {
-    mLastStatusMessage = "Not sending " + fileName + " wrong extension.";
-    log_e("Not sending %s wrong extension.", fileName.c_str());
-    return false;
-  }
-  log_d("Sending '%s'.", fileName.c_str());
   bool success = false;
-  File csvFile = SD.open(fileName.c_str(), "r");
-  if (csvFile) {
-    HTTPClient https;
-    https.setTimeout(30 * 1000); // give the api some time
-    https.setUserAgent(String("OBS/") + String(OBSVersion));
+  if(fileName.substring(0,7) != "/sensor"
+      && !fileName.endsWith(CSVFileWriter::EXTENSION)) {
+    log_e("Not sending %s wrong extension.", fileName.c_str());
+    mLastStatusMessage = "Not sending " + fileName + " wrong extension.";
+  } else {
+    log_d("Sending '%s'.", fileName.c_str());
+    File csvFile = SD.open(fileName.c_str(), "r");
+    if (csvFile) {
+      success = uploadFile(csvFile);
+      csvFile.close();
+    } else {
+      log_e("file %s not found", fileName.c_str());
+      mLastStatusMessage = "File " + fileName + " not found!";
+    }
+  }
+  return success;
+}
 
-    const char* headers[] = { HTTP_LOCATION_HEADER };
-    https.collectHeaders(headers, 1);
-    boolean res = false;
+bool Uploader::uploadFile(File &file) {
+  bool success = false;
+  HTTPClient https;
+  https.setTimeout(30 * 1000); // give the api some time
+  https.setUserAgent(String("OBS/") + String(OBSVersion));
 
-    res = https.begin(mWiFiClient, mPortalUrl + "/api/tracks");
+  const char* headers[] = { HTTP_LOCATION_HEADER };
+  https.collectHeaders(headers, 1);
+  if (https.begin(mWiFiClient, mPortalUrl + "/api/tracks")) { // HTTPS
     https.addHeader("Authorization", "OBSUserId " + mPortalUserToken);
     https.addHeader("Content-Type", "application/json");
 
-    if (res) { // HTTPS
-      MultipartStream mp(&https);
-      MultipartDataString title("title",
-                                "AutoUpload " + fileName.substring(1, 25));
-      mp.add(title);
-      MultipartDataString description("description", "Uploaded with OpenBikeSensor " + String(OBSVersion));
-      mp.add(description);
-      MultipartDataStream data("body", fileName, &csvFile, "text/csv");
-      mp.add(data);
-      mp.last();
+    String fileName = ObsUtils::stripCsvFileName(file.name());
+    MultipartStream mp(&https);
+    MultipartDataString title("title", "AutoUpload " + fileName);
+    mp.add(title);
+    MultipartDataString description("description", "Uploaded with OpenBikeSensor " + String(OBSVersion));
+    mp.add(description);
+    MultipartDataStream data("body", fileName, &file, "text/csv");
+    mp.add(data);
+    mp.last();
+    const size_t contentLength = mp.predictSize();
+    mp.setProgressListener([contentLength](size_t pos) {
+      displayTest->drawProgressBar(5, pos, contentLength);
+    });
 
-      const size_t contentLength = mp.predictSize();
-      mp.setProgressListener([contentLength](size_t pos) {
-        displayTest->drawProgressBar(5, pos, contentLength);
-      });
+    int httpCode = https.sendRequest("POST", &mp, contentLength);
 
-      int httpCode = https.sendRequest("POST", &mp, contentLength);
-      // TODO: This might be a lot! Could be any wrong web url configured!
-      if (httpCode >= 0) {
-        if (https.getSize() < 1024) {
-          mLastStatusMessage = httpCode + ": " + https.getString();
-        } else {
-          mLastStatusMessage = httpCode + ": Length: " + https.getSize();
-        }
+    // TODO: This might be a lot! Could be any wrong web url configured!
+    if (httpCode >= 0) {
+      if (https.getSize() < 1024) {
+        mLastStatusMessage = String(httpCode) + ": " + https.getString();
       } else {
-        mLastStatusMessage = httpCode + ": " + https.errorToString(httpCode);
-      }
-      mLastLocation = https.header("location");
-      if (httpCode == 200 || httpCode == 201) {
-        log_v("HTTP OK %s", mLastStatusMessage.c_str());
-        success = true;
-      } else {
-        log_e("HTTP Error %s", mLastStatusMessage.c_str());
-        https.end();
+        mLastStatusMessage = String(httpCode) + ": Length: " + https.getSize();
       }
     } else {
-      mLastStatusMessage = "[HTTPS] begin to " + mPortalUrl + " failed.";
-      log_e("HTTPS error %s", mLastStatusMessage.c_str());
+      mLastStatusMessage = String(httpCode) + ": " + HTTPClient::errorToString(httpCode);
+    }
+    mLastLocation = https.header(HTTP_LOCATION_HEADER);
+    if (httpCode == 200 || httpCode == 201) {
+      log_v("HTTP OK %s", mLastStatusMessage.c_str());
+      success = true;
+    } else {
+      log_e("HTTP Error %s", mLastStatusMessage.c_str());
       https.end();
     }
-    csvFile.close();
   } else {
-    mLastStatusMessage = "File " + fileName + " not found!";
-    log_e("file %s not found", fileName.c_str());
+    mLastStatusMessage = "[HTTPS] begin to " + mPortalUrl + " failed.";
+    log_e("HTTPS error %s", mLastStatusMessage.c_str());
+    https.end();
   }
   return success;
 }

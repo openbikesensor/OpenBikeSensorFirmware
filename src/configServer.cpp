@@ -679,7 +679,7 @@ void startServer(ObsConfig *obsConfig) {
   /*return index page which is stored in serverIndex */
 
   readGPSData();
-  Uploader::setClock();
+  ObsUtils::setClockByNtp();
   readGPSData();
   if (!voltageMeter) {
     voltageMeter = new VoltageMeter();

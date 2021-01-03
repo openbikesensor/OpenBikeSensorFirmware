@@ -17,9 +17,10 @@
   You should have received a copy of the GNU General Public License along with
   the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include <esp_wifi.h>
-#include "BLEServer.h"
 #include "obsutils.h"
+#include <esp_wifi.h>
+#include "writer.h"
+#include "BLEServer.h"
 
 String ObsUtils::createTrackUuid() {
   uint8_t data[16];
@@ -40,3 +41,33 @@ String ObsUtils::dateTimeToString(time_t theTime) {
            timeStruct.tm_hour, timeStruct.tm_min, timeStruct.tm_sec);
   return String(date);
 }
+
+
+String ObsUtils::stripCsvFileName(const String &fileName) {
+  String userPrintableFilename = fileName.substring(fileName.lastIndexOf("/") + 1);
+  if (userPrintableFilename.endsWith(CSVFileWriter::EXTENSION)) {
+    userPrintableFilename
+      = userPrintableFilename.substring(
+      0, userPrintableFilename.length() - CSVFileWriter::EXTENSION.length());
+  }
+  return userPrintableFilename;
+}
+
+void ObsUtils::setClockByNtp() {
+  configTime(0, 0, "rustime01.rus.uni-stuttgart.de", "pool.ntp.org");
+}
+
+void ObsUtils::setClockByNtpAndWait() {
+  setClockByNtp();
+
+  log_d("Waiting for NTP time sync: ");
+  time_t nowSecs = time(nullptr);
+  while (nowSecs < 8 * 3600 * 2) {
+    delay(500);
+    log_v(".");
+    yield();
+    nowSecs = time(nullptr);
+  }
+  log_i("NTP time set got %s.", ObsUtils::dateTimeToString(nowSecs).c_str());
+}
+

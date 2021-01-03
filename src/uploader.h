@@ -3,11 +3,11 @@
 
 #include <Arduino.h>
 #include <WiFiClientSecure.h>
+#include <FS.h>
 
 class Uploader {
   public:
-    Uploader(String portalUrl, String userToken);
-    static void setClock();
+    Uploader(String &portalUrl, String &userToken);
     /* uploads the named file to the portal,
      * moves it to uploaded directory and
      * returns true if successful, otherwise false */
@@ -21,5 +21,7 @@ class Uploader {
     WiFiClientSecure mWiFiClient;
     String mLastLocation = "";
     String mLastStatusMessage = "NO UPLOAD";
+
+    bool uploadFile(fs::File &file);
 };
 #endif
