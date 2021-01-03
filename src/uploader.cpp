@@ -28,6 +28,8 @@
 #include <SD.h>
 #include <FS.h>
 
+#include <utility>
+
 static char const *const HTTP_LOCATION_HEADER = "location";
 
 // Telekom rootCA certificate
@@ -56,9 +58,9 @@ static const char *const rootCACertificate =
   "BSeOE6Fuwg==\n"
   "-----END CERTIFICATE-----\n";
 
-Uploader::Uploader(String &portalUrl, String &userToken) :
-    mPortalUrl(portalUrl),
-    mPortalUserToken(userToken) {
+Uploader::Uploader(String portalUrl, String userToken) :
+    mPortalUrl(std::move(portalUrl)),
+    mPortalUserToken(std::move(userToken)) {
   ObsUtils::setClockByNtpAndWait();
   mWiFiClient.setCACert(rootCACertificate);
 }

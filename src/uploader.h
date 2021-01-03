@@ -7,7 +7,7 @@
 
 class Uploader {
   public:
-    Uploader(String &portalUrl, String &userToken);
+    Uploader(String portalUrl, String userToken);
     /* uploads the named file to the portal,
      * moves it to uploaded directory and
      * returns true if successful, otherwise false */
