@@ -217,7 +217,7 @@ String wifiSettingsIndex =
 String backupIndex =
   "<p>This backups and restores the device configuration incl. the Basic Config, Privacy Zones and Wifi Settings.</p>"
   "<h3>Backup</h3>"
-  "<input type='submit' onclick=\"window.location.href='/settings/backup.json'\" class=btn value='Download' />"
+  "<input type='button' onclick=\"window.location.href='/settings/backup.json'\" class=btn value='Download' />"
   "<h3>Restore</h3>";
 
 // #########################################
