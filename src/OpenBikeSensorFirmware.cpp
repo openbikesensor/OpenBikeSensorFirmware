@@ -32,9 +32,10 @@
 // Version only change the "vN.M" part if needed.
 const char *OBSVersion = "v0.4" BUILD_NUMBER;
 
-const int LEFT_SENSOR_ID = 1;
-const int RIGHT_SENSOR_ID = 0;
+const uint8_t LEFT_SENSOR_ID = 1;
+const uint8_t RIGHT_SENSOR_ID = 0;
 
+const uint32_t BUTTON_PRESS_TIME_FOR_AUTO_UPLOAD_MS = 5000;
 
 
 // PINs
@@ -47,8 +48,8 @@ int numButtonReleased = 0;
 DataSet *datasetToConfirm = nullptr;
 
 int buttonState = 0;
+uint32_t buttonStateChanged = millis();
 
-const char *configFilename = "/config.txt";  // <- SD library uses 8.3 filenames
 Config config;
 
 SSD1306DisplayDevice* displayTest;
@@ -80,8 +81,6 @@ uint16_t minDistanceToConfirmIndex = 0;
 bool transmitConfirmedData = false;
 int lastButtonState = 0;
 
-String filename;
-
 CircularBuffer<DataSet*, 10> dataBuffer;
 
 FileWriter* writer;
@@ -97,9 +96,10 @@ int lastMeasurements = 0 ;
 
 void bluetoothConfirmed(const DataSet *dataSet, uint16_t measureIndex);
 uint8_t batteryPercentage();
+void serverLoop();
+void handleButtonInServerMode();
 
 // The BMP280 can keep up to 3.4MHz I2C speed, so no need for an individual slower speed
-
 void switch_wire_speed_to_VL53(){
 	Wire.setClock(400000);
 }
@@ -247,17 +247,12 @@ void setup() {
     ESP_ERROR_CHECK_WITHOUT_ABORT(
       esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
 
-    delay(1000); // Added for user experience
-
+    delay(300);
     startServer(&cfg);
     OtaInit(esp_chipid);
-
     while (true) {
-      readGPSData();
-      server.handleClient();
-      delay(1);
-      ArduinoOTA.handle();
-      sensorManager->getDistancesNoWait();
+      yield();
+      serverLoop();
     }
   }
   SPIFFS.end();
@@ -387,6 +382,38 @@ void setup() {
 
   // Clear the display once!
   displayTest->clear();
+}
+
+void serverLoop() {
+  readGPSData();
+  server.handleClient();
+  ArduinoOTA.handle();
+  sensorManager->getDistancesNoWait();
+  handleButtonInServerMode();
+}
+
+void handleButtonInServerMode() {
+  buttonState = digitalRead(PushButton_PIN);
+  if (!configServerWasConnectedViaHttp()) {
+    displayTest->showTextOnGrid(0,3, "Keep button pressed");
+    displayTest->showTextOnGrid(0,4, "for automatic track upload.");
+  }
+  const uint32_t now = millis();
+  if (buttonState != lastButtonState) {
+    if (buttonState == LOW && !configServerWasConnectedViaHttp()) {
+        displayTest->clearProgressBar(5);
+    }
+    lastButtonState = buttonState;
+    buttonStateChanged = now;
+  }
+  if (!configServerWasConnectedViaHttp() &&
+    buttonState == HIGH) {
+    const uint32_t buttonPressedMs = now - buttonStateChanged;
+    displayTest->drawProgressBar(5, buttonPressedMs, BUTTON_PRESS_TIME_FOR_AUTO_UPLOAD_MS);
+    if (buttonPressedMs > BUTTON_PRESS_TIME_FOR_AUTO_UPLOAD_MS) {
+      uploadTracks(false);
+    }
+  }
 }
 
 

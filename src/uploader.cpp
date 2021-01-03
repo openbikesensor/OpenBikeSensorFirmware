@@ -20,19 +20,14 @@
 
 #include "uploader.h"
 
-#include "config.h"
 #include "globals.h"
 #include "utils/multipart.h"
 #include "writer.h"
 
-#include <WiFi.h>
-#include <WiFiMulti.h>
-#include <HTTPClient.h>
-#include <SD.h>
-#include <FS.h>
+static char const *const HTTP_LOCATION_HEADER = "location";
 
 // Telekom rootCA certificate
-const char *rootCACertificate =
+static const char *const rootCACertificate =
   "-----BEGIN CERTIFICATE-----\n"
   "MIIDwzCCAqugAwIBAgIBATANBgkqhkiG9w0BAQsFADCBgjELMAkGA1UEBhMCREUx\n"
   "KzApBgNVBAoMIlQtU3lzdGVtcyBFbnRlcnByaXNlIFNlcnZpY2VzIEdtYkgxHzAd\n"
@@ -57,102 +52,92 @@ const char *rootCACertificate =
   "BSeOE6Fuwg==\n"
   "-----END CERTIFICATE-----\n";
 
-// Not sure if WiFiClientSecure checks the validity date of the certificate.
-// Setting clock just to be sure...
-void uploader::setClock() {
-  configTime(0, 0, "rustime01.rus.uni-stuttgart.de", "time.nist.gov");
-
-  Serial.print(F("Waiting for NTP time sync: "));
-  time_t nowSecs = time(nullptr);
-  while (nowSecs < 8 * 3600 * 2) {
-    delay(500);
-    Serial.print(F("."));
-    yield();
-    nowSecs = time(nullptr);
-  }
-
-  Serial.println();
-  struct tm timeinfo;
-  gmtime_r(&nowSecs, &timeinfo);
-  Serial.print(F("Current time: "));
-  Serial.print(asctime(&timeinfo));
-  Serial.print(F("Waiting for NTP time sync done: "));
+Uploader::Uploader(String portalUrl, String userToken) :
+    mPortalUrl(std::move(portalUrl)),
+    mPortalUserToken(std::move(userToken)) {
+  ObsUtils::setClockByNtpAndWait();
+  mWiFiClient.setCACert(rootCACertificate);
 }
 
-uploader *uploader::inst = nullptr;
-
-uploader::uploader() {
-  setClock();
-
-  Serial.print("WiFiClientSecure\n");
-  client = new WiFiClientSecure;
-  Serial.print("WiFiClientSecure2\n");
-  if (client) {
-    client->setCACert(rootCACertificate);
-  } else {
-    Serial.println("Unable to create client");
-  }
-}
-
-/* Upload data to "The Portal".
- *
- * File data can be sent nearly directly since the only thing we have
- * to escape inside the JSON string is the newline, we do not use other
- * characters that need escaping in the CSV (for now) (" & \)
- *
+/* Upload file as track data to "The Portal" as multipart form data.
  */
-bool uploader::upload(const String& fileName) {
+bool Uploader::upload(const String& fileName) {
+  bool success = false;
   if(fileName.substring(0,7) != "/sensor"
-    && !fileName.endsWith(CSVFileWriter::EXTENSION)) {
-    Serial.printf(("not sending " + fileName + "\n").c_str());
-    return false;
-  }
-  Serial.printf(("sending " + fileName + "\n").c_str());
-  File csvFile = SD.open(fileName.c_str(), "r");
-  if (csvFile) {
-    HTTPClient https;
-    https.setTimeout(30 * 1000); // give the api some time
-    https.setUserAgent(String("OBS/") + String(OBSVersion));
-    boolean res = false;
-
-    // USE CONGIG !!res = https.begin(*client, "http://192.168.98.51:3000/api/tracks");
-    res = https.begin(*client, "https://openbikesensor.hlrs.de/api/tracks");
-    https.addHeader("Authorization", "OBSUserId " + String(config.obsUserID));
-    https.addHeader("Content-Type", "application/json");
-
-    if (res) { // HTTPS
-      MultipartStream mp(&https);
-      MultipartDataString title("title",
-                                "AutoUpload " + fileName.substring(1, 25));
-      mp.add(title);
-      MultipartDataString description("description", "Uploaded with OpenBikeSensor " + String(OBSVersion));
-      mp.add(description);
-      MultipartDataStream data("body", fileName, &csvFile, "text/csv");
-      mp.add(data);
-      mp.last();
-      int httpCode = https.sendRequest("POST", &mp, mp.predictSize());
-      if (httpCode != 200) {
-        Serial.printf("[HTTPS] POST... code: %d\n", httpCode);
-        String payload = https.getString();
-        Serial.println(payload);
-        https.end();
-        csvFile.close();
-        return false;
-      }
+      && !fileName.endsWith(CSVFileWriter::EXTENSION)) {
+    log_e("Not sending %s wrong extension.", fileName.c_str());
+    mLastStatusMessage = "Not sending " + fileName + " wrong extension.";
+  } else {
+    log_d("Sending '%s'.", fileName.c_str());
+    File csvFile = SD.open(fileName.c_str(), "r");
+    if (csvFile) {
+      success = uploadFile(csvFile);
       csvFile.close();
     } else {
-      Serial.printf("[HTTPS] Unable to connect\n");
-      https.end();
-      csvFile.close();
-      return false;
+      log_e("file %s not found", fileName.c_str());
+      mLastStatusMessage = "File " + fileName + " not found!";
     }
-  } else {
-    Serial.printf(("file " + fileName + " not found\n").c_str());
-    return false;
   }
-  return true;
+  return success;
 }
 
-void uploader::destroy() {
-  delete client;
+bool Uploader::uploadFile(File &file) {
+  bool success = false;
+  HTTPClient https;
+  https.setTimeout(30 * 1000); // give the api some time
+  https.setUserAgent(String("OBS/") + String(OBSVersion));
+
+  const char* headers[] = { HTTP_LOCATION_HEADER };
+  https.collectHeaders(headers, 1);
+  if (https.begin(mWiFiClient, mPortalUrl + "/api/tracks")) { // HTTPS
+    https.addHeader("Authorization", "OBSUserId " + mPortalUserToken);
+    https.addHeader("Content-Type", "application/json");
+
+    String fileName = ObsUtils::stripCsvFileName(file.name());
+    MultipartStream mp(&https);
+    MultipartDataString title("title", "AutoUpload " + fileName);
+    mp.add(title);
+    MultipartDataString description("description", "Uploaded with OpenBikeSensor " + String(OBSVersion));
+    mp.add(description);
+    MultipartDataStream data("body", fileName, &file, "text/csv");
+    mp.add(data);
+    mp.last();
+    const size_t contentLength = mp.predictSize();
+    mp.setProgressListener([contentLength](size_t pos) {
+      displayTest->drawProgressBar(5, pos, contentLength);
+    });
+
+    int httpCode = https.sendRequest("POST", &mp, contentLength);
+
+    mLastStatusMessage = String(httpCode) + ": ";
+    if (httpCode < 0) {
+      mLastStatusMessage += HTTPClient::errorToString(httpCode);
+    // This might be a large body, could be any wrong web url configured!
+    } else if (https.getSize() < 1024) {
+      mLastStatusMessage += https.getString();
+    } else {
+      mLastStatusMessage += "Length: " + String(https.getSize());
+    }
+    mLastLocation = https.header(HTTP_LOCATION_HEADER);
+    if (httpCode == 200 || httpCode == 201) {
+      log_v("HTTP OK %s", mLastStatusMessage.c_str());
+      success = true;
+    } else {
+      log_e("HTTP Error %s", mLastStatusMessage.c_str());
+      https.end();
+    }
+  } else {
+    mLastStatusMessage = "[HTTPS] begin to " + mPortalUrl + " failed.";
+    log_e("HTTPS error %s", mLastStatusMessage.c_str());
+    https.end();
+  }
+  return success;
+}
+
+String Uploader::getLastStatusMessage() const {
+  return mLastStatusMessage;
+}
+
+String Uploader::getLastLocation() const {
+  return mLastLocation;
 }

@@ -77,7 +77,14 @@ int StreamOfStreams::available() {
 }
 
 int StreamOfStreams::read() {
-  return getCurrent()->read();
+  const int data = getCurrent()->read();
+  if (data >= 0) {
+    overallBytePos += 1;
+    if (progressListener) {
+      progressListener(overallBytePos);
+    }
+  }
+  return data;
 }
 
 int StreamOfStreams::peek() {
@@ -92,8 +99,20 @@ size_t StreamOfStreams::write(uint8_t) {
 }
 
 size_t StreamOfStreams::readBytes(char *buffer, size_t length) {
-  return getCurrent()->readBytes(buffer, length);
+  const size_t read = getCurrent()->readBytes(buffer, length);
+  if (read > 0) {
+    overallBytePos += read;
+    if (progressListener) {
+      progressListener(overallBytePos);
+    }
+  }
+  return read;
 }
+
+void StreamOfStreams::setProgressListener(std::function<void(size_t pos)> listener) {
+  progressListener = listener;
+}
+
 
 Stream *StreamOfStreams::getCurrent() {
   if (current == nullptr || current->available() == 0) {

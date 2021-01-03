@@ -36,23 +36,24 @@
  *  - JSN-SR04T-2.0 =  ~1125us
  */
 
+const uint16_t MAX_SENSOR_VALUE = 999;
 
-const uint16_t MIN_DISTANCE_MEASURED_CM =   2;
-const uint16_t MAX_DISTANCE_MEASURED_CM = 320; // candidate to check I could not get good readings above 300
+static const uint16_t MIN_DISTANCE_MEASURED_CM =   2;
+static const uint16_t MAX_DISTANCE_MEASURED_CM = 320; // candidate to check I could not get good readings above 300
 
-const uint32_t MIN_DURATION_MICRO_SEC = MIN_DISTANCE_MEASURED_CM * MICRO_SEC_TO_CM_DIVIDER;
+static const uint32_t MIN_DURATION_MICRO_SEC = MIN_DISTANCE_MEASURED_CM * MICRO_SEC_TO_CM_DIVIDER;
 const uint32_t MAX_DURATION_MICRO_SEC = MAX_DISTANCE_MEASURED_CM * MICRO_SEC_TO_CM_DIVIDER;
 
 /* This time is maximum echo pin high time if the sensor gets no response
  * HC-SR04: observed 71ms, docu 60ms
  * JSN-SR04T: observed 58ms
  */
-const uint32_t MAX_TIMEOUT_MICRO_SEC = 75000;
+static const uint32_t MAX_TIMEOUT_MICRO_SEC = 75000;
 
 /* The last end (echo goes to low) of a measurement must be this far
  * away before a new measurement is started.
  */
-const uint32_t SENSOR_QUIET_PERIOD_AFTER_END_MICRO_SEC = 10 * 1000;
+static const uint32_t SENSOR_QUIET_PERIOD_AFTER_END_MICRO_SEC = 10 * 1000;
 
 /* The last start of a new measurement must be as long ago as given here
     away, until we start a new measurement.
@@ -60,10 +61,10 @@ const uint32_t SENSOR_QUIET_PERIOD_AFTER_END_MICRO_SEC = 10 * 1000;
    - With 30ms I could get stable readings down to 25/35cm only (new sensor)
    - It looked fine with the old sensor for all values
  */
-const uint32_t SENSOR_QUIET_PERIOD_AFTER_START_MICRO_SEC = 35 * 1000;
+static const uint32_t SENSOR_QUIET_PERIOD_AFTER_START_MICRO_SEC = 35 * 1000;
 
 /* Value of HCSR04SensorInfo::end during an ongoing measurement. */
-const uint32_t MEASUREMENT_IN_PROGRESS = 0;
+static const uint32_t MEASUREMENT_IN_PROGRESS = 0;
 
 /* Some calculations:
  *
@@ -101,10 +102,26 @@ void HCSR04SensorManager::registerSensor(HCSR04SensorInfo sensorInfo) {
   sensorValues.push_back(0); //make sure sensorValues has same size as m_sensors
   assert(sensorValues.size() == m_sensors.size());
   if (m_sensors[m_sensors.size() - 1].median == nullptr) {
-    m_sensors[m_sensors.size() - 1].median = new Median<uint16_t>(5);
+    m_sensors[m_sensors.size() - 1].median = new Median<uint16_t>(5, MAX_SENSOR_VALUE);
   }
+  attachSensorInterrupt(sensorInfo);
+}
+
+void HCSR04SensorManager::attachSensorInterrupt(HCSR04SensorInfo &sensorInfo) {
   // only one interrupt per pin, can not split RISING/FALLING here
   attachInterrupt(sensorInfo.echoPin, std::bind(&HCSR04SensorManager::isr, this, m_sensors.size() - 1), CHANGE);
+}
+
+void HCSR04SensorManager::detachInterrupts() {
+  for (size_t idx = 0; idx < m_sensors.size(); ++idx) {
+    detachInterrupt(m_sensors[idx].echoPin);
+  }
+}
+
+void HCSR04SensorManager::attachInterrupts() {
+  for (size_t idx = 0; idx < m_sensors.size(); ++idx) {
+    attachSensorInterrupt(m_sensors[idx]);
+  }
 }
 
 void HCSR04SensorManager::reset() {

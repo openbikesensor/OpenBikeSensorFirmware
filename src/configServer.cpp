@@ -25,17 +25,17 @@
 
 #include "configServer.h"
 #include "OpenBikeSensorFirmware.h"
-#include <SD.h>
-#include <FS.h>
 #include <uploader.h>
-#include <utils/obsutils.h>
 #include "SPIFFS.h"
 
 extern std::vector<String> gpsMessages;
 
+static const char *const HTML_ENTITY_FAILED_CROSS = "&#x274C;";
+static const char *const HTML_ENTITY_OK_MARK = "&#x2705;";
+
+
 const char* host = "openbikesensor";
 
-// Todo: find a good name
 ObsConfig *theObsConfig;
 
 WebServer server(80);
@@ -74,7 +74,8 @@ const String previous = "<a href=\"javascript:history.back()\" class='previous'>
 
 String header =
   "<!DOCTYPE html>\n"
-  "<html lang=\"en\"><head><meta charset=\"utf-8\"/><title>{title}</title>" + style + ""
+  "<html lang='en'><head><meta charset='utf-8'/><title>{title}</title>" + style +
+  "<link rel='icon' href='data:;base64,iVBORw0KGgo=' />"
   "<script>"
   "window.onload = function() {"
   "  if (window.location.pathname == '/') {"
@@ -122,7 +123,7 @@ String xhrUpload =   "<input type='file' name='upload' id='file' accept='{accept
   ""
   "document.getElementById('btn').addEventListener('click', function(e){"
   "e.preventDefault();"
-  "if (fileName == '') { alert('No file choosen'); return; }"
+  "if (fileName == '') { alert('No file chosen'); return; }"
   "console.log('Start upload...');"
   ""
   "var form = document.getElementsByTagName('form')[0];"
@@ -150,7 +151,7 @@ String xhrUpload =   "<input type='file' name='upload' id='file' accept='{accept
   "};"
   "xhr.upload.addEventListener('progress', function(evt) {"
   "if (evt.lengthComputable) {"
-  "var per = Math.round(evt.loaded / evt.total * 100);"
+  "var per = Math.round((evt.loaded * 100) / evt.total);"
   "if(per == 100) document.getElementById('prg').innerHTML = 'Updating...';"
   "else document.getElementById('prg').innerHTML = 'Upload progress: ' + per + '%';"
   "document.getElementById('bar').style.width = per + '%';"
@@ -216,7 +217,7 @@ String wifiSettingsIndex =
 String backupIndex =
   "<p>This backups and restores the device configuration incl. the Basic Config, Privacy Zones and Wifi Settings.</p>"
   "<h3>Backup</h3>"
-  "<input type='submit' onclick=\"window.location.href='/settings/backup.json'\" class=btn value='Download' />"
+  "<input type='button' onclick=\"window.location.href='/settings/backup.json'\" class=btn value='Download' />"
   "<h3>Restore</h3>";
 
 // #########################################
@@ -315,9 +316,19 @@ String makeCurrentLocationPrivateIndex =
 
 // #########################################
 
-void tryWiFiConnect(const ObsConfig *obsConfig);
+bool configServerWasConnectedViaHttpFlag = false;
 
-String createPage(String content, String additionalContent = "") {
+void tryWiFiConnect(const ObsConfig *obsConfig);
+uint16_t countFilesInRoot();
+String ensureSdIsAvailable();
+void moveToUploaded(const String &fileName);
+
+bool configServerWasConnectedViaHttp() {
+  return configServerWasConnectedViaHttpFlag;
+}
+
+String createPage(const String& content, const String& additionalContent = "") {
+  configServerWasConnectedViaHttpFlag = true;
   String result;
   result += header;
   result += content;
@@ -327,13 +338,25 @@ String createPage(String content, String additionalContent = "") {
   return result;
 }
 
-String replaceDefault(String html, String subTitle, String action = "#") {
+String replaceDefault(String html, const String& subTitle, const String& action = "#") {
+  configServerWasConnectedViaHttpFlag = true;
   html.replace("{title}",
                theObsConfig->getProperty<String>(ObsConfig::PROPERTY_OBS_NAME) + " - " + subTitle);
   html.replace("{version}", OBSVersion);
   html.replace("{subtitle}", subTitle);
   html.replace("{action}", action);
+  displayTest->clear();
+  displayTest->showTextOnGrid(0, 0,
+                              theObsConfig->getProperty<String>(ObsConfig::PROPERTY_OBS_NAME));
+  displayTest->showTextOnGrid(0, 1, "IP:");
+  displayTest->showTextOnGrid(1, 1, WiFi.localIP().toString());
+  displayTest->showTextOnGrid(0, 2, "Menu");
+  displayTest->showTextOnGrid(1, 2, subTitle);
   return html;
+}
+
+void handleUpload() {
+  uploadTracks(true);
 }
 
 void handle_NotFound() {
@@ -425,29 +448,42 @@ void wifiAction() {
   server.send(200, "text/html", s);
 }
 
-String keyValue(String key, String value, String suffix = "") {
+String keyValue(const String& key, const String& value, const String& suffix = "") {
   return "<b>" + key + ":</b> " + value + suffix + "<br />";
+}
+
+String keyValue(const String& key, const uint32_t value, const String& suffix = "") {
+  return keyValue(key, String(value), suffix);
+}
+
+String keyValue(const String& key, const int32_t value, const String& suffix = "") {
+  return keyValue(key, String(value), suffix);
+}
+
+String keyValue(const String& key, const uint64_t value, const String& suffix = "") {
+  // is long this sufficient?
+  return keyValue(key, String((unsigned long) value), suffix);
 }
 
 void aboutPage() {
   String page;
 
   page += "<h3>ESP32</h3>"; // SPDIFF
-  page += keyValue("Heap size", String(ESP.getHeapSize() / 1024), "kb");
-  page += keyValue("Free heap", String(ESP.getFreeHeap() / 1024), "kb");
-  page += keyValue("Min. free heap", String(ESP.getMinFreeHeap() / 1024), "kb");
+  page += keyValue("Heap size", ESP.getHeapSize() / 1024, "kb");
+  page += keyValue("Free heap", ESP.getFreeHeap() / 1024, "kb");
+  page += keyValue("Min. free heap", ESP.getMinFreeHeap() / 1024, "kb");
   String chipId = String((uint32_t) ESP.getEfuseMac(), HEX) + String((uint32_t) (ESP.getEfuseMac() >> 32), HEX);
   chipId.toUpperCase();
   page += keyValue("Chip id", chipId);
   page += keyValue("IDF Version", esp_get_idf_version());
 
 //  page += keyValue("Chip model", ESP.getChipModel());
-  page += keyValue("Chip revision", String(ESP.getChipRevision()));
-  page += keyValue("App size", String(ESP.getSketchSize() / 1024), "kb");
-  page += keyValue("App space", String(ESP.getFreeSketchSpace() / 1024), "kb");
+  page += keyValue("Chip revision", ESP.getChipRevision());
+  page += keyValue("App size", ESP.getSketchSize() / 1024, "kb");
+  page += keyValue("App space", ESP.getFreeSketchSpace() / 1024, "kb");
 // Needs to much RAM:   page += keyValue("App MD5", ESP.getSketchMD5());
-  page += keyValue("Flash size", String(ESP.getFlashChipSize() / 1024), "kb");
-  page += keyValue("Flash speed", String(ESP.getFlashChipSpeed() / 1000 / 1000), "MHz");
+  page += keyValue("Flash size", ESP.getFlashChipSize() / 1024, "kb");
+  page += keyValue("Flash speed", ESP.getFlashChipSpeed() / 1000 / 1000, "MHz");
   page += keyValue("App 'DEVELOP'",
 #ifdef DEVELOP
                    "true"
@@ -465,10 +501,10 @@ void aboutPage() {
   esp_chip_info_t ci;
   esp_chip_info(&ci);
   page += keyValue("Cores", String(ci.cores));
-  page += keyValue("CPU frequency", String(ESP.getCpuFreqMHz()), "MHz");
+  page += keyValue("CPU frequency", ESP.getCpuFreqMHz(), "MHz");
 
-  page += keyValue("SPIFFS size", String((uint32_t) (SPIFFS.totalBytes() / 1024)), "KB");
-  page += keyValue("SPIFFS used", String((uint32_t) (SPIFFS.usedBytes() / 1024)), "KB");
+  page += keyValue("SPIFFS size", ObsUtils::toScaledByteString(SPIFFS.totalBytes()));
+  page += keyValue("SPIFFS used", ObsUtils::toScaledByteString(SPIFFS.usedBytes()));
 
   String files;
   auto dir = SPIFFS.open("/");
@@ -477,9 +513,10 @@ void aboutPage() {
     files += "<br />";
     files += file.name();
     files += " ";
-    files +=  String((uint32_t) (file.size() / 1024));
-    files += "kb ";
+    files +=  ObsUtils::toScaledByteString(file.size());
+    files += " ";
     files += ObsUtils::dateTimeToString(file.getLastWrite());
+    file.close();
     file = dir.openNextFile();
   }
   dir.close();
@@ -493,7 +530,7 @@ void aboutPage() {
 
   page += "<h3>SD Card</h3>";
 
-  page += keyValue("SD card size", String((uint32_t) (SD.cardSize() / 1024 / 1024)), "MB");
+  page += keyValue("SD card size", String((uint32_t) (SD.cardSize() / 1024 / 1024)), "mb");
 
   String sdCardType;
   switch (SD.cardType()) {
@@ -505,28 +542,28 @@ void aboutPage() {
   }
 
   page += keyValue("SD card type", sdCardType);
-  page += keyValue("SD fs size", String((uint32_t) (SD.totalBytes() / 1024 / 1024)), "MB");
-  page += keyValue("SD fs used", String((uint32_t) (SD.usedBytes() / 1024 / 1024)), "MB");
+  page += keyValue("SD fs size", SD.totalBytes() / 1024 / 1024, "mb");
+  page += keyValue("SD fs used", SD.usedBytes() / 1024 / 1024, "mb");
 
   page += "<h3>TOF Sensors</h3>";
-  page += keyValue("Left Sensor raw", String(sensorManager->getRawMedianDistance(LEFT_SENSOR_ID)), "cm");
-  page += keyValue("Left Sensor max duration", String(sensorManager->getMaxDurationUs(LEFT_SENSOR_ID)), "&#xB5;s");
-  page += keyValue("Left Sensor min duration", String(sensorManager->getMinDurationUs(LEFT_SENSOR_ID)), "&#xB5;s");
-  page += keyValue("Left Sensor last start delay", String(sensorManager->getLastDelayTillStartUs(LEFT_SENSOR_ID)), "&#xB5;s");
-  page += keyValue("Right Sensor raw", String(sensorManager->getRawMedianDistance(RIGHT_SENSOR_ID)), "cm");
-  page += keyValue("Right Sensor max duration", String(sensorManager->getMaxDurationUs(RIGHT_SENSOR_ID)), "&#xB5;s");
-  page += keyValue("Right Sensor min duration", String(sensorManager->getMinDurationUs(RIGHT_SENSOR_ID)), "&#xB5;s");
-  page += keyValue("Right Sensor last start delay", String(sensorManager->getLastDelayTillStartUs(RIGHT_SENSOR_ID)), "&#xB5;s");
+  page += keyValue("Left Sensor raw", sensorManager->getRawMedianDistance(LEFT_SENSOR_ID), "cm");
+  page += keyValue("Left Sensor max duration", sensorManager->getMaxDurationUs(LEFT_SENSOR_ID), "&#xB5;s");
+  page += keyValue("Left Sensor min duration", sensorManager->getMinDurationUs(LEFT_SENSOR_ID), "&#xB5;s");
+  page += keyValue("Left Sensor last start delay", sensorManager->getLastDelayTillStartUs(LEFT_SENSOR_ID), "&#xB5;s");
+  page += keyValue("Right Sensor raw", sensorManager->getRawMedianDistance(RIGHT_SENSOR_ID), "cm");
+  page += keyValue("Right Sensor max duration", sensorManager->getMaxDurationUs(RIGHT_SENSOR_ID), "&#xB5;s");
+  page += keyValue("Right Sensor min duration", sensorManager->getMinDurationUs(RIGHT_SENSOR_ID), "&#xB5;s");
+  page += keyValue("Right Sensor last start delay", sensorManager->getLastDelayTillStartUs(RIGHT_SENSOR_ID), "&#xB5;s");
 
   page += "<h3>GPS</h3>";
   page += keyValue("TinyGPSPlus version", TinyGPSPlus::libraryVersion());
-  page += keyValue("GPS chars processed", String(gps.charsProcessed()));
-  page += keyValue("GPS valid checksum", String(gps.passedChecksum()));
-  page += keyValue("GPS failed checksum", String(gps.failedChecksum()));
-  page += keyValue("GPS sentences with fix", String(gps.sentencesWithFix()));
-  page += keyValue("GPS time", String(gps.time.value())); // fill all digits?
-  page += keyValue("GPS date", String(gps.date.value())); // fill all digits?
-  page += keyValue("GPS hdop", String(gps.hdop.value())); // fill all digits?
+  page += keyValue("GPS chars processed", gps.charsProcessed());
+  page += keyValue("GPS valid checksum", gps.passedChecksum());
+  page += keyValue("GPS failed checksum", gps.failedChecksum());
+  page += keyValue("GPS sentences with fix", gps.sentencesWithFix());
+  page += keyValue("GPS time", gps.time.value()); // fill all digits?
+  page += keyValue("GPS date", gps.date.value()); // fill all digits?
+  page += keyValue("GPS hdop", gps.hdop.value()); // fill all digits?
 
   String theGpsMessage = "";
   for (String msg : gpsMessages) {
@@ -536,10 +573,10 @@ void aboutPage() {
   page += keyValue("GPS messages", theGpsMessage);
 
   page += "<h3>Display / Button</h3>";
-  page += keyValue("Button State", String(digitalRead(PushButton_PIN)));
-  page += keyValue("Display i2c last error", String(Wire.lastError()));
-  page += keyValue("Display i2c speed", String((uint32_t) Wire.getClock() / 1000), "KHz");
-  page += keyValue("Display i2c timeout", String((uint32_t) Wire.getTimeOut()), "ms");
+  page += keyValue("Button State", digitalRead(PushButton_PIN));
+  page += keyValue("Display i2c last error", Wire.lastError());
+  page += keyValue("Display i2c speed", Wire.getClock() / 1000, "KHz");
+  page += keyValue("Display i2c timeout", Wire.getTimeOut(), "ms");
 
   page = createPage(page);
   page = replaceDefault(page, "About");
@@ -621,7 +658,7 @@ void startServer(ObsConfig *obsConfig) {
 
   tryWiFiConnect(obsConfig);
 
-  if (WiFi.status() != WL_CONNECTED) {
+  if (WiFiClass::status() != WL_CONNECTED) {
     CreateWifiSoftAP(esp_chipid);
   } else {
     Serial.println("");
@@ -645,7 +682,7 @@ void startServer(ObsConfig *obsConfig) {
   /*return index page which is stored in serverIndex */
 
   readGPSData();
-  uploader::instance()->setClock();
+  ObsUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
   readGPSData();
   if (!voltageMeter) {
     voltageMeter = new VoltageMeter();
@@ -667,60 +704,7 @@ void startServer(ObsConfig *obsConfig) {
     ESP.restart();
   });
 
-  server.on("/upload", []() {
-    SDFileSystem.mkdir("/uploaded");
-    File root = SDFileSystem.open("/");
-    if (!root) {
-      server.send(500, "text/plain", "Failed to open SD directory");
-      return;
-    }
-    if (!root.isDirectory()) {
-      server.send(500, "text/plain", "SD root is not a directory?");
-      return;
-    }
-    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
-    server.send(200, "text/html");
-
-    String html;
-    html = replaceDefault(header, "Upload Tracks");
-    html += "<div>";
-    server.sendContent(html);
-    html.clear();
-
-    File file = root.openNextFile("r");
-    while (file) {
-      String fileName = String(file.name());
-      fileName = fileName.substring(fileName.lastIndexOf("/") + 1);
-      log_d("Upload file: %s", fileName.c_str());
-      if (!file.isDirectory()
-        && fileName.endsWith(CSVFileWriter::EXTENSION)) {
-        server.sendContent(fileName);
-        if(uploader::instance()->upload(file.name())) {
-          int i = 0;
-          while (!SDFileSystem.rename(file.name(), String("/uploaded") + file.name() + (i == 0 ? "" : String(i)))) {
-            i++;
-            if (i > 100) {
-              break;
-            }
-          }
-          html += "&#x2705;"; // OK mark
-        } else {
-          html += "&#x274C;"; // failed cross
-        }
-        html += "<br />\n";
-        server.sendContent(html);
-        html.clear();
-      }
-      file.close();
-      file = root.openNextFile("r");
-    }
-    root.close();
-
-    html += "</div><h3>All files done</h3/>";
-    html += "<input type=button onclick=\"window.location.href='/'\" class='btn' value='OK' />";
-    html += footer;
-    server.sendContent(html);
-  });
+  server.on("/upload", handleUpload);
 
   // ###############################################################
   // ### Index ###
@@ -753,16 +737,13 @@ void startServer(ObsConfig *obsConfig) {
   server.on("/settings/backup.json", HTTP_GET, []() {
     const String fileName
       = String(theObsConfig->getProperty<String>(ObsConfig::PROPERTY_OBS_NAME)) + "-" + OBSVersion;
-    server.sendHeader("Content-disposition", "attachment; filename=" + fileName + ".json", false);
-    server.sendHeader("Content-type", "application/json", false);
+    server.sendHeader("Content-Disposition", "attachment; filename=\"" + fileName + ".json\"");
     log_d("Sending config for backup %s:", fileName.c_str());
     theObsConfig->printConfig();
-    server.send(200, "text/html", theObsConfig->asJsonString());
+    server.send(200, "application/json", theObsConfig->asJsonString());
   });
 
-  // Handling uploading firmware file
   server.on("/settings/restore", HTTP_POST, []() {
-    Serial.println("Send response...");
     server.send(200, "text/plain", "Restore successful!");
   }, []() {
     //Serial.println("Recover Config...");
@@ -775,7 +756,6 @@ void startServer(ObsConfig *obsConfig) {
       for(int i = 0; i<upload.currentSize; i++) {
         json_buffer += (char) upload.buf[i];
       }
-
     } else if (upload.status == UPLOAD_FILE_END) {
       theObsConfig->parseJson(json_buffer);
       theObsConfig->fill(config); // OK here??
@@ -916,25 +896,29 @@ void startServer(ObsConfig *obsConfig) {
 
   // Handling uploading firmware file
   server.on("/update", HTTP_POST, []() {
-    Serial.println("Send response...");
     if (Update.hasError()) {
       server.send(500, "text/plain",
         "Update failed! Note: update from v0.2.x to v0.3 or newer needs to be done once with USB cable!");
+      displayTest->showTextOnGrid(0, 3, Update.errorString());
+      sensorManager->attachInterrupts();
     } else {
       server.send(200, "text/plain", "Update successful! Device reboots now!");
+      displayTest->showTextOnGrid(0, 3, "Success rebooting...");
       delay(250);
       ESP.restart();
     }
   }, []() {
-    //Serial.println('Update Firmware...');
-    HTTPUpload& upload = server.upload();
+    sensorManager->detachInterrupts();
+    HTTPUpload &upload = server.upload();
+    Update.onProgress([](size_t pos, size_t all) {
+      displayTest->drawProgressBar(4, pos, all);
+    });
     if (upload.status == UPLOAD_FILE_START) {
       Serial.printf("Update: %s\n", upload.filename.c_str());
-      if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
+      if (!Update.begin()) {
         Update.printError(Serial);
       }
     } else if (upload.status == UPLOAD_FILE_WRITE) {
-      /* flashing firmware to ESP*/
       if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
         Update.printError(Serial);
       }
@@ -1043,7 +1027,6 @@ void startServer(ObsConfig *obsConfig) {
       return;
     }
 
-
     if (file.isDirectory()) {
       server.setContentLength(CONTENT_LENGTH_UNKNOWN);
       server.send(200, "text/html");
@@ -1053,12 +1036,17 @@ void startServer(ObsConfig *obsConfig) {
       html += "<ul class=\"directory-listing\">";
       server.sendContent(html);
       html.clear();
+      displayTest->showTextOnGrid(0, 3, "Path:");
+      displayTest->showTextOnGrid(1, 3, path);
 
       // Iterate over directories
       File child = file.openNextFile();
+      uint16_t counter = 0;
       while (child) {
+        displayTest->drawWaitBar(5, counter++);
+
         String fileName = String(child.name());
-        fileName = fileName.substring(fileName.lastIndexOf("/") + 1);
+        fileName = fileName.substring(int (fileName.lastIndexOf("/") + 1));
         bool isDirectory = child.isDirectory();
         html +=
           ("<li class=\""
@@ -1079,12 +1067,11 @@ void startServer(ObsConfig *obsConfig) {
           html.clear();
         }
       }
-
       file.close();
-
       html += "</ul>";
       html += footer;
       server.sendContent(html);
+      displayTest->clearProgressBar(5);
       return;
     }
 
@@ -1117,7 +1104,7 @@ void startServer(ObsConfig *obsConfig) {
     }
 
     String fileName = String(file.name());
-    fileName = fileName.substring(fileName.lastIndexOf("/") + 1);
+    fileName = fileName.substring((int) (fileName.lastIndexOf("/") + 1));
     server.sendHeader("Content-Disposition", String("attachment; filename=\"") + fileName + String("\""));
     server.streamFile(file, dataType);
     file.close();
@@ -1134,6 +1121,144 @@ void startServer(ObsConfig *obsConfig) {
 
 }
 
+/* Upload tracks found on SD card to the portal server.
+ * This method also takes care to give appropriate feedback
+ * to the user about the progress. If httpRequest is true
+ * a html response page is created. Also the progress can be
+ * seen on the display if connected.
+ */
+void uploadTracks(bool httpRequest) {
+  Uploader uploader(
+    theObsConfig->getProperty<String>(ObsConfig::PROPERTY_PORTAL_URL),
+    theObsConfig->getProperty<String>(ObsConfig::PROPERTY_PORTAL_TOKEN));
+
+  configServerWasConnectedViaHttpFlag = true;
+  SDFileSystem.mkdir("/uploaded");
+
+  String sdErrorMessage = ensureSdIsAvailable();
+  if (sdErrorMessage != "") {
+    if (httpRequest) {
+      server.send(500, "text/plain", sdErrorMessage);
+    }
+    displayTest->showTextOnGrid(0, 3, "Error:");
+    displayTest->showTextOnGrid(0, 4, sdErrorMessage);
+    return;
+  }
+
+  String html = replaceDefault(header, "Upload Tracks");
+  html += "<h3>Uploading tracks...</h3>";
+  html += "<div>";
+  if (httpRequest) {
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    server.send(200, "text/html");
+    server.sendContent(html);
+  }
+  html.clear();
+
+  const uint16_t numberOfFiles = countFilesInRoot();
+
+  uint16_t currentFileIndex = 0;
+  uint16_t okCount = 0;
+  uint16_t failedCount = 0;
+  File root = SDFileSystem.open("/");
+  File file = root.openNextFile();
+  while (file) {
+    const String fileName(file.name());
+    log_d("Upload file: %s", fileName.c_str());
+    if (!file.isDirectory()
+        && fileName.endsWith(CSVFileWriter::EXTENSION)) {
+      const String friendlyFileName = ObsUtils::stripCsvFileName(fileName);
+      currentFileIndex++;
+
+      displayTest->showTextOnGrid(0, 4, friendlyFileName);
+      displayTest->drawProgressBar(3, currentFileIndex, numberOfFiles);
+      if (httpRequest) {
+        server.sendContent(friendlyFileName);
+      }
+      const boolean uploaded = uploader.upload(file.name());
+      file.close();
+      if (uploaded) {
+        moveToUploaded(fileName);
+        html += "<a href='" + ObsUtils::encodeForXmlAttribute(uploader.getLastLocation())
+          + "' title='" + ObsUtils::encodeForXmlAttribute(uploader.getLastStatusMessage())
+          + "' target='_blank'>" + HTML_ENTITY_OK_MARK  + "</a>";
+        okCount++;
+      } else {
+        html += "<a href='#' title='" + ObsUtils::encodeForXmlAttribute(uploader.getLastStatusMessage())
+          + "'>" + HTML_ENTITY_FAILED_CROSS + "</a>";
+        failedCount++;
+      }
+      if (httpRequest) {
+        html += "<br />\n";
+        server.sendContent(html);
+      }
+      html.clear();
+      displayTest->clearProgressBar(5);
+    } else {
+      file.close();
+    }
+    file = root.openNextFile();
+  }
+  root.close();
+
+  displayTest->clearProgressBar(3);
+  displayTest->showTextOnGrid(0, 4, "");
+  displayTest->showTextOnGrid(1, 3, "Upload done.");
+  displayTest->showTextOnGrid(0, 5, "OK:");
+  displayTest->showTextOnGrid(1, 5, String(okCount));
+  displayTest->showTextOnGrid(2, 5, "Failed:");
+  displayTest->showTextOnGrid(3, 5, String(failedCount));
+  if (httpRequest) {
+    html += "</div><h3>...all files done</h3/>";
+    html += keyValue("OK", okCount);
+    html += keyValue("Failed", failedCount);
+    html += "<input type=button onclick=\"window.location.href='/'\" class='btn' value='OK' />";
+    html += footer;
+    server.sendContent(html);
+  }
+}
+
+void moveToUploaded(const String &fileName) {
+  int i = 0;
+  while (!SDFileSystem.rename(
+    fileName, String("/uploaded") + fileName + (i == 0 ? "" : String(i)))) {
+    i++;
+    if (i > 100) {
+      break;
+    }
+  }
+}
+
+String ensureSdIsAvailable() {
+  String result = "";
+  File root = SDFileSystem.open("/");
+  if (!root) {
+    result = "Failed to open SD directory";
+  } else if (!root.isDirectory()) {
+    result = "SD root is not a directory?";
+  }
+  root.close();
+  return result;
+}
+
+uint16_t countFilesInRoot() {
+  uint16_t numberOfFiles = 0;
+  File root = SDFileSystem.open("/");
+  File file = root.openNextFile("r");
+  while (file) {
+    if (!file.isDirectory()
+        && String(file.name()).endsWith(CSVFileWriter::EXTENSION)) {
+      numberOfFiles++;
+      displayTest->drawWaitBar(4, numberOfFiles);
+    }
+    file = root.openNextFile();
+  }
+  root.close();
+  displayTest->clearProgressBar(4);
+  return numberOfFiles;
+}
+
+
 void tryWiFiConnect(const ObsConfig *obsConfig) {
   if (!WiFiGenericClass::mode(WIFI_MODE_STA)) {
     log_e("Failed to enable WiFi station mode.");
@@ -1144,10 +1269,10 @@ void tryWiFiConnect(const ObsConfig *obsConfig) {
     log_e("Failed to set hostname to %s.", hostname);
   }
 
-  const uint16_t startTime = millis();
+  const auto startTime = millis();
   const uint16_t timeout = 10000;
   // Connect to WiFi network
-  while ((WiFi.status() != WL_CONNECTED) && (( millis() - startTime) <= timeout)) {
+  while ((WiFiClass::status() != WL_CONNECTED) && (( millis() - startTime) <= timeout)) {
     log_d("Trying to connect to %s",
       theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_SSID));
     wl_status_t status = WiFi.begin(

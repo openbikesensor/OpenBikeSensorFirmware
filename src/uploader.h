@@ -2,26 +2,26 @@
 #define UPLOADER_H
 
 #include <Arduino.h>
-
 #include <WiFiClientSecure.h>
+#include <FS.h>
 
-class uploader {
+class Uploader {
   public:
-    static uploader *instance() {
-      if (inst) {
-        return inst;
-      }
-      return inst = new uploader();
-    };
-    void destroy();
-    void setClock();
-    bool upload(const String& fileName); // uploads a file, moves it to uploaded directory and returns true if successfull, otherwise false
+    Uploader(String portalUrl, String userToken);
+    /* uploads the named file to the portal,
+     * moves it to uploaded directory and
+     * returns true if successful, otherwise false */
+    bool upload(const String& fileName);
+    String getLastStatusMessage() const;
+    String getLastLocation() const;
 
   private:
-    uploader();
-    ~uploader();
+    const String mPortalUrl;
+    const String mPortalUserToken;
+    WiFiClientSecure mWiFiClient;
+    String mLastLocation = "";
+    String mLastStatusMessage = "NO UPLOAD";
 
-    WiFiClientSecure *client;
-    static uploader *inst;
+    bool uploadFile(fs::File &file);
 };
 #endif

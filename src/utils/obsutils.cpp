@@ -17,9 +17,13 @@
   You should have received a copy of the GNU General Public License along with
   the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include <esp_wifi.h>
-#include "BLEServer.h"
 #include "obsutils.h"
+#include <esp_wifi.h>
+#include "writer.h"
+#include "BLEServer.h"
+
+static const int BYTES_PER_KB = 1024;
+static const int BYTES_PER_MB = 1024 * 1024;
 
 String ObsUtils::createTrackUuid() {
   uint8_t data[16];
@@ -39,4 +43,70 @@ String ObsUtils::dateTimeToString(time_t theTime) {
            timeStruct.tm_mday, timeStruct.tm_mon + 1, timeStruct.tm_year + 1900,
            timeStruct.tm_hour, timeStruct.tm_min, timeStruct.tm_sec);
   return String(date);
+}
+
+
+String ObsUtils::stripCsvFileName(const String &fileName) {
+  String userPrintableFilename = fileName.substring(fileName.lastIndexOf("/") + 1);
+  if (userPrintableFilename.endsWith(CSVFileWriter::EXTENSION)) {
+    userPrintableFilename
+      = userPrintableFilename.substring(
+      0, userPrintableFilename.length() - CSVFileWriter::EXTENSION.length());
+  }
+  return userPrintableFilename;
+}
+
+void ObsUtils::setClockByNtp(const char* ntpServer) {
+  if (!systemTimeIsSet()) {
+    if (ntpServer) {
+      log_d("Got additional NTP Server %s.", ntpServer);
+      configTime(
+        0, 0, ntpServer,
+        "rustime01.rus.uni-stuttgart.de", "pool.ntp.org");
+    } else {
+      configTime(
+        0, 0,
+        "rustime01.rus.uni-stuttgart.de", "pool.ntp.org");
+    }
+  }
+}
+
+void ObsUtils::setClockByNtpAndWait(const char* ntpServer) {
+  setClockByNtp(ntpServer);
+
+  log_d("Waiting for NTP time sync: ");
+  while (!systemTimeIsSet()) {
+    delay(500);
+    log_v(".");
+    yield();
+  }
+  log_d("NTP time set got %s.", ObsUtils::dateTimeToString(time(nullptr)).c_str());
+}
+
+bool ObsUtils::systemTimeIsSet() {
+  time_t now = time(nullptr);
+  log_v("NTP time %s.", ObsUtils::dateTimeToString(now).c_str());
+  return now > 1609681614;
+}
+
+String ObsUtils::encodeForXmlAttribute(const String &text) {
+  String result(text);
+  result.replace("&", "&amp;");
+  result.replace("<", "&lt;");
+  result.replace(">", "&gt;");
+  result.replace("'", "&#39;");
+  result.replace("\"", "&#34;");
+  return result;
+}
+
+String ObsUtils::toScaledByteString(uint32_t size) {
+  String result;
+  if (size <= BYTES_PER_KB) {
+    result = String(size) + "b";
+  } else if (size <= BYTES_PER_MB) {
+    result = String(size / BYTES_PER_KB) + "kb";
+  } else {
+    result = String(size / BYTES_PER_MB) + "mb";
+  }
+  return result;
 }

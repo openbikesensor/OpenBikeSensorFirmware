@@ -124,7 +124,7 @@ void readGPSData() {
 #endif
       }
       if (gpsTxtMessage.isUpdated()) {
-        log_i("GPX Text SEQ %s, CNT %s, SEVERITY: %s, Message %s",
+        log_v("GPX Text SEQ %s, CNT %s, SEVERITY: %s, Message %s",
               gpsTxtSeq.value(), gpsTxtCount.value(), gpsTxtSeverity.value(), gpsTxtMessage.value());
         // We only get start of the message, cause tiny gps limits it.
         if (String("01") == gpsTxtSeq.value()) {
