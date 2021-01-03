@@ -735,11 +735,10 @@ void startServer(ObsConfig *obsConfig) {
   server.on("/settings/backup.json", HTTP_GET, []() {
     const String fileName
       = String(theObsConfig->getProperty<String>(ObsConfig::PROPERTY_OBS_NAME)) + "-" + OBSVersion;
-    server.sendHeader("Content-disposition", "attachment; filename=" + fileName + ".json", false);
-    server.sendHeader("Content-type", "application/json", false);
+    server.sendHeader("Content-Disposition", "attachment; filename=\"" + fileName + ".json\"");
     log_d("Sending config for backup %s:", fileName.c_str());
     theObsConfig->printConfig();
-    server.send(200, "text/html", theObsConfig->asJsonString());
+    server.send(200, "application/json", theObsConfig->asJsonString());
   });
 
   // Handling uploading firmware file
