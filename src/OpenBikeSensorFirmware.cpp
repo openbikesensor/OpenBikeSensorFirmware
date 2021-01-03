@@ -50,7 +50,6 @@ DataSet *datasetToConfirm = nullptr;
 int buttonState = 0;
 uint32_t buttonStateChanged = millis();
 
-const char *configFilename = "/config.txt";  // <- SD library uses 8.3 filenames
 Config config;
 
 SSD1306DisplayDevice* displayTest;
