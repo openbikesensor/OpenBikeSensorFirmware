@@ -123,7 +123,7 @@ String xhrUpload =   "<input type='file' name='upload' id='file' accept='{accept
   ""
   "document.getElementById('btn').addEventListener('click', function(e){"
   "e.preventDefault();"
-  "if (fileName == '') { alert('No file choosen'); return; }"
+  "if (fileName == '') { alert('No file chosen'); return; }"
   "console.log('Start upload...');"
   ""
   "var form = document.getElementsByTagName('form')[0];"
@@ -151,7 +151,7 @@ String xhrUpload =   "<input type='file' name='upload' id='file' accept='{accept
   "};"
   "xhr.upload.addEventListener('progress', function(evt) {"
   "if (evt.lengthComputable) {"
-  "var per = Math.round(evt.loaded / evt.total * 100);"
+  "var per = Math.round((evt.loaded * 100) / evt.total);"
   "if(per == 100) document.getElementById('prg').innerHTML = 'Updating...';"
   "else document.getElementById('prg').innerHTML = 'Upload progress: ' + per + '%';"
   "document.getElementById('bar').style.width = per + '%';"
@@ -896,25 +896,29 @@ void startServer(ObsConfig *obsConfig) {
 
   // Handling uploading firmware file
   server.on("/update", HTTP_POST, []() {
-    Serial.println("Send response...");
     if (Update.hasError()) {
       server.send(500, "text/plain",
         "Update failed! Note: update from v0.2.x to v0.3 or newer needs to be done once with USB cable!");
+      displayTest->showTextOnGrid(0, 3, Update.errorString());
+      sensorManager->attachInterrupts();
     } else {
       server.send(200, "text/plain", "Update successful! Device reboots now!");
+      displayTest->showTextOnGrid(0, 3, "Success rebooting...");
       delay(250);
       ESP.restart();
     }
   }, []() {
-    //Serial.println('Update Firmware...');
-    HTTPUpload& upload = server.upload();
+    sensorManager->detachInterrupts();
+    HTTPUpload &upload = server.upload();
+    Update.onProgress([](size_t pos, size_t all) {
+      displayTest->drawProgressBar(4, pos, all);
+    });
     if (upload.status == UPLOAD_FILE_START) {
       Serial.printf("Update: %s\n", upload.filename.c_str());
-      if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
+      if (!Update.begin()) {
         Update.printError(Serial);
       }
     } else if (upload.status == UPLOAD_FILE_WRITE) {
-      /* flashing firmware to ESP*/
       if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
         Update.printError(Serial);
       }

@@ -88,6 +88,8 @@ class HCSR04SensorManager {
     void registerSensor(HCSR04SensorInfo);
     void setOffsets(std::vector<uint16_t>);
     void setPrimarySensor(uint8_t idx);
+    void detachInterrupts();
+    void attachInterrupts();
     /* Returns the current raw median distance in cm for the
      * given sensor.
      */
@@ -116,6 +118,7 @@ class HCSR04SensorManager {
     void setSensorTriggersToLow();
     void collectSensorResults();
     void sendTriggerToReadySensor();
+    void attachSensorInterrupt(HCSR04SensorInfo &sensorInfo);
     void IRAM_ATTR isr(int idx);
     uint32_t getFixedStart(size_t idx, const HCSR04SensorInfo *sensor);
     static uint16_t medianMeasure(HCSR04SensorInfo* const sensor, uint16_t value);
@@ -130,7 +133,6 @@ class HCSR04SensorManager {
     /* The currently used sensor for alternating use. */
     uint32_t activeSensor = 0;
     uint8_t primarySensor = 1;
-
 };
 
 #endif

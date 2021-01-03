@@ -104,8 +104,24 @@ void HCSR04SensorManager::registerSensor(HCSR04SensorInfo sensorInfo) {
   if (m_sensors[m_sensors.size() - 1].median == nullptr) {
     m_sensors[m_sensors.size() - 1].median = new Median<uint16_t>(5, MAX_SENSOR_VALUE);
   }
+  attachSensorInterrupt(sensorInfo);
+}
+
+void HCSR04SensorManager::attachSensorInterrupt(HCSR04SensorInfo &sensorInfo) {
   // only one interrupt per pin, can not split RISING/FALLING here
   attachInterrupt(sensorInfo.echoPin, std::bind(&HCSR04SensorManager::isr, this, m_sensors.size() - 1), CHANGE);
+}
+
+void HCSR04SensorManager::detachInterrupts() {
+  for (size_t idx = 0; idx < m_sensors.size(); ++idx) {
+    detachInterrupt(m_sensors[idx].echoPin);
+  }
+}
+
+void HCSR04SensorManager::attachInterrupts() {
+  for (size_t idx = 0; idx < m_sensors.size(); ++idx) {
+    attachSensorInterrupt(m_sensors[idx]);
+  }
 }
 
 void HCSR04SensorManager::reset() {
