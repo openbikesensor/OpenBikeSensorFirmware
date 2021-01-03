@@ -22,6 +22,9 @@
 #include "writer.h"
 #include "BLEServer.h"
 
+static const int BYTES_PER_KB = 1024;
+static const int BYTES_PER_MB = 1024 * 1024;
+
 String ObsUtils::createTrackUuid() {
   uint8_t data[16];
   esp_fill_random(data, 16);
@@ -96,3 +99,14 @@ String ObsUtils::encodeForXmlAttribute(const String &text) {
   return result;
 }
 
+String ObsUtils::toScaledByteString(uint32_t size) {
+  String result;
+  if (size <= BYTES_PER_KB) {
+    result = String(size) + "b";
+  } else if (size <= BYTES_PER_MB) {
+    result = String(size / BYTES_PER_KB) + "kb";
+  } else {
+    result = String(size / BYTES_PER_MB) + "mb";
+  }
+  return result;
+}

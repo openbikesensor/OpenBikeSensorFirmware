@@ -35,6 +35,7 @@ class ObsUtils {
     static void setClockByNtp(const char *ntpServer = nullptr);
     static void setClockByNtpAndWait(const char *ntpServer = nullptr);
     static bool systemTimeIsSet();
+    static String toScaledByteString(uint32_t size);
 };
 
 

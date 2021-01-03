@@ -74,7 +74,8 @@ const String previous = "<a href=\"javascript:history.back()\" class='previous'>
 
 String header =
   "<!DOCTYPE html>\n"
-  "<html lang=\"en\"><head><meta charset=\"utf-8\"/><title>{title}</title>" + style + ""
+  "<html lang='en'><head><meta charset='utf-8'/><title>{title}</title>" + style +
+  "<link rel='icon' href='data:;base64,iVBORw0KGgo=' />"
   "<script>"
   "window.onload = function() {"
   "  if (window.location.pathname == '/') {"
@@ -502,8 +503,8 @@ void aboutPage() {
   page += keyValue("Cores", String(ci.cores));
   page += keyValue("CPU frequency", ESP.getCpuFreqMHz(), "MHz");
 
-  page += keyValue("SPIFFS size", SPIFFS.totalBytes() / 1024, "KB");
-  page += keyValue("SPIFFS used", SPIFFS.usedBytes() / 1024, "KB");
+  page += keyValue("SPIFFS size", ObsUtils::toScaledByteString(SPIFFS.totalBytes()));
+  page += keyValue("SPIFFS used", ObsUtils::toScaledByteString(SPIFFS.usedBytes()));
 
   String files;
   auto dir = SPIFFS.open("/");
@@ -512,9 +513,10 @@ void aboutPage() {
     files += "<br />";
     files += file.name();
     files += " ";
-    files +=  String((uint32_t) (file.size() / 1024));
-    files += "kb ";
+    files +=  ObsUtils::toScaledByteString(file.size());
+    files += " ";
     files += ObsUtils::dateTimeToString(file.getLastWrite());
+    file.close();
     file = dir.openNextFile();
   }
   dir.close();
@@ -528,7 +530,7 @@ void aboutPage() {
 
   page += "<h3>SD Card</h3>";
 
-  page += keyValue("SD card size", String((uint32_t) (SD.cardSize() / 1024 / 1024)), "MB");
+  page += keyValue("SD card size", String((uint32_t) (SD.cardSize() / 1024 / 1024)), "mb");
 
   String sdCardType;
   switch (SD.cardType()) {
@@ -540,8 +542,8 @@ void aboutPage() {
   }
 
   page += keyValue("SD card type", sdCardType);
-  page += keyValue("SD fs size", SD.totalBytes() / 1024 / 1024, "MB");
-  page += keyValue("SD fs used", SD.usedBytes() / 1024 / 1024, "MB");
+  page += keyValue("SD fs size", SD.totalBytes() / 1024 / 1024, "mb");
+  page += keyValue("SD fs used", SD.usedBytes() / 1024 / 1024, "mb");
 
   page += "<h3>TOF Sensors</h3>";
   page += keyValue("Left Sensor raw", sensorManager->getRawMedianDistance(LEFT_SENSOR_ID), "cm");
@@ -741,9 +743,7 @@ void startServer(ObsConfig *obsConfig) {
     server.send(200, "application/json", theObsConfig->asJsonString());
   });
 
-  // Handling uploading firmware file
   server.on("/settings/restore", HTTP_POST, []() {
-    Serial.println("Send response...");
     server.send(200, "text/plain", "Restore successful!");
   }, []() {
     //Serial.println("Recover Config...");
@@ -756,7 +756,6 @@ void startServer(ObsConfig *obsConfig) {
       for(int i = 0; i<upload.currentSize; i++) {
         json_buffer += (char) upload.buf[i];
       }
-
     } else if (upload.status == UPLOAD_FILE_END) {
       theObsConfig->parseJson(json_buffer);
       theObsConfig->fill(config); // OK here??
