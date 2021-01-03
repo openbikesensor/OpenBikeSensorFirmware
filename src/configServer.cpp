@@ -680,7 +680,7 @@ void startServer(ObsConfig *obsConfig) {
   /*return index page which is stored in serverIndex */
 
   readGPSData();
-  ObsUtils::setClockByNtp();
+  ObsUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
   readGPSData();
   if (!voltageMeter) {
     voltageMeter = new VoltageMeter();
@@ -1161,27 +1161,29 @@ void uploadTracks(bool httpRequest) {
   File root = SDFileSystem.open("/");
   File file = root.openNextFile();
   while (file) {
-    String fileName(file.name());
+    const String fileName(file.name());
     log_d("Upload file: %s", fileName.c_str());
     if (!file.isDirectory()
         && fileName.endsWith(CSVFileWriter::EXTENSION)) {
-      fileName = ObsUtils::stripCsvFileName(fileName);
-      displayTest->showTextOnGrid(0, 4, fileName);
-      displayTest->drawProgressBar(3, ++currentFileIndex, numberOfFiles);
+      const String friendlyFileName = ObsUtils::stripCsvFileName(fileName);
+      currentFileIndex++;
+
+      displayTest->showTextOnGrid(0, 4, friendlyFileName);
+      displayTest->drawProgressBar(3, currentFileIndex, numberOfFiles);
       if (httpRequest) {
-        server.sendContent(fileName);
+        server.sendContent(friendlyFileName);
       }
       const boolean uploaded = uploader.upload(file.name());
       file.close();
       if (uploaded) {
-        moveToUploaded(file.name());
+        moveToUploaded(fileName);
         html += "<a href='" + ObsUtils::encodeForXmlAttribute(uploader.getLastLocation())
           + "' title='" + ObsUtils::encodeForXmlAttribute(uploader.getLastStatusMessage())
-          + "'>" + HTML_ENTITY_OK_MARK  + "</a>";
+          + "' target='_blank'>" + HTML_ENTITY_OK_MARK  + "</a>";
         okCount++;
       } else {
-        html += "<div title='" + ObsUtils::encodeForXmlAttribute(uploader.getLastStatusMessage())
-          + "'>" + HTML_ENTITY_FAILED_CROSS + "</div>";
+        html += "<a href='#' title='" + ObsUtils::encodeForXmlAttribute(uploader.getLastStatusMessage())
+          + "'>" + HTML_ENTITY_FAILED_CROSS + "</a>";
         failedCount++;
       }
       if (httpRequest) {

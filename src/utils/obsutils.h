@@ -31,9 +31,10 @@ class ObsUtils {
     static String dateTimeToString(time_t time = 0);
     /* Strips technical details like extension or '/' from the file name. */
     static String stripCsvFileName(const String &fileName);
-    static void setClockByNtp();
-    static void setClockByNtpAndWait();
     static String encodeForXmlAttribute(const String & text);
+    static void setClockByNtp(const char *ntpServer = nullptr);
+    static void setClockByNtpAndWait(const char *ntpServer = nullptr);
+    static bool systemTimeIsSet();
 };
 
 

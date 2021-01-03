@@ -53,22 +53,37 @@ String ObsUtils::stripCsvFileName(const String &fileName) {
   return userPrintableFilename;
 }
 
-void ObsUtils::setClockByNtp() {
-  configTime(0, 0, "rustime01.rus.uni-stuttgart.de", "pool.ntp.org");
+void ObsUtils::setClockByNtp(const char* ntpServer) {
+  if (!systemTimeIsSet()) {
+    if (ntpServer) {
+      log_d("Got additional NTP Server %s.", ntpServer);
+      configTime(
+        0, 0, ntpServer,
+        "rustime01.rus.uni-stuttgart.de", "pool.ntp.org");
+    } else {
+      configTime(
+        0, 0,
+        "rustime01.rus.uni-stuttgart.de", "pool.ntp.org");
+    }
+  }
 }
 
-void ObsUtils::setClockByNtpAndWait() {
-  setClockByNtp();
+void ObsUtils::setClockByNtpAndWait(const char* ntpServer) {
+  setClockByNtp(ntpServer);
 
   log_d("Waiting for NTP time sync: ");
-  time_t nowSecs = time(nullptr);
-  while (nowSecs < 8 * 3600 * 2) {
+  while (!systemTimeIsSet()) {
     delay(500);
     log_v(".");
     yield();
-    nowSecs = time(nullptr);
   }
-  log_i("NTP time set got %s.", ObsUtils::dateTimeToString(nowSecs).c_str());
+  log_d("NTP time set got %s.", ObsUtils::dateTimeToString(time(nullptr)).c_str());
+}
+
+bool ObsUtils::systemTimeIsSet() {
+  time_t now = time(nullptr);
+  log_v("NTP time %s.", ObsUtils::dateTimeToString(now).c_str());
+  return now > 1609681614;
 }
 
 String ObsUtils::encodeForXmlAttribute(const String &text) {
