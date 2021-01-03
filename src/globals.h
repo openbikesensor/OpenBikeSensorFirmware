@@ -22,8 +22,8 @@ extern int confirmedMeasurements;
 extern int numButtonReleased;
 
 extern int buttonState;
+extern uint32_t buttonStateChanged;
 
-extern const char *configFilename;  // <- SD library uses 8.3 filenames
 extern Config config;
 
 // Forward declare classes to build (because there is a cyclic dependency between sensor.h and displays.h)
@@ -41,15 +41,6 @@ extern String esp_chipid;
 extern const uint32_t MAX_DURATION_MICRO_SEC;
 extern const uint8_t LEFT_SENSOR_ID;
 extern const uint8_t RIGHT_SENSOR_ID;
+extern const uint16_t MAX_SENSOR_VALUE;
 
 #endif
-
-#define MAX_SENSOR_VALUE 999
-
-#define BLUETOOTH_ACTIVATED
-#define BLUETOOTH_SERVICE_CLOSEPASS
-#define BLUETOOTH_SERVICE_CONNECTION
-#define BLUETOOTH_SERVICE_DEVICEINFO
-#define BLUETOOTH_SERVICE_DISTANCE
-#define BLUETOOTH_SERVICE_HEARTRATE
-#define RADMESSER_S_COMPATIBILITY_MODE

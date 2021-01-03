@@ -24,14 +24,14 @@ template<typename T> class Median {
 
   public:
     /* Simple implementation, size must be odd! */
-    explicit Median(size_t size):
+    Median(size_t size, T initialValue):
       size{size},
       mid{size/2},
       data{new T[size]},
       temp{new T[size]},
       pos{0} {
       for(size_t i = 0; i < size; i++) {
-        data[i] = MAX_SENSOR_VALUE;
+        data[i] = initialValue;
       }
     };
     ~Median() {
