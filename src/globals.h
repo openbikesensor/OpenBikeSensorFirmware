@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 
+#include "utils/obsutils.h"
 #include "config.h"
 #include "displays.h"
 #include "sensor.h"

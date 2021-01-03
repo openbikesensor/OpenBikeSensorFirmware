@@ -20,19 +20,18 @@
 
 #include "uploader.h"
 
-#include "config.h"
 #include "globals.h"
 #include "utils/multipart.h"
 #include "writer.h"
 
-#include <WiFi.h>
-#include <WiFiMulti.h>
 #include <HTTPClient.h>
 #include <SD.h>
 #include <FS.h>
 
+static char const *const HTTP_LOCATION_HEADER = "location";
+
 // Telekom rootCA certificate
-const char *rootCACertificate =
+static const char *const rootCACertificate =
   "-----BEGIN CERTIFICATE-----\n"
   "MIIDwzCCAqugAwIBAgIBATANBgkqhkiG9w0BAQsFADCBgjELMAkGA1UEBhMCREUx\n"
   "KzApBgNVBAoMIlQtU3lzdGVtcyBFbnRlcnByaXNlIFNlcnZpY2VzIEdtYkgxHzAd\n"
@@ -59,65 +58,50 @@ const char *rootCACertificate =
 
 // Not sure if WiFiClientSecure checks the validity date of the certificate.
 // Setting clock just to be sure...
-void uploader::setClock() {
+void Uploader::setClock() {
   configTime(0, 0, "rustime01.rus.uni-stuttgart.de", "time.nist.gov");
 
-  Serial.print(F("Waiting for NTP time sync: "));
+  log_d("Waiting for NTP time sync: ");
   time_t nowSecs = time(nullptr);
   while (nowSecs < 8 * 3600 * 2) {
     delay(500);
-    Serial.print(F("."));
+    log_v(".");
     yield();
     nowSecs = time(nullptr);
   }
-
-  Serial.println();
-  struct tm timeinfo;
-  gmtime_r(&nowSecs, &timeinfo);
-  Serial.print(F("Current time: "));
-  Serial.print(asctime(&timeinfo));
-  Serial.print(F("Waiting for NTP time sync done: "));
+  log_i("NTP time set got %s.", ObsUtils::dateTimeToString(nowSecs).c_str());
 }
 
-uploader *uploader::inst = nullptr;
-
-uploader::uploader() {
+Uploader::Uploader(String portalUrl, String userToken) :
+    mPortalUrl(portalUrl),
+    mPortalUserToken(userToken) {
   setClock();
-
-  Serial.print("WiFiClientSecure\n");
-  client = new WiFiClientSecure;
-  Serial.print("WiFiClientSecure2\n");
-  if (client) {
-    client->setCACert(rootCACertificate);
-  } else {
-    Serial.println("Unable to create client");
-  }
+  mWiFiClient.setCACert(rootCACertificate);
 }
 
-/* Upload data to "The Portal".
- *
- * File data can be sent nearly directly since the only thing we have
- * to escape inside the JSON string is the newline, we do not use other
- * characters that need escaping in the CSV (for now) (" & \)
- *
+/* Upload file as track data to "The Portal" as multipart form data.
  */
-bool uploader::upload(const String& fileName) {
+bool Uploader::upload(const String& fileName) {
   if(fileName.substring(0,7) != "/sensor"
     && !fileName.endsWith(CSVFileWriter::EXTENSION)) {
-    Serial.printf(("not sending " + fileName + "\n").c_str());
+    mLastStatusMessage = "Not sending " + fileName + " wrong extension.";
+    log_e("Not sending %s wrong extension.", fileName.c_str());
     return false;
   }
-  Serial.printf(("sending " + fileName + "\n").c_str());
+  log_d("Sending '%s'.", fileName.c_str());
+  bool success = false;
   File csvFile = SD.open(fileName.c_str(), "r");
   if (csvFile) {
     HTTPClient https;
     https.setTimeout(30 * 1000); // give the api some time
     https.setUserAgent(String("OBS/") + String(OBSVersion));
+
+    const char* headers[] = { HTTP_LOCATION_HEADER };
+    https.collectHeaders(headers, 1);
     boolean res = false;
 
-    // USE CONGIG !!res = https.begin(*client, "http://192.168.98.51:3000/api/tracks");
-    res = https.begin(*client, "https://openbikesensor.hlrs.de/api/tracks");
-    https.addHeader("Authorization", "OBSUserId " + String(config.obsUserID));
+    res = https.begin(mWiFiClient, mPortalUrl + "/api/tracks");
+    https.addHeader("Authorization", "OBSUserId " + mPortalUserToken);
     https.addHeader("Content-Type", "application/json");
 
     if (res) { // HTTPS
@@ -137,28 +121,41 @@ bool uploader::upload(const String& fileName) {
       });
 
       int httpCode = https.sendRequest("POST", &mp, contentLength);
-      if (httpCode != 200) {
-        Serial.printf("[HTTPS] POST... code: %d\n", httpCode);
-        String payload = https.getString();
-        Serial.println(payload);
-        https.end();
-        csvFile.close();
-        return false;
+      // TODO: This might be a lot! Could be any wrong web url configured!
+      if (httpCode >= 0) {
+        if (https.getSize() < 1024) {
+          mLastStatusMessage = httpCode + ": " + https.getString();
+        } else {
+          mLastStatusMessage = httpCode + ": Length: " + https.getSize();
+        }
+      } else {
+        mLastStatusMessage = httpCode + ": " + https.errorToString(httpCode);
       }
-      csvFile.close();
+      mLastLocation = https.header("location");
+      if (httpCode == 200 || httpCode == 201) {
+        log_v("HTTP OK %s", mLastStatusMessage.c_str());
+        success = true;
+      } else {
+        log_e("HTTP Error %s", mLastStatusMessage.c_str());
+        https.end();
+      }
     } else {
-      Serial.printf("[HTTPS] Unable to connect\n");
+      mLastStatusMessage = "[HTTPS] begin to " + mPortalUrl + " failed.";
+      log_e("HTTPS error %s", mLastStatusMessage.c_str());
       https.end();
-      csvFile.close();
-      return false;
     }
+    csvFile.close();
   } else {
-    Serial.printf(("file " + fileName + " not found\n").c_str());
-    return false;
+    mLastStatusMessage = "File " + fileName + " not found!";
+    log_e("file %s not found", fileName.c_str());
   }
-  return true;
+  return success;
 }
 
-void uploader::destroy() {
-  delete client;
+String Uploader::getLastStatusMessage() {
+  return mLastStatusMessage;
+}
+
+String Uploader::getLastLocation() {
+  return mLastLocation;
 }

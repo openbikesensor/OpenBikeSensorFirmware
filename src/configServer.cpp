@@ -33,9 +33,12 @@
 
 extern std::vector<String> gpsMessages;
 
+static const char *const HTML_ENTITY_FAILED_CROSS = "&#x274C;";
+static const char *const HTML_ENTITY_OK_MARK = "&#x2705;";
+
+
 const char* host = "openbikesensor";
 
-// Todo: find a good name
 ObsConfig *theObsConfig;
 
 WebServer server(80);
@@ -447,25 +450,38 @@ String keyValue(String key, String value, String suffix = "") {
   return "<b>" + key + ":</b> " + value + suffix + "<br />";
 }
 
+String keyValue(String key, uint32_t value, String suffix = "") {
+  return keyValue(key, String(value), suffix);
+}
+
+String keyValue(String key, int32_t value, String suffix = "") {
+  return keyValue(key, String(value), suffix);
+}
+
+String keyValue(String key, uint64_t value, String suffix = "") {
+  // is long this sufficient?
+  return keyValue(key, String((unsigned long) value), suffix);
+}
+
 void aboutPage() {
   String page;
 
   page += "<h3>ESP32</h3>"; // SPDIFF
-  page += keyValue("Heap size", String(ESP.getHeapSize() / 1024), "kb");
-  page += keyValue("Free heap", String(ESP.getFreeHeap() / 1024), "kb");
-  page += keyValue("Min. free heap", String(ESP.getMinFreeHeap() / 1024), "kb");
+  page += keyValue("Heap size", ESP.getHeapSize() / 1024, "kb");
+  page += keyValue("Free heap", ESP.getFreeHeap() / 1024, "kb");
+  page += keyValue("Min. free heap", ESP.getMinFreeHeap() / 1024, "kb");
   String chipId = String((uint32_t) ESP.getEfuseMac(), HEX) + String((uint32_t) (ESP.getEfuseMac() >> 32), HEX);
   chipId.toUpperCase();
   page += keyValue("Chip id", chipId);
   page += keyValue("IDF Version", esp_get_idf_version());
 
 //  page += keyValue("Chip model", ESP.getChipModel());
-  page += keyValue("Chip revision", String(ESP.getChipRevision()));
-  page += keyValue("App size", String(ESP.getSketchSize() / 1024), "kb");
-  page += keyValue("App space", String(ESP.getFreeSketchSpace() / 1024), "kb");
+  page += keyValue("Chip revision", ESP.getChipRevision());
+  page += keyValue("App size", ESP.getSketchSize() / 1024, "kb");
+  page += keyValue("App space", ESP.getFreeSketchSpace() / 1024, "kb");
 // Needs to much RAM:   page += keyValue("App MD5", ESP.getSketchMD5());
-  page += keyValue("Flash size", String(ESP.getFlashChipSize() / 1024), "kb");
-  page += keyValue("Flash speed", String(ESP.getFlashChipSpeed() / 1000 / 1000), "MHz");
+  page += keyValue("Flash size", ESP.getFlashChipSize() / 1024, "kb");
+  page += keyValue("Flash speed", ESP.getFlashChipSpeed() / 1000 / 1000, "MHz");
   page += keyValue("App 'DEVELOP'",
 #ifdef DEVELOP
                    "true"
@@ -483,10 +499,10 @@ void aboutPage() {
   esp_chip_info_t ci;
   esp_chip_info(&ci);
   page += keyValue("Cores", String(ci.cores));
-  page += keyValue("CPU frequency", String(ESP.getCpuFreqMHz()), "MHz");
+  page += keyValue("CPU frequency", ESP.getCpuFreqMHz(), "MHz");
 
-  page += keyValue("SPIFFS size", String((uint32_t) (SPIFFS.totalBytes() / 1024)), "KB");
-  page += keyValue("SPIFFS used", String((uint32_t) (SPIFFS.usedBytes() / 1024)), "KB");
+  page += keyValue("SPIFFS size", SPIFFS.totalBytes() / 1024, "KB");
+  page += keyValue("SPIFFS used", SPIFFS.usedBytes() / 1024, "KB");
 
   String files;
   auto dir = SPIFFS.open("/");
@@ -523,28 +539,28 @@ void aboutPage() {
   }
 
   page += keyValue("SD card type", sdCardType);
-  page += keyValue("SD fs size", String((uint32_t) (SD.totalBytes() / 1024 / 1024)), "MB");
-  page += keyValue("SD fs used", String((uint32_t) (SD.usedBytes() / 1024 / 1024)), "MB");
+  page += keyValue("SD fs size", SD.totalBytes() / 1024 / 1024, "MB");
+  page += keyValue("SD fs used", SD.usedBytes() / 1024 / 1024, "MB");
 
   page += "<h3>TOF Sensors</h3>";
-  page += keyValue("Left Sensor raw", String(sensorManager->getRawMedianDistance(LEFT_SENSOR_ID)), "cm");
-  page += keyValue("Left Sensor max duration", String(sensorManager->getMaxDurationUs(LEFT_SENSOR_ID)), "&#xB5;s");
-  page += keyValue("Left Sensor min duration", String(sensorManager->getMinDurationUs(LEFT_SENSOR_ID)), "&#xB5;s");
-  page += keyValue("Left Sensor last start delay", String(sensorManager->getLastDelayTillStartUs(LEFT_SENSOR_ID)), "&#xB5;s");
-  page += keyValue("Right Sensor raw", String(sensorManager->getRawMedianDistance(RIGHT_SENSOR_ID)), "cm");
-  page += keyValue("Right Sensor max duration", String(sensorManager->getMaxDurationUs(RIGHT_SENSOR_ID)), "&#xB5;s");
-  page += keyValue("Right Sensor min duration", String(sensorManager->getMinDurationUs(RIGHT_SENSOR_ID)), "&#xB5;s");
-  page += keyValue("Right Sensor last start delay", String(sensorManager->getLastDelayTillStartUs(RIGHT_SENSOR_ID)), "&#xB5;s");
+  page += keyValue("Left Sensor raw", sensorManager->getRawMedianDistance(LEFT_SENSOR_ID), "cm");
+  page += keyValue("Left Sensor max duration", sensorManager->getMaxDurationUs(LEFT_SENSOR_ID), "&#xB5;s");
+  page += keyValue("Left Sensor min duration", sensorManager->getMinDurationUs(LEFT_SENSOR_ID), "&#xB5;s");
+  page += keyValue("Left Sensor last start delay", sensorManager->getLastDelayTillStartUs(LEFT_SENSOR_ID), "&#xB5;s");
+  page += keyValue("Right Sensor raw", sensorManager->getRawMedianDistance(RIGHT_SENSOR_ID), "cm");
+  page += keyValue("Right Sensor max duration", sensorManager->getMaxDurationUs(RIGHT_SENSOR_ID), "&#xB5;s");
+  page += keyValue("Right Sensor min duration", sensorManager->getMinDurationUs(RIGHT_SENSOR_ID), "&#xB5;s");
+  page += keyValue("Right Sensor last start delay", sensorManager->getLastDelayTillStartUs(RIGHT_SENSOR_ID), "&#xB5;s");
 
   page += "<h3>GPS</h3>";
   page += keyValue("TinyGPSPlus version", TinyGPSPlus::libraryVersion());
-  page += keyValue("GPS chars processed", String(gps.charsProcessed()));
-  page += keyValue("GPS valid checksum", String(gps.passedChecksum()));
-  page += keyValue("GPS failed checksum", String(gps.failedChecksum()));
-  page += keyValue("GPS sentences with fix", String(gps.sentencesWithFix()));
-  page += keyValue("GPS time", String(gps.time.value())); // fill all digits?
-  page += keyValue("GPS date", String(gps.date.value())); // fill all digits?
-  page += keyValue("GPS hdop", String(gps.hdop.value())); // fill all digits?
+  page += keyValue("GPS chars processed", gps.charsProcessed());
+  page += keyValue("GPS valid checksum", gps.passedChecksum());
+  page += keyValue("GPS failed checksum", gps.failedChecksum());
+  page += keyValue("GPS sentences with fix", gps.sentencesWithFix());
+  page += keyValue("GPS time", gps.time.value()); // fill all digits?
+  page += keyValue("GPS date", gps.date.value()); // fill all digits?
+  page += keyValue("GPS hdop", gps.hdop.value()); // fill all digits?
 
   String theGpsMessage = "";
   for (String msg : gpsMessages) {
@@ -554,10 +570,10 @@ void aboutPage() {
   page += keyValue("GPS messages", theGpsMessage);
 
   page += "<h3>Display / Button</h3>";
-  page += keyValue("Button State", String(digitalRead(PushButton_PIN)));
-  page += keyValue("Display i2c last error", String(Wire.lastError()));
-  page += keyValue("Display i2c speed", String((uint32_t) Wire.getClock() / 1000), "KHz");
-  page += keyValue("Display i2c timeout", String((uint32_t) Wire.getTimeOut()), "ms");
+  page += keyValue("Button State", digitalRead(PushButton_PIN));
+  page += keyValue("Display i2c last error", Wire.lastError());
+  page += keyValue("Display i2c speed", Wire.getClock() / 1000, "KHz");
+  page += keyValue("Display i2c timeout", Wire.getTimeOut(), "ms");
 
   page = createPage(page);
   page = replaceDefault(page, "About");
@@ -663,7 +679,7 @@ void startServer(ObsConfig *obsConfig) {
   /*return index page which is stored in serverIndex */
 
   readGPSData();
-  uploader::instance()->setClock();
+  Uploader::setClock();
   readGPSData();
   if (!voltageMeter) {
     voltageMeter = new VoltageMeter();
@@ -1105,6 +1121,10 @@ void startServer(ObsConfig *obsConfig) {
 
 // TODO: Split this thing!
 void uploadTracks(bool httpRequest) {
+  Uploader uploader(
+    theObsConfig->getProperty<String>(ObsConfig::PROPERTY_PORTAL_URL),
+    theObsConfig->getProperty<String>(ObsConfig::PROPERTY_PORTAL_TOKEN));
+
   configServerWasConnectedViaHttpFlag = true;
   SDFileSystem.mkdir("/uploaded");
   File root = SDFileSystem.open("/");
@@ -1126,6 +1146,7 @@ void uploadTracks(bool httpRequest) {
     server.send(200, "text/html");
   }
   html = replaceDefault(header, "Upload Tracks");
+  html += "<h3>Uploading tracks...</h3>";
   html += "<div>";
   if (httpRequest) {
     server.sendContent(html);
@@ -1162,7 +1183,7 @@ void uploadTracks(bool httpRequest) {
       if (httpRequest) {
         server.sendContent(fileName);
       }
-      if (uploader::instance()->upload(file.name())) {
+      if (uploader.upload(file.name())) {
         int i = 0;
         while (!SDFileSystem.rename(file.name(), String("/uploaded") + file.name() + (i == 0 ? "" : String(i)))) {
           i++;
@@ -1170,10 +1191,12 @@ void uploadTracks(bool httpRequest) {
             break;
           }
         }
-        html += "&#x2705;"; // OK mark
+        // TODO: Must encode!
+        html += "<a href='" + uploader.getLastLocation()
+          + "' title='" + uploader.getLastStatusMessage() + "'>" + HTML_ENTITY_OK_MARK  + "</a>";
         okCount++;
       } else {
-        html += "&#x274C;"; // failed cross
+        html += "<div title='" + uploader.getLastStatusMessage() + "'>" + HTML_ENTITY_FAILED_CROSS + "</div>";
         failedCount++;
       }
       if (httpRequest) {
@@ -1196,7 +1219,9 @@ void uploadTracks(bool httpRequest) {
   displayTest->showTextOnGrid(2, 5, "Failed:");
   displayTest->showTextOnGrid(3, 5, String(failedCount));
   if (httpRequest) {
-    html += "</div><h3>All files done</h3/>";
+    html += "</div><h3>...all files done</h3/>";
+    html += keyValue("OK", okCount);
+    html += keyValue("Failed", failedCount);
     html += "<input type=button onclick=\"window.location.href='/'\" class='btn' value='OK' />";
     html += footer;
     server.sendContent(html);
