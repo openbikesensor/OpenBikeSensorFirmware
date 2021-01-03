@@ -32,8 +32,8 @@
 // Version only change the "vN.M" part if needed.
 const char *OBSVersion = "v0.4" BUILD_NUMBER;
 
-const int LEFT_SENSOR_ID = 1;
-const int RIGHT_SENSOR_ID = 0;
+const uint8_t LEFT_SENSOR_ID = 1;
+const uint8_t RIGHT_SENSOR_ID = 0;
 
 const uint32_t BUTTON_PRESS_TIME_FOR_AUTO_UPLOAD_MS = 5000;
 

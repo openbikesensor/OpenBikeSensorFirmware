@@ -39,8 +39,8 @@ extern VoltageMeter* voltageMeter;
 extern String esp_chipid;
 
 extern const uint32_t MAX_DURATION_MICRO_SEC;
-extern const int LEFT_SENSOR_ID;
-extern const int RIGHT_SENSOR_ID;
+extern const uint8_t LEFT_SENSOR_ID;
+extern const uint8_t RIGHT_SENSOR_ID;
 
 #endif
 

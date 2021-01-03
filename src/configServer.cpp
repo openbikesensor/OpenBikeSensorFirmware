@@ -25,10 +25,7 @@
 
 #include "configServer.h"
 #include "OpenBikeSensorFirmware.h"
-#include <SD.h>
-#include <FS.h>
 #include <uploader.h>
-#include <utils/obsutils.h>
 #include "SPIFFS.h"
 
 extern std::vector<String> gpsMessages;
@@ -320,12 +317,16 @@ String makeCurrentLocationPrivateIndex =
 
 bool configServerWasConnectedViaHttpFlag = false;
 
+void tryWiFiConnect(const ObsConfig *obsConfig);
+uint16_t countFilesInRoot();
+String ensureSdIsAvailable();
+void moveToUploaded(const String &fileName);
+
 bool configServerWasConnectedViaHttp() {
   return configServerWasConnectedViaHttpFlag;
 }
-void tryWiFiConnect(const ObsConfig *obsConfig);
 
-String createPage(String content, String additionalContent = "") {
+String createPage(const String& content, const String& additionalContent = "") {
   configServerWasConnectedViaHttpFlag = true;
   String result;
   result += header;
@@ -336,7 +337,7 @@ String createPage(String content, String additionalContent = "") {
   return result;
 }
 
-String replaceDefault(String html, String subTitle, String action = "#") {
+String replaceDefault(String html, const String& subTitle, const String& action = "#") {
   configServerWasConnectedViaHttpFlag = true;
   html.replace("{title}",
                theObsConfig->getProperty<String>(ObsConfig::PROPERTY_OBS_NAME) + " - " + subTitle);
@@ -446,19 +447,19 @@ void wifiAction() {
   server.send(200, "text/html", s);
 }
 
-String keyValue(String key, String value, String suffix = "") {
+String keyValue(const String& key, const String& value, const String& suffix = "") {
   return "<b>" + key + ":</b> " + value + suffix + "<br />";
 }
 
-String keyValue(String key, uint32_t value, String suffix = "") {
+String keyValue(const String& key, const uint32_t value, const String& suffix = "") {
   return keyValue(key, String(value), suffix);
 }
 
-String keyValue(String key, int32_t value, String suffix = "") {
+String keyValue(const String& key, const int32_t value, const String& suffix = "") {
   return keyValue(key, String(value), suffix);
 }
 
-String keyValue(String key, uint64_t value, String suffix = "") {
+String keyValue(const String& key, const uint64_t value, const String& suffix = "") {
   // is long this sufficient?
   return keyValue(key, String((unsigned long) value), suffix);
 }
@@ -655,7 +656,7 @@ void startServer(ObsConfig *obsConfig) {
 
   tryWiFiConnect(obsConfig);
 
-  if (WiFi.status() != WL_CONNECTED) {
+  if (WiFiClass::status() != WL_CONNECTED) {
     CreateWifiSoftAP(esp_chipid);
   } else {
     Serial.println("");
@@ -1024,7 +1025,6 @@ void startServer(ObsConfig *obsConfig) {
       return;
     }
 
-
     if (file.isDirectory()) {
       server.setContentLength(CONTENT_LENGTH_UNKNOWN);
       server.send(200, "text/html");
@@ -1039,12 +1039,12 @@ void startServer(ObsConfig *obsConfig) {
 
       // Iterate over directories
       File child = file.openNextFile();
-      int counter = 0;
+      uint16_t counter = 0;
       while (child) {
         displayTest->drawWaitBar(5, counter++);
 
         String fileName = String(child.name());
-        fileName = fileName.substring(fileName.lastIndexOf("/") + 1);
+        fileName = fileName.substring(int (fileName.lastIndexOf("/") + 1));
         bool isDirectory = child.isDirectory();
         html +=
           ("<li class=\""
@@ -1102,7 +1102,7 @@ void startServer(ObsConfig *obsConfig) {
     }
 
     String fileName = String(file.name());
-    fileName = fileName.substring(fileName.lastIndexOf("/") + 1);
+    fileName = fileName.substring((int) (fileName.lastIndexOf("/") + 1));
     server.sendHeader("Content-Disposition", String("attachment; filename=\"") + fileName + String("\""));
     server.streamFile(file, dataType);
     file.close();
@@ -1119,7 +1119,12 @@ void startServer(ObsConfig *obsConfig) {
 
 }
 
-// TODO: Split this thing!
+/* Upload tracks found on SD card to the portal server.
+ * This method also takes care to give appropriate feedback
+ * to the user about the progress. If httpRequest is true
+ * a html response page is created. Also the progress can be
+ * seen on the display if connected.
+ */
 void uploadTracks(bool httpRequest) {
   Uploader uploader(
     theObsConfig->getProperty<String>(ObsConfig::PROPERTY_PORTAL_URL),
@@ -1127,76 +1132,56 @@ void uploadTracks(bool httpRequest) {
 
   configServerWasConnectedViaHttpFlag = true;
   SDFileSystem.mkdir("/uploaded");
-  File root = SDFileSystem.open("/");
-  if (!root) {
+
+  String sdErrorMessage = ensureSdIsAvailable();
+  if (sdErrorMessage != "") {
     if (httpRequest) {
-      server.send(500, "text/plain", "Failed to open SD directory");
+      server.send(500, "text/plain", sdErrorMessage);
     }
+    displayTest->showTextOnGrid(0, 3, "Error:");
+    displayTest->showTextOnGrid(0, 4, sdErrorMessage);
     return;
   }
-  if (!root.isDirectory()) {
-    if (httpRequest) {
-      server.send(500, "text/plain", "SD root is not a directory?");
-    }
-    return;
-  }
-  String html;
-  if (httpRequest) {
-    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
-    server.send(200, "text/html");
-  }
-  html = replaceDefault(header, "Upload Tracks");
+
+  String html = replaceDefault(header, "Upload Tracks");
   html += "<h3>Uploading tracks...</h3>";
   html += "<div>";
   if (httpRequest) {
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    server.send(200, "text/html");
     server.sendContent(html);
   }
   html.clear();
 
-  File file = root.openNextFile("r");
-  uint16_t numberOfFiles = 0;
-  while (file) {
-    String fileName = String(file.name());
-    if (!file.isDirectory()
-        && fileName.endsWith(CSVFileWriter::EXTENSION)) {
-      numberOfFiles++;
-      displayTest->drawWaitBar(4, numberOfFiles);
-    }
-    file = root.openNextFile();
-  }
-  root.close();
-  displayTest->clearProgressBar(4);
-  root = SDFileSystem.open("/");
-  file = root.openNextFile();
+  const uint16_t numberOfFiles = countFilesInRoot();
+
   uint16_t currentFileIndex = 0;
   uint16_t okCount = 0;
   uint16_t failedCount = 0;
+  File root = SDFileSystem.open("/");
+  File file = root.openNextFile();
   while (file) {
-    String fileName = String(file.name());
-    fileName = fileName.substring(fileName.lastIndexOf("/") + 1);
+    String fileName(file.name());
     log_d("Upload file: %s", fileName.c_str());
     if (!file.isDirectory()
         && fileName.endsWith(CSVFileWriter::EXTENSION)) {
-      fileName = fileName.substring(0, fileName.length() - CSVFileWriter::EXTENSION.length());
+      fileName = ObsUtils::stripCsvFileName(fileName);
       displayTest->showTextOnGrid(0, 4, fileName);
       displayTest->drawProgressBar(3, ++currentFileIndex, numberOfFiles);
       if (httpRequest) {
         server.sendContent(fileName);
       }
-      if (uploader.upload(file.name())) {
-        int i = 0;
-        while (!SDFileSystem.rename(file.name(), String("/uploaded") + file.name() + (i == 0 ? "" : String(i)))) {
-          i++;
-          if (i > 100) {
-            break;
-          }
-        }
-        // TODO: Must encode!
-        html += "<a href='" + uploader.getLastLocation()
-          + "' title='" + uploader.getLastStatusMessage() + "'>" + HTML_ENTITY_OK_MARK  + "</a>";
+      const boolean uploaded = uploader.upload(file.name());
+      file.close();
+      if (uploaded) {
+        moveToUploaded(file.name());
+        html += "<a href='" + ObsUtils::encodeForXmlAttribute(uploader.getLastLocation())
+          + "' title='" + ObsUtils::encodeForXmlAttribute(uploader.getLastStatusMessage())
+          + "'>" + HTML_ENTITY_OK_MARK  + "</a>";
         okCount++;
       } else {
-        html += "<div title='" + uploader.getLastStatusMessage() + "'>" + HTML_ENTITY_FAILED_CROSS + "</div>";
+        html += "<div title='" + ObsUtils::encodeForXmlAttribute(uploader.getLastStatusMessage())
+          + "'>" + HTML_ENTITY_FAILED_CROSS + "</div>";
         failedCount++;
       }
       if (httpRequest) {
@@ -1205,8 +1190,9 @@ void uploadTracks(bool httpRequest) {
       }
       html.clear();
       displayTest->clearProgressBar(5);
+    } else {
+      file.close();
     }
-    file.close();
     file = root.openNextFile();
   }
   root.close();
@@ -1228,6 +1214,46 @@ void uploadTracks(bool httpRequest) {
   }
 }
 
+void moveToUploaded(const String &fileName) {
+  int i = 0;
+  while (!SDFileSystem.rename(
+    fileName, String("/uploaded") + fileName + (i == 0 ? "" : String(i)))) {
+    i++;
+    if (i > 100) {
+      break;
+    }
+  }
+}
+
+String ensureSdIsAvailable() {
+  String result = "";
+  File root = SDFileSystem.open("/");
+  if (!root) {
+    result = "Failed to open SD directory";
+  } else if (!root.isDirectory()) {
+    result = "SD root is not a directory?";
+  }
+  root.close();
+  return result;
+}
+
+uint16_t countFilesInRoot() {
+  uint16_t numberOfFiles = 0;
+  File root = SDFileSystem.open("/");
+  File file = root.openNextFile("r");
+  while (file) {
+    if (!file.isDirectory()
+        && String(file.name()).endsWith(CSVFileWriter::EXTENSION)) {
+      numberOfFiles++;
+      displayTest->drawWaitBar(4, numberOfFiles);
+    }
+    file = root.openNextFile();
+  }
+  root.close();
+  displayTest->clearProgressBar(4);
+  return numberOfFiles;
+}
+
 
 void tryWiFiConnect(const ObsConfig *obsConfig) {
   if (!WiFiGenericClass::mode(WIFI_MODE_STA)) {
@@ -1239,10 +1265,10 @@ void tryWiFiConnect(const ObsConfig *obsConfig) {
     log_e("Failed to set hostname to %s.", hostname);
   }
 
-  const uint16_t startTime = millis();
+  const auto startTime = millis();
   const uint16_t timeout = 10000;
   // Connect to WiFi network
-  while ((WiFi.status() != WL_CONNECTED) && (( millis() - startTime) <= timeout)) {
+  while ((WiFiClass::status() != WL_CONNECTED) && (( millis() - startTime) <= timeout)) {
     log_d("Trying to connect to %s",
       theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_SSID));
     wl_status_t status = WiFi.begin(

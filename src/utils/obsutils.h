@@ -33,6 +33,7 @@ class ObsUtils {
     static String stripCsvFileName(const String &fileName);
     static void setClockByNtp();
     static void setClockByNtpAndWait();
+    static String encodeForXmlAttribute(const String & text);
 };
 
 

@@ -71,3 +71,13 @@ void ObsUtils::setClockByNtpAndWait() {
   log_i("NTP time set got %s.", ObsUtils::dateTimeToString(nowSecs).c_str());
 }
 
+String ObsUtils::encodeForXmlAttribute(const String &text) {
+  String result(text);
+  result.replace("&", "&amp;");
+  result.replace("<", "&lt;");
+  result.replace(">", "&gt;");
+  result.replace("'", "&#39;");
+  result.replace("\"", "&#34;");
+  return result;
+}
+
