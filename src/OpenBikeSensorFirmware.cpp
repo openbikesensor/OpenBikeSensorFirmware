@@ -125,14 +125,15 @@ void setup() {
   // Setup display
   //##############################################################
   Wire.begin();
-  switch_wire_speed_to_SSD1306();
   Wire.beginTransmission(displayAddress);
   byte displayError = Wire.endTransmission();
   if (displayError != 0) {
     Serial.println("Display not found");
   }
   displayTest = new SSD1306DisplayDevice;
-
+  
+  switch_wire_speed_to_SSD1306();
+  
   displayTest->showLogo(true);
   displayTest->showTextOnGrid(2, 0, OBSVersion,DEFAULT_FONT);
 
