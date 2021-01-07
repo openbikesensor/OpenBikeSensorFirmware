@@ -323,20 +323,23 @@ void setup() {
         validGPSData = gps.sentencesWithFix() > 0;
         if (validGPSData) {
           Serial.println("Got location...");
-        }
+          displayTest->showTextOnGrid(2, 4, "Got location",DEFAULT_FONT);
+          }
         break;
       case GPS::FIX_TIME:
         validGPSData = gps.time.isValid()
           && !(gps.time.second() == 00 && gps.time.minute() == 00 && gps.time.hour() == 00);
         if (validGPSData) {
           Serial.println("Got time...");
-        }
+displayTest->showTextOnGrid(2, 4, "Got time",DEFAULT_FONT);
+         }
         break;
       case GPS::FIX_NO_WAIT:
         validGPSData = true;
         if (validGPSData) {
           Serial.println("GPS, no wait");
-        }
+displayTest->showTextOnGrid(2, 4, "GPS, no wait",DEFAULT_FONT);
+          }
         break;
       default:
         validGPSData = gps.satellites.value() >= gpsWaitFor;
