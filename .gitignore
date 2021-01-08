@@ -1,3 +1,4 @@
+.idea/serialmonitor_settings.xml
 *esp32.bin
 .pio
 .vscode/.browse.c_cpp.db*
