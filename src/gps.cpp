@@ -24,9 +24,6 @@
 /* Value is in the past (just went by at the time of writing). */
 static const time_t PAST_TIME = 1606672131;
 
-Gps::Gps() {
-}
-
 void Gps::begin() {
   mSerial.begin(9600, SERIAL_8N1, 16, 17);
   // TODO: Increase speed etc.
@@ -137,7 +134,7 @@ void Gps::handleNewTxtData() {
       mMessage += mTxtMessage.value();
     }
     if (String(mTxtCount.value()) == String(mTxtSeq.value())) {
-      for (String message : mMessages) {
+      for (String& message : mMessages) {
         if (message == mMessage) {
           mMessage.clear();
           break;
@@ -155,7 +152,6 @@ void Gps::handleNewTxtData() {
 }
 
 bool Gps::isInsidePrivacyArea() {
-  TinyGPSLocation location = location;
   // quite accurate haversine formula
   // consider using simplified flat earth calculation to save time
 
@@ -246,14 +242,14 @@ PrivacyArea Gps::newPrivacyArea(double latitude, double longitude, int radius) {
 bool Gps::hasState(int state, SSD1306DisplayDevice *display) {
   bool result = false;
   switch (state) {
-    case FIX_POS:
+    case (int) WaitFor::FIX_POS:
       if (sentencesWithFix() > 0) {
         log_d("Got location...");
         display->showTextOnGrid(2, 4, "Got location");
         result = true;
       }
       break;
-    case FIX_TIME:
+    case (int) WaitFor::FIX_TIME:
       if (time.isValid()
                      && !(time.second() == 00 && time.minute() == 00 && time.hour() == 00)) {
         log_d("Got time...");
@@ -261,7 +257,7 @@ bool Gps::hasState(int state, SSD1306DisplayDevice *display) {
         result = true;
       }
       break;
-    case FIX_NO_WAIT:
+    case (int) WaitFor::FIX_NO_WAIT:
       log_d("GPS, no wait");
       display->showTextOnGrid(2, 4, "GPS, no wait");
       result = true;
@@ -290,10 +286,10 @@ void Gps::showWaitStatus(SSD1306DisplayDevice *display) {
              time.hour(), time.minute(), time.second(), satellites.value());
     satellitesString = String(timeStr);
   }
-  displayTest->showTextOnGrid(2, 5, satellitesString);
+  display->showTextOnGrid(2, 5, satellitesString);
 }
 
-bool Gps::moduleIsAlive() {
+bool Gps::moduleIsAlive() const {
   return passedChecksum() > 0;
 }
 
@@ -311,13 +307,13 @@ double Gps::getSpeed() {
   return theSpeed;
 }
 
-const String Gps::getHdopAsString() {
+String Gps::getHdopAsString() {
   return String(hdop.hdop(), 2);
 }
 
-const String Gps::getMessages() {
+String Gps::getMessages() const {
   String theGpsMessage = "";
-  for (String msg : mMessages) {
+  for (const String& msg : mMessages) {
     theGpsMessage += "<br/>";
     theGpsMessage += msg;
   }

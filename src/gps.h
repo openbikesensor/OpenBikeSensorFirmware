@@ -30,21 +30,20 @@
 // ??
 class SSD1306DisplayDevice;
 
-
+/*
 namespace GPS {
   const int FIX_NO_WAIT = 0;
   const int FIX_TIME = -1;
   const int FIX_POS = -2;
-}
+} */
 
 class Gps : public TinyGPSPlus {
   public:
-    enum WaitFor {
+    enum class WaitFor {
       FIX_NO_WAIT = 0,
       FIX_TIME = -1,
       FIX_POS = -2,
     };
-    Gps();
     void begin();
     /* read and process data from serial. */
     void handle();
@@ -52,21 +51,19 @@ class Gps : public TinyGPSPlus {
     time_t currentTime();
     bool hasState(int state, SSD1306DisplayDevice *display);
     /* Returns true if valid communication with the gps module was possible. */
-    bool moduleIsAlive();
+    bool moduleIsAlive() const;
     bool isInsidePrivacyArea();
     uint8_t getValidSatellites();
     void showWaitStatus(SSD1306DisplayDevice *display);
     /* Returns current speed, negative value means unknown speed. */
     double getSpeed();
-    const String getHdopAsString();
-    const String getMessages();
+    String getHdopAsString();
+    String getMessages() const;
     static PrivacyArea newPrivacyArea(double latitude, double longitude, int radius);
 
 
   private:
     HardwareSerial mSerial = HardwareSerial(1); // but uses uart 2 ports
-
-    // FIXME: HELP! how to do this?
     TinyGPSCustom mTxtCount = TinyGPSCustom(*this, "GPTXT", 1);
     TinyGPSCustom mTxtSeq = TinyGPSCustom(*this, "GPTXT", 2);
     TinyGPSCustom mTxtSeverity = TinyGPSCustom(*this, "GPTXT", 3);

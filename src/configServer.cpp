@@ -854,9 +854,9 @@ void startServer(ObsConfig *obsConfig) {
                  theObsConfig->getProperty<bool>(ObsConfig::PROPERTY_SIM_RA) ? "checked" : "");
 
     int gpsFix = theObsConfig->getProperty<int>(ObsConfig::PROPERTY_GPS_FIX);
-    html.replace("{fixPos}", gpsFix == GPS::FIX_POS || gpsFix > 0 ? "selected" : "");
-    html.replace("{fixTime}", gpsFix == GPS::FIX_TIME ? "selected" : "");
-    html.replace("{fixNoWait}", gpsFix == GPS::FIX_NO_WAIT ? "selected" : "");
+    html.replace("{fixPos}", gpsFix == (int) Gps::WaitFor::FIX_POS || gpsFix > 0 ? "selected" : "");
+    html.replace("{fixTime}", gpsFix == (int) Gps::WaitFor::FIX_TIME ? "selected" : "");
+    html.replace("{fixNoWait}", gpsFix == (int) Gps::WaitFor::FIX_NO_WAIT ? "selected" : "");
 
     const uint privacyConfig = (uint) theObsConfig->getProperty<int>(
       ObsConfig::PROPERTY_PRIVACY_CONFIG);
