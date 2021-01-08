@@ -67,10 +67,10 @@ class Gps : public TinyGPSPlus {
     HardwareSerial mSerial = HardwareSerial(1); // but uses uart 2 ports
 
     // FIXME: HELP! how to do this?
-    TinyGPSCustom mTxtCount; // = TinyGPSCustom(dynamic_cast<TinyGPSPlus &>(this), "GPTXT", 1);
-    TinyGPSCustom mTxtSeq; //) = TinyGPSCustom(this, "GPTXT", 2);
-    TinyGPSCustom mTxtSeverity; // = TinyGPSCustom(this, "GPTXT", 3);
-    TinyGPSCustom mTxtMessage; // = TinyGPSCustom(this, "GPTXT", 4);
+    TinyGPSCustom mTxtCount = TinyGPSCustom(*this, "GPTXT", 1);
+    TinyGPSCustom mTxtSeq = TinyGPSCustom(*this, "GPTXT", 2);
+    TinyGPSCustom mTxtSeverity = TinyGPSCustom(*this, "GPTXT", 3);
+    TinyGPSCustom mTxtMessage = TinyGPSCustom(*this, "GPTXT", 4);
     String mMessage;
     std::vector<String> mMessages;
 

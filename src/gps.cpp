@@ -28,10 +28,9 @@ Gps::Gps() {
 }
 
 void Gps::begin() {
-
-  // Could also initialize the mTxtCount members here
-
   mSerial.begin(9600, SERIAL_8N1, 16, 17);
+  // TODO: Increase speed etc.
+  configureGpsModule();
 }
 
 time_t Gps::getGpsTime() {
