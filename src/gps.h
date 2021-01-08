@@ -27,15 +27,7 @@
 #include "config.h" // PrivacyArea
 #include "displays.h"
 
-// ??
 class SSD1306DisplayDevice;
-
-/*
-namespace GPS {
-  const int FIX_NO_WAIT = 0;
-  const int FIX_TIME = -1;
-  const int FIX_POS = -2;
-} */
 
 class Gps : public TinyGPSPlus {
   public:
