@@ -36,6 +36,9 @@ extern HCSR04SensorManager* sensorManager;
 
 extern VoltageMeter* voltageMeter;
 
+class Gps;
+extern Gps gps;
+
 extern String esp_chipid;
 
 extern const uint32_t MAX_DURATION_MICRO_SEC;

@@ -24,9 +24,12 @@
 #include <Arduino.h>
 #include <TinyGPS++.h> // http://arduiniana.org/libraries/tinygpsplus/
 #include <HardwareSerial.h>
+#include "config.h" // PrivacyArea
+#include "displays.h"
 
-#include "config.h"
-#include "globals.h"
+// ??
+class SSD1306DisplayDevice;
+
 
 namespace GPS {
   const int FIX_NO_WAIT = 0;
@@ -34,13 +37,51 @@ namespace GPS {
   const int FIX_POS = -2;
 }
 
-extern TinyGPSPlus gps;
-extern HardwareSerial SerialGPS;
+class Gps : public TinyGPSPlus {
+  public:
+    enum WaitFor {
+      FIX_NO_WAIT = 0,
+      FIX_TIME = -1,
+      FIX_POS = -2,
+    };
+    Gps();
+    void begin();
+    /* read and process data from serial. */
+    void handle();
+    /* Returns the current time - GPS time if available, system time otherwise. */
+    time_t currentTime();
+    bool hasState(int state, SSD1306DisplayDevice *display);
+    /* Returns true if valid communication with the gps module was possible. */
+    bool moduleIsAlive();
+    bool isInsidePrivacyArea();
+    uint8_t getValidSatellites();
+    void showWaitStatus(SSD1306DisplayDevice *display);
+    /* Returns current speed, negative value means unknown speed. */
+    double getSpeed();
+    const String getHdopAsString();
+    const String getMessages();
+    static PrivacyArea newPrivacyArea(double latitude, double longitude, int radius);
 
-time_t currentTime();
-void readGPSData();
-bool isInsidePrivacyArea(TinyGPSLocation &location);
-PrivacyArea newPrivacyArea(double latitude, double longitude, int radius);
-double haversine(double lat1, double lon1, double lat2, double lon2);
+
+  private:
+    HardwareSerial mSerial = HardwareSerial(1); // but uses uart 2 ports
+
+    // FIXME: HELP! how to do this?
+    TinyGPSCustom mTxtCount; // = TinyGPSCustom(dynamic_cast<TinyGPSPlus &>(this), "GPTXT", 1);
+    TinyGPSCustom mTxtSeq; //) = TinyGPSCustom(this, "GPTXT", 2);
+    TinyGPSCustom mTxtSeverity; // = TinyGPSCustom(this, "GPTXT", 3);
+    TinyGPSCustom mTxtMessage; // = TinyGPSCustom(this, "GPTXT", 4);
+    String mMessage;
+    std::vector<String> mMessages;
+
+    time_t getGpsTime();
+    void configureGpsModule();
+    void handleNewTxtData();
+    static double haversine(double lat1, double lon1, double lat2, double lon2);
+    static void randomOffset(PrivacyArea &p);
+
+};
+
+
 
 #endif
