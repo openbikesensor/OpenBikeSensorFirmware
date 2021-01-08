@@ -248,7 +248,9 @@ void setup() {
     ESP_ERROR_CHECK_WITHOUT_ABORT(
       esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
 
-    delay(300);
+    buttonStateChanged = 0;
+    lastButtonState = buttonState;
+    delay(200);
     startServer(&cfg);
     OtaInit(esp_chipid);
     while (true) {
@@ -411,7 +413,7 @@ void handleButtonInServerMode() {
     buttonStateChanged = now;
   }
   if (!configServerWasConnectedViaHttp() &&
-    buttonState == HIGH) {
+    buttonState == HIGH && buttonStateChanged != 0) {
     const uint32_t buttonPressedMs = now - buttonStateChanged;
     displayTest->drawProgressBar(5, buttonPressedMs, BUTTON_PRESS_TIME_FOR_AUTO_UPLOAD_MS);
     if (buttonPressedMs > BUTTON_PRESS_TIME_FOR_AUTO_UPLOAD_MS) {
