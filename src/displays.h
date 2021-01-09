@@ -23,6 +23,7 @@
 
 #include <Arduino.h>
 #include <SSD1306.h>
+#include <functional>
 
 #include "config.h"
 #include "font.h"
@@ -30,6 +31,128 @@
 #include "gps.h"
 #include "logo.h"
 #include "sensor.h"
+
+class DisplayValue {
+  public:
+    DisplayValue(String text) :
+      mGetString([text]() { return text; }),
+      mGetInt32([this]() { return atoi(mGetString().c_str()); }),
+      mGetDouble([this]() { return atof(mGetString().c_str()); }) {};
+    DisplayValue(std::function<String()> getValue) :
+      mGetString(getValue),
+      mGetInt32([this]() { return atoi(mGetString().c_str()); }),
+      mGetDouble([getValue]() { return atof(getValue().c_str()); }) {};
+    DisplayValue(std::function<uint16_t()> getValue) :
+      mGetString([getValue]() { return String(getValue()); }),
+      mGetInt32(getValue),
+      mGetDouble([getValue]() { return (double) getValue(); }) {};
+    DisplayValue(std::function<int32_t()> getValue) :
+      mGetString([getValue]() { return String(getValue()); }),
+      mGetInt32([getValue]() { return (int32_t) getValue(); }),
+      mGetDouble([getValue]() { return (double) getValue(); }) {};
+    DisplayValue(std::function<double()> getValue) :
+      mGetString([getValue]() { return String(getValue(), 2); }),
+      mGetInt32([getValue]() { return (int32_t) getValue(); }),
+      mGetDouble(getValue) {};
+    String getStringValue() { return mGetString(); };
+    int32_t getInt32Value() { return mGetInt32(); };
+    double getDoubleValue() { return mGetDouble(); };
+
+  private:
+    std::function<String()> mGetString;
+    std::function<int32_t()> mGetInt32;
+    std::function<double ()> mGetDouble;
+};
+
+
+enum class DisplayItemType {
+    NONE = 0,
+    TEXT_8PT = 1,
+    TEXT_10PT = 2,
+    TEXT_16PT = 3,
+    TEXT_20PT = 4,
+    TEXT_26PT = 5,
+    TEXT_30PT = 6,
+
+    PROGRESS_BAR = 10,
+    WAIT_BAR = 11,
+
+    BATTERY_SYMBOLS = 20,
+    TEMPERATURE_SYMBOLS = 21
+};
+
+// odd numbers are right aligned
+enum class DisplayItemTextStyle {
+    LEFT_ALIGNED = 0,
+    RIGHT_ALIGNED = 1,
+    NUMBER_3_DIGITS_0_FILLED = 2,
+    NUMBER_3_DIGITS_0_FILLED_RIGHT_ALIGNED = 3,
+    NUMBER_2_DIGITS_0_FILLED = 4,
+    NUMBER_2_DIGITS_0_FILLED_RIGHT_ALIGNED = 5,
+    NUMBER_3_DIGITS = 6,
+    NUMBER_2_DIGITS = 8,
+    PRIVACY_AREA_BRACKET = 10
+};
+
+
+// keep labels odd numbered, no purpose yet
+enum class DisplayContent {
+    DISTANCE_LEFT_TOF_SENSOR_LABEL = 1,
+    DISTANCE_LEFT_TOF_SENSOR = 2,
+    DISTANCE_RIGHT_TOF_SENSOR_LABEL = 3,
+    DISTANCE_RIGHT_TOF_SENSOR = 4,
+    DISTANCE_TOF_SENSOR_UNIT_LABEL = 5,
+
+    RAW_DISTANCE_TOF_LEFT = 8,
+
+    RAW_DISTANCE_TOF_RIGHT = 10,
+
+    MEASUREMENT_LOOPS_PER_INTERVAL = 12,
+    VISIBLE_SATS_LABEL = 13,
+    VISIBLE_SATS = 14,
+    SPEED_LABEL = 15,
+    SPEED = 16,
+    BATTERY_PERCENTAGE_LABEL = 17,
+    BATTERY_PERCENTAGE = 18,
+    BATTERY_VOLTAGE_LABEL = 19,
+    BATTERY_VOLTAGE = 20,
+    TEMPERATURE_LABEL = 21,
+    TEMPERATURE = 22,
+    CONFIRMED_COUNTER_LABEL = 23,
+    CONFIRMED_COUNTER = 24,
+    FREE_HEAP_KB_LABEL = 25,
+    FREE_HEAP_KB = 26,
+    V_BAR_LABEL = 27,
+};
+
+// all must be const! Need way to register get value method!?
+//template<typename T>
+class DisplayItem {
+  public:
+    DisplayItem(uint8_t x, uint8_t y,
+                DisplayContent content,
+                DisplayItemType type = DisplayItemType::TEXT_8PT,
+                DisplayItemTextStyle style = DisplayItemTextStyle::LEFT_ALIGNED) {
+      posX = x;
+      posY = y;
+      this->type = (uint8_t) type;
+      this->style = style;
+      this->content = (uint8_t) content;
+    };
+
+    uint8_t posX;
+    uint8_t posY;
+    uint8_t type; // Font / Iconset / Bar
+    DisplayItemTextStyle style; // optional parameter for the type
+    uint8_t content; // reference to the content value to be displayed
+};
+
+class DisplayLayout {
+  public:
+    std::vector<DisplayItem> items;
+};
+
+
 
 #define DEFAULT_FONT ArialMT_Plain_10
 
@@ -59,8 +182,19 @@ class SSD1306DisplayDevice : public DisplayDevice {
     SSD1306* m_display;
     String gridText[ 4 ][ 6 ];
     uint8_t mLastProgress = 255;
+    uint32_t mLastHandle;
+    int32_t getInt32Value(uint8_t item);
+    double getDoubleValue(uint8_t item);
+    String getStringValue(uint8_t item);
+
+    std::vector<DisplayValue> mDisplayValueGetters;
+    /* 25 display refreshes per second. */
+    static const uint32_t MIN_MILLIS_BETWEEN_DISPLAY_UPDATE = 1000 / 25;
 
   public:
+    // TODO: private
+    DisplayLayout mCurrentLayout;
+
     SSD1306DisplayDevice() : DisplayDevice() {
       m_display = new SSD1306(0x3c, 21, 22); // ADDRESS, SDA, SCL
       m_display->init();
@@ -272,6 +406,16 @@ class SSD1306DisplayDevice : public DisplayDevice {
       HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2,
       uint16_t minDistanceToConfirm,int16_t BatterieVolt, int16_t TemperaturValue, int lastMeasurements, boolean insidePrivacyArea);
 
+    void handle();
+    void registerItemValueGetter(DisplayContent item, DisplayValue value);
+    void prepareItem(DisplayItem &displayItem);
+    bool ensureItemIsAvailable(uint8_t item);
+    void drawString(int16_t x, int16_t y, String text, const uint8_t *font);
+    String apply(String data, DisplayItemTextStyle style);
+    String getStringValue(uint8_t item, DisplayItemTextStyle style);
+    void drawBatterySymbols(uint8_t x, uint8_t y, int32_t value);
+    void selectComplexLayout();
+    void selectSimpleLayout();
 };
 
 #endif

@@ -1,5 +1,63 @@
 #include "displays.h"
 
+void SSD1306DisplayDevice::handle() {
+  auto now = millis();
+  if (now - mLastHandle < MIN_MILLIS_BETWEEN_DISPLAY_UPDATE) {
+    return;
+  }
+  mLastHandle = now;
+
+  m_display->clear();
+  for (DisplayItem &item : mCurrentLayout.items) {
+    prepareItem(item);
+  }
+  m_display->display();
+
+}
+
+void SSD1306DisplayDevice::prepareItem(DisplayItem &displayItem) {
+  m_display->setTextAlignment(
+    ((int) displayItem.style) % 2 == 0 ?
+        OLEDDISPLAY_TEXT_ALIGNMENT::TEXT_ALIGN_LEFT : OLEDDISPLAY_TEXT_ALIGNMENT::TEXT_ALIGN_RIGHT);
+  switch (displayItem.type) {
+    case (int) DisplayItemType::TEXT_8PT:
+      drawString(displayItem.posX, displayItem.posY,
+                            getStringValue(displayItem.content, displayItem.style), Dialog_plain_8);
+      break;
+    case (int) DisplayItemType::TEXT_10PT:
+      drawString(displayItem.posX, displayItem.posY,
+                            getStringValue(displayItem.content, displayItem.style), ArialMT_Plain_10);
+      break;
+    case (int) DisplayItemType::TEXT_16PT:
+      drawString(displayItem.posX, displayItem.posY,
+                 getStringValue(displayItem.content, displayItem.style), ArialMT_Plain_16);
+      break;
+    case (int) DisplayItemType::TEXT_20PT:
+      drawString(displayItem.posX, displayItem.posY,
+                 getStringValue(displayItem.content, displayItem.style), Dialog_plain_20);
+      break;
+    case (int) DisplayItemType::TEXT_26PT:
+      drawString(displayItem.posX, displayItem.posY,
+                 getStringValue(displayItem.content, displayItem.style), Dialog_plain_26);
+      break;
+    case (int) DisplayItemType::TEXT_30PT:
+      drawString(displayItem.posX, displayItem.posY,
+                 getStringValue(displayItem.content, displayItem.style), Dialog_plain_30);
+      break;
+    case (int) DisplayItemType::BATTERY_SYMBOLS:
+      drawBatterySymbols(displayItem.posX, displayItem.posY, getInt32Value(displayItem.content));
+      break;
+    default:
+      log_d("Unexpected display item type %d", (int) displayItem.type);
+  }
+}
+
+void SSD1306DisplayDevice::drawString(int16_t x, int16_t y, String text, const uint8_t *font = DEFAULT_FONT) {
+  m_display->setFont(font);
+  m_display->drawString(x, y, text);
+}
+
+
 void SSD1306DisplayDevice::showNumConfirmed() {
   String val = String(confirmedMeasurements);
   if (confirmedMeasurements <= 9) {
@@ -214,4 +272,133 @@ void SSD1306DisplayDevice::showVelocity(double velocity) {
   }
   this->prepareTextOnGrid(0, 4, buffer, Dialog_plain_20);
   this->prepareTextOnGrid(1, 5, "km/h",DEFAULT_FONT);
+}
+
+void SSD1306DisplayDevice::registerItemValueGetter(DisplayContent item, DisplayValue value) {
+  while (mDisplayValueGetters.size() <= (int) item) {
+    mDisplayValueGetters.push_back(DisplayValue("DUMMY"));
+  }
+  mDisplayValueGetters[(int) item] = value;
+}
+
+String SSD1306DisplayDevice::getStringValue(uint8_t item, DisplayItemTextStyle style = DisplayItemTextStyle::LEFT_ALIGNED) {
+  if (ensureItemIsAvailable(item)) {
+    String value = mDisplayValueGetters[item].getStringValue();
+    return apply(value, style);
+  } else {
+    return apply(String(), style);
+  }
+}
+
+bool SSD1306DisplayDevice::ensureItemIsAvailable(uint8_t item) {
+  if (mDisplayValueGetters.size() < item) {
+    return false;
+  } else {
+    return true;
+  }
+}
+
+int32_t SSD1306DisplayDevice::getInt32Value(uint8_t item) {
+  if (ensureItemIsAvailable(item)) {
+    return mDisplayValueGetters[item].getInt32Value();
+  } else {
+    return -1;
+  }
+}
+
+double SSD1306DisplayDevice::getDoubleValue(uint8_t item) {
+  if (ensureItemIsAvailable(item)) {
+    return mDisplayValueGetters[item].getDoubleValue();
+  } else {
+    return -1;
+  }
+}
+
+
+String SSD1306DisplayDevice::apply(String data, DisplayItemTextStyle style) {
+  switch(style) {
+    case DisplayItemTextStyle::NUMBER_3_DIGITS_0_FILLED:
+    case DisplayItemTextStyle::NUMBER_3_DIGITS_0_FILLED_RIGHT_ALIGNED:
+      data = data.substring(0, 3);
+      while(data.length() < 3) {
+        data = "0" + data;
+      }
+      return data;
+    case DisplayItemTextStyle::NUMBER_2_DIGITS_0_FILLED:
+    case DisplayItemTextStyle::NUMBER_2_DIGITS_0_FILLED_RIGHT_ALIGNED:
+      data = data.substring(0, 2);
+      while(data.length() < 2) {
+        data = "0" + data;
+      }
+      return data;
+    default:
+      return data;
+  }
+}
+
+void SSD1306DisplayDevice::drawBatterySymbols(uint8_t x, uint8_t y, int32_t value) {
+  if (value > 90) {
+    m_display->drawXbm(x, y, 8, 9, BatterieLogo1);
+  } else if (value > 70) {
+    m_display->drawXbm(x, y, 8, 9, BatterieLogo2);
+  } else if (value > 50) {
+    m_display->drawXbm(x, y, 8, 9, BatterieLogo3);
+  } else if (value > 30) {
+    m_display->drawXbm(x, y, 8, 9, BatterieLogo4);
+  } else if (value > 10) {
+    m_display->drawXbm(x, y, 8, 9, BatterieLogo5);
+  } else if (value >= 0){
+    m_display->drawXbm(x, y, 8, 9, BatterieLogo6);
+  } else {
+    // no image!
+  }
+}
+
+void SSD1306DisplayDevice::selectComplexLayout() {
+  mCurrentLayout.items.clear();
+
+  mCurrentLayout.items.emplace_back(0, 0, DisplayContent::DISTANCE_LEFT_TOF_SENSOR_LABEL);
+  mCurrentLayout.items.emplace_back(0, 10, DisplayContent::DISTANCE_LEFT_TOF_SENSOR,
+                                    DisplayItemType::TEXT_30PT,
+                                    DisplayItemTextStyle::NUMBER_3_DIGITS_0_FILLED);
+  mCurrentLayout.items.emplace_back(128, 0, DisplayContent::DISTANCE_RIGHT_TOF_SENSOR_LABEL,
+                                    DisplayItemType::TEXT_8PT, DisplayItemTextStyle::RIGHT_ALIGNED);
+  mCurrentLayout.items.emplace_back(128, 10, DisplayContent::DISTANCE_RIGHT_TOF_SENSOR,
+                                    DisplayItemType::TEXT_30PT,
+                                    DisplayItemTextStyle::NUMBER_3_DIGITS_0_FILLED_RIGHT_ALIGNED);
+
+  mCurrentLayout.items.emplace_back(0, 40, DisplayContent::RAW_DISTANCE_TOF_LEFT,
+                                    DisplayItemType::TEXT_20PT,
+                                    DisplayItemTextStyle::NUMBER_3_DIGITS_0_FILLED);
+  mCurrentLayout.items.emplace_back(128, 40, DisplayContent::RAW_DISTANCE_TOF_RIGHT,
+                                    DisplayItemType::TEXT_20PT,
+                                    DisplayItemTextStyle::NUMBER_3_DIGITS_0_FILLED_RIGHT_ALIGNED);
+  mCurrentLayout.items.emplace_back(52, 40, DisplayContent::MEASUREMENT_LOOPS_PER_INTERVAL,
+                                    DisplayItemType::TEXT_20PT,
+                                    DisplayItemTextStyle::NUMBER_2_DIGITS_0_FILLED);
+  mCurrentLayout.items.emplace_back(40, 40, DisplayContent::V_BAR_LABEL, DisplayItemType::TEXT_20PT);
+  mCurrentLayout.items.emplace_back(80, 40, DisplayContent::V_BAR_LABEL, DisplayItemType::TEXT_20PT);
+
+  mCurrentLayout.items.emplace_back(20, 0, DisplayContent::BATTERY_VOLTAGE);
+  mCurrentLayout.items.emplace_back(40, 0, DisplayContent::BATTERY_VOLTAGE_LABEL);
+
+  mCurrentLayout.items.emplace_back(58, 0, DisplayContent::BATTERY_PERCENTAGE, DisplayItemType::TEXT_8PT,
+                                    DisplayItemTextStyle::RIGHT_ALIGNED);
+  mCurrentLayout.items.emplace_back(58, 0, DisplayContent::BATTERY_PERCENTAGE_LABEL);
+  mCurrentLayout.items.emplace_back(68, 0, DisplayContent::BATTERY_PERCENTAGE,
+                                    DisplayItemType::BATTERY_SYMBOLS);
+
+  mCurrentLayout.items.emplace_back(92, 0, DisplayContent::FREE_HEAP_KB, DisplayItemType::TEXT_8PT,
+                                    DisplayItemTextStyle::RIGHT_ALIGNED);
+  mCurrentLayout.items.emplace_back(92, 0, DisplayContent::FREE_HEAP_KB_LABEL);
+}
+
+void SSD1306DisplayDevice::selectSimpleLayout() {
+  mCurrentLayout.items.clear();
+
+  mCurrentLayout.items.emplace_back(0, 0, DisplayContent::DISTANCE_LEFT_TOF_SENSOR_LABEL);
+  mCurrentLayout.items.emplace_back(8, 10, DisplayContent::DISTANCE_LEFT_TOF_SENSOR,
+                                    DisplayItemType::TEXT_30PT,
+                                    DisplayItemTextStyle::NUMBER_3_DIGITS_0_FILLED);
+  mCurrentLayout.items.emplace_back(68, 18, DisplayContent::DISTANCE_TOF_SENSOR_UNIT_LABEL, DisplayItemType::TEXT_20PT);
 }

@@ -18,6 +18,7 @@
   the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <vector>
 #include <utils/obsutils.h>
 #include "OpenBikeSensorFirmware.h"
 
@@ -98,6 +99,8 @@ void bluetoothConfirmed(const DataSet *dataSet, uint16_t measureIndex);
 uint8_t batteryPercentage();
 void serverLoop();
 void handleButtonInServerMode();
+
+void registerDisplayableValues(SSD1306DisplayDevice &display);
 
 // The BMP280 can keep up to 3.4MHz I2C speed, so no need for an individual slower speed
 void switch_wire_speed_to_VL53(){
@@ -388,6 +391,57 @@ displayTest->showTextOnGrid(2, 4, "GPS, no wait",DEFAULT_FONT);
 
   // Clear the display once!
   displayTest->clear();
+  registerDisplayableValues(*displayTest);
+//  displayTest->selectComplexLayout();
+  displayTest->selectSimpleLayout();
+}
+
+// Where to place this?
+void registerDisplayableValues(SSD1306DisplayDevice &display) {
+  display.registerItemValueGetter(DisplayContent::DISTANCE_LEFT_TOF_SENSOR_LABEL, DisplayValue("Left"));
+  display.registerItemValueGetter(DisplayContent::DISTANCE_RIGHT_TOF_SENSOR_LABEL, DisplayValue("Right"));
+  display.registerItemValueGetter(DisplayContent::DISTANCE_TOF_SENSOR_UNIT_LABEL, DisplayValue("cm"));
+  display.registerItemValueGetter(DisplayContent::VISIBLE_SATS_LABEL, DisplayValue("Sats"));
+  display.registerItemValueGetter(DisplayContent::SPEED_LABEL, DisplayValue("km/h"));
+  display.registerItemValueGetter(DisplayContent::BATTERY_VOLTAGE_LABEL, DisplayValue("V"));
+  display.registerItemValueGetter(DisplayContent::BATTERY_PERCENTAGE_LABEL, DisplayValue("%"));
+  display.registerItemValueGetter(DisplayContent::V_BAR_LABEL, DisplayValue("|"));
+  display.registerItemValueGetter(DisplayContent::FREE_HEAP_KB_LABEL, DisplayValue("kb"));
+  display.registerItemValueGetter(DisplayContent::DISTANCE_LEFT_TOF_SENSOR,
+                                  DisplayValue((std::function<uint16_t()>)
+                                                 []() {
+                                                   return minDistanceToConfirm == MAX_SENSOR_VALUE
+                                                          ? sensorManager->m_sensors[LEFT_SENSOR_ID].minDistance
+                                                          : minDistanceToConfirm;
+                                                 }));
+  display.registerItemValueGetter(DisplayContent::DISTANCE_RIGHT_TOF_SENSOR,
+                                  DisplayValue((std::function<uint16_t()>)
+                                                 []() { return sensorManager->m_sensors[RIGHT_SENSOR_ID].distance; }));
+  display.registerItemValueGetter(DisplayContent::RAW_DISTANCE_TOF_LEFT,
+                                  DisplayValue((std::function<uint16_t()>)
+                                                 []() { return sensorManager->m_sensors[LEFT_SENSOR_ID].rawDistance; }));
+  display.registerItemValueGetter(DisplayContent::RAW_DISTANCE_TOF_RIGHT,
+                                  DisplayValue((std::function<uint16_t()>)
+                                                 []() { return sensorManager->m_sensors[RIGHT_SENSOR_ID].rawDistance; }));
+  display.registerItemValueGetter(DisplayContent::MEASUREMENT_LOOPS_PER_INTERVAL,
+                                  DisplayValue((std::function<uint16_t()>)
+                                                 []() { return lastMeasurements; }));
+  display.registerItemValueGetter(DisplayContent::VISIBLE_SATS,
+                                  DisplayValue((std::function<uint16_t()>)
+                                                 []() { return gps.satellites.value(); }));
+  display.registerItemValueGetter(DisplayContent::SPEED,
+                                  DisplayValue((std::function<uint16_t()>)
+                                                 []() { return gps.speed.value(); })); // TODO: only if valid!
+  display.registerItemValueGetter(DisplayContent::BATTERY_VOLTAGE,
+                                  DisplayValue((std::function<double()>)
+                                                 []() { return voltageMeter->read(); }));
+  display.registerItemValueGetter(DisplayContent::BATTERY_PERCENTAGE,
+                                  DisplayValue((std::function<uint16_t()>)
+                                                 []() { return batteryPercentage(); }));
+//                                                      []() { return voltageMeter->readPercentage(); }));
+  display.registerItemValueGetter(DisplayContent::FREE_HEAP_KB,
+                                  DisplayValue((std::function<int32_t()>)
+                                                 []() { return (int32_t) (ESP.getFreeHeap() / 1024); }));
 }
 
 void serverLoop() {
@@ -466,6 +520,8 @@ void loop() {
     sensorManager->getDistances();
     readGPSData();
 
+    displayTest->handle();
+    /*
     displayTest->showValues(
       sensorManager->m_sensors[LEFT_SENSOR_ID],
       sensorManager->m_sensors[RIGHT_SENSOR_ID],
@@ -475,7 +531,7 @@ void loop() {
       lastMeasurements,
       currentSet->isInsidePrivacyArea
     );
-
+*/
 
     if (bluetoothManager
         && lastBluetoothInterval != (currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS)) {
