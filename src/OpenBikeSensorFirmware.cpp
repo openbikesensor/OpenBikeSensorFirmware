@@ -131,9 +131,9 @@ void setup() {
     Serial.println("Display not found");
   }
   displayTest = new SSD1306DisplayDevice;
-  
+
   switch_wire_speed_to_SSD1306();
-  
+
   displayTest->showLogo(true);
   displayTest->showTextOnGrid(2, 0, OBSVersion,DEFAULT_FONT);
 
@@ -317,6 +317,7 @@ void setup() {
   }
   readGPSData();
   int gpsWaitFor = cfg.getProperty<int>(ObsConfig::PROPERTY_GPS_FIX);
+  bool first_gps_run = true;
   while (!validGPSData) {
     readGPSData();
 
@@ -333,14 +334,14 @@ void setup() {
           && !(gps.time.second() == 00 && gps.time.minute() == 00 && gps.time.hour() == 00);
         if (validGPSData) {
           Serial.println("Got time...");
-displayTest->showTextOnGrid(2, 4, "Got time",DEFAULT_FONT);
+          displayTest->showTextOnGrid(2, 4, "Got time",DEFAULT_FONT);
          }
         break;
       case GPS::FIX_NO_WAIT:
         validGPSData = true;
         if (validGPSData) {
           Serial.println("GPS, no wait");
-displayTest->showTextOnGrid(2, 4, "GPS, no wait",DEFAULT_FONT);
+          displayTest->showTextOnGrid(2, 4, "GPS, no wait",DEFAULT_FONT);
           }
         break;
       default:
@@ -360,19 +361,33 @@ displayTest->showTextOnGrid(2, 4, "GPS, no wait",DEFAULT_FONT);
 
     delay(50);
 
-    String satellitesString;
+    String satellitesString[2];
     if (gps.passedChecksum() == 0) { // could not get any valid char from GPS module
-      satellitesString = "OFF?";
+      satellitesString[0] = "OFF?";
     } else if (!gps.time.isValid()
-        || (gps.time.second() == 00 && gps.time.minute() == 00 && gps.time.hour() == 00)) {
-      satellitesString = "no time";
+                || (gps.time.second() == 00 && gps.time.minute() == 00 && gps.time.hour() == 00)) {
+      satellitesString[0] = "no time";
     } else {
+      first_gps_run = false;
       char timeStr[32];
-      snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d %dsa",
-               gps.time.hour(), gps.time.minute(), gps.time.second(), gps.satellites.value());
-      satellitesString = String(timeStr);
+      snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d",
+               gps.time.hour(), gps.time.minute(), gps.time.second());
+      satellitesString[0] = String(timeStr);
+      satellitesString[1] = String(gps.satellites.value()) + " / " + String(gpsWaitFor) + " sats";
     }
-    displayTest->showTextOnGrid(2, 5, satellitesString,DEFAULT_FONT);
+
+    if(gps.passedChecksum() != 0    //only do this if a communication is there and a valid time is there
+        && gps.time.isValid()
+        && !(gps.time.second() == 00 && gps.time.minute() == 00 && gps.time.hour() == 00)){
+
+      if(first_gps_run == true){  //This should implement scrolling and only scroll up on the first time
+        for(uint8_t i = 0; i<4;i++){
+          displayTest->showTextOnGrid(2, i, displayTest->get_gridTextofCell(2,i+1),DEFAULT_FONT);
+        }
+      }
+      displayTest->showTextOnGrid(2, 4, satellitesString[0],DEFAULT_FONT);
+      displayTest->showTextOnGrid(2, 5, satellitesString[1],DEFAULT_FONT);
+    }else    displayTest->showTextOnGrid(2, 5, satellitesString[0],DEFAULT_FONT);   //if no gps comm or no time is there, just write in the last row
 
     buttonState = digitalRead(PushButton_PIN);
     if (buttonState == HIGH
