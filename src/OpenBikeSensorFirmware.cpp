@@ -35,7 +35,7 @@ const char *OBSVersion = "v0.4" BUILD_NUMBER;
 const uint8_t LEFT_SENSOR_ID = 1;
 const uint8_t RIGHT_SENSOR_ID = 0;
 
-const uint32_t BUTTON_PRESS_TIME_FOR_AUTO_UPLOAD_MS = 5000;
+const uint32_t LONG_BUTTON_PRESS_TIME_MS = 2000;
 
 
 // PINs
@@ -415,23 +415,21 @@ void serverLoop() {
 
 void handleButtonInServerMode() {
   buttonState = digitalRead(PushButton_PIN);
-  if (!configServerWasConnectedViaHttp()) {
-    displayTest->showTextOnGrid(0,3, "Keep button pressed");
-    displayTest->showTextOnGrid(0,4, "for automatic track upload.");
-  }
   const uint32_t now = millis();
   if (buttonState != lastButtonState) {
     if (buttonState == LOW && !configServerWasConnectedViaHttp()) {
-        displayTest->clearProgressBar(5);
+      displayTest->clearProgressBar(5);
+      displayTest->showTextOnGrid(0, 3, "Press the button for");
+      displayTest->showTextOnGrid(0, 4, "automatic track upload.");
     }
     lastButtonState = buttonState;
     buttonStateChanged = now;
   }
   if (!configServerWasConnectedViaHttp() &&
-    buttonState == HIGH && buttonStateChanged != 0) {
+      buttonState == HIGH && buttonStateChanged != 0) {
     const uint32_t buttonPressedMs = now - buttonStateChanged;
-    displayTest->drawProgressBar(5, buttonPressedMs, BUTTON_PRESS_TIME_FOR_AUTO_UPLOAD_MS);
-    if (buttonPressedMs > BUTTON_PRESS_TIME_FOR_AUTO_UPLOAD_MS) {
+    displayTest->drawProgressBar(5, buttonPressedMs, LONG_BUTTON_PRESS_TIME_MS);
+    if (buttonPressedMs > LONG_BUTTON_PRESS_TIME_MS) {
       uploadTracks(false);
     }
   }
