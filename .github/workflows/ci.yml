@@ -108,6 +108,9 @@ jobs:
             sonarqube-out/build-wrapper-dump.json
         sed -i 's|\.pio/|bin/.pio/|' \
             sonarqube-out/build-wrapper-dump.json
+        # fake le32-unknown-nacl
+        sed -i 's|xtensa-esp32-elf|le32-unknown-nacl|' \
+            sonarqube-out/build-wrapper-dump.json
         ./sonarqube/sonar-scanner-${{ env.SONAR_SCANNER_VERSION }}-linux/bin/sonar-scanner \
           -Dsonar.host.url=https://sonarcloud.io \
           -Dsonar.organization=friends-of-openbikesensor \
