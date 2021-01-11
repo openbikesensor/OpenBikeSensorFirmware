@@ -106,7 +106,7 @@ jobs:
         # See also https://community.sonarsource.com/t/scanning-platformio-c-embeded-projects/35141/2
         sed -i 's|OpenBikeSensorFirmware/bin|OpenBikeSensorFirmware|' \
             sonarqube-out/build-wrapper-dump.json
-        sed -i 's|.pio/build|bin/.pio/build|' \
+        sed -i 's|\.pio/|bin/.pio/|' \
             sonarqube-out/build-wrapper-dump.json
         ./sonarqube/sonar-scanner-${{ env.SONAR_SCANNER_VERSION }}-linux/bin/sonar-scanner \
           -Dsonar.host.url=https://sonarcloud.io \
