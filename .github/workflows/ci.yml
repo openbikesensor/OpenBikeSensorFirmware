@@ -130,6 +130,7 @@ jobs:
           COPYRIGHT-ESP.html
           LICENSE-ARDUINO-ESP32.md
           LICENSE
+          sonarqube-out/build-wrapper-dump.json
         if-no-files-found: error
 
     - name: Upload Build Asset Initial Flash
