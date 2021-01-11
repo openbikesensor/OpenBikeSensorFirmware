@@ -21,6 +21,7 @@
 #ifndef OBS_DISPLAYS_H
 #define OBS_DISPLAYS_H
 
+#include <map>
 #include <Arduino.h>
 #include <SSD1306.h>
 #include <functional>
@@ -32,68 +33,115 @@
 #include "logo.h"
 #include "sensor.h"
 
-class DisplayValue {
+class DisplayItemType {
   public:
-    DisplayValue(String text) :
-      mGetString([text]() { return text; }),
-      mGetInt32([this]() { return atoi(mGetString().c_str()); }),
-      mGetDouble([this]() { return atof(mGetString().c_str()); }) {};
-    DisplayValue(std::function<String()> getValue) :
-      mGetString(getValue),
-      mGetInt32([this]() { return atoi(mGetString().c_str()); }),
-      mGetDouble([getValue]() { return atof(getValue().c_str()); }) {};
-    DisplayValue(std::function<uint16_t()> getValue) :
-      mGetString([getValue]() { return String(getValue()); }),
-      mGetInt32(getValue),
-      mGetDouble([getValue]() { return (double) getValue(); }) {};
-    DisplayValue(std::function<int32_t()> getValue) :
-      mGetString([getValue]() { return String(getValue()); }),
-      mGetInt32([getValue]() { return (int32_t) getValue(); }),
-      mGetDouble([getValue]() { return (double) getValue(); }) {};
-    DisplayValue(std::function<double()> getValue) :
-      mGetString([getValue]() { return String(getValue(), 2); }),
-      mGetInt32([getValue]() { return (int32_t) getValue(); }),
-      mGetDouble(getValue) {};
-    String getStringValue() { return mGetString(); };
-    int32_t getInt32Value() { return mGetInt32(); };
-    double getDoubleValue() { return mGetDouble(); };
+    static const DisplayItemType NONE;
+    static const DisplayItemType TEXT_8PT;
+    static const DisplayItemType TEXT_10PT;
+    static const DisplayItemType TEXT_16PT;
+    static const DisplayItemType TEXT_20PT;
+    static const DisplayItemType TEXT_26PT;
+    static const DisplayItemType TEXT_30PT;
+    static const DisplayItemType PROGRESS_BAR;
+    static const DisplayItemType WAIT_BAR;
+    static const DisplayItemType BATTERY_SYMBOLS;
+    static const DisplayItemType TEMPERATURE_SYMBOLS;
+
+    operator int() const { return mIntRepresentation; }
+    operator String() const { return mStringRepresentation; }
+    static const DisplayItemType& fromString(const String& str);
 
   private:
-    std::function<String()> mGetString;
-    std::function<int32_t()> mGetInt32;
-    std::function<double ()> mGetDouble;
-};
+    DisplayItemType(String symbol) :
+      mStringRepresentation(symbol), mIntRepresentation(sNextOrdinal++) {
+      sTypeValues.insert({mStringRepresentation, *this});
+    }
+    const String &mStringRepresentation;
+    const uint8_t mIntRepresentation;
 
-
-enum class DisplayItemType {
-    NONE = 0,
-    TEXT_8PT = 1,
-    TEXT_10PT = 2,
-    TEXT_16PT = 3,
-    TEXT_20PT = 4,
-    TEXT_26PT = 5,
-    TEXT_30PT = 6,
-
-    PROGRESS_BAR = 10,
-    WAIT_BAR = 11,
-
-    BATTERY_SYMBOLS = 20,
-    TEMPERATURE_SYMBOLS = 21
+    static std::map<String, DisplayItemType&> sTypeValues;
+    static uint8_t sNextOrdinal;
 };
 
 // odd numbers are right aligned
 enum class DisplayItemTextStyle {
     LEFT_ALIGNED = 0,
     RIGHT_ALIGNED = 1,
-    NUMBER_3_DIGITS_0_FILLED = 2,
-    NUMBER_3_DIGITS_0_FILLED_RIGHT_ALIGNED = 3,
-    NUMBER_2_DIGITS_0_FILLED = 4,
-    NUMBER_2_DIGITS_0_FILLED_RIGHT_ALIGNED = 5,
-    NUMBER_3_DIGITS = 6,
-    NUMBER_2_DIGITS = 8,
-    PRIVACY_AREA_BRACKET = 10
+    CENTER_ALIGNED = 2,
+    NUMBER_3_DIGITS_0_FILLED = 4,
+    NUMBER_3_DIGITS_0_FILLED_RIGHT_ALIGNED = 5,
+    NUMBER_2_DIGITS_0_FILLED = 8,
+    NUMBER_2_DIGITS_0_FILLED_RIGHT_ALIGNED = 9,
+    NUMBER_3_DIGITS = 12,
+    NUMBER_2_DIGITS = 16,
+    PRIVACY_AREA_BRACKET = 20
+/*
+  public:
+    static const DisplayItemTextStyle LEFT_ALIGNED;
+    static const DisplayItemTextStyle RIGHT_ALIGNED;
+    static const DisplayItemTextStyle CENTER_ALIGNED;
+    static const DisplayItemTextStyle CENTER_BOTH_ALIGNED;
+
+  private:
+    DisplayItemTextStyle(String style, int number) {
+    }
+
+    static std::map<String, DisplayItemTextStyle> sTypeValues; */
 };
 
+
+class DisplayContentGetter {
+  public:
+    virtual String getValueAsString() { return "";};
+    virtual uint32_t getValueAsUint32() { return 0; };
+    virtual double getValueAsDouble() { return 0.0; };
+};
+
+class DisplayStringContentGetter : public DisplayContentGetter {
+  public:
+    DisplayStringContentGetter(std::function<String()> getValue)
+      : mGetValue(getValue) {};
+    DisplayStringContentGetter(String text)
+      : mGetValue([text]() { return text; }) {};
+
+    String getValueAsString() { return mGetValue(); };
+    uint32_t getValueAsUint32() { return atoi(mGetValue().c_str()); };
+    double getValueAsDouble() { return atof(mGetValue().c_str()); };
+
+  private:
+    const std::function<String()> mGetValue;
+};
+
+class DisplayIntegerContentGetter : public DisplayContentGetter {
+  public:
+    DisplayIntegerContentGetter(std::function<int()> getValue)
+      : mGetValue(getValue) {};
+
+    String getValueAsString() { return String(mGetValue()); };
+    uint32_t getValueAsUint32() { return mGetValue(); };
+    double getValueAsDouble() { return mGetValue(); };
+
+  private:
+    const std::function<int()> mGetValue;
+    const String mDefaultZeroRepresentation = String();
+    const String mDefaultDisplayPattern = String("%d");
+    const String mDefaultNegativePattern = String("");
+    const String mDefaultZeroPattern = String("");
+};
+
+class DisplayDoubleContentGetter : public DisplayContentGetter {
+  public:
+    DisplayDoubleContentGetter(std::function<int()> getValue, int defaultDecimalPlaces = 2)
+      : mGetValue(getValue), mDefaultDecimalPlaces(defaultDecimalPlaces) {};
+
+    String getValueAsString() { return String(mGetValue(), mDefaultDecimalPlaces); };
+    uint32_t getValueAsUint32() { return mGetValue(); };
+    double getValueAsDouble() { return mGetValue(); };
+
+  private:
+    const std::function<int()> mGetValue;
+    const int mDefaultDecimalPlaces;
+};
 
 // keep labels odd numbered, no purpose yet
 enum class DisplayContent {
@@ -130,21 +178,25 @@ enum class DisplayContent {
 class DisplayItem {
   public:
     DisplayItem(uint8_t x, uint8_t y,
-                DisplayContent content,
-                DisplayItemType type = DisplayItemType::TEXT_8PT,
-                DisplayItemTextStyle style = DisplayItemTextStyle::LEFT_ALIGNED) {
-      posX = x;
-      posY = y;
-      this->type = (uint8_t) type;
-      this->style = style;
-      this->content = (uint8_t) content;
-    };
+                DisplayContentGetter* contentGetter,
+                const DisplayItemType* type = &DisplayItemType::TEXT_8PT,
+                DisplayItemTextStyle style = DisplayItemTextStyle::LEFT_ALIGNED) :
+      posX(x), posY(y), contentGetter(contentGetter), type(type), style(style) {};
+    /*
+     * {"what":"whereX":"whereY":"TYPE":"STYLE"|STYLE....}
+    "{sensor.left.label:0:0}"
+    "{sensor.left.confirmDistance:8:10:TEXT_30PT:LEFT_ALIGNED|NUMBER_3_DIGITS_0_FILLED}"
+    "{sensor.unit:68:18:TEXT_20PT}" */
+    DisplayItem(const String& item);
+
+
+    DisplayItem(const std::map<String, DisplayContentGetter*> &displayContentGetter, String &item);
 
     uint8_t posX;
     uint8_t posY;
-    uint8_t type; // Font / Iconset / Bar
-    DisplayItemTextStyle style; // optional parameter for the type
-    uint8_t content; // reference to the content value to be displayed
+    DisplayContentGetter* contentGetter;
+    const DisplayItemType* type; // Font / Iconset / Bar
+    DisplayItemTextStyle &style; // optional parameter for the type
 };
 
 class DisplayLayout {
@@ -183,17 +235,13 @@ class SSD1306DisplayDevice : public DisplayDevice {
     String gridText[ 4 ][ 6 ];
     uint8_t mLastProgress = 255;
     uint32_t mLastHandle;
-    int32_t getInt32Value(uint8_t item);
-    double getDoubleValue(uint8_t item);
-    String getStringValue(uint8_t item);
-
-    std::vector<DisplayValue> mDisplayValueGetters;
     /* 25 display refreshes per second. */
     static const uint32_t MIN_MILLIS_BETWEEN_DISPLAY_UPDATE = 1000 / 25;
 
   public:
     // TODO: private
     DisplayLayout mCurrentLayout;
+    std::map<String, DisplayContentGetter*> mDisplayableValues;
 
     SSD1306DisplayDevice() : DisplayDevice() {
       m_display = new SSD1306(0x3c, 21, 22); // ADDRESS, SDA, SCL
@@ -407,15 +455,30 @@ class SSD1306DisplayDevice : public DisplayDevice {
       uint16_t minDistanceToConfirm,int16_t BatterieVolt, int16_t TemperaturValue, int lastMeasurements, boolean insidePrivacyArea);
 
     void handle();
-    void registerItemValueGetter(DisplayContent item, DisplayValue value);
     void prepareItem(DisplayItem &displayItem);
     bool ensureItemIsAvailable(uint8_t item);
-    void drawString(int16_t x, int16_t y, String text, const uint8_t *font);
     String apply(String data, DisplayItemTextStyle style);
     String getStringValue(uint8_t item, DisplayItemTextStyle style);
     void drawBatterySymbols(uint8_t x, uint8_t y, int32_t value);
     void selectComplexLayout();
     void selectSimpleLayout();
+    void addDisplayableString(const String& name, std::function<String()> getValue);
+    void addDisplayableDouble(const String& name, std::function<double()> getValue, int defaultDigits = 2);
+    void addDisplayableInt(const String& name, std::function<int32_t()> getValue);
+
+    void addDisplayableString(const String& name, String label);
+
+    String getStringValue(DisplayContentGetter getter, DisplayItemTextStyle style);
+
+    String getStringValue(DisplayItem &item);
+
+    int32_t getInt32Value(DisplayItem &item);
+
+    double getDoubleValue(DisplayItem &item);
+
+    void registerDisplayableStringValue(String &name, std::function<String()> getValue);
+
+    void drawString(int16_t x, int16_t y, const String &text, const uint8_t *font);
 };
 
 #endif
