@@ -28,8 +28,6 @@
 #include <uploader.h>
 #include "SPIFFS.h"
 
-extern std::vector<String> gpsMessages;
-
 static const char *const HTML_ENTITY_FAILED_CROSS = "&#x274C;";
 static const char *const HTML_ENTITY_OK_MARK = "&#x2705;";
 
@@ -564,13 +562,7 @@ void aboutPage() {
   page += keyValue("GPS time", gps.time.value()); // fill all digits?
   page += keyValue("GPS date", gps.date.value()); // fill all digits?
   page += keyValue("GPS hdop", gps.hdop.value()); // fill all digits?
-
-  String theGpsMessage = "";
-  for (String msg : gpsMessages) {
-    theGpsMessage += "<br/>";
-    theGpsMessage += msg;
-  }
-  page += keyValue("GPS messages", theGpsMessage);
+  page += keyValue("GPS messages", gps.getMessages());
 
   page += "<h3>Display / Button</h3>";
   page += keyValue("Button State", digitalRead(PushButton_PIN));
@@ -594,7 +586,7 @@ void privacyAction() {
   if ( (latitude != "") && (longitude != "") && (radius != "") ) {
     Serial.println(F("Valid privacyArea!"));
     theObsConfig->addPrivacyArea(0,
-      newPrivacyArea(atof(latitude.c_str()), atof(longitude.c_str()), atoi(radius.c_str())));
+      Gps::newPrivacyArea(atof(latitude.c_str()), atof(longitude.c_str()), atoi(radius.c_str())));
   }
 
   String s = "<meta http-equiv='refresh' content='0; url=/settings/privacy'><a href='/settings/privacy'>Go Back</a>";
@@ -642,7 +634,7 @@ bool CreateWifiSoftAP(String chipID) {
 void startServer(ObsConfig *obsConfig) {
   theObsConfig = obsConfig;
 
-  readGPSData();
+  gps.handle();
   uint64_t chipid_num;
   chipid_num = ESP.getEfuseMac();
   esp_chipid = String((uint16_t)(chipid_num >> 32), HEX);
@@ -681,13 +673,13 @@ void startServer(ObsConfig *obsConfig) {
   }
   /*return index page which is stored in serverIndex */
 
-  readGPSData();
+  gps.handle();
   ObsUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
-  readGPSData();
+  gps.handle();
   if (!voltageMeter) {
     voltageMeter = new VoltageMeter();
   }
-  readGPSData();
+  gps.handle();
 
   // #############################################
   // Handle web pages
@@ -862,9 +854,9 @@ void startServer(ObsConfig *obsConfig) {
                  theObsConfig->getProperty<bool>(ObsConfig::PROPERTY_SIM_RA) ? "checked" : "");
 
     int gpsFix = theObsConfig->getProperty<int>(ObsConfig::PROPERTY_GPS_FIX);
-    html.replace("{fixPos}", gpsFix == GPS::FIX_POS || gpsFix > 0 ? "selected" : "");
-    html.replace("{fixTime}", gpsFix == GPS::FIX_TIME ? "selected" : "");
-    html.replace("{fixNoWait}", gpsFix == GPS::FIX_NO_WAIT ? "selected" : "");
+    html.replace("{fixPos}", gpsFix == (int) Gps::WaitFor::FIX_POS || gpsFix > 0 ? "selected" : "");
+    html.replace("{fixTime}", gpsFix == (int) Gps::WaitFor::FIX_TIME ? "selected" : "");
+    html.replace("{fixNoWait}", gpsFix == (int) Gps::WaitFor::FIX_NO_WAIT ? "selected" : "");
 
     const uint privacyConfig = (uint) theObsConfig->getProperty<int>(
       ObsConfig::PROPERTY_PRIVACY_CONFIG);
@@ -946,13 +938,14 @@ void startServer(ObsConfig *obsConfig) {
     bool validGPSData = false;
     buttonState = digitalRead(PushButton_PIN);
     while (!validGPSData && (buttonState == LOW)) {
-      Serial.println("GPSData not valid");
+      log_d("GPSData not valid");
       buttonState = digitalRead(PushButton_PIN);
-      readGPSData();
+      gps.handle();
       validGPSData = gps.location.isValid();
       if (validGPSData) {
-        Serial.println("GPSData valid");
-        newPrivacyArea(gps.location.lat(), gps.location.lng(), 500);
+        log_d("GPSData valid");
+        // FIXME: Not used?
+        Gps::newPrivacyArea(gps.location.lat(), gps.location.lng(), 500);
       }
       delay(300);
     }
@@ -978,7 +971,7 @@ void startServer(ObsConfig *obsConfig) {
     }
 
     privacyPage += "<h3>New Privacy Area  <a href='javascript:window.location.reload()'>&#8635;</a></h3>";
-    readGPSData();
+    gps.handle();
     bool validGPSData = gps.location.isValid();
     if (validGPSData) {
       privacyPage += "Latitude<input name='newlatitude' value='" + String(gps.location.lat(), 7) + "' />";

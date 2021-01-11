@@ -136,7 +136,7 @@ void ObsConfig::makeSureSystemDefaultsAreSet() {
   }
   ensureSet(data, PROPERTY_PORTAL_URL, "https://openbikesensor.hlrs.de");
   ensureSet(data, PROPERTY_PORTAL_TOKEN, "5e8f2f43e7e3b3668ca13151");
-  ensureSet(data, PROPERTY_GPS_FIX, GPS::FIX_POS);
+  ensureSet(data, PROPERTY_GPS_FIX, (int) Gps::WaitFor::FIX_POS);
   ensureSet(data, PROPERTY_DISPLAY_CONFIG, DisplaySimple);
   if (getProperty<int>(PROPERTY_DISPLAY_CONFIG) == 0) {
     data[PROPERTY_DISPLAY_CONFIG] = DisplaySimple;
@@ -371,13 +371,13 @@ void ObsConfig::parseOldJsonDocument(DynamicJsonDocument &doc) {
 
   uint16_t gpsConfig = doc["GPSConfig"];
   if (gpsConfig & GPSOptions::ValidTime) {
-    setProperty(0, PROPERTY_GPS_FIX, GPS::FIX_TIME);
+    setProperty(0, PROPERTY_GPS_FIX, (int) Gps::WaitFor::FIX_TIME);
   } else if (gpsConfig & GPSOptions::ValidLocation) {
-    setProperty(0, PROPERTY_GPS_FIX, GPS::FIX_POS);
+    setProperty(0, PROPERTY_GPS_FIX, (int) Gps::WaitFor::FIX_POS);
   } else if (gpsConfig & GPSOptions::NumberSatellites) {
     setProperty(0, PROPERTY_GPS_FIX, doc["satsForFix"] | 4);
   } else {
-    setProperty(0, PROPERTY_GPS_FIX, GPS::FIX_NO_WAIT);
+    setProperty(0, PROPERTY_GPS_FIX, (int) Gps::WaitFor::FIX_NO_WAIT);
   }
   setProperty(0, PROPERTY_CONFIRMATION_TIME_SECONDS, doc["confirmationTimeWindow"] | 5);
   setProperty(0, PROPERTY_PRIVACY_CONFIG, doc["privacyConfig"] | AbsolutePrivacy);

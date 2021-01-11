@@ -20,7 +20,8 @@ void SSD1306DisplayDevice::showNumButtonPressed() {
 
 void SSD1306DisplayDevice::showValues(
   HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2, uint16_t minDistanceToConfirm,  int16_t BatterieVolt,
-  int16_t TemperaturValue, int lastMeasurements, boolean insidePrivacyArea) {
+  int16_t TemperaturValue, int lastMeasurements, boolean insidePrivacyArea,
+  double speed, uint8_t satellites) {
   // Show sensor1, when DisplaySimple or DisplayLeft is configured
   if (config.displayConfig & DisplaySimple || config.displayConfig & DisplayLeft) {
     uint16_t value1 = sensor1.minDistance;
@@ -93,16 +94,12 @@ void SSD1306DisplayDevice::showValues(
     } else {
       // Show GPS info, when DisplaySatellites is configured
       if (config.displayConfig & DisplaySatellites) {
-        showGPS();
+        showGPS(satellites);
       }
 
       // Show velocity, when DisplayVelocity is configured
       if (config.displayConfig & DisplayVelocity) {
-        if (gps.speed.age() < 2000) {
-          showVelocity(gps.speed.kmph());
-        } else {
-          showVelocity(-1);
-        }
+        showSpeed(speed);
       }
 
 
@@ -123,8 +120,7 @@ void SSD1306DisplayDevice::showValues(
 
 }
 
-void SSD1306DisplayDevice::showGPS() {
-  int sats = gps.satellites.value();
+void SSD1306DisplayDevice::showGPS(uint8_t sats) {
   String val = String(sats);
   if (sats <= 9) {
     val = "0" + val;
@@ -204,7 +200,7 @@ void SSD1306DisplayDevice::showTemperatureValue(int16_t input_val){
     this->showTextOnGrid(1, 0, " " + val + "°C", Dialog_plain_8,-3,0);
 }
 
-void SSD1306DisplayDevice::showVelocity(double velocity) {
+void SSD1306DisplayDevice::showSpeed(double velocity) {
   const int bufSize = 4;
   char buffer[bufSize];
   if (velocity >= 0) {

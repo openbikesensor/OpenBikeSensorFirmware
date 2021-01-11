@@ -260,9 +260,9 @@ class SSD1306DisplayDevice : public DisplayDevice {
 
     // TODO: Move to the logic, since this is only the basic "display" class
 
-    void showGPS();
+    void showGPS(uint8_t sats);
 
-    void showVelocity(double velocity);
+    void showSpeed(double velocity);
 
     void showBatterieValue(int16_t input_val);
 
@@ -274,7 +274,8 @@ class SSD1306DisplayDevice : public DisplayDevice {
 
     void showValues(
       HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2,
-      uint16_t minDistanceToConfirm,int16_t BatterieVolt, int16_t TemperaturValue, int lastMeasurements, boolean insidePrivacyArea);
+      uint16_t minDistanceToConfirm,int16_t BatterieVolt, int16_t TemperaturValue,
+      int lastMeasurements, boolean insidePrivacyArea, double speed, uint8_t satellites);
 
 };
 

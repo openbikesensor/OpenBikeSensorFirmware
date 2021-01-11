@@ -55,6 +55,9 @@ Config config;
 SSD1306DisplayDevice* displayTest;
 HCSR04SensorManager* sensorManager;
 BluetoothManager* bluetoothManager;
+
+Gps gps;
+
 const long BLUETOOTH_INTERVAL_MILLIS = 200;
 long lastBluetoothInterval = 0;
 
@@ -184,11 +187,7 @@ void setup() {
     config.sensorOffsets[RIGHT_SENSOR_ID]);
   displayTest->showTextOnGrid(2, 1, buffer,DEFAULT_FONT);
 
-
-  //##############################################################
-  // GPS
-  //##############################################################
-  SerialGPS.begin(9600, SERIAL_8N1, 16, 17);
+  gps.begin();
 
   //##############################################################
   // Handle SD
@@ -284,11 +283,9 @@ void setup() {
   //##############################################################
 
   displayTest->showTextOnGrid(2, 4, "Wait for GPS",DEFAULT_FONT);
-  Serial.println("Waiting for GPS fix...");
-  bool validGPSData = false;
-  readGPSData();
+  gps.handle();
   voltageMeter = new VoltageMeter; // takes a moment, so do it here
-  readGPSData();
+  gps.handle();
 
   //##############################################################
   // Temperatur Sensor BMP280
@@ -315,85 +312,26 @@ void setup() {
     ESP_ERROR_CHECK_WITHOUT_ABORT(
       esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
   }
-  readGPSData();
+
+  Serial.println("Waiting for GPS fix...");
+  gps.handle();
   int gpsWaitFor = cfg.getProperty<int>(ObsConfig::PROPERTY_GPS_FIX);
-  bool first_gps_run = true;
-  while (!validGPSData) {
-    readGPSData();
-
-    switch (gpsWaitFor) {
-      case GPS::FIX_POS:
-        validGPSData = gps.sentencesWithFix() > 0;
-        if (validGPSData) {
-          Serial.println("Got location...");
-          displayTest->showTextOnGrid(2, 4, "Got location",DEFAULT_FONT);
-          }
-        break;
-      case GPS::FIX_TIME:
-        validGPSData = gps.time.isValid()
-          && !(gps.time.second() == 00 && gps.time.minute() == 00 && gps.time.hour() == 00);
-        if (validGPSData) {
-          Serial.println("Got time...");
-          displayTest->showTextOnGrid(2, 4, "Got time",DEFAULT_FONT);
-         }
-        break;
-      case GPS::FIX_NO_WAIT:
-        validGPSData = true;
-        if (validGPSData) {
-          Serial.println("GPS, no wait");
-          displayTest->showTextOnGrid(2, 4, "GPS, no wait",DEFAULT_FONT);
-          }
-        break;
-      default:
-        validGPSData = gps.satellites.value() >= gpsWaitFor;
-        if (validGPSData) {
-          Serial.println("Got required number of satellites...");
-        }
-        break;
-    }
-
+  while (!gps.hasState(gpsWaitFor, displayTest)) {
     currentTimeMillis = millis();
+    gps.handle();
     if (bluetoothManager
         && lastBluetoothInterval != (currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS)) {
       lastBluetoothInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
       bluetoothManager->newSensorValues(currentTimeMillis, MAX_SENSOR_VALUE, MAX_SENSOR_VALUE);
     }
-
     delay(50);
-
-    String satellitesString[2];
-    if (gps.passedChecksum() == 0) { // could not get any valid char from GPS module
-      satellitesString[0] = "OFF?";
-    } else if (!gps.time.isValid()
-                || (gps.time.second() == 00 && gps.time.minute() == 00 && gps.time.hour() == 00)) {
-      satellitesString[0] = "no time";
-    } else {
-      first_gps_run = false;
-      char timeStr[32];
-      snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d",
-               gps.time.hour(), gps.time.minute(), gps.time.second());
-      satellitesString[0] = String(timeStr);
-      satellitesString[1] = String(gps.satellites.value()) + " / " + String(gpsWaitFor) + " sats";
-    }
-
-    if(gps.passedChecksum() != 0    //only do this if a communication is there and a valid time is there
-        && gps.time.isValid()
-        && !(gps.time.second() == 00 && gps.time.minute() == 00 && gps.time.hour() == 00)){
-
-      if(first_gps_run == true){  //This should implement scrolling and only scroll up on the first time
-        for(uint8_t i = 0; i<4;i++){
-          displayTest->showTextOnGrid(2, i, displayTest->get_gridTextofCell(2,i+1),DEFAULT_FONT);
-        }
-      }
-      displayTest->showTextOnGrid(2, 4, satellitesString[0],DEFAULT_FONT);
-      displayTest->showTextOnGrid(2, 5, satellitesString[1],DEFAULT_FONT);
-    }else    displayTest->showTextOnGrid(2, 5, satellitesString[0],DEFAULT_FONT);   //if no gps comm or no time is there, just write in the last row
+    gps.showWaitStatus(displayTest);
 
     buttonState = digitalRead(PushButton_PIN);
     if (buttonState == HIGH
-      || (config.simRaMode && gps.passedChecksum() == 0) // no module && simRaMode
+      || (config.simRaMode && !gps.moduleIsAlive()) // no module && simRaMode
     ) {
-      Serial.println("Skipped get GPS...");
+      log_d("Skipped get GPS...");
       displayTest->showTextOnGrid(2, 5, "...skipped",DEFAULT_FONT);
       break;
     }
@@ -401,12 +339,11 @@ void setup() {
 
   delay(1000); // Added for user experience
 
-  // Clear the display once!
   displayTest->clear();
 }
 
 void serverLoop() {
-  readGPSData();
+  gps.handle();
   server.handleClient();
   ArduinoOTA.handle();
   sensorManager->getDistancesNoWait();
@@ -443,22 +380,22 @@ void loop() {
   auto* currentSet = new DataSet;
   //specify which sensors value can be confirmed by pressing the button, should be configurable
   const uint8_t confirmationSensorID = LEFT_SENSOR_ID;
-  readGPSData(); // needs <=1ms
+  gps.handle(); // needs <=1ms
 
   currentTimeMillis = millis();
   if (startTimeMillis == 0) {
     startTimeMillis = (currentTimeMillis / measureInterval) * measureInterval;
   }
-  currentSet->time = currentTime();
+  currentSet->time = gps.currentTime();
   currentSet->millis = currentTimeMillis;
   currentSet->location = gps.location;
   currentSet->altitude = gps.altitude;
   currentSet->course = gps.course;
   currentSet->speed = gps.speed;
   currentSet->hdop = gps.hdop;
-  currentSet->validSatellites = gps.satellites.isValid() ? (uint8_t) gps.satellites.value() : 0;
+  currentSet->validSatellites = gps.getValidSatellites();
   currentSet->batteryLevel = voltageMeter->read();
-  currentSet->isInsidePrivacyArea = isInsidePrivacyArea(currentSet->location);
+  currentSet->isInsidePrivacyArea = gps.isInsidePrivacyArea();
 
   sensorManager->reset();
 
@@ -477,7 +414,7 @@ void loop() {
 
     currentTimeMillis = millis();
     sensorManager->getDistances();
-    readGPSData();
+    gps.handle();
 
     displayTest->showValues(
       sensorManager->m_sensors[LEFT_SENSOR_ID],
@@ -486,7 +423,9 @@ void loop() {
       BatteryValue,
       (int16_t) TemperatureValue,
       lastMeasurements,
-      currentSet->isInsidePrivacyArea
+      currentSet->isInsidePrivacyArea,
+      gps.getSpeed(),
+      gps.getValidSatellites()
     );
 
 
