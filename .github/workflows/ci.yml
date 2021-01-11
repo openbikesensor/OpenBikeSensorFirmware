@@ -110,7 +110,6 @@ jobs:
             sonarqube-out/build-wrapper-dump.json
         ./sonarqube/sonar-scanner-${{ env.SONAR_SCANNER_VERSION }}-linux/bin/sonar-scanner \
           -Dsonar.host.url=https://sonarcloud.io \
-          -Dsonar.host.url=https://sonarcloud.io \
           -Dsonar.organization=friends-of-openbikesensor \
           -Dsonar.projectKey=Friends-of-OpenBikeSensor_OpenBikeSensorFirmware \
           -Dsonar.coverage.exclusions=**/* \
@@ -119,7 +118,8 @@ jobs:
           -Dsonar.cfamily.cache.enabled=false \
           -Dsonar.cfamily.threads=1 \
           -Dsonar.cfamily.build-wrapper-output=sonarqube-out \
-          -Dsonar.projectVersion=${{ env.OBS_MAJOR_VERSION }}
+          -Dsonar.projectVersion=${{ env.OBS_MAJOR_VERSION }} \
+          -Dsonar.verbose=true
 
     - name: Upload Build Asset
       uses: actions/upload-artifact@v2
