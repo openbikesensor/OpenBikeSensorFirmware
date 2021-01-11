@@ -250,6 +250,10 @@ class SSD1306DisplayDevice : public DisplayDevice {
       mLastProgress = UINT8_MAX;
     }
 
+    String get_gridTextofCell(uint8_t x, uint8_t y){
+      return gridText[x][y];
+    }
+
     //##############################################################
     // Other
     //##############################################################

@@ -274,19 +274,35 @@ bool Gps::hasState(int state, SSD1306DisplayDevice *display) {
 }
 
 void Gps::showWaitStatus(SSD1306DisplayDevice *display) {
-  String satellitesString;
-  if (passedChecksum() == 0) { // could not get any valid char from GPS module
-    satellitesString = "OFF?";
-  } else if (!time.isValid()
-             || (time.second() == 00 && time.minute() == 00 && time.hour() == 00)) {
-    satellitesString = "no time";
+  String satellitesString[2];
+  if (gps.passedChecksum() == 0) { // could not get any valid char from GPS module
+    satellitesString[0] = "OFF?";
+  } else if (!gps.time.isValid()
+             || (gps.time.second() == 00 && gps.time.minute() == 00 && gps.time.hour() == 00)) {
+    satellitesString[0] = "no time";
   } else {
     char timeStr[32];
-    snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d %dsa",
-             time.hour(), time.minute(), time.second(), satellites.value());
-    satellitesString = String(timeStr);
+    snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d",
+             gps.time.hour(), gps.time.minute(), gps.time.second());
+    satellitesString[0] = String(timeStr);
+    satellitesString[1] = String(gps.satellites.value()) + " satellites";
   }
-  display->showTextOnGrid(2, 5, satellitesString);
+
+  if (gps.passedChecksum() != 0    //only do this if a communication is there and a valid time is there
+      && gps.time.isValid()
+      && !(gps.time.second() == 00 && gps.time.minute() == 00 && gps.time.hour() == 00)) {
+    // This is a hack :) if still the version is displayed in the 1st line we scroll up
+    if (displayTest->get_gridTextofCell(2, 0).startsWith("v")) {
+      //This should implement scrolling and only scroll up on the first time, should be a display feature
+      for (uint8_t i = 0; i < 4; i++) {
+        displayTest->showTextOnGrid(2, i, displayTest->get_gridTextofCell(2, i + 1), DEFAULT_FONT);
+      }
+    }
+    displayTest->showTextOnGrid(2, 4, satellitesString[0], DEFAULT_FONT);
+    displayTest->showTextOnGrid(2, 5, satellitesString[1], DEFAULT_FONT);
+  } else { //if no gps comm or no time is there, just write in the last row
+    displayTest->showTextOnGrid(2, 5, satellitesString[0]);
+  }
 }
 
 bool Gps::moduleIsAlive() const {

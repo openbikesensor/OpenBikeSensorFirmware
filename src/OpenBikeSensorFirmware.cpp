@@ -35,7 +35,7 @@ const char *OBSVersion = "v0.4" BUILD_NUMBER;
 const uint8_t LEFT_SENSOR_ID = 1;
 const uint8_t RIGHT_SENSOR_ID = 0;
 
-const uint32_t BUTTON_PRESS_TIME_FOR_AUTO_UPLOAD_MS = 5000;
+const uint32_t LONG_BUTTON_PRESS_TIME_MS = 2000;
 
 
 // PINs
@@ -134,9 +134,9 @@ void setup() {
     Serial.println("Display not found");
   }
   displayTest = new SSD1306DisplayDevice;
-  
+
   switch_wire_speed_to_SSD1306();
-  
+
   displayTest->showLogo(true);
   displayTest->showTextOnGrid(2, 0, OBSVersion,DEFAULT_FONT);
 
@@ -247,7 +247,9 @@ void setup() {
     ESP_ERROR_CHECK_WITHOUT_ABORT(
       esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
 
-    delay(300);
+    buttonStateChanged = 0;
+    lastButtonState = buttonState;
+    delay(200);
     startServer(&cfg);
     OtaInit(esp_chipid);
     while (true) {
@@ -316,6 +318,7 @@ void setup() {
   int gpsWaitFor = cfg.getProperty<int>(ObsConfig::PROPERTY_GPS_FIX);
   while (!gps.hasState(gpsWaitFor, displayTest)) {
     currentTimeMillis = millis();
+    gps.handle();
     if (bluetoothManager
         && lastBluetoothInterval != (currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS)) {
       lastBluetoothInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
@@ -349,23 +352,21 @@ void serverLoop() {
 
 void handleButtonInServerMode() {
   buttonState = digitalRead(PushButton_PIN);
-  if (!configServerWasConnectedViaHttp()) {
-    displayTest->showTextOnGrid(0,3, "Keep button pressed");
-    displayTest->showTextOnGrid(0,4, "for automatic track upload.");
-  }
   const uint32_t now = millis();
   if (buttonState != lastButtonState) {
     if (buttonState == LOW && !configServerWasConnectedViaHttp()) {
-        displayTest->clearProgressBar(5);
+      displayTest->clearProgressBar(5);
+      displayTest->showTextOnGrid(0, 3, "Press the button for");
+      displayTest->showTextOnGrid(0, 4, "automatic track upload.");
     }
     lastButtonState = buttonState;
     buttonStateChanged = now;
   }
   if (!configServerWasConnectedViaHttp() &&
-    buttonState == HIGH) {
+      buttonState == HIGH && buttonStateChanged != 0) {
     const uint32_t buttonPressedMs = now - buttonStateChanged;
-    displayTest->drawProgressBar(5, buttonPressedMs, BUTTON_PRESS_TIME_FOR_AUTO_UPLOAD_MS);
-    if (buttonPressedMs > BUTTON_PRESS_TIME_FOR_AUTO_UPLOAD_MS) {
+    displayTest->drawProgressBar(5, buttonPressedMs, LONG_BUTTON_PRESS_TIME_MS);
+    if (buttonPressedMs > LONG_BUTTON_PRESS_TIME_MS) {
       uploadTracks(false);
     }
   }
