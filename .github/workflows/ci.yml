@@ -108,18 +108,9 @@ jobs:
             sonarqube-out/build-wrapper-dump.json
         sed -i 's|\.pio/|bin/.pio/|g' \
             sonarqube-out/build-wrapper-dump.json
-        # fake le32-unknown-nacl did not help
-        #sed -i 's|=xtensa-esp32-elf|=le32-unknown-nacl|g' \
-        #    sonarqube-out/build-wrapper-dump.json
-        #sed -i 's| xtensa-esp32-elf| le32-unknown-nacl|g' \
-        #    sonarqube-out/build-wrapper-dump.json
+        # replace gcc with our script that reports the fake arch "le32-unknown-nacl"
         sed -i "s|/github/home/.platformio/packages/toolchain-xtensa32/bin/xtensa-esp32-elf-g..|`pwd`/.github/fake-cc|g" \
             sonarqube-out/build-wrapper-dump.json
-        echo ------------------
-        /github/home/.platformio/packages/toolchain-xtensa32/bin/xtensa-esp32-elf-g++ -v
-        echo ------------------
-        .github/fake-cc -v
-        echo ------------------
         ./sonarqube/sonar-scanner-${{ env.SONAR_SCANNER_VERSION }}-linux/bin/sonar-scanner \
           -Dsonar.host.url=https://sonarcloud.io \
           -Dsonar.organization=friends-of-openbikesensor \
@@ -130,7 +121,8 @@ jobs:
           -Dsonar.cfamily.cache.enabled=false \
           -Dsonar.cfamily.threads=1 \
           -Dsonar.cfamily.build-wrapper-output=sonarqube-out \
-          -Dsonar.projectVersion=${{ env.OBS_MAJOR_VERSION }}  || echo failed
+          -Dsonar.projectVersion=${{ env.OBS_MAJOR_VERSION }} \
+          -Dsonar.verbose=true
 
     - name: Upload Build Asset
       uses: actions/upload-artifact@v2
