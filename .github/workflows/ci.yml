@@ -113,6 +113,8 @@ jobs:
         #    sonarqube-out/build-wrapper-dump.json
         #sed -i 's| xtensa-esp32-elf| le32-unknown-nacl|g' \
         #    sonarqube-out/build-wrapper-dump.json
+        sed -i 's|/github/home/.platformio/packages/toolchain-xtensa32/bin/xtensa-esp32-elf-g\+\+|`pwd`/.github/fake-cc|g' \
+            sonarqube-out/build-wrapper-dump.json
         echo ------------------
         /github/home/.platformio/packages/toolchain-xtensa32/bin/xtensa-esp32-elf-g++ -v
         echo ------------------
