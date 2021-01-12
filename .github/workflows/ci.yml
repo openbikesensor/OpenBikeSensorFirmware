@@ -42,7 +42,7 @@ jobs:
         echo $VERSION > VERSION
         echo Building OBS Version: $VERSION
         sed -i 's|-DBUILD_NUMBER=\\"-dev\\"|-DBUILD_NUMBER=\\"'${SEPARATOR}${PATCH}'\\"|' platformio.ini
-        echo "SONAR_SCANNER_VERSION=4.5.0.2216" >> $GITHUB_ENV
+        echo "SONAR_SCANNER_VERSION=4.6.0.2311" >> $GITHUB_ENV
 
     - name: Cache SonarCloud packages
       id: cache-sonar
@@ -133,7 +133,6 @@ jobs:
           COPYRIGHT-ESP.html
           LICENSE-ARDUINO-ESP32.md
           LICENSE
-          sonarqube-out/build-wrapper-dump.json
         if-no-files-found: error
 
     - name: Upload Build Asset Initial Flash
