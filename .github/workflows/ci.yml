@@ -130,7 +130,7 @@ jobs:
           -Dsonar.cfamily.cache.enabled=false \
           -Dsonar.cfamily.threads=1 \
           -Dsonar.cfamily.build-wrapper-output=sonarqube-out \
-          -Dsonar.projectVersion=${{ env.OBS_MAJOR_VERSION }}
+          -Dsonar.projectVersion=${{ env.OBS_MAJOR_VERSION }}  || echo failed
 
     - name: Upload Build Asset
       uses: actions/upload-artifact@v2
