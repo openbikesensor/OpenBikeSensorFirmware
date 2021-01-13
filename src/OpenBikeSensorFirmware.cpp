@@ -138,24 +138,36 @@ void setup() {
   switch_wire_speed_to_SSD1306();
 
   displayTest->showLogo(true);
-  displayTest->showTextOnGrid(2, 0, OBSVersion,DEFAULT_FONT);
+  displayTest->showTextOnGrid(2, displayTest->startLine(), OBSVersion);
+
+  voltageMeter = new VoltageMeter; // takes a moment, so do it here
+  if (voltageMeter->hasReadings()) {
+    displayTest->showTextOnGrid(2, displayTest->newLine(),
+                                "Battery: " + String(voltageMeter->read(), 1) + "V");
+    delay(333); // Added for user experience
+  }
+  if (voltageMeter->isWarningLevel()) {
+    displayTest->showTextOnGrid(2, displayTest->newLine(), "LOW BAT");
+    displayTest->showTextOnGrid(2, displayTest->newLine(), "WARNING!");
+    delay(5000);
+  }
 
   //##############################################################
   // Load, print and save config
   //##############################################################
 
-  displayTest->showTextOnGrid(2, 1, "Config... ",DEFAULT_FONT);
+  displayTest->showTextOnGrid(2, displayTest->newLine(), "Config... ");
 
   if (!SPIFFS.begin(true)) {
     Serial.println("An Error has occurred while mounting SPIFFS");
-    displayTest->showTextOnGrid(2, 1, "Config... error ",DEFAULT_FONT);
+    displayTest->showTextOnGrid(2, displayTest->currentLine(), "Config... error ");
     return;
   }
 
   Serial.println(F("Load config"));
   ObsConfig cfg; // this one is valid in setup!
   if (!cfg.loadConfig()) {
-    displayTest->showTextOnGrid(2, 1, "Config...RESET",DEFAULT_FONT);
+    displayTest->showTextOnGrid(2, displayTest->currentLine(), "Config...RESET");
     delay(1000); // resetting config once, wait a moment
   }
 
@@ -182,37 +194,32 @@ void setup() {
 
   delay(333); // Added for user experience
   char buffer[32];
-  snprintf(buffer, sizeof(buffer), "<%02d| |%02d>",
+  snprintf(buffer, sizeof(buffer), "<%02d| - |%02d>",
     config.sensorOffsets[LEFT_SENSOR_ID],
     config.sensorOffsets[RIGHT_SENSOR_ID]);
-  displayTest->showTextOnGrid(2, 1, buffer,DEFAULT_FONT);
+  displayTest->showTextOnGrid(2, displayTest->currentLine(), buffer);
 
   gps.begin();
 
   //##############################################################
   // Handle SD
   //##############################################################
-  // Counter, how often the SD card will be read before writing an error on the display
-  int8_t sdCount = 5;
-
-  displayTest->showTextOnGrid(2, 2, "SD...",DEFAULT_FONT);
+  int8_t sdCount = 0;
+  displayTest->showTextOnGrid(2, displayTest->newLine(), "SD...");
   while (!SD.begin()) {
-    if(sdCount > 0) {
-      sdCount--;
-    } else {
-      displayTest->showTextOnGrid(2, 2, "SD... error",DEFAULT_FONT);
-      if (config.simRaMode || digitalRead(PushButton_PIN) == HIGH) {
-        break;
-      }  // FIXME: Stop trying!!?
+    sdCount++;
+    displayTest->showTextOnGrid(2,
+      displayTest->currentLine(), "SD... error " + String(sdCount));
+    if (config.simRaMode || digitalRead(PushButton_PIN) == HIGH || sdCount > 10) {
+      break;
     }
-    Serial.println("Card Mount Failed");
-    //delay(100);
+    delay(200);
+  }
+
+  if (SD.begin()) {
+    displayTest->showTextOnGrid(2, displayTest->currentLine(), "SD... ok");
   }
   delay(333); // Added for user experience
-  if (SD.begin()) {
-    Serial.println("Card Mount Succeeded");
-    displayTest->showTextOnGrid(2, 2, "SD... ok",DEFAULT_FONT);
-  }
 
   //##############################################################
   // Init HCSR04
@@ -243,7 +250,7 @@ void setup() {
 
   buttonState = digitalRead(PushButton_PIN);
   if (buttonState == HIGH || (!config.simRaMode && displayError != 0)) {
-    displayTest->showTextOnGrid(2, 2, "Start Server",DEFAULT_FONT);
+    displayTest->showTextOnGrid(2, displayTest->newLine(), "Start Server");
     ESP_ERROR_CHECK_WITHOUT_ABORT(
       esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
 
@@ -264,7 +271,7 @@ void setup() {
   // Prepare CSV file
   //##############################################################
 
-  displayTest->showTextOnGrid(2, 3, "CSV file...",DEFAULT_FONT);
+  displayTest->showTextOnGrid(2, displayTest->newLine(), "CSV file...");
 
   const String trackUniqueIdentifier = ObsUtils::createTrackUuid();
 
@@ -272,20 +279,10 @@ void setup() {
     writer = new CSVFileWriter;
     writer->setFileName();
     writer->writeHeader(trackUniqueIdentifier);
-    displayTest->showTextOnGrid(2, 3, "CSV file... ok",DEFAULT_FONT);
-    Serial.println("File initialised");
+    displayTest->showTextOnGrid(2, displayTest->currentLine(), "CSV file... ok");
   } else {
-    displayTest->showTextOnGrid(2, 3, "CSV. skipped",DEFAULT_FONT);
+    displayTest->showTextOnGrid(2, displayTest->currentLine(), "CSV. skipped");
   }
-
-  //##############################################################
-  // GPS
-  //##############################################################
-
-  displayTest->showTextOnGrid(2, 4, "Wait for GPS",DEFAULT_FONT);
-  gps.handle();
-  voltageMeter = new VoltageMeter; // takes a moment, so do it here
-  gps.handle();
 
   //##############################################################
   // Temperatur Sensor BMP280
@@ -299,6 +296,7 @@ void setup() {
   // Bluetooth
   //##############################################################
   if (cfg.getProperty<bool>(ObsConfig::PROPERTY_BLUETOOTH)) {
+    displayTest->showTextOnGrid(2, displayTest->newLine(), "Bluetooth ..");
     bluetoothManager = new BluetoothManager;
     bluetoothManager->init(
       cfg.getProperty<String>(ObsConfig::PROPERTY_OBS_NAME),
@@ -307,13 +305,15 @@ void setup() {
       batteryPercentage,
       trackUniqueIdentifier);
     bluetoothManager->activateBluetooth();
+    displayTest->showTextOnGrid(2, displayTest->currentLine(), "Bluetooth up");
   } else {
     bluetoothManager = nullptr;
     ESP_ERROR_CHECK_WITHOUT_ABORT(
       esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
   }
 
-  Serial.println("Waiting for GPS fix...");
+  displayTest->showTextOnGrid(2, displayTest->newLine(), "Wait for GPS");
+  displayTest->newLine();
   gps.handle();
   int gpsWaitFor = cfg.getProperty<int>(ObsConfig::PROPERTY_GPS_FIX);
   while (!gps.hasState(gpsWaitFor, displayTest)) {
@@ -329,10 +329,10 @@ void setup() {
 
     buttonState = digitalRead(PushButton_PIN);
     if (buttonState == HIGH
-      || (config.simRaMode && !gps.moduleIsAlive()) // no module && simRaMode
-    ) {
+        || (config.simRaMode && !gps.moduleIsAlive()) // no module && simRaMode
+      ) {
       log_d("Skipped get GPS...");
-      displayTest->showTextOnGrid(2, 5, "...skipped",DEFAULT_FONT);
+      displayTest->showTextOnGrid(2, displayTest->currentLine(), "...skipped");
       break;
     }
   }
@@ -516,6 +516,14 @@ void loop() {
   memcpy(&(currentSet->startOffsetMilliseconds),
     &(sensorManager->startOffsetMilliseconds), currentSet->measurements * sizeof(uint16_t));
 
+#ifdef DEVELOP
+  Serial.write("min. distance: ");
+  Serial.print(currentSet->sensorValues[confirmationSensorID]) ;
+  Serial.write(" cm,");
+  Serial.print(measurements);
+  Serial.write(" measurements  \n");
+#endif
+
   // if nothing was detected, write the dataset to file, otherwise write it to the buffer for confirmation
   if (!transmitConfirmedData
     && currentSet->sensorValues[confirmationSensorID] == MAX_SENSOR_VALUE
@@ -529,13 +537,6 @@ void loop() {
     dataBuffer.push(currentSet);
   }
 
-#ifdef DEVELOP
-  Serial.write("min. distance: ");
-  Serial.print(currentSet->sensorValues[confirmationSensorID]) ;
-  Serial.write(" cm,");
-  Serial.print(measurements);
-  Serial.write(" measurements  \n");
-#endif
 
   lastMeasurements = measurements;
 

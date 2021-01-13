@@ -211,3 +211,26 @@ void SSD1306DisplayDevice::showSpeed(double velocity) {
   this->prepareTextOnGrid(0, 4, buffer, Dialog_plain_20);
   this->prepareTextOnGrid(1, 5, "km/h",DEFAULT_FONT);
 }
+
+uint8_t SSD1306DisplayDevice::currentLine() const {
+  return mCurrentLine;
+}
+
+uint8_t SSD1306DisplayDevice::newLine() {
+  if (mCurrentLine >= 5) {
+    scrollUp();
+  }
+  return ++mCurrentLine;
+}
+
+uint8_t SSD1306DisplayDevice::scrollUp() {
+  for (uint8_t i = 0; i < 5; i++) {
+    prepareTextOnGrid(2, i, displayTest->get_gridTextofCell(2, i + 1));
+  }
+  m_display->display();
+  return mCurrentLine--;
+}
+
+uint8_t SSD1306DisplayDevice::startLine() {
+  return mCurrentLine = 0;
+}

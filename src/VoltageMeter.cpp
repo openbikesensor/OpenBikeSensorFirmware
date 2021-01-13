@@ -57,6 +57,14 @@ VoltageMeter::VoltageMeter() {
 #endif
 }
 
+bool VoltageMeter::isWarningLevel() {
+  return hasReadings() && (read() < VoltageMeter::BATTERY_WARNING_LEVEL);
+}
+
+bool VoltageMeter::hasReadings() {
+  return read() > VoltageMeter::BATTERY_NO_READ_LEVEL;
+}
+
 double VoltageMeter::read() {
   return esp_adc_cal_raw_to_voltage(readSmoothed(), &adc_chars)
     * 3.0 / 2000.0; // voltage divider @ OSB PCB
