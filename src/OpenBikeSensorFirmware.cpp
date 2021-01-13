@@ -314,8 +314,6 @@ void setup() {
 
   displayTest->showTextOnGrid(2, displayTest->newLine(), "Wait for GPS");
   displayTest->newLine();
-  // !?gps.clearBuffer();
-  Serial.println("Waiting for GPS fix...");
   gps.handle();
   int gpsWaitFor = cfg.getProperty<int>(ObsConfig::PROPERTY_GPS_FIX);
   while (!gps.hasState(gpsWaitFor, displayTest)) {

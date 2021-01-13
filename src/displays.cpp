@@ -212,7 +212,7 @@ void SSD1306DisplayDevice::showSpeed(double velocity) {
   this->prepareTextOnGrid(1, 5, "km/h",DEFAULT_FONT);
 }
 
-uint8_t SSD1306DisplayDevice::currentLine() {
+uint8_t SSD1306DisplayDevice::currentLine() const {
   return mCurrentLine;
 }
 

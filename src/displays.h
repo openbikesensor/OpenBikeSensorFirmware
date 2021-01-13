@@ -74,7 +74,7 @@ class SSD1306DisplayDevice : public DisplayDevice {
       delete m_display;
     }
 
-    uint8_t currentLine();
+    uint8_t currentLine() const;
     uint8_t newLine();
     uint8_t scrollUp();
     uint8_t startLine();
