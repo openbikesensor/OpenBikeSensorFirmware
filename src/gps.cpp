@@ -291,17 +291,14 @@ void Gps::showWaitStatus(SSD1306DisplayDevice *display) {
   if (gps.passedChecksum() != 0    //only do this if a communication is there and a valid time is there
       && gps.time.isValid()
       && !(gps.time.second() == 00 && gps.time.minute() == 00 && gps.time.hour() == 00)) {
-    // This is a hack :) if still the version is displayed in the 1st line we scroll up
-    if (displayTest->get_gridTextofCell(2, 0).startsWith("v")) {
-      //This should implement scrolling and only scroll up on the first time, should be a display feature
-      for (uint8_t i = 0; i < 4; i++) {
-        displayTest->showTextOnGrid(2, i, displayTest->get_gridTextofCell(2, i + 1), DEFAULT_FONT);
-      }
+    // This is a hack :) if still the "Wait for GPS" version is displayed original line
+    if (displayTest->get_gridTextofCell(2, 4).startsWith("Wait")) {
+      display->newLine();
     }
-    displayTest->showTextOnGrid(2, 4, satellitesString[0], DEFAULT_FONT);
-    displayTest->showTextOnGrid(2, 5, satellitesString[1], DEFAULT_FONT);
+    displayTest->showTextOnGrid(2, display->currentLine() - 1, satellitesString[0]);
+    displayTest->showTextOnGrid(2, display->currentLine(), satellitesString[1]);
   } else { //if no gps comm or no time is there, just write in the last row
-    displayTest->showTextOnGrid(2, 5, satellitesString[0]);
+    displayTest->showTextOnGrid(2, display->currentLine(), satellitesString[0]);
   }
 }
 

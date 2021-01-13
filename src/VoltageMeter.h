@@ -10,6 +10,8 @@ class VoltageMeter {
     /* Returns the (smoothed) value in Volts. */
     double read();
     uint8_t readPercentage();
+    bool hasReadings();
+    bool isWarningLevel();
 
   private:
     /* This one is typically NOT used, our ESP32 dos have
@@ -20,6 +22,12 @@ class VoltageMeter {
 //  const uint8_t REFERENCE_PIN = 35;
     const int16_t MINIMUM_SAMPLES = 64;
     const int16_t SAMPLES_DIVIDE = 128;
+
+    /* Below this value a warning will be printed during startup. */
+    const double BATTERY_WARNING_LEVEL = 3.47;
+    /* Below this value it is assumed there is no voltage reading at all. */
+    const double BATTERY_NO_READ_LEVEL = 3.00;
+
     esp_adc_cal_characteristics_t adc_chars;
     int16_t lastSmoothedReading;
     int readSmoothed();
