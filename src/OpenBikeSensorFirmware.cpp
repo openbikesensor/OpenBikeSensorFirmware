@@ -138,7 +138,7 @@ void setup() {
   switch_wire_speed_to_SSD1306();
 
   displayTest->showLogo(true);
-  displayTest->showTextOnGrid(2, displayTest->startLine(), OBSVersion, DEFAULT_FONT);
+  displayTest->showTextOnGrid(2, displayTest->startLine(), OBSVersion);
 
   voltageMeter = new VoltageMeter; // takes a moment, so do it here
   if (voltageMeter->hasReadings()) {
@@ -147,8 +147,8 @@ void setup() {
     delay(333); // Added for user experience
   }
   if (voltageMeter->isWarningLevel()) {
-    displayTest->showTextOnGrid(2, displayTest->newLine(),"LOW BAT");
-    displayTest->showTextOnGrid(2, displayTest->newLine(),"WARNING!");
+    displayTest->showTextOnGrid(2, displayTest->newLine(), "LOW BAT");
+    displayTest->showTextOnGrid(2, displayTest->newLine(), "WARNING!");
     delay(5000);
   }
 
@@ -209,7 +209,7 @@ void setup() {
   while (!SD.begin()) {
     sdCount++;
     displayTest->showTextOnGrid(2,
-                                displayTest->currentLine(), "SD... error " + String(sdCount));
+      displayTest->currentLine(), "SD... error " + String(sdCount));
     if (config.simRaMode || digitalRead(PushButton_PIN) == HIGH || sdCount > 10) {
       break;
     }
@@ -329,8 +329,8 @@ void setup() {
 
     buttonState = digitalRead(PushButton_PIN);
     if (buttonState == HIGH
-      || (config.simRaMode && !gps.moduleIsAlive()) // no module && simRaMode
-    ) {
+        || (config.simRaMode && !gps.moduleIsAlive()) // no module && simRaMode
+      ) {
       log_d("Skipped get GPS...");
       displayTest->showTextOnGrid(2, displayTest->currentLine(), "...skipped");
       break;
