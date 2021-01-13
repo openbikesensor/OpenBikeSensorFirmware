@@ -622,7 +622,7 @@ bool CreateWifiSoftAP(String chipID) {
     displayTest->showTextOnGrid(1, 4, APPassword,DEFAULT_FONT);
 
     displayTest->showTextOnGrid(0, 5, "IP:",DEFAULT_FONT);
-    displayTest->showTextOnGrid(1, 5, "172.20.0.1",DEFAULT_FONT);
+    displayTest->showTextOnGrid(1, 5, apIP.toString().c_str());
   } else {
     Serial.println(F("Soft AP Error."));
     Serial.println(APName.c_str());
