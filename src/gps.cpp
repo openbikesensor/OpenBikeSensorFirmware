@@ -25,7 +25,7 @@
 static const time_t PAST_TIME = 1606672131;
 
 void Gps::begin() {
-  mSerial.begin(9600, SERIAL_8N1, 16, 17);
+  mSerial.begin(9600, SERIAL_8N1); // , 16, 17);
   // TODO: Increase speed etc.
   configureGpsModule();
 }

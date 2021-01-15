@@ -55,7 +55,7 @@ class Gps : public TinyGPSPlus {
 
 
   private:
-    HardwareSerial mSerial = HardwareSerial(1); // but uses uart 2 ports
+    HardwareSerial mSerial = HardwareSerial(2);
     TinyGPSCustom mTxtCount = TinyGPSCustom(*this, "GPTXT", 1);
     TinyGPSCustom mTxtSeq = TinyGPSCustom(*this, "GPTXT", 2);
     TinyGPSCustom mTxtSeverity = TinyGPSCustom(*this, "GPTXT", 3);
