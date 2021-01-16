@@ -58,7 +58,7 @@ BluetoothManager* bluetoothManager;
 
 Gps gps;
 
-const long BLUETOOTH_INTERVAL_MILLIS = 200;
+const long BLUETOOTH_INTERVAL_MILLIS = 50;
 long lastBluetoothInterval = 0;
 
 float BatteryValue = -1;
@@ -319,7 +319,7 @@ void setup() {
   while (!gps.hasState(gpsWaitFor, displayTest)) {
     currentTimeMillis = millis();
     gps.handle();
-    if (bluetoothManager
+    if (bluetoothManager && bluetoothManager->hasConnectedClients()
         && lastBluetoothInterval != (currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS)) {
       lastBluetoothInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
       bluetoothManager->newSensorValues(currentTimeMillis, MAX_SENSOR_VALUE, MAX_SENSOR_VALUE);
@@ -429,7 +429,7 @@ void loop() {
     );
 
 
-    if (bluetoothManager
+    if (bluetoothManager && bluetoothManager->hasConnectedClients()
         && lastBluetoothInterval != (currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS)) {
       log_d("Reporting BT: %d/%d Button: %d\n",
                     sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
@@ -595,7 +595,7 @@ void loop() {
 }
 
 void bluetoothConfirmed(const DataSet *dataSet, uint16_t measureIndex) {
-  if (bluetoothManager) {
+  if (bluetoothManager && bluetoothManager->hasConnectedClients()) {
     uint16_t left = dataSet->readDurationsLeftInMicroseconds[measureIndex];
     if (left >= MAX_DURATION_MICRO_SEC && measureIndex > 0) {
       measureIndex--;

@@ -59,10 +59,12 @@ class BluetoothManager {
      */
     void newPassEvent(uint32_t millis, uint16_t leftValue, uint16_t rightValue);
 
+    /* True if any client is currently connected. */
+    bool hasConnectedClients();
+
   private:
     BLEServer *pServer;
     std::list<IBluetoothService*> services;
-    unsigned long lastValueTimestamp = millis();
 };
 
 #endif
