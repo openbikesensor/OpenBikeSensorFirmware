@@ -29,6 +29,19 @@
 
 class SSD1306DisplayDevice;
 
+class GpsRecord {
+    uint32_t mRetrievedAt; // millis counter!
+    time_t mDateTime;
+    long mLongitude;
+    long mLatitude;
+    int mSpeedKmH; // * 100?
+    int mCourseOverGround; // * 100
+    int mHdop; // * 100
+    int mAltitudeCentiMeters; // * 10?
+    uint8_t mSatellitesUsed;
+    uint8_t mFixStatus; //? 0 = NoFix // 1 = Standard // 2 = diff GPS // 6 Estimated (DR) fix
+}
+
 class Gps : public TinyGPSPlus {
   public:
     enum class WaitFor {
@@ -52,23 +65,108 @@ class Gps : public TinyGPSPlus {
     String getHdopAsString();
     String getMessages() const;
     static PrivacyArea newPrivacyArea(double latitude, double longitude, int radius);
+    bool updateStatistics();
 
 
   private:
+    static const int MAX_MESSAGE_LENGTH = 256;
     HardwareSerial mSerial = HardwareSerial(2);
-    TinyGPSCustom mTxtCount = TinyGPSCustom(*this, "GPTXT", 1);
-    TinyGPSCustom mTxtSeq = TinyGPSCustom(*this, "GPTXT", 2);
-    TinyGPSCustom mTxtSeverity = TinyGPSCustom(*this, "GPTXT", 3);
-    TinyGPSCustom mTxtMessage = TinyGPSCustom(*this, "GPTXT", 4);
-    String mMessage;
+    union GpsBuffer {
+      uint8_t u1Data[MAX_MESSAGE_LENGTH];
+      uint16_t u2Data[MAX_MESSAGE_LENGTH / 2];
+      uint32_t u4Data[MAX_MESSAGE_LENGTH / 4];
+      int8_t i1Data[MAX_MESSAGE_LENGTH];
+      int16_t i2Data[MAX_MESSAGE_LENGTH / 2];
+      int32_t i4Data[MAX_MESSAGE_LENGTH / 4];
+      float r4Data[MAX_MESSAGE_LENGTH / 4];
+      double r8Data[MAX_MESSAGE_LENGTH / 8];
+      char charData[MAX_MESSAGE_LENGTH];
+    };
+    GpsBuffer mGpsBuffer;
+    int16_t mGpsBufferBytePos = 0;
+    enum GpsReceiverState {
+      GPS_NULL,
+      NMEA_START,
+      NMEA_ADDRESS,
+      NMEA_DATA,
+      NMEA_CHECKSUM1,
+      NMEA_CHECKSUM2,
+      NMEA_CR,
+      NMEA_LF,
+
+      UBX_SYNC,  // 0xB5
+      UBX_SYNC1, // 0x62
+      UBX_CLASS,
+      UBX_ID,
+      UBX_LENGTH,
+      UBX_PAYLOAD,
+      UBX_CHECKSUM,
+      UBX_CHECKSUM1
+
+    };
+    enum class UBX_MSG {
+        // NAV 0x01
+        NAV_STATUS = 0x0301,
+
+        // RXM 0x02
+
+        // INF 0x04
+        INF_ERROR = 0x0004,
+        INF_WARNING = 0x0104,
+        INF_NOTICE = 0x0204,
+        INF_TEST = 0x0304,
+        INF_DEBUG = 0x0404,
+
+        // ACK 0x05
+        ACK_ACK = 0x0105,
+        ACK_NAK = 0x0005,
+
+        // ACK 0x06
+        CFG_PRT = 0x0006,
+        CFG_MSG = 0x0106,
+        CFG_INF = 0x0206,
+        CFG_TP = 0x0706,
+        CFG_CFG = 0x0906,
+        CFG_NAV5 = 0x2406,
+
+        // MON 0x0A
+        MON_VER = 0x040a,
+        MON_HW = 0x090a,
+
+        // AID 0x0B
+        // TIM 0x0D
+        // ESF 0x10
+    };
+    GpsReceiverState mReceiverState = GPS_NULL;
+    uint32_t mMessageStarted = 0;
+    uint32_t mGpsUptime = 0;
+    uint8_t mUbxChA = 0;
+    uint8_t mUbxChB = 0;
     std::vector<String> mMessages;
 
     time_t getGpsTime();
     void configureGpsModule();
-    void handleNewTxtData();
     static double haversine(double lat1, double lon1, double lat2, double lon2);
     static void randomOffset(PrivacyArea &p);
+    bool encodeUbx(uint8_t data);
+    bool setBaud();
+    bool checkCommunication();
+    void addStatisticsMessage(String message);
+    void sendUbx(uint16_t ubxMsgId, const uint8_t *payload = {}, uint16_t length = 0);
+    void sendUbx(UBX_MSG ubxMsgId, const uint8_t *payload = {}, uint16_t length = 0);
+    bool sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer, size_t size);
+    void parseUbxMessage();
+    bool validNmeaMessageChar(uint8_t chr);
 
+    bool mAckReceived = false;
+    bool mNakReceived = false;
+    uint32_t mGpsPayloadLength;
+    uint16_t mValidMessagesReceived = 0;
+    uint8_t mNmeaChk;
+
+    uint8_t hexValue(uint8_t data);
+
+    void parseNmeaMessage();
 };
 
 
