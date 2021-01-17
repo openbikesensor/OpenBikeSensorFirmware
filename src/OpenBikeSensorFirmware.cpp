@@ -58,7 +58,7 @@ BluetoothManager* bluetoothManager;
 
 Gps gps;
 
-const long BLUETOOTH_INTERVAL_MILLIS = 50;
+const long BLUETOOTH_INTERVAL_MILLIS = 250;
 long lastBluetoothInterval = 0;
 
 float BatteryValue = -1;
