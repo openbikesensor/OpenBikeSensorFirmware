@@ -325,6 +325,10 @@ bool configServerWasConnectedViaHttp() {
   return configServerWasConnectedViaHttpFlag;
 }
 
+void touchConfigServerHttp() {
+  configServerWasConnectedViaHttpFlag = true;
+}
+
 String createPage(const String& content, const String& additionalContent = "") {
   configServerWasConnectedViaHttpFlag = true;
   String result;
@@ -347,7 +351,13 @@ String replaceDefault(String html, const String& subTitle, const String& action 
   displayTest->showTextOnGrid(0, 0,
                               theObsConfig->getProperty<String>(ObsConfig::PROPERTY_OBS_NAME));
   displayTest->showTextOnGrid(0, 1, "IP:");
-  displayTest->showTextOnGrid(1, 1, WiFi.localIP().toString());
+  String ip;
+  if (WiFiGenericClass::getMode() == WIFI_MODE_STA) {
+    ip = WiFi.localIP().toString();
+  } else {
+    ip = WiFi.softAPIP().toString();
+  }
+  displayTest->showTextOnGrid(1, 1, ip);
   displayTest->showTextOnGrid(0, 2, "Menu");
   displayTest->showTextOnGrid(1, 2, subTitle);
   return html;
@@ -622,7 +632,7 @@ bool CreateWifiSoftAP(String chipID) {
     displayTest->showTextOnGrid(1, 4, APPassword,DEFAULT_FONT);
 
     displayTest->showTextOnGrid(0, 5, "IP:",DEFAULT_FONT);
-    displayTest->showTextOnGrid(1, 5, apIP.toString().c_str());
+    displayTest->showTextOnGrid(1, 5, WiFi.softAPIP().toString());
   } else {
     Serial.println(F("Soft AP Error."));
     Serial.println(APName.c_str());
@@ -652,6 +662,7 @@ void startServer(ObsConfig *obsConfig) {
 
   if (WiFiClass::status() != WL_CONNECTED) {
     CreateWifiSoftAP(esp_chipid);
+    touchConfigServerHttp(); // side effect do not allow track upload via button
   } else {
     Serial.println("");
     Serial.print("Connected to ");
