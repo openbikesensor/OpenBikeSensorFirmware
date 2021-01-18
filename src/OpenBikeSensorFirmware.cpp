@@ -316,6 +316,7 @@ void setup() {
   displayTest->newLine();
   gps.handle();
   int gpsWaitFor = cfg.getProperty<int>(ObsConfig::PROPERTY_GPS_FIX);
+  uint32_t lastStatistics = 0;
   while (!gps.hasState(gpsWaitFor, displayTest)) {
     currentTimeMillis = millis();
     gps.handle();
@@ -326,6 +327,11 @@ void setup() {
     }
     delay(50);
     gps.showWaitStatus(displayTest);
+
+    if (currentTimeMillis - lastStatistics > 10000) {
+      lastStatistics = currentTimeMillis;
+      gps.updateStatistics();
+    }
 
     buttonState = digitalRead(PushButton_PIN);
     if (buttonState == HIGH

@@ -40,7 +40,7 @@ class GpsRecord {
     int mAltitudeCentiMeters; // * 10?
     uint8_t mSatellitesUsed;
     uint8_t mFixStatus; //? 0 = NoFix // 1 = Standard // 2 = diff GPS // 6 Estimated (DR) fix
-}
+};
 
 class Gps : public TinyGPSPlus {
   public:
@@ -107,6 +107,7 @@ class Gps : public TinyGPSPlus {
     enum class UBX_MSG {
         // NAV 0x01
         NAV_STATUS = 0x0301,
+        NAV_AOPSTATUS = 0x6001,
 
         // RXM 0x02
 
@@ -127,6 +128,7 @@ class Gps : public TinyGPSPlus {
         CFG_INF = 0x0206,
         CFG_TP = 0x0706,
         CFG_CFG = 0x0906,
+        CFG_NAVX5 = 0x2306,
         CFG_NAV5 = 0x2406,
 
         // MON 0x0A
@@ -167,6 +169,8 @@ class Gps : public TinyGPSPlus {
     uint8_t hexValue(uint8_t data);
 
     void parseNmeaMessage();
+
+    uint16_t mLastNoiseLevel;
 };
 
 

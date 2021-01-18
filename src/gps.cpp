@@ -154,6 +154,38 @@ void Gps::configureGpsModule() {
   };
   sendAndWaitForAck(UBX_MSG::CFG_TP, UBX_CFG_TP, sizeof(UBX_CFG_TP));
 
+
+  // Enable AssistNow Autonomous
+  const uint8_t UBX_CFG_NAVX5[] = {
+    0x00, 0x00, // 0: U2: VERSION 0
+    0x40, 0x00, // 2: X2: only AOP data
+    0x00, 0x00, 0x00, 0x00, // 4: U4
+    0x00, // 8: U1
+    0x00, // 9: U1
+    0x00, // 10: U1
+    0x00, // 11: U1
+    0x00, // 12: U1
+    0x00, // 13: U1
+    0x00, // 14: U1
+    0x00, // 15: U1
+    0x00, // 16: U1
+    0x00, // 17: U1
+    0x00, 0x00, // 18: U2
+    0x00, 0x00, 0x00, 0x00, // 20: U4
+    0x00, // 24: U1
+    0x00, // 25: U1
+    0x00, // 26: U1
+    0x01, // 27: U1  AssistNow Autonomous 1 = Enabled
+    0x00, // 28: U1
+    0x00, // 29: U1
+    0x00, 0x00, // 30: U2: maximum acceptable (modelled) AssistNow
+                // Autonomous orbit error 0 = reset to firmware default
+    0x00, 0x00, 0x00, 0x00, // 32: U4
+    0x00, 0x00, 0x00, 0x00  // 36: U4
+  };
+  sendAndWaitForAck(UBX_MSG::CFG_NAVX5, UBX_CFG_NAVX5, sizeof(UBX_CFG_NAVX5));
+
+
   updateStatistics();
 }
 
@@ -162,6 +194,10 @@ bool Gps::updateStatistics() {
   sendUbx(UBX_MSG::MON_HW);
   sendUbx(UBX_MSG::MON_VER);
   sendUbx(UBX_MSG::NAV_STATUS);
+
+  sendUbx(UBX_MSG::CFG_NAVX5);
+  sendUbx(UBX_MSG::NAV_AOPSTATUS);
+
   return true;
 }
 
@@ -421,11 +457,13 @@ void Gps::showWaitStatus(SSD1306DisplayDevice *display) {
     satellitesString[0] = "OFF?";
   } else if (!gps.time.isValid()
              || (gps.time.second() == 00 && gps.time.minute() == 00 && gps.time.hour() == 00)) {
-    satellitesString[0] = "no time";
+    char timeStr[32];
+    snprintf(timeStr, sizeof(timeStr), "no time %d", mLastNoiseLevel);
+    satellitesString[0] = String(timeStr);
   } else {
     char timeStr[32];
-    snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d",
-             gps.time.hour(), gps.time.minute(), gps.time.second());
+    snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d %d",
+             gps.time.hour(), gps.time.minute(), gps.time.second(), mLastNoiseLevel);
     satellitesString[0] = String(timeStr);
     satellitesString[1] = String(gps.satellites.value()) + " satellites";
   }
@@ -662,6 +700,7 @@ void Gps::parseUbxMessage() {
         log_e("MON-HW Antenna Status %s, noise level %d", antennaStatus.c_str(),
               mGpsBuffer.u2Data[10]);
         addStatisticsMessage("aStatus: " + String(antennaStatus));
+        mLastNoiseLevel = mGpsBuffer.u2Data[10];
       }
       break;
     case (uint16_t) UBX_MSG::NAV_STATUS:
@@ -672,6 +711,15 @@ void Gps::parseUbxMessage() {
         addStatisticsMessage("TimeToFix " + String(mGpsBuffer.u4Data[3]) + "ms");
       }
       break;
+    case (uint16_t) UBX_MSG::NAV_AOPSTATUS:
+      log_e("NAV-AOPSTATUS enabled: %d status: %d time: %d",
+            mGpsBuffer.u1Data[8],
+            mGpsBuffer.u1Data[9],
+            mGpsBuffer.u4Data[1]
+      );
+      break;
+
+
     case (uint16_t) UBX_MSG::INF_ERROR:
     case (uint16_t) UBX_MSG::INF_WARNING:
     case (uint16_t) UBX_MSG::INF_NOTICE:
@@ -713,23 +761,17 @@ void Gps::parseNmeaMessage() {
   // TODO: Parse all in one message from UBX here:
 
 
-  if (mGpsBuffer.charData[3] == 'T' && mGpsBuffer.charData[4] == 'X' &&
-      mGpsBuffer.charData[5] == 'T') { // TXT
+  if (memcmp(&mGpsBuffer.charData[3], "TXT", 3)) { // TXT
     mGpsBuffer.charData[mGpsBufferBytePos - 3] = 0;
     String msg = String(&mGpsBuffer.charData[16]);
     addStatisticsMessage(msg);
-  } else if (mGpsBuffer.charData[3] == 'R' && mGpsBuffer.charData[4] == 'M' &&
-             mGpsBuffer.charData[5] == 'C') { // RMC
+  } else if (memcmp(&mGpsBuffer.charData[3], "RMC", 3)) { // RMC
     mGpsBuffer.charData[mGpsBufferBytePos - 3] = 0;
     log_e("??RMC Message '%s'", &mGpsBuffer.charData[0]);
-  } else if (mGpsBuffer.charData[3] == 'G' && mGpsBuffer.charData[4] == 'G' &&
-             mGpsBuffer.charData[5] == 'A') { // GGA
+  } else if (memcmp(&mGpsBuffer.charData[3], "GGA", 3)) { // GGA
     mGpsBuffer.charData[mGpsBufferBytePos - 3] = 0;
     log_e("??GGA Message '%s'", &mGpsBuffer.charData[0]);
-  } else if (mGpsBuffer.charData[1] == 'P' && mGpsBuffer.charData[2] == 'U' &&
-    mGpsBuffer.charData[3] == 'B' && mGpsBuffer.charData[4] == 'X' &&
-    mGpsBuffer.charData[5] == ',' && mGpsBuffer.charData[6] == '0' &&
-    mGpsBuffer.charData[7] == '0' && mGpsBuffer.charData[8] == ',') { // 21.2 UBX,00 // 0xF1 0x00
+  } else if (memcmp(&mGpsBuffer.charData[1], "PUBX,00,", 8)) { // 21.2 UBX,00 // 0xF1 0x00
     mGpsBuffer.charData[mGpsBufferBytePos - 3] = 0;
     log_e("PUBX00 Message '%s'", &mGpsBuffer.charData[9]);
   } else {
@@ -737,3 +779,4 @@ void Gps::parseNmeaMessage() {
           mGpsBuffer.u1Data[3], mGpsBuffer.u1Data[4], mGpsBuffer.u1Data[5]);
   }
 }
+
