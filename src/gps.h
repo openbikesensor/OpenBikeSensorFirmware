@@ -71,18 +71,6 @@ class Gps : public TinyGPSPlus {
   private:
     static const int MAX_MESSAGE_LENGTH = 256;
     HardwareSerial mSerial = HardwareSerial(2);
-    union GpsBuffer {
-      uint8_t u1Data[MAX_MESSAGE_LENGTH];
-      uint16_t u2Data[MAX_MESSAGE_LENGTH / 2];
-      uint32_t u4Data[MAX_MESSAGE_LENGTH / 4];
-      int8_t i1Data[MAX_MESSAGE_LENGTH];
-      int16_t i2Data[MAX_MESSAGE_LENGTH / 2];
-      int32_t i4Data[MAX_MESSAGE_LENGTH / 4];
-      float r4Data[MAX_MESSAGE_LENGTH / 4];
-      double r8Data[MAX_MESSAGE_LENGTH / 8];
-      char charData[MAX_MESSAGE_LENGTH];
-    };
-    GpsBuffer mGpsBuffer;
     int16_t mGpsBufferBytePos = 0;
     enum GpsReceiverState {
       GPS_NULL,
@@ -139,6 +127,19 @@ class Gps : public TinyGPSPlus {
         // TIM 0x0D
         // ESF 0x10
     };
+    union GpsBuffer {
+      UBX_MSG ubxMsgId;
+      uint8_t u1Data[MAX_MESSAGE_LENGTH];
+      uint16_t u2Data[MAX_MESSAGE_LENGTH / 2];
+      uint32_t u4Data[MAX_MESSAGE_LENGTH / 4];
+      int8_t i1Data[MAX_MESSAGE_LENGTH];
+      int16_t i2Data[MAX_MESSAGE_LENGTH / 2];
+      int32_t i4Data[MAX_MESSAGE_LENGTH / 4];
+      float r4Data[MAX_MESSAGE_LENGTH / 4];
+      double r8Data[MAX_MESSAGE_LENGTH / 8];
+      char charData[MAX_MESSAGE_LENGTH];
+    };
+    GpsBuffer mGpsBuffer;
     GpsReceiverState mReceiverState = GPS_NULL;
     uint32_t mMessageStarted = 0;
     uint32_t mGpsUptime = 0;

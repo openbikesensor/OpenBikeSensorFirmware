@@ -158,7 +158,7 @@ void Gps::configureGpsModule() {
   // Enable AssistNow Autonomous
   const uint8_t UBX_CFG_NAVX5[] = {
     0x00, 0x00, // 0: U2: VERSION 0
-    0x40, 0x00, // 2: X2: only AOP data
+    0x00, 0x40, // 2: X2: only AOP data
     0x00, 0x00, 0x00, 0x00, // 4: U4
     0x00, // 8: U1
     0x00, // 9: U1
@@ -186,16 +186,17 @@ void Gps::configureGpsModule() {
   sendAndWaitForAck(UBX_MSG::CFG_NAVX5, UBX_CFG_NAVX5, sizeof(UBX_CFG_NAVX5));
 
 
+  sendUbx(UBX_MSG::MON_VER);
+  sendUbx(UBX_MSG::CFG_NAVX5);
+
   updateStatistics();
 }
 
 
 bool Gps::updateStatistics() {
   sendUbx(UBX_MSG::MON_HW);
-  sendUbx(UBX_MSG::MON_VER);
   sendUbx(UBX_MSG::NAV_STATUS);
 
-  sendUbx(UBX_MSG::CFG_NAVX5);
   sendUbx(UBX_MSG::NAV_AOPSTATUS);
 
   return true;
@@ -216,6 +217,7 @@ bool Gps::setBaud() {
   // check if connected:
   bool connected = checkCommunication();
   if (!connected) {
+    log_e("Switch to 115200 was not possible, back to 9600.");
     mSerial.updateBaudRate(9600);
     connected = checkCommunication();
   }
@@ -717,8 +719,25 @@ void Gps::parseUbxMessage() {
             mGpsBuffer.u1Data[9],
             mGpsBuffer.u4Data[1]
       );
+      if (mGpsBuffer.u1Data[8] == 0) {
+        addStatisticsMessage("AssistNow Autonomous not available!");
+      } else {
+        addStatisticsMessage("AssistNow Autonomous active!");
+      }
       break;
-
+    case (uint16_t) UBX_MSG::CFG_NAVX5:
+      log_e("CFG-NAVX5 AssistNow Auto %d / minSats %d / maxSats: %d Ver: %d.",
+            mGpsBuffer.u1Data[31],
+            mGpsBuffer.u1Data[14],
+            mGpsBuffer.u1Data[15],
+            mGpsBuffer.u2Data[2]
+      );
+      if (mGpsBuffer.u1Data[31] == 0) {
+        addStatisticsMessage("AssistNow Autonomous not available!");
+      } else {
+        addStatisticsMessage("AssistNow Autonomous active!");
+      }
+      break;
 
     case (uint16_t) UBX_MSG::INF_ERROR:
     case (uint16_t) UBX_MSG::INF_WARNING:
@@ -728,7 +747,7 @@ void Gps::parseUbxMessage() {
       mGpsBuffer.u1Data[mGpsBufferBytePos - 2] = 0;
       log_e("INF %d message: %s",
             mGpsBuffer.u1Data[1], String(&mGpsBuffer.charData[4]).c_str());
-      addStatisticsMessage(String(&mGpsBuffer.charData[4]).c_str());
+      addStatisticsMessage((String(&mGpsBuffer.charData[4]) + " (" + String(mGpsBuffer.u2Data[0]) + ")").c_str());
       break;
     default:
       log_e("Got UBX_MESSAGE! Class: %0x, Id: %0x Len %04x", mGpsBuffer.u1Data[0],
@@ -761,17 +780,17 @@ void Gps::parseNmeaMessage() {
   // TODO: Parse all in one message from UBX here:
 
 
-  if (memcmp(&mGpsBuffer.charData[3], "TXT", 3)) { // TXT
+  if (memcmp(&mGpsBuffer.charData[3], "TXT", 3) == 0) {
     mGpsBuffer.charData[mGpsBufferBytePos - 3] = 0;
     String msg = String(&mGpsBuffer.charData[16]);
-    addStatisticsMessage(msg);
-  } else if (memcmp(&mGpsBuffer.charData[3], "RMC", 3)) { // RMC
+    addStatisticsMessage("TXT: " + msg);
+  } else if (memcmp(&mGpsBuffer.charData[3], "RMC", 3) == 0) {
     mGpsBuffer.charData[mGpsBufferBytePos - 3] = 0;
     log_e("??RMC Message '%s'", &mGpsBuffer.charData[0]);
-  } else if (memcmp(&mGpsBuffer.charData[3], "GGA", 3)) { // GGA
+  } else if (memcmp(&mGpsBuffer.charData[3], "GGA", 3) == 0) {
     mGpsBuffer.charData[mGpsBufferBytePos - 3] = 0;
     log_e("??GGA Message '%s'", &mGpsBuffer.charData[0]);
-  } else if (memcmp(&mGpsBuffer.charData[1], "PUBX,00,", 8)) { // 21.2 UBX,00 // 0xF1 0x00
+  } else if (memcmp(&mGpsBuffer.charData[1], "PUBX,00,", 8) == 0) { // 21.2 UBX,00 // 0xF1 0x00
     mGpsBuffer.charData[mGpsBufferBytePos - 3] = 0;
     log_e("PUBX00 Message '%s'", &mGpsBuffer.charData[9]);
   } else {
