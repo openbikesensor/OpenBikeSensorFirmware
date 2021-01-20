@@ -36,6 +36,14 @@ class ObsUtils {
     static void setClockByNtpAndWait(const char *ntpServer = nullptr);
     static bool systemTimeIsSet();
     static String toScaledByteString(uint32_t size);
+    static String dateTimeToHttpHeaderString(time_t theTime);
+
+    static const char * weekDayToString(uint8_t wDay);
+    static const char *monthToString(uint8_t mon);
+
+    static const char *WEEK_DAYS[7];
+    static const char *MONTHS[12];
+
 };
 
 

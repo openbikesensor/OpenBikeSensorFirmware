@@ -45,6 +45,41 @@ String ObsUtils::dateTimeToString(time_t theTime) {
   return String(date);
 }
 
+String ObsUtils::dateTimeToHttpHeaderString(time_t theTime) {
+  char date[32];
+  if (theTime == 0) {
+    theTime = time(nullptr);
+  }
+  tm timeStruct;
+  localtime_r(&theTime, &timeStruct);
+  snprintf(date, sizeof(date),
+           "%s, %02d %s %04d %02d:%02d:%02d GMT",
+           weekDayToString(timeStruct.tm_wday),
+           timeStruct.tm_mday,
+           monthToString(timeStruct.tm_mon),
+           timeStruct.tm_year + 1900,
+           timeStruct.tm_hour, timeStruct.tm_min, timeStruct.tm_sec);
+  return String(date);
+}
+
+const char *ObsUtils::WEEK_DAYS[] = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+const char *ObsUtils::MONTHS[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+
+const char* ObsUtils::weekDayToString(uint8_t wDay) {
+  if (wDay > 6) {
+    return "???";
+  } else {
+    return WEEK_DAYS[wDay];
+  }
+}
+
+const char* ObsUtils::monthToString(uint8_t mon) {
+  if (mon > 11) {
+    return "???";
+  } else {
+    return MONTHS[mon];
+  }
+}
 
 String ObsUtils::stripCsvFileName(const String &fileName) {
   String userPrintableFilename = fileName.substring(fileName.lastIndexOf("/") + 1);

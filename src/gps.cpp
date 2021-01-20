@@ -20,6 +20,7 @@
 
 #include "gps.h"
 #include <sys/time.h>
+#include <utils/alpdata.h>
 
 /* Most input from u-blox6_ReceiverDescrProtSpec_(GPS.G6-SW-10018)_Public.pdf */
 
@@ -155,36 +156,42 @@ void Gps::configureGpsModule() {
   sendAndWaitForAck(UBX_MSG::CFG_TP, UBX_CFG_TP, sizeof(UBX_CFG_TP));
 
 
-  // Enable AssistNow Autonomous
-  const uint8_t UBX_CFG_NAVX5[] = {
-    0x00, 0x00, // 0: U2: VERSION 0
-    0x00, 0x40, // 2: X2: only AOP data
-    0x00, 0x00, 0x00, 0x00, // 4: U4
-    0x00, // 8: U1
-    0x00, // 9: U1
-    0x00, // 10: U1
-    0x00, // 11: U1
-    0x00, // 12: U1
-    0x00, // 13: U1
-    0x00, // 14: U1
-    0x00, // 15: U1
-    0x00, // 16: U1
-    0x00, // 17: U1
-    0x00, 0x00, // 18: U2
-    0x00, 0x00, 0x00, 0x00, // 20: U4
-    0x00, // 24: U1
-    0x00, // 25: U1
-    0x00, // 26: U1
-    0x01, // 27: U1  AssistNow Autonomous 1 = Enabled
-    0x00, // 28: U1
-    0x00, // 29: U1
-    0x00, 0x00, // 30: U2: maximum acceptable (modelled) AssistNow
-                // Autonomous orbit error 0 = reset to firmware default
-    0x00, 0x00, 0x00, 0x00, // 32: U4
-    0x00, 0x00, 0x00, 0x00  // 36: U4
-  };
-  sendAndWaitForAck(UBX_MSG::CFG_NAVX5, UBX_CFG_NAVX5, sizeof(UBX_CFG_NAVX5));
-
+  if (AlpData::available()) {
+    const uint8_t UBX_CFG_MSG[] = {
+      0x0B, 0x32, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00
+    };
+    sendAndWaitForAck(UBX_MSG::CFG_MSG, UBX_CFG_MSG, sizeof(UBX_CFG_MSG));
+  } else {
+    // Enable AssistNow Autonomous
+    const uint8_t UBX_CFG_NAVX5[] = {
+      0x00, 0x00, // 0: U2: VERSION 0
+      0x00, 0x40, // 2: X2: only AOP data
+      0x00, 0x00, 0x00, 0x00, // 4: U4
+      0x00, // 8: U1
+      0x00, // 9: U1
+      0x00, // 10: U1
+      0x00, // 11: U1
+      0x00, // 12: U1
+      0x00, // 13: U1
+      0x00, // 14: U1
+      0x00, // 15: U1
+      0x00, // 16: U1
+      0x00, // 17: U1
+      0x00, 0x00, // 18: U2
+      0x00, 0x00, 0x00, 0x00, // 20: U4
+      0x00, // 24: U1
+      0x00, // 25: U1
+      0x00, // 26: U1
+      0x01, // 27: U1  AssistNow Autonomous 1 = Enabled
+      0x00, // 28: U1
+      0x00, // 29: U1
+      0x00, 0x00, // 30: U2: maximum acceptable (modelled) AssistNow
+      // Autonomous orbit error 0 = reset to firmware default
+      0x00, 0x00, 0x00, 0x00, // 32: U4
+      0x00, 0x00, 0x00, 0x00  // 36: U4
+    };
+    sendAndWaitForAck(UBX_MSG::CFG_NAVX5, UBX_CFG_NAVX5, sizeof(UBX_CFG_NAVX5));
+  }
 
   sendUbx(UBX_MSG::MON_VER);
   sendUbx(UBX_MSG::CFG_NAVX5);
@@ -194,10 +201,11 @@ void Gps::configureGpsModule() {
 
 
 bool Gps::updateStatistics() {
-  sendUbx(UBX_MSG::MON_HW);
-  sendUbx(UBX_MSG::NAV_STATUS);
+//  sendUbx(UBX_MSG::MON_HW);
+//  sendUbx(UBX_MSG::NAV_STATUS);
 
-  sendUbx(UBX_MSG::NAV_AOPSTATUS);
+//  sendUbx(UBX_MSG::NAV_AOPSTATUS);
+  sendUbx(UBX_MSG::AID_ALP);
 
   return true;
 }
@@ -720,7 +728,7 @@ void Gps::parseUbxMessage() {
             mGpsBuffer.u4Data[1]
       );
       if (mGpsBuffer.u1Data[8] == 0) {
-        addStatisticsMessage("AssistNow Autonomous not available!");
+        addStatisticsMessage("AssistNow Autonomous not active!");
       } else {
         addStatisticsMessage("AssistNow Autonomous active!");
       }
@@ -733,12 +741,39 @@ void Gps::parseUbxMessage() {
             mGpsBuffer.u2Data[2]
       );
       if (mGpsBuffer.u1Data[31] == 0) {
-        addStatisticsMessage("AssistNow Autonomous not available!");
+        addStatisticsMessage("AssistNow Autonomous not active!");
       } else {
         addStatisticsMessage("AssistNow Autonomous active!");
       }
       break;
-
+    case (uint16_t) UBX_MSG::AID_ALPSRV: {
+      log_e("AID-ALPSRV-REQ Got data request %d for type %d, offset %d, size %d",
+            mGpsBuffer.aidAlpsrvClientReq.idSize,
+            mGpsBuffer.aidAlpsrvClientReq.type,
+            mGpsBuffer.aidAlpsrvClientReq.ofs,
+            mGpsBuffer.aidAlpsrvClientReq.size);
+      uint32_t start = millis();
+      if (mGpsBuffer.aidAlpsrvClientReq.type != 0xFF) {
+        mGpsBuffer.aidAlpsrvClientReq.fileId = 1;
+        uint16_t length = (uint16_t) MAX_MESSAGE_LENGTH - 20;
+        if (length > 2 * mGpsBuffer.aidAlpsrvClientReq.size) {
+          length = 2 * mGpsBuffer.aidAlpsrvClientReq.size;
+        }
+        mGpsBuffer.aidAlpsrvClientReq.dataSize =
+          AlpData::fill(&mGpsBuffer.u1Data[20],
+                        2 * mGpsBuffer.aidAlpsrvClientReq.ofs,
+                        length);
+        // Error handling no data?
+        sendUbx(UBX_MSG::AID_ALPSRV, &mGpsBuffer.u1Data[4],
+                mGpsBuffer.aidAlpsrvClientReq.dataSize + 16);
+        log_e("Did send %d bytes in %d ms",
+              mGpsBuffer.aidAlpsrvClientReq.dataSize + 16,
+              millis() - start);
+      } else {
+        log_e("**NOT SUPPORTED YET - TYPE 99**");
+      }
+    }
+      break;
     case (uint16_t) UBX_MSG::INF_ERROR:
     case (uint16_t) UBX_MSG::INF_WARNING:
     case (uint16_t) UBX_MSG::INF_NOTICE:
@@ -786,16 +821,15 @@ void Gps::parseNmeaMessage() {
     addStatisticsMessage("TXT: " + msg);
   } else if (memcmp(&mGpsBuffer.charData[3], "RMC", 3) == 0) {
     mGpsBuffer.charData[mGpsBufferBytePos - 3] = 0;
-    log_e("??RMC Message '%s'", &mGpsBuffer.charData[0]);
+//    log_e("??RMC Message '%s'", &mGpsBuffer.charData[0]);
   } else if (memcmp(&mGpsBuffer.charData[3], "GGA", 3) == 0) {
     mGpsBuffer.charData[mGpsBufferBytePos - 3] = 0;
-    log_e("??GGA Message '%s'", &mGpsBuffer.charData[0]);
+//    log_e("??GGA Message '%s'", &mGpsBuffer.charData[0]);
   } else if (memcmp(&mGpsBuffer.charData[1], "PUBX,00,", 8) == 0) { // 21.2 UBX,00 // 0xF1 0x00
     mGpsBuffer.charData[mGpsBufferBytePos - 3] = 0;
-    log_e("PUBX00 Message '%s'", &mGpsBuffer.charData[9]);
+//    log_e("PUBX00 Message '%s'", &mGpsBuffer.charData[9]);
   } else {
     log_e("Unparsed NMEA %c%c%c%c%c", mGpsBuffer.u1Data[1], mGpsBuffer.u1Data[2],
           mGpsBuffer.u1Data[3], mGpsBuffer.u1Data[4], mGpsBuffer.u1Data[5]);
   }
 }
-

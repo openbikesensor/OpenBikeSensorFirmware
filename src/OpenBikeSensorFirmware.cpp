@@ -199,8 +199,6 @@ void setup() {
     config.sensorOffsets[RIGHT_SENSOR_ID]);
   displayTest->showTextOnGrid(2, displayTest->currentLine(), buffer);
 
-  gps.begin();
-
   //##############################################################
   // Handle SD
   //##############################################################
@@ -220,6 +218,7 @@ void setup() {
     displayTest->showTextOnGrid(2, displayTest->currentLine(), "SD... ok");
   }
   delay(333); // Added for user experience
+  gps.begin();
 
   //##############################################################
   // Init HCSR04
@@ -379,7 +378,14 @@ void handleButtonInServerMode() {
 }
 
 
+long lastStatistics;
+
 void loop() {
+  if (currentTimeMillis - lastStatistics > 10000) {
+    lastStatistics = currentTimeMillis;
+    gps.updateStatistics();
+  }
+
 
   Serial.println("loop()");
 

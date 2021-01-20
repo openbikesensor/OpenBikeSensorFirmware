@@ -26,6 +26,7 @@
 #include "configServer.h"
 #include "OpenBikeSensorFirmware.h"
 #include <uploader.h>
+#include <utils/alpdata.h>
 #include "SPIFFS.h"
 
 static const char *const HTML_ENTITY_FAILED_CROSS = "&#x274C;";
@@ -682,6 +683,9 @@ void startServer(ObsConfig *obsConfig) {
     voltageMeter = new VoltageMeter();
   }
   gps.handle();
+
+  AlpData::update();
+
 
   // #############################################
   // Handle web pages

@@ -124,6 +124,9 @@ class Gps : public TinyGPSPlus {
         MON_HW = 0x090a,
 
         // AID 0x0B
+        AID_ALPSRV = 0x320B,
+        AID_ALP = 0x500B,
+
         // TIM 0x0D
         // ESF 0x10
     };
@@ -138,6 +141,32 @@ class Gps : public TinyGPSPlus {
       float r4Data[MAX_MESSAGE_LENGTH / 4];
       double r8Data[MAX_MESSAGE_LENGTH / 8];
       char charData[MAX_MESSAGE_LENGTH];
+
+      struct  {
+        uint16_t ubxMsgId;
+        uint16_t length;
+        uint8_t idSize;
+        uint8_t type;
+        uint16_t ofs;
+        uint16_t size;
+        uint16_t fileId;
+        uint16_t dataSize;
+        uint8_t id1;
+        uint8_t id2;
+        uint32_t id3;
+      } aidAlpsrvClientReq;
+      struct  {
+        uint16_t ubxMsgId;
+        uint32_t predTow;
+        uint32_t predDur;
+        int32_t age;
+        uint16_t predWno;
+        uint16_t almWno;
+        uint32_t reserved1;
+        uint8_t svs;
+        uint8_t reserved2;
+        uint16_t reserved3;
+      } aidAlpStatus;
     };
     GpsBuffer mGpsBuffer;
     GpsReceiverState mReceiverState = GPS_NULL;
