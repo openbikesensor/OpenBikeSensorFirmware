@@ -647,7 +647,6 @@ bool CreateWifiSoftAP(String chipID) {
 void startServer(ObsConfig *obsConfig) {
   theObsConfig = obsConfig;
 
-  gps.handle();
   uint64_t chipid_num;
   chipid_num = ESP.getEfuseMac();
   esp_chipid = String((uint16_t)(chipid_num >> 32), HEX);
@@ -687,13 +686,10 @@ void startServer(ObsConfig *obsConfig) {
   }
   /*return index page which is stored in serverIndex */
 
-  gps.handle();
   ObsUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
-  gps.handle();
   if (!voltageMeter) {
     voltageMeter = new VoltageMeter();
   }
-  gps.handle();
 
   AlpData::update();
 

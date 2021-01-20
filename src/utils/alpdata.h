@@ -20,10 +20,12 @@
 #ifndef OPENBIKESENSORFIRMWARE_ALPDATA_H
 #define OPENBIKESENSORFIRMWARE_ALPDATA_H
 
+#include <SD.h>
 
 static const char *const LAST_MODIFIED_HEADER_FILE_NAME = "/current_14d.hdr";
 
 static const char *const ALP_DATA_FILE_NAME = "/current_14d.alp";
+static const char *const ALP_NEW_DATA_FILE_NAME = "/current_14d.new";
 
 static const char *const ALP_DOWNLOAD_URL = "http://alp.u-blox.com/current_14d.alp";
 
@@ -31,12 +33,12 @@ class AlpData {
   public:
     static void update();
     static bool available();
-    static uint16_t fill(uint8_t *data, uint16_t ofs, uint16_t dataSize);
+    uint16_t fill(uint8_t *data, uint16_t ofs, uint16_t dataSize);
 
   private:
     static void saveLastModified(String header);
     static String loadLastModified();
-
+    File mAlpDataFile;
 };
 
 

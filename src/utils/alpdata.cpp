@@ -29,12 +29,18 @@
 void AlpData::update() {
   String lastModified = loadLastModified();
 
-  File f = SD.open(ALP_DATA_FILE_NAME, FILE_WRITE);
-  HTTPClient httpClient;
-
+  File f = SD.open(ALP_DATA_FILE_NAME, FILE_READ);
+  if (!f || f.size() < 1024) {
+    lastModified = "";
+  } else {
+    log_e("Existing file seems valid. Size is %d", f.size());
+  }
+  f.close();
   log_e("Existing file is from %s", lastModified.c_str());
 
+  f = SD.open(ALP_NEW_DATA_FILE_NAME, FILE_WRITE);
   if (f) {
+    HTTPClient httpClient;
     httpClient.begin(ALP_DOWNLOAD_URL);
     const char *lastModifiedHeaderName = "Last-Modified";
     const char *headers[] = {lastModifiedHeaderName};
@@ -54,7 +60,10 @@ void AlpData::update() {
         log_e("[HTTP] READ... failed, error: %s", httpClient.errorToString(httpCode).c_str());
       }
       log_e("Read %d bytes - all god! %s", written, newLastModified.c_str());
-
+      f.close();
+      SD.remove(ALP_DATA_FILE_NAME);
+      delay(100);
+      SD.rename(ALP_NEW_DATA_FILE_NAME, ALP_DATA_FILE_NAME);
       saveLastModified(newLastModified);
 
     } else if (httpCode == 304) {
@@ -90,9 +99,21 @@ String AlpData::loadLastModified() {
 }
 
 uint16_t AlpData::fill(uint8_t *data, uint16_t ofs, uint16_t dataSize) {
-  File f = SD.open(ALP_DATA_FILE_NAME, FILE_READ);
-  f.seek(ofs);
-  int read = f.read(data, dataSize);
-  f.close();
+  if (!mAlpDataFile) {
+    mAlpDataFile = SD.open(ALP_DATA_FILE_NAME, FILE_READ);
+  }
+  mAlpDataFile.seek(ofs);
+  int read = mAlpDataFile.read(data, dataSize);
+  if (read <= 0) {
+    log_e("Failed to read got %d.", read);
+    mAlpDataFile.close();
+    mAlpDataFile = SD.open(ALP_DATA_FILE_NAME, FILE_READ);
+    mAlpDataFile.seek(ofs);
+    read = mAlpDataFile.read(data, dataSize);
+    log_e("Read again: %d.", read);
+  }
+// not closing the file saves 10ms per message
+// - need to take care when writing!
+//  mAlpDataFile.close();
   return read;
 }

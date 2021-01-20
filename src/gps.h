@@ -24,6 +24,7 @@
 #include <Arduino.h>
 #include <TinyGPS++.h> // http://arduiniana.org/libraries/tinygpsplus/
 #include <HardwareSerial.h>
+#include <utils/alpdata.h>
 #include "config.h" // PrivacyArea
 #include "displays.h"
 
@@ -114,6 +115,7 @@ class Gps : public TinyGPSPlus {
         CFG_PRT = 0x0006,
         CFG_MSG = 0x0106,
         CFG_INF = 0x0206,
+        CFG_RST = 0x0406,
         CFG_TP = 0x0706,
         CFG_CFG = 0x0906,
         CFG_NAVX5 = 0x2306,
@@ -201,6 +203,7 @@ class Gps : public TinyGPSPlus {
     void parseNmeaMessage();
 
     uint16_t mLastNoiseLevel;
+    AlpData mAlpData;
 };
 
 

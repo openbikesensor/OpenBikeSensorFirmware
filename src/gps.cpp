@@ -29,7 +29,7 @@
 static const time_t PAST_TIME = 1606672131;
 
 void Gps::begin() {
-  mSerial.begin(9600, SERIAL_8N1); // , 16, 17);
+  setBaud();
   configureGpsModule();
 }
 
@@ -83,19 +83,30 @@ void Gps::sendUbx(uint16_t ubxMsgId, const uint8_t payload[], uint16_t length) {
   }
   buffer[6 + length] = chkA;
   buffer[7 + length] = chkB;
-#if ARDUHAL_LOG_LEVEL >= ARDUHAL_LOG_LEVEL_DEBUG
-  String out = String(length) + ": ";
-  for (int i = 0; i < sizeof(buffer); i++) {
-    out += String(buffer[i], 16) + " ";
-  }
-  log_d("%s", out.c_str());
-#endif
   mSerial.write(buffer, sizeof(buffer));
+
+#ifdef GPS_SEND_UBX_DATA_DUMP
+  String debug;
+  char buf[16];
+  for(int i = 0; i < sizeof(buffer); i++) {
+    if (i % 16 == 0) {
+      snprintf(buf, 8, "\n%04X  ", i);
+      debug += buf;
+    }
+    snprintf(buf, 8, "%02X ", buffer[i]);
+    debug += buf;
+  }
+  log_e("%s", debug.c_str());
+#endif
 }
 
 void Gps::configureGpsModule() {
-  log_d("Sending config to GPS module.");
-  setBaud();
+#ifdef GPS_RESET_BEFOR_START_FOR_TESTING
+  // RESET!
+  log_e("RESET GPS!");
+  const uint8_t UBX_CFG_RST[] = {0xFF, 0xFF, 0x02, 0x00};
+  sendAndWaitForAck(UBX_MSG::CFG_RST, UBX_CFG_RST, 4);
+  delay(300);
 
   // TODO: Only if our setting was not found already (at 115200!?)
   // RESET TO DEFAULT OK?
@@ -104,9 +115,10 @@ void Gps::configureGpsModule() {
     0xFE, 0xFF, 0x00, 0x00, 0x03
   };
   sendAndWaitForAck(UBX_MSG::CFG_CFG, UBX_CFG_CFG, sizeof(UBX_CFG_CFG));
-  setBaud();
 
+#endif
 
+  log_d("Sending config to GPS module.");
   // switch of periodic gps messages that we do not use, leaves GGA and RMC on
   mSerial.print(F("$PUBX,40,GSV,0,0,0,0*59\r\n"));
   mSerial.print(F("$PUBX,40,GSA,0,0,0,0*4E\r\n"));
@@ -201,23 +213,23 @@ void Gps::configureGpsModule() {
 
 
 bool Gps::updateStatistics() {
-//  sendUbx(UBX_MSG::MON_HW);
-//  sendUbx(UBX_MSG::NAV_STATUS);
+  sendUbx(UBX_MSG::MON_HW);
+  sendUbx(UBX_MSG::NAV_STATUS);
 
-//  sendUbx(UBX_MSG::NAV_AOPSTATUS);
+  // sendUbx(UBX_MSG::NAV_AOPSTATUS);
   sendUbx(UBX_MSG::AID_ALP);
 
   return true;
 }
 
 bool Gps::setBaud() {
+  mSerial.begin(9600, SERIAL_8N1); // , 16, 17);
+  // switch to 115200 "blind"
   const uint8_t UBX_CFG_PRT[] = {
     0x01, 0x00, 0x00, 0x00, 0xd0, 0x08, 0x00, 0x00,
     0x00, 0xc2, 0x01, 0x00, 0x03, 0x00, 0x03, 0x00,
     0x00, 0x00, 0x00, 0x00
   };
-
-  // switch to 115200 "blind"
   sendUbx(UBX_MSG::CFG_PRT, UBX_CFG_PRT, sizeof(UBX_CFG_PRT));
   mSerial.flush();
   mSerial.updateBaudRate(115200);
@@ -317,9 +329,10 @@ void Gps::handle() {
     }
   }
   // send configuration multiple times
-  if (gotGpsData && passedChecksum() > 1 && passedChecksum() < 110 && 0 == passedChecksum() % 11) {
- //   configureGpsModule();
-  }
+// TODO: Not needed any more we scan the results
+//  if (gotGpsData && passedChecksum() > 1 && passedChecksum() < 110 && 0 == passedChecksum() % 11) {
+//    configureGpsModule();
+//  }
 }
 
 void Gps::addStatisticsMessage(String newMessage) {
@@ -524,7 +537,7 @@ String Gps::getMessages() const {
 }
 
 bool Gps::encodeUbx(uint8_t data) {
-  // TODO: Re-parse buffer on failure
+  // TODO: Re-parse buffer on failure, likely not needed
   // TODO: Detect delay while inside a message
   // TODO: Write wait for Ack(UBX_MES_ID))
   if (mReceiverState >= NMEA_START && mReceiverState < NMEA_CR
@@ -534,6 +547,17 @@ bool Gps::encodeUbx(uint8_t data) {
             String(mGpsBuffer.charData).substring(0, mGpsBufferBytePos).c_str());
       mReceiverState = GPS_NULL;
   }
+  if (mReceiverState == NMEA_CR && data != '\r') {
+    log_e("Invalid char while expecting \\r in NMEA message, reset: %02x '%c'",
+          data, data);
+    mReceiverState = GPS_NULL;
+  }
+  if (mReceiverState == NMEA_LF && data != '\n') {
+    log_e("Invalid char while expecting \\n in NMEA message, reset: %02x '%c'",
+          data, data);
+    mReceiverState = GPS_NULL;
+  }
+
   if (mReceiverState == GPS_NULL) {
     mGpsBufferBytePos = 0;
   }
@@ -760,7 +784,7 @@ void Gps::parseUbxMessage() {
           length = 2 * mGpsBuffer.aidAlpsrvClientReq.size;
         }
         mGpsBuffer.aidAlpsrvClientReq.dataSize =
-          AlpData::fill(&mGpsBuffer.u1Data[20],
+          mAlpData.fill(&mGpsBuffer.u1Data[20],
                         2 * mGpsBuffer.aidAlpsrvClientReq.ofs,
                         length);
         // Error handling no data?
@@ -782,7 +806,8 @@ void Gps::parseUbxMessage() {
       mGpsBuffer.u1Data[mGpsBufferBytePos - 2] = 0;
       log_e("INF %d message: %s",
             mGpsBuffer.u1Data[1], String(&mGpsBuffer.charData[4]).c_str());
-      addStatisticsMessage((String(&mGpsBuffer.charData[4]) + " (" + String(mGpsBuffer.u2Data[0]) + ")").c_str());
+      addStatisticsMessage((String(&mGpsBuffer.charData[4])
+          + " (0x" + String(mGpsBuffer.u2Data[0], 16) + ")").c_str());
       break;
     default:
       log_e("Got UBX_MESSAGE! Class: %0x, Id: %0x Len %04x", mGpsBuffer.u1Data[0],
