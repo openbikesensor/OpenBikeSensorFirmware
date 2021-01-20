@@ -93,9 +93,10 @@ bool Uploader::uploadFile(File &file) {
     https.addHeader("Authorization", "OBSUserId " + mPortalUserToken);
     https.addHeader("Content-Type", "application/json");
 
-    String fileName = ObsUtils::stripCsvFileName(file.name());
+    String displayFileName = ObsUtils::stripCsvFileName(file.name());
+    String fileName = String(file.name()).substring(1);
     MultipartStream mp(&https);
-    MultipartDataString title("title", "AutoUpload " + fileName);
+    MultipartDataString title("title", "AutoUpload " + displayFileName);
     mp.add(title);
     MultipartDataString description("description", "Uploaded with OpenBikeSensor " + String(OBSVersion));
     mp.add(description);
