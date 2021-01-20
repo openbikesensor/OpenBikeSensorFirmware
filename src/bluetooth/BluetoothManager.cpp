@@ -11,12 +11,12 @@ void BluetoothManager::init(
   BLEDevice::init(obsName.c_str());
   pServer = BLEDevice::createServer();
 
-// DeviceInfoService disabled for now, max 6 services
-//  services.push_back(new DeviceInfoService);
+  services.push_back(new DeviceInfoService);
   services.push_back(new HeartRateService);
   services.push_back(new BatteryService(batteryPercentage));
   services.push_back(new DistanceService);
-  services.push_back(new ConnectionService);
+// ConnectionService disabled, max 6 services
+//  services.push_back(new ConnectionService);
   services.push_back(new ClosePassService);
   services.push_back(new ObsService(leftOffset, rightOffset, trackId));
 
@@ -46,13 +46,21 @@ void BluetoothManager::disconnectDevice() const {
 }
 
 void BluetoothManager::newSensorValues(const uint32_t millis, const uint16_t leftValues, const uint16_t rightValues) {
-  for (auto &service : services) {
-    service->newSensorValues(millis, leftValues, rightValues);
+  if (hasConnectedClients()) {
+    for (auto &service : services) {
+      service->newSensorValues(millis, leftValues, rightValues);
+    }
   }
 }
 
 void BluetoothManager::newPassEvent(const uint32_t millis, const uint16_t leftValue, const uint16_t rightValue) {
-  for (auto &service : services) {
-    service->newPassEvent(millis, leftValue, rightValue);
+  if (hasConnectedClients()) {
+    for (auto &service : services) {
+      service->newPassEvent(millis, leftValue, rightValue);
+    }
   }
+}
+
+bool BluetoothManager::hasConnectedClients() {
+  return pServer->getConnectedCount() != 0;
 }

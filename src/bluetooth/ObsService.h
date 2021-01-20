@@ -46,30 +46,20 @@ class ObsService : public IBluetoothService {
 
     BLECharacteristic mTimeCharacteristic
       = BLECharacteristic(OBS_TIME_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ);
-    BLEDescriptor mTimeDescriptor = BLEUUID((uint16_t)ESP_GATT_UUID_CHAR_DESCRIPTION);
     ObsTimeServiceCallback mTimeCharacteristicsCallback;
 
     BLECharacteristic mDistanceCharacteristic
       = BLECharacteristic(OBS_DISTANCE_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_NOTIFY);
-    BLEDescriptor mDistanceDescriptor = BLEDescriptor(BLEUUID((uint16_t)ESP_GATT_UUID_CHAR_DESCRIPTION));
 
     BLECharacteristic mButtonCharacteristic
       = BLECharacteristic(OBS_BUTTON_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_NOTIFY);
-    BLEDescriptor mButtonDescriptor = BLEDescriptor(BLEUUID((uint16_t)ESP_GATT_UUID_CHAR_DESCRIPTION));
 
     BLECharacteristic mOffsetCharacteristic
       = BLECharacteristic(OBS_OFFSET_CHARACTERISTIC_UUID,BLECharacteristic::PROPERTY_READ);
-    BLEDescriptor mOffsetDescriptor = BLEDescriptor(BLEUUID((uint16_t)ESP_GATT_UUID_CHAR_DESCRIPTION));
 
     BLECharacteristic mTrackIdCharacteristic
       = BLECharacteristic(OBS_TRACK_ID_CHARACTERISTIC_UUID,BLECharacteristic::PROPERTY_READ);
-    BLEDescriptor mTrackIdDescriptor = BLEDescriptor(BLEUUID((uint16_t)ESP_GATT_UUID_CHAR_DESCRIPTION));
 
-    static const std::string TIME_DESCRIPTION_TEXT;
-    static const std::string DISTANCE_DESCRIPTION_TEXT;
-    static const std::string BUTTON_DESCRIPTION_TEXT;
-    static const std::string OFFSET_DESCRIPTION_TEXT;
-    static const std::string TRACK_ID_DESCRIPTION_TEXT;
     static const BLEUUID OBS_SERVICE_UUID;
     static const BLEUUID OBS_TIME_CHARACTERISTIC_UUID;
     static const BLEUUID OBS_DISTANCE_CHARACTERISTIC_UUID;

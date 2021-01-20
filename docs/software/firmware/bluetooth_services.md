@@ -21,8 +21,6 @@ grand_parent: Software
 - *Description:* General information about the bluetooth device
 - *UUID:* `0000180A-0000-1000-8000-00805F9B34FB`
 
-Currently not available.
-
 | Characteristic    | UUID                                   | Property | Value              |
 | ----------------- | -------------------------------------- | -------- | ------------------ |
 | Firmware Revision | `00002a26-0000-1000-8000-00805f9b34fb` | `READ`   | `vX.Y.ZZZZ`        |
@@ -35,7 +33,7 @@ Currently not available.
 
 | Characteristic  | UUID                                   | Property         | Value                                     |
 | --------------- | -------------------------------------- | ---------------- | ----------------------------------------- |
-| Heart Rate      | `00002a37-0000-1000-8000-00805f9b34fb` | `NOTIFY`         | Minimum distance measured over one second |
+| Heart Rate      | `00002a37-0000-1000-8000-00805f9b34fb` | `NOTIFY`         | Minimum distance measured over 1/2 second |
 
 
 ## Distance Service
@@ -56,7 +54,7 @@ The list of sensor values for one side might be empty but the entire transmitted
 - *Description:* Connection status for interactive pairing
 - *UUID:* `1FE7FAF9-CE63-4236-0002-000000000000`
 
-Might get removed soon.
+Currently not available. Might get removed soon.
 
 | Characteristic    | UUID                                   | Property        | Value |
 | ----------------- | -------------------------------------- | --------------- | ----- |
