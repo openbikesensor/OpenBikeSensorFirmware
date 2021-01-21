@@ -274,21 +274,32 @@ bool ObsConfig::loadConfig(const String &filename) {
   return loadJson(jsonData, filename);
 }
 
+bool ObsConfig::loadConfig(File &file) {
+  log_d("Loading config json from %s.", file.name());
+  return loadJson(jsonData, file);
+}
+
 bool ObsConfig::loadJson(JsonDocument &jsonDocument, const String &filename) {
-  bool success = false;
   File file = SPIFFS.open(filename);
+  bool success = loadJson(jsonDocument, file);
+  file.close();
+  return success;
+}
+
+bool ObsConfig::loadJson(JsonDocument &jsonDocument, File &file) {
+  bool success = false;
   jsonDocument.clear();
   DeserializationError error = deserializeJson(jsonDocument, file);
   if (error) {
     log_w("Failed to read file %s, using default configuration got %s.\n",
-          filename.c_str(), error.c_str());
+          file.name(), error.c_str());
   } else {
     success = true;
   }
   file.close();
 
 #ifdef DEVELOP
-  log_d("Config found in file '%s':", filename.c_str());
+  log_d("Config found in file '%s':", file.name());
   serializeJsonPretty(jsonDocument, Serial);
   log_d("------------------------------------------");
 #endif

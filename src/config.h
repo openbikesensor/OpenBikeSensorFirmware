@@ -24,6 +24,7 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <vector>
+#include <FS.h>
 
 enum DisplayOptions {
   DisplaySatellites = 0x01,  // 1
@@ -85,6 +86,7 @@ class ObsConfig {
     ObsConfig() : jsonData(4096) {};
     ~ObsConfig() = default;
     bool loadConfig();
+    bool loadConfig(File &file);
     bool saveConfig() const;
     void printConfig() const;
 
@@ -140,6 +142,7 @@ class ObsConfig {
 
   private:
     static bool loadJson(JsonDocument &jsonDocument, const String &filename);
+    static bool loadJson(JsonDocument &jsonDocument, fs::File &file);
     static bool parseJsonFromString(JsonDocument &jsonDocument, const String &jsonAsString);
     bool loadOldConfig(const String &filename);
     bool loadConfig(const String &filename);
