@@ -609,10 +609,12 @@ void loadConfig(ObsConfig &cfg) {
     File f = SD.open("/obs.json");
     if (cfg.loadConfig(f)) {
       cfg.saveConfig();
+      displayTest->showTextOnGrid(2, displayTest->newLine(), "done.");
+    } else {
+      displayTest->showTextOnGrid(2, displayTest->newLine(), "format error.");
     }
     f.close();
     SD.remove("/obs.json");
-    displayTest->showTextOnGrid(2, displayTest->newLine(), "done.");
     delay(5000);
   } else {
     log_d("No configuration init from SD. SD: %d File: %d", SD.begin(), (SD.begin() && SD.exists("/obs.json")));
