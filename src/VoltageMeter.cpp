@@ -12,17 +12,18 @@
  * Using ESP32 calls not arduino lib calls here.
  * ESPCode: https://github.com/espressif/esp-idf/blob/master/components/esp_adc_cal/include/esp_adc_cal.h
  */
-VoltageMeter::VoltageMeter() {
+VoltageMeter::VoltageMeter(uint8_t batteryPin, adc1_channel_t channel) :
+  mBatteryPin(batteryPin), mBatteryAdcChannel(channel) {
 #ifdef DEVELOP
   Serial.print("Initializing VoltageMeter.\n");
 #endif
-  pinMode(BATTERY_PIN, INPUT);
+  pinMode(mBatteryPin, INPUT);
   ESP_ERROR_CHECK_WITHOUT_ABORT(
     adc1_config_width(ADC_WIDTH_BIT_12));
   // Suggested range for ADC_ATTEN_DB_11 is 150 - 2450 mV, we are a bit above 4.22V * 2/3 == 2.81V
   // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/adc.html#api-reference
   ESP_ERROR_CHECK_WITHOUT_ABORT(
-    adc1_config_channel_atten(BATTERY_ADC_CHANNEL, ADC_ATTEN_DB_11));
+    adc1_config_channel_atten(mBatteryAdcChannel, ADC_ATTEN_DB_11));
   __unused const esp_adc_cal_value_t val_type = esp_adc_cal_characterize(
       ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12,
       REF_VOLTAGE_MILLI_VOLT, &adc_chars);
@@ -89,6 +90,6 @@ int VoltageMeter::readSmoothed() {
 }
 
 int VoltageMeter::readRaw() const {
-  return adc1_get_raw(BATTERY_ADC_CHANNEL);
+  return adc1_get_raw(mBatteryAdcChannel);
 }
 
