@@ -70,7 +70,7 @@ class Gps : public TinyGPSPlus {
 
 
   private:
-    static const int MAX_MESSAGE_LENGTH = 256;
+    static const int MAX_MESSAGE_LENGTH = 128 * 3; // ALP msgs up to 0x16A, might be more
     HardwareSerial mSerial = HardwareSerial(2);
     int16_t mGpsBufferBytePos = 0;
     enum GpsReceiverState {

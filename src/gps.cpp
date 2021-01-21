@@ -31,6 +31,8 @@ static const time_t PAST_TIME = 1606672131;
 void Gps::begin() {
   setBaud();
   configureGpsModule();
+  // Get initial data and send it to GPS Module
+  // Last position, others?
 }
 
 time_t Gps::getGpsTime() {
@@ -309,7 +311,9 @@ void Gps::handle() {
 #endif
 
   boolean gotGpsData = false;
+  int bytesProcessed = 0;
   while (mSerial.available() > 0) {
+    bytesProcessed++;
     int data = mSerial.read();
     encodeUbx(data);
     if (encode(data)) {
@@ -325,6 +329,9 @@ void Gps::handle() {
         const struct timeval now = {.tv_sec = t};
         settimeofday(&now, nullptr);
         log_d("Time set %ld.\n", t);
+      }
+      if (bytesProcessed > 512) {
+        break;
       }
     }
   }

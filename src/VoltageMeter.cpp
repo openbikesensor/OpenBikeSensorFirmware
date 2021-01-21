@@ -72,10 +72,10 @@ double VoltageMeter::read() {
 
 uint8_t VoltageMeter::readPercentage() {
   // TODO: Better formula from Benjamin!
-  // 4.22 == 100% / 3.5 = 0%
-  int16_t result = ((read() - 3.5) / 0.0072);
+  // 4.22 == 100% / 3.47 = 0%
+  int16_t result = 10 + ((read() - 3.47) / 0.0075);
   if (result < 0) {
-    result = 0;
+    result = 10;
   } else if (result > 100) {
     result = 100;
   }

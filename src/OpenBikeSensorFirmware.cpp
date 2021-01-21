@@ -324,14 +324,11 @@ void setup() {
       lastBluetoothInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
       bluetoothManager->newSensorValues(currentTimeMillis, MAX_SENSOR_VALUE, MAX_SENSOR_VALUE);
     }
-    delay(50);
     gps.showWaitStatus(displayTest);
-
     if (currentTimeMillis - lastStatistics > 10000) {
       lastStatistics = currentTimeMillis;
       gps.updateStatistics();
     }
-
     buttonState = digitalRead(PushButton_PIN);
     if (buttonState == HIGH
         || (config.simRaMode && !gps.moduleIsAlive()) // no module && simRaMode
