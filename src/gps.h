@@ -127,6 +127,7 @@ class Gps : public TinyGPSPlus {
         MON_HW = 0x090a,
 
         // AID 0x0B
+        AID_INI = 0x010B,
         AID_ALPSRV = 0x320B,
         AID_ALP = 0x500B,
 
@@ -261,6 +262,31 @@ class Gps : public TinyGPSPlus {
         uint32_t reserved2;
         uint32_t reserved3;
       } navAopStatus;
+      struct __attribute__((__packed__)) AID_INI {
+        UBX_HEADER ubxHeader;
+        int32_t ecefXorLat;
+        int32_t ecefYorLon;
+        int32_t ecefZorAlt;
+        uint32_t posAcc;
+        uint16_t tmCfg;
+        uint16_t wn;
+        uint32_t tow;
+        int32_t towNs;
+        uint32_t tAccMs;
+        uint32_t tAccNs;
+        int32_t clkDorFreq;
+        uint32_t clkDaccOrFreqAcc;
+        enum FLAGS : uint32_t {
+          POS = 1,
+          TIME = 1 << 1,
+          CLOCK_D = 1 << 2,
+          TP = 1 << 3,
+          CLOCK_F = 1 << 4,
+          LLA = 1 << 5,
+          ALT_INV = 1 << 6,
+          PREV_TM = 1 << 7,
+        } flags;
+      } aidIni;
       struct __attribute__((__packed__)) {
         UBX_HEADER ubxHeader;
         uint8_t idSize;
@@ -306,6 +332,7 @@ class Gps : public TinyGPSPlus {
     uint8_t hexValue(uint8_t data);
     uint16_t mLastNoiseLevel;
     AlpData mAlpData;
+    bool mAidIniSent = false;
 
     time_t getGpsTime();
     void configureGpsModule();
@@ -324,6 +351,7 @@ class Gps : public TinyGPSPlus {
     static void randomOffset(PrivacyArea &p);
     static time_t toTime(uint16_t week, uint32_t weekTime);
     static void logHexDump(const uint8_t *buffer, uint16_t length);
+    void aidIni();
 };
 
 

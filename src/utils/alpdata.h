@@ -27,6 +27,8 @@ static const char *const LAST_MODIFIED_HEADER_FILE_NAME = "/current_14d.hdr";
 
 static const char *const ALP_DATA_FILE_NAME = "/current_14d.alp";
 static const char *const ALP_NEW_DATA_FILE_NAME = "/current_14d.new";
+static const char *const AID_INI_DATA_FILE_NAME = "/aid_ini.ubx";
+
 static const int32_t ALP_DATA_MIN_FILE_SIZE = 80000; // CHECK!
 
 static const char *const ALP_DOWNLOAD_URL = "https://alp.u-blox.com/current_14d.alp";
@@ -35,6 +37,8 @@ class AlpData {
   public:
     static void update(SSD1306DisplayDevice *display);
     static bool available();
+    static void saveMessage(uint8_t *data, size_t size);
+    static size_t loadMessage(uint8_t *data, size_t size);
 
     uint16_t fill(uint8_t *data, size_t ofs, uint16_t dataSize);
     void save(uint8_t *data, size_t offset, int length);
@@ -44,6 +48,7 @@ class AlpData {
     static String loadLastModified();
     static void displayHttpClientError(SSD1306DisplayDevice *display, int httpError);
     File mAlpDataFile;
+
 };
 
 

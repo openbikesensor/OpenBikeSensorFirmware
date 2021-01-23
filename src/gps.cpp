@@ -32,9 +32,9 @@ static const time_t PAST_TIME = 1606672131;
 void Gps::begin() {
   setBaud();
 //  configureGpsModule(); // ONLY ONCE!
+  handle();
   sendUbx(UBX_MSG::MON_VER);
   sendUbx(UBX_MSG::CFG_NAVX5);
-
 
   // Get initial data and send it to GPS Module
   // Last position, others?
@@ -238,15 +238,19 @@ void Gps::configureGpsModule() {
     sendAndWaitForAck(UBX_MSG::CFG_NAVX5, UBX_CFG_NAVX5, sizeof(UBX_CFG_NAVX5));
   }
 
+  // request AID_INI every 120 second
+  ubxCfgMsg[0] = ((uint16_t) UBX_MSG::AID_INI) & 0xFFu;
+  ubxCfgMsg[1] = ((uint16_t) UBX_MSG::AID_INI) >> 8u;
+  ubxCfgMsg[3] = 120; // every 2 minutes
+  sendAndWaitForAck(UBX_MSG::CFG_MSG, ubxCfgMsg, sizeof(ubxCfgMsg));
+
   // Persist configuration
   const uint8_t UBX_CFG_CFG_SAVE[] = {
     0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x17
   };
   sendAndWaitForAck(UBX_MSG::CFG_CFG, UBX_CFG_CFG_SAVE, sizeof(UBX_CFG_CFG_SAVE));
-
-  updateStatistics();
-  log_e("Config GPS done!");
+  log_d("Config GPS done!");
 }
 
 
@@ -267,7 +271,6 @@ bool Gps::setBaud() {
   mSerial.begin(115200, SERIAL_8N1);
   if (checkCommunication()) {
     log_e("GPS startup configured with 115200, fine!");
-    updateStatistics();
     return true;
   }
 
@@ -348,7 +351,7 @@ bool Gps::sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer, size_t size
 
 void Gps::handle() {
 // #ifdef DEVELOP
-  if (mSerial.available() > 126) {
+  if (mSerial.available() > 200) {
     time_t now;
     char buffer[64];
     struct tm timeInfo;
@@ -403,6 +406,18 @@ void Gps::addStatisticsMessage(String newMessage) {
     }
     // TODO: Refine!
     if (newMessage.startsWith("San Vel ") && mMessages[i].startsWith("San Vel ")) {
+      mMessages[i] = newMessage;
+      log_d("Update GPS statistic message (%d): %s", mMessages.size(), newMessage.c_str());
+      newMessage.clear();
+      break;
+    }
+    if (newMessage.startsWith("San Pos ") && mMessages[i].startsWith("San Pos ")) {
+      mMessages[i] = newMessage;
+      log_d("Update GPS statistic message (%d): %s", mMessages.size(), newMessage.c_str());
+      newMessage.clear();
+      break;
+    }
+    if (newMessage.startsWith("San Alt ") && mMessages[i].startsWith("San Alt ")) {
       mMessages[i] = newMessage;
       log_d("Update GPS statistic message (%d): %s", mMessages.size(), newMessage.c_str());
       newMessage.clear();
@@ -817,6 +832,9 @@ void Gps::parseUbxMessage() {
       mGpsUptime = mGpsBuffer.navStatus.msss;
       if (mGpsBuffer.navStatus.ttff != 0) {
         addStatisticsMessage("TimeToFix " + String(mGpsBuffer.navStatus.ttff) + "ms");
+      } else if (!mAidIniSent) {
+        mAidIniSent = true;
+        aidIni();
       }
       break;
     case (uint16_t) UBX_MSG::NAV_AOPSTATUS:
@@ -843,6 +861,16 @@ void Gps::parseUbxMessage() {
       } else {
         addStatisticsMessage("AssistNow Autonomous active!");
       }
+      break;
+    case (uint16_t) UBX_MSG::AID_INI:
+      // TODO: Save to disk for reuse....
+      log_e("AID_INI received Status: %04x, Location valid: %d.", mGpsBuffer.aidIni.flags, (mGpsBuffer.aidIni.flags & GpsBuffer::AID_INI::FLAGS::POS) );
+      if (mGpsBuffer.aidIni.flags & GpsBuffer::AID_INI::FLAGS::POS) {
+        AlpData::saveMessage(mGpsBuffer.u1Data, mGpsPayloadLength + 6);
+        logHexDump(mGpsBuffer.u1Data, 48 + 8);
+        log_e("Stored new AID_INI data.");
+      }
+      logHexDump(mGpsBuffer.u1Data, 48 + 8);
       break;
     case (uint16_t) UBX_MSG::AID_ALPSRV: {
       uint32_t start = millis();
@@ -973,4 +1001,16 @@ time_t Gps::toTime(uint16_t week, uint32_t weekTime) {
   // ignoring leap seconds!
   uint32_t gpsStartTime = 315964800; // 1980-01-06T00:00:00Z,
   return (time_t) gpsStartTime + (7 * 24 * 60 * 60 * week) + weekTime;
+}
+
+void Gps::aidIni() {
+  if (AlpData::loadMessage(mGpsBuffer.u1Data, 48 + 8) > 48) {
+    log_e("Will send AID_INI");
+    mGpsBuffer.aidIni.posAcc = 5000; // 50m
+    mGpsBuffer.aidIni.tAccMs = 3 * 24 * 60 * 60 * 1000; // 3 days!?
+    mGpsBuffer.aidIni.flags = (GpsBuffer::AID_INI::FLAGS) 0x03;
+    sendUbxDirect();
+    logHexDump(mGpsBuffer.u1Data, 48 + 8);
+    sendUbx(UBX_MSG::AID_ALP);
+  }
 }
