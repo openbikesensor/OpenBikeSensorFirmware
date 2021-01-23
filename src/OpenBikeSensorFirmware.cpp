@@ -218,7 +218,6 @@ void setup() {
     displayTest->showTextOnGrid(2, displayTest->currentLine(), "SD... ok");
   }
   delay(333); // Added for user experience
-  gps.begin();
 
   //##############################################################
   // Init HCSR04
@@ -258,6 +257,7 @@ void setup() {
     delay(200);
     startServer(&cfg);
     OtaInit(esp_chipid);
+    gps.begin();
     while (true) {
       yield();
       serverLoop();
@@ -265,6 +265,7 @@ void setup() {
   }
   SPIFFS.end();
   WiFiGenericClass::mode(WIFI_OFF);
+  gps.begin();
 
   //##############################################################
   // Prepare CSV file

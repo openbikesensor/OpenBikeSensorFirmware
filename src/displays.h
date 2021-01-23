@@ -223,6 +223,11 @@ class SSD1306DisplayDevice : public DisplayDevice {
     }
 
     void drawProgressBar(uint8_t y, uint8_t progress) {
+      for(int i = 0; i < 4; i++) {
+        if (!gridText[i][y].isEmpty()) {
+          prepareTextOnGrid(i, y, "");
+        }
+      }
       uint16_t rowOffset = y * 10 + 3;
 
       if (mLastProgress != progress) {

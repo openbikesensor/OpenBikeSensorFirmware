@@ -575,6 +575,7 @@ void aboutPage() {
   page += keyValue("GPS time", gps.time.value()); // fill all digits?
   page += keyValue("GPS date", gps.date.value()); // fill all digits?
   page += keyValue("GPS hdop", gps.hdop.value()); // fill all digits?
+  page += keyValue("GPS uptime", gps.getUptime(), "ms");
   page += keyValue("GPS messages", gps.getMessages());
 
   page += "<h3>Display / Button</h3>";
@@ -691,7 +692,9 @@ void startServer(ObsConfig *obsConfig) {
     voltageMeter = new VoltageMeter();
   }
 
-  AlpData::update();
+  if (SD.begin()) {
+    AlpData::update(displayTest);
+  }
 
 
   // #############################################

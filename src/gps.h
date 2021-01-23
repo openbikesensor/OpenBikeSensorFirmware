@@ -24,7 +24,7 @@
 #include <Arduino.h>
 #include <TinyGPS++.h> // http://arduiniana.org/libraries/tinygpsplus/
 #include <HardwareSerial.h>
-#include <utils/alpdata.h>
+#include "utils/alpdata.h"
 #include "config.h" // PrivacyArea
 #include "displays.h"
 
@@ -67,6 +67,7 @@ class Gps : public TinyGPSPlus {
     String getMessages() const;
     static PrivacyArea newPrivacyArea(double latitude, double longitude, int radius);
     bool updateStatistics();
+    uint32_t getUptime();
 
 
   private:
@@ -131,6 +132,9 @@ class Gps : public TinyGPSPlus {
 
         // TIM 0x0D
         // ESF 0x10
+
+        // NMEA, special 0xF0
+        NMEA_TXT = 0x41F0,
     };
     union GpsBuffer {
       UBX_MSG ubxMsgId;
@@ -143,10 +147,122 @@ class Gps : public TinyGPSPlus {
       float r4Data[MAX_MESSAGE_LENGTH / 4];
       double r8Data[MAX_MESSAGE_LENGTH / 8];
       char charData[MAX_MESSAGE_LENGTH];
-
-      struct  {
+      struct __attribute__((__packed__)) UBX_HEADER {
+        uint8_t syncChar1;
+        uint8_t syncChar2;
         uint16_t ubxMsgId;
         uint16_t length;
+      } ubxHeader;
+      struct __attribute__((__packed__)) {
+        UBX_HEADER ubxHeader;
+        uint16_t ubxMsgId;
+      } ack;
+      struct __attribute__((__packed__)) {
+        UBX_HEADER ubxHeader;
+        uint8_t portId;
+        uint8_t reserved0;
+        uint16_t txReady;
+        uint32_t mode;
+        uint32_t baudRate;
+        uint16_t inProtoMask;
+        uint16_t outProtoMask;
+        uint16_t reserved4;
+        uint16_t reserved5;
+      } cfgPrt;
+      struct __attribute__((__packed__)) {
+        UBX_HEADER ubxHeader;
+        uint16_t version;
+        uint16_t mask1;
+        uint32_t reserved0;
+        uint8_t reserved1;
+        uint8_t reserved2;
+        uint8_t minSvs;
+        uint8_t maxSvs;
+        uint8_t minCno;
+        uint8_t reserved5;
+        uint8_t iniFix3d;
+        uint8_t reserved6;
+        uint8_t reserved7;
+        uint8_t reserved8;
+        uint16_t wknRollover;
+        uint32_t reserved9;
+        uint8_t reserved10;
+        uint8_t reserved11;
+        uint8_t usePpp;
+        uint8_t useAop;
+        uint8_t reserved12;
+        uint8_t reserved13;
+        uint16_t aopOrbMaxErr;
+        uint32_t reserved3;
+        uint32_t reserved4;
+      } cfgNavx5;
+      struct __attribute__((__packed__)) {
+        UBX_HEADER ubxHeader;
+        char swVersion[30];
+        char hwVersion[10];
+        char romVersion[30];
+        char extension0[30]; // could be multiple...
+        char extension1[30]; // could be multiple...
+      } monVer;
+      struct __attribute__((__packed__)) {
+        UBX_HEADER ubxHeader;
+        uint32_t pinSel;
+        uint32_t pinBank;
+        uint32_t pinDir;
+        uint32_t pinVal;
+        uint16_t noisePerMs;
+        enum ANT_STATUS : uint8_t {
+          INIT = 0,
+          DONTKNOW = 1,
+          OK = 2,
+          SHORT = 3,
+          OPEN = 4,
+        } aStatus;
+        enum ANT_POWER : uint8_t {
+          OFF = 0,
+          ON = 1,
+          POWER_DONTKNOW = 2,
+        } aPower;
+        uint8_t flags;
+        uint8_t reserved1;
+        uint32_t usedMask;
+        uint8_t vp[25];
+        uint8_t jamInd;
+        uint16_t reserved3;
+        uint32_t pinIrq;
+        uint32_t pullH;
+        uint32_t pullL;
+      } monHw;
+      struct __attribute__((__packed__)) {
+        UBX_HEADER ubxHeader;
+        uint32_t iTow;
+        enum GPS_FIX : uint8_t {
+          NO_FIX = 0,
+          DEAD_RECKONING_ONLY = 1,
+          FIX_2D = 2,
+          FIX_3D = 3,
+          GPS_AND_DEAD_RECKONING = 4,
+          TIME_ONLY = 5,
+        } gpsFix;
+        uint8_t flags;
+        uint8_t fixStat;
+        uint8_t flags2;
+        uint32_t ttff; // Time to first fix (millisecond time tag)
+        uint32_t msss; // Milliseconds since Startup / Reset
+      } navStatus;
+      struct __attribute__((__packed__)) {
+        UBX_HEADER ubxHeader;
+        uint32_t iTow;
+        uint8_t config;
+        uint8_t status;
+        uint8_t reserved0;
+        uint8_t reserved1;
+        uint32_t avail;
+        uint32_t reserved2;
+        uint32_t reserved3;
+      } navAopStatus;
+      struct __attribute__((__packed__)) {
+        UBX_HEADER ubxHeader;
         uint8_t idSize;
         uint8_t type;
         uint16_t ofs;
@@ -157,8 +273,8 @@ class Gps : public TinyGPSPlus {
         uint8_t id2;
         uint32_t id3;
       } aidAlpsrvClientReq;
-      struct  {
-        uint16_t ubxMsgId;
+      struct __attribute__((__packed__)) {
+        UBX_HEADER ubxHeader;
         uint32_t predTow;
         uint32_t predDur;
         int32_t age;
@@ -169,6 +285,10 @@ class Gps : public TinyGPSPlus {
         uint8_t reserved2;
         uint16_t reserved3;
       } aidAlpStatus;
+      struct __attribute__((__packed__)) {
+        UBX_HEADER ubxHeader;
+        char message[MAX_MESSAGE_LENGTH - 6];
+      } inf;
     };
     GpsBuffer mGpsBuffer;
     GpsReceiverState mReceiverState = GPS_NULL;
@@ -177,11 +297,18 @@ class Gps : public TinyGPSPlus {
     uint8_t mUbxChA = 0;
     uint8_t mUbxChB = 0;
     std::vector<String> mMessages;
+    bool mAckReceived = false;
+    bool mNakReceived = false;
+    uint32_t mGpsPayloadLength;
+    uint16_t mValidMessagesReceived = 0;
+    uint8_t mNmeaChk;
+    uint32_t mLastStatisticsRequest = 0;
+    uint8_t hexValue(uint8_t data);
+    uint16_t mLastNoiseLevel;
+    AlpData mAlpData;
 
     time_t getGpsTime();
     void configureGpsModule();
-    static double haversine(double lat1, double lon1, double lat2, double lon2);
-    static void randomOffset(PrivacyArea &p);
     bool encodeUbx(uint8_t data);
     bool setBaud();
     bool checkCommunication();
@@ -191,19 +318,12 @@ class Gps : public TinyGPSPlus {
     bool sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer, size_t size);
     void parseUbxMessage();
     bool validNmeaMessageChar(uint8_t chr);
-
-    bool mAckReceived = false;
-    bool mNakReceived = false;
-    uint32_t mGpsPayloadLength;
-    uint16_t mValidMessagesReceived = 0;
-    uint8_t mNmeaChk;
-
-    uint8_t hexValue(uint8_t data);
-
     void parseNmeaMessage();
-
-    uint16_t mLastNoiseLevel;
-    AlpData mAlpData;
+    void sendUbxDirect();
+    static double haversine(double lat1, double lon1, double lat2, double lon2);
+    static void randomOffset(PrivacyArea &p);
+    static time_t toTime(uint16_t week, uint32_t weekTime);
+    static void logHexDump(const uint8_t *buffer, uint16_t length);
 };
 
 

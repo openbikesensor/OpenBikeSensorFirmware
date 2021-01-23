@@ -22,15 +22,15 @@
 #include "globals.h"
 #include "alpdata.h"
 
-/* Download http://alp.u-blox.com/current_14d.alp (ssl?) if there is a new one */
-// TODO: Error handling!!
-// TODO: Feedback while download? How fast?
-// TODO: https?
-void AlpData::update() {
+/* Download http://alp.u-blox.com/current_14d.alp (ssl?) if there is a new one
+ * Takes 5 seconds to update the data.
+*/
+void AlpData::update(SSD1306DisplayDevice *display) {
+  display->showTextOnGrid(0,5, "ALP data ...");
   String lastModified = loadLastModified();
 
   File f = SD.open(ALP_DATA_FILE_NAME, FILE_READ);
-  if (!f || f.size() < 1024) {
+  if (!f || f.size() < ALP_DATA_MIN_FILE_SIZE) {
     lastModified = "";
   } else {
     log_e("Existing file seems valid. Size is %d", f.size());
@@ -38,44 +38,52 @@ void AlpData::update() {
   f.close();
   log_e("Existing file is from %s", lastModified.c_str());
 
-  f = SD.open(ALP_NEW_DATA_FILE_NAME, FILE_WRITE);
-  if (f) {
-    HTTPClient httpClient;
-    httpClient.begin(ALP_DOWNLOAD_URL);
-    const char *lastModifiedHeaderName = "Last-Modified";
-    const char *headers[] = {lastModifiedHeaderName};
-    httpClient.collectHeaders(headers, 1);
-    httpClient.setUserAgent(String("openbikesensor.org/") + String(OBSVersion));
-    if (!lastModified.isEmpty()) {
-      httpClient.addHeader("If-Modified-Since", lastModified);
-    }
-    int httpCode = httpClient.GET();
-    log_e("Size: %d", httpClient.getSize());
-    // ??? int expectedSize
-    if (httpCode == 200) {
-      String newLastModified = httpClient.header(lastModifiedHeaderName);
-      int written = httpClient.writeToStream(&f);
-      log_e("Written: %d", written);
-      if (written < 0) {
-        log_e("[HTTP] READ... failed, error: %s", httpClient.errorToString(httpCode).c_str());
-      }
+  HTTPClient httpClient;
+  httpClient.begin(ALP_DOWNLOAD_URL);
+  const char *lastModifiedHeaderName = "Last-Modified";
+  const char *headers[] = {lastModifiedHeaderName};
+  httpClient.collectHeaders(headers, 1);
+  // be polite - tell the server who we are
+  httpClient.setUserAgent(String("openbikesensor.org/") + String(OBSVersion));
+  if (!lastModified.isEmpty()) {
+    httpClient.addHeader("If-Modified-Since", lastModified);
+  }
+  int httpCode = httpClient.GET();
+  log_i("Size: %d", httpClient.getSize());
+  if (httpCode == 200) {
+    String newLastModified = httpClient.header(lastModifiedHeaderName);
+    File newFile = SD.open(ALP_NEW_DATA_FILE_NAME, FILE_WRITE);
+    const int written = httpClient.writeToStream(&newFile);
+    newFile.close();
+    log_e("Written: %d", written);
+    if (written < ALP_DATA_MIN_FILE_SIZE) {
+      displayHttpClientError(display, written);
+    } else {
       log_e("Read %d bytes - all god! %s", written, newLastModified.c_str());
-      f.close();
       SD.remove(ALP_DATA_FILE_NAME);
-      delay(100);
       SD.rename(ALP_NEW_DATA_FILE_NAME, ALP_DATA_FILE_NAME);
       saveLastModified(newLastModified);
-
-    } else if (httpCode == 304) {
-      log_e("All fine, not modified!");
-    } else if (httpCode > 0) {
-      log_e("HTTP status: %d: %s", httpCode, httpClient.getString().c_str());
-    } else {
-      log_e("[HTTP] GET... failed, error: %s", httpClient.errorToString(httpCode).c_str());
+      display->showTextOnGrid(0, 5, "ALP data updated!");
     }
-    f.close();
-
+  } else if (httpCode == 304) { // Not-Modified
+    display->showTextOnGrid(0,5, "ALP data up to date.");
+    log_i("All fine, not modified!");
+  } else if (httpCode > 0) {
+    display->showTextOnGrid(0,4, String("ALP data failed ") + String(httpCode).c_str());
+    if (httpClient.getSize() < 200) {
+      display->showTextOnGrid(0, 5, httpClient.getString().c_str());
+    }
+  } else {
+    displayHttpClientError(display, httpCode);
   }
+  httpClient.end();
+}
+
+void AlpData::displayHttpClientError(SSD1306DisplayDevice *display, int httpError) {
+  display->showTextOnGrid(0, 4, String("ALP data failed ") + String(httpError).c_str());
+  String errorString = HTTPClient::errorToString(httpError);
+  display->showTextOnGrid(0, 5, errorString.c_str());
+  log_e("[HTTP] GET... failed, error %d: %s", httpError, errorString.c_str());
 }
 
 bool AlpData::available() {
@@ -98,22 +106,48 @@ String AlpData::loadLastModified() {
   return lastModified;
 }
 
-uint16_t AlpData::fill(uint8_t *data, uint16_t ofs, uint16_t dataSize) {
+uint16_t AlpData::fill(uint8_t *data, size_t ofs, uint16_t dataSize) {
   if (!mAlpDataFile) {
     mAlpDataFile = SD.open(ALP_DATA_FILE_NAME, FILE_READ);
   }
-  mAlpDataFile.seek(ofs);
-  int read = mAlpDataFile.read(data, dataSize);
+  int read = -1;
+  if (mAlpDataFile.seek(ofs)) {
+    read = mAlpDataFile.read(data, dataSize);
+  }
   if (read <= 0) {
     log_e("Failed to read got %d.", read);
     mAlpDataFile.close();
     mAlpDataFile = SD.open(ALP_DATA_FILE_NAME, FILE_READ);
-    mAlpDataFile.seek(ofs);
-    read = mAlpDataFile.read(data, dataSize);
+    if (mAlpDataFile.seek(ofs)) {
+      read = mAlpDataFile.read(data, dataSize);
+    }
     log_e("Read again: %d.", read);
   }
 // not closing the file saves 10ms per message
 // - need to take care when writing!
 //  mAlpDataFile.close();
   return read;
+}
+
+void AlpData::save(uint8_t *data, size_t offset, int length) {
+#ifdef RANDOM_ACCESS_FILE_AVAILAVLE
+  // this is currently not possible to seek and modify data within an existing
+  // file, we can only append :(
+  if (!mAlpDataFile) {
+    mAlpDataFile = SD.open(ALP_DATA_FILE_NAME, FILE_APPEND);
+  }
+  int written = -99;
+  if (mAlpDataFile.seek(offset)) {
+    written = mAlpDataFile.write(data, length);
+  }
+  if (written <= 0) {
+    log_e("Failed to write got %d.", written);
+    mAlpDataFile.close();
+    mAlpDataFile = SD.open(ALP_DATA_FILE_NAME, FILE_APPEND);
+    if (mAlpDataFile.seek(offset)) {
+      written = mAlpDataFile.write(data, length);
+    }
+    log_e("Write again: %d.", written);
+  }
+#endif
 }
