@@ -70,9 +70,12 @@ class Gps : public TinyGPSPlus {
     void setStatisticsIntervalInSeconds(uint16_t seconds);
     uint32_t getUptime();
     uint32_t getBaudRate();
+    void pollStatistics();
+    void handle(uint32_t milliSeconds);
 
   private:
-    static const int MAX_MESSAGE_LENGTH = 128 * 3; // ALP msgs up to 0x16A, might be more
+    /* ALP msgs up to 0x16A seen might be more. */
+    static const int MAX_MESSAGE_LENGTH = 128 * 3;
     HardwareSerial mSerial = HardwareSerial(2);
     int16_t mGpsBufferBytePos = 0;
     enum GpsReceiverState {
@@ -333,7 +336,6 @@ class Gps : public TinyGPSPlus {
     AlpData mAlpData;
     bool mAidIniSent = false;
 
-    void handle(uint32_t milliSeconds);
     time_t getGpsTime();
     void configureGpsModule();
     bool encodeUbx(uint8_t data);
@@ -353,6 +355,8 @@ class Gps : public TinyGPSPlus {
     static void logHexDump(const uint8_t *buffer, uint16_t length);
     void aidIni();
     static uint8_t hexValue(uint8_t data);
+
+    void enableAlpIfDataIsAvailable();
 };
 
 

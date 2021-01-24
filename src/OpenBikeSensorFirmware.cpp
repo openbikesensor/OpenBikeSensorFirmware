@@ -285,6 +285,7 @@ void setup() {
     displayTest->showTextOnGrid(2, displayTest->currentLine(), "CSV. skipped");
   }
 
+  gps.handle();
   //##############################################################
   // Temperatur Sensor BMP280
   //##############################################################
@@ -293,6 +294,7 @@ void setup() {
   if(BMP280_active == true) TemperatureValue = bmp280.readTemperature();
 
 
+  gps.handle();
   //##############################################################
   // Bluetooth
   //##############################################################
@@ -338,11 +340,11 @@ void setup() {
     }
   }
   // now we have a fix only rate updates, could be set to 0?
-  if (!config.displayConfig & DisplayDistanceDetail) {
+  if (!(config.displayConfig & DisplayDistanceDetail)) {
     gps.setStatisticsIntervalInSeconds(60);
   }
 
-  delay(1000); // Added for user experience
+  gps.handle(1000); // Added for user experience
 
   displayTest->clear();
 }

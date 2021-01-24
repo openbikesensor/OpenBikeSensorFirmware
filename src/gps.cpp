@@ -31,17 +31,9 @@ static const time_t PAST_TIME = 1606672131;
 
 void Gps::begin() {
   setBaud();
-///   configureGpsModule(); // FIXME ONLY ONCE!
-  handle(20);
-  sendUbx(UBX_MSG::MON_VER);
-  handle(20);
-  sendUbx(UBX_MSG::CFG_NAVX5);
-  handle(20);
-  sendUbx(UBX_MSG::CFG_NAV5);
-  handle(20);
-
-  // Get initial data and send it to GPS Module
-  // Last position, others?
+  ///   configureGpsModule(); // FIXME ONLY ONCE!
+  enableAlpIfDataIsAvailable();
+  pollStatistics();
 }
 
 time_t Gps::getGpsTime() {
@@ -202,44 +194,42 @@ void Gps::configureGpsModule() {
     0x0A, 0x09, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00
   };
 
-  if (AlpData::available()) {
-    // Request AID-ALPSRV message to enable ALP
-    ubxCfgMsg[0] = ((uint16_t) UBX_MSG::AID_ALPSRV) & 0xFFu;
-    ubxCfgMsg[1] = ((uint16_t) UBX_MSG::AID_ALPSRV) >> 8u;
-    sendAndWaitForAck(UBX_MSG::CFG_MSG, ubxCfgMsg, sizeof(ubxCfgMsg));
+  // Request AID-ALPSRV message to enable ALP
+  ubxCfgMsg[0] = ((uint16_t) UBX_MSG::AID_ALPSRV) & 0xFFu;
+  ubxCfgMsg[1] = ((uint16_t) UBX_MSG::AID_ALPSRV) >> 8u;
+  sendAndWaitForAck(UBX_MSG::CFG_MSG, ubxCfgMsg, sizeof(ubxCfgMsg));
+
 #ifdef ASSIST_NOW_AUTONOMOUS
-  } else {
-    // Enable AssistNow Autonomous
-    const uint8_t UBX_CFG_NAVX5[] = {
-      0x00, 0x00, // 0: U2: VERSION 0
-      0x00, 0x40, // 2: X2: only AOP data
-      0x00, 0x00, 0x00, 0x00, // 4: U4
-      0x00, // 8: U1
-      0x00, // 9: U1
-      0x00, // 10: U1
-      0x00, // 11: U1
-      0x00, // 12: U1
-      0x00, // 13: U1
-      0x00, // 14: U1
-      0x00, // 15: U1
-      0x00, // 16: U1
-      0x00, // 17: U1
-      0x00, 0x00, // 18: U2
-      0x00, 0x00, 0x00, 0x00, // 20: U4
-      0x00, // 24: U1
-      0x00, // 25: U1
-      0x00, // 26: U1
-      0x01, // 27: U1  AssistNow Autonomous 1 = Enabled
-      0x00, // 28: U1
-      0x00, // 29: U1
-      0x00, 0x00, // 30: U2: maximum acceptable (modelled) AssistNow
-      // Autonomous orbit error 0 = reset to firmware default
-      0x00, 0x00, 0x00, 0x00, // 32: U4
-      0x00, 0x00, 0x00, 0x00  // 36: U4
-    };
-    sendAndWaitForAck(UBX_MSG::CFG_NAVX5, UBX_CFG_NAVX5, sizeof(UBX_CFG_NAVX5));
+  // Enable AssistNow Autonomous
+  const uint8_t UBX_CFG_NAVX5[] = {
+    0x00, 0x00, // 0: U2: VERSION 0
+    0x00, 0x40, // 2: X2: only AOP data
+    0x00, 0x00, 0x00, 0x00, // 4: U4
+    0x00, // 8: U1
+    0x00, // 9: U1
+    0x00, // 10: U1
+    0x00, // 11: U1
+    0x00, // 12: U1
+    0x00, // 13: U1
+    0x00, // 14: U1
+    0x00, // 15: U1
+    0x00, // 16: U1
+    0x00, // 17: U1
+    0x00, 0x00, // 18: U2
+    0x00, 0x00, 0x00, 0x00, // 20: U4
+    0x00, // 24: U1
+    0x00, // 25: U1
+    0x00, // 26: U1
+    0x01, // 27: U1  AssistNow Autonomous 1 = Enabled
+    0x00, // 28: U1
+    0x00, // 29: U1
+    0x00, 0x00, // 30: U2: maximum acceptable (modelled) AssistNow
+    // Autonomous orbit error 0 = reset to firmware default
+    0x00, 0x00, 0x00, 0x00, // 32: U4
+    0x00, 0x00, 0x00, 0x00  // 36: U4
+  };
+  sendAndWaitForAck(UBX_MSG::CFG_NAVX5, UBX_CFG_NAVX5, sizeof(UBX_CFG_NAVX5));
 #endif
-  }
 
   setStatisticsIntervalInSeconds(0);
 
@@ -261,7 +251,43 @@ void Gps::configureGpsModule() {
   log_d("Config GPS done!");
 }
 
-/* Zero means never. */
+void Gps::enableAlpIfDataIsAvailable() {
+  uint8_t ubxCfgMsg[] = {
+    0x0B, 0x32, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00
+  };
+  if (AlpData::available()) {
+    log_e("Enable ALP");
+    sendAndWaitForAck(UBX_MSG::CFG_MSG, ubxCfgMsg, sizeof(ubxCfgMsg));
+  } else {
+    log_e("Disable ALP");
+    ubxCfgMsg[3] = 0;
+    sendAndWaitForAck(UBX_MSG::CFG_MSG, ubxCfgMsg, sizeof(ubxCfgMsg));
+  }
+
+}
+
+/* Poll or refresh one time statistics, also spends some time
+ * to collect the results.
+ * The wait times might allow some tuning!?
+ */
+void Gps::pollStatistics() {
+  handle(20);
+  sendUbx(UBX_MSG::AID_ALP);
+  handle(20);
+  sendUbx(UBX_MSG::MON_VER);
+  handle(20);
+  sendUbx(UBX_MSG::CFG_NAVX5);
+  handle(20);
+  sendUbx(UBX_MSG::CFG_NAV5);
+  handle(20);
+}
+
+
+/* Prefer to subscribe to messages rather than polling. This lets
+ * the GPS module decide when to send the informative, none essential
+ * messages.
+ * Zero seconds means never.
+ */
 void Gps::setStatisticsIntervalInSeconds(uint16_t seconds) {
   uint8_t ubxCfgMsg[] = {
     0x0A, 0x09, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00
@@ -680,6 +706,15 @@ bool Gps::encodeUbx(uint8_t data) {
           data, data);
     mReceiverState = GPS_NULL;
   }
+  if (mReceiverState >= UBX_SYNC
+      && mReceiverState <= UBX_PAYLOAD
+      && mGpsBufferBytePos < 3
+      && (data == 0xB5 || data == '$' /* 0x24 */)) {
+    log_e("Message start char ('%c') early in UBX message (pos: %d), reset.",
+          data, mGpsBufferBytePos);
+    mReceiverState = GPS_NULL;
+  }
+
 
   if (mReceiverState == GPS_NULL) {
     mGpsBufferBytePos = 0;
@@ -716,10 +751,15 @@ if (data != 0) {
       mUbxChA += data;
       mUbxChB += mUbxChA;
       if (mGpsBufferBytePos == 6) {
-        mReceiverState = UBX_PAYLOAD;
         mGpsPayloadLength = mGpsBuffer.ubxHeader.length;
-        // TODO: Error handling!
-        log_v("Expecting UBX Payload: %d bytes", mGpsPayloadLength);
+        if (mGpsPayloadLength + 6 > MAX_MESSAGE_LENGTH) {
+          log_e("Message claims to be %d (0x%04x) bytes long. Will ignore it, reset.",
+                mGpsPayloadLength, mGpsPayloadLength);
+          mReceiverState = GPS_NULL;
+        } else {
+          mReceiverState = UBX_PAYLOAD;
+          log_v("Expecting UBX Payload: %d bytes", mGpsPayloadLength);
+        }
       }
       break;
     case UBX_PAYLOAD:
@@ -732,7 +772,8 @@ if (data != 0) {
     case UBX_CHECKSUM:
       if (mUbxChA != data) {
         // ERROR!
-        log_e("UBX CK_A error: %02x != %02x", mUbxChA, data);
+        log_e("UBX CK_A error: %02x != %02x after %d bytes for 0x%04x",
+              mUbxChA, data, mGpsBufferBytePos, mGpsBuffer.ubxHeader.ubxMsgId);
         mReceiverState = GPS_NULL;
       } else {
         mReceiverState = UBX_CHECKSUM1;
@@ -741,7 +782,8 @@ if (data != 0) {
     case UBX_CHECKSUM1:
       if (mUbxChB != data) {
         // ERROR!
-        log_e("UBX CK_B error: %02x != %02x", mUbxChB, data);
+        log_e("UBX CK_B error: %02x != %02x after %b bytes for 0x%04x",
+              mUbxChB, data, mGpsBufferBytePos, mGpsBuffer.ubxHeader.ubxMsgId);
       } else {
         parseUbxMessage();
         mValidMessagesReceived++;
@@ -976,8 +1018,8 @@ void Gps::parseUbxMessage() {
           + " (0x" + String(mGpsBuffer.ubxHeader.ubxMsgId, 16) + ")");
       break;
     default:
-      log_e("Got UBX_MESSAGE! Class: %0x, Id: %0x Len %04x", mGpsBuffer.u1Data[0],
-            mGpsBuffer.u1Data[1], mGpsBuffer.u2Data[1]);
+      log_e("Got UBX_MESSAGE! Id: 0x%04x Len %d", mGpsBuffer.ubxHeader.ubxMsgId,
+            mGpsBuffer.ubxHeader.length);
   }
 }
 
@@ -1040,6 +1082,8 @@ void Gps::aidIni() {
     sendUbxDirect();
     logHexDump(mGpsBuffer.u1Data, 48 + 8);
     sendUbx(UBX_MSG::AID_ALP);
+  } else {
+    log_e("Will not send AID_INI - invalid data on SD?");
   }
 }
 

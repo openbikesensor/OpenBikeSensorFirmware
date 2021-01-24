@@ -475,6 +475,8 @@ String keyValue(const String& key, const uint64_t value, const String& suffix = 
 }
 
 void aboutPage() {
+  gps.pollStatistics(); // takes ~100ms!
+
   String page;
 
   page += "<h3>ESP32</h3>"; // SPDIFF
