@@ -46,42 +46,59 @@ class GpsRecord {
 class Gps : public TinyGPSPlus {
   public:
     enum class WaitFor {
-      FIX_NO_WAIT = 0,
-      FIX_TIME = -1,
-      FIX_POS = -2,
+        FIX_NO_WAIT = 0,
+        FIX_TIME = -1,
+        FIX_POS = -2,
     };
+
     void begin();
+
     /* read and process data from serial, true if there was valid data. */
     bool handle();
+
     /* Returns the current time - GPS time if available, system time otherwise. */
     time_t currentTime();
+
     bool hasState(int state, SSD1306DisplayDevice *display);
+
     /* Returns true if valid communication with the gps module was possible. */
     bool moduleIsAlive() const;
+
     bool isInsidePrivacyArea();
+
     uint8_t getValidSatellites();
-    void showWaitStatus(SSD1306DisplayDevice *display);
+
+    void showWaitStatus(SSD1306DisplayDevice *display) const;
+
     /* Returns current speed, negative value means unknown speed. */
     double getSpeed();
+
     String getHdopAsString();
-    uint16_t getLastNoiseLevel();
+
+    uint16_t getLastNoiseLevel() const;
+
     String getMessages() const;
-    static PrivacyArea newPrivacyArea(double latitude, double longitude, int radius);
+
     void setStatisticsIntervalInSeconds(uint16_t seconds);
-    uint32_t getUptime();
+
+    uint32_t getUptime() const;
+
     uint32_t getBaudRate();
+
     void pollStatistics();
+
     void handle(uint32_t milliSeconds);
+
+    static PrivacyArea newPrivacyArea(double latitude, double longitude, int radius);
 
   private:
     /* ALP msgs up to 0x16A seen might be more. */
     static const int MAX_MESSAGE_LENGTH = 128 * 3;
     HardwareSerial mSerial = HardwareSerial(2);
-    int16_t mGpsBufferBytePos = 0;
+    uint16_t mGpsBufferBytePos = 0;
     enum GpsReceiverState {
       GPS_NULL,
       NMEA_START,
-      NMEA_ADDRESS,
       NMEA_DATA,
       NMEA_CHECKSUM1,
       NMEA_CHECKSUM2,
@@ -90,9 +107,6 @@ class Gps : public TinyGPSPlus {
 
       UBX_SYNC,  // 0xB5
       UBX_SYNC1, // 0x62
-      UBX_CLASS,
-      UBX_ID,
-      UBX_LENGTH,
       UBX_PAYLOAD,
       UBX_CHECKSUM,
       UBX_CHECKSUM1
@@ -139,10 +153,17 @@ class Gps : public TinyGPSPlus {
         // ESF 0x10
 
         // NMEA, special 0xF0
+        NMEA_GGA = 0x00F0,
+        NMEA_GLL = 0x01F0,
+        NMEA_GSA = 0x02F0,
+        NMEA_GSV = 0x03F0,
+        NMEA_RMC = 0x04F0,
+        NMEA_VTG = 0x05F0,
         NMEA_TXT = 0x41F0,
+
+        // UBX, special 0xf1
     };
     union GpsBuffer {
-      UBX_MSG ubxMsgId;
       uint8_t u1Data[MAX_MESSAGE_LENGTH];
       uint16_t u2Data[MAX_MESSAGE_LENGTH / 2];
       uint32_t u4Data[MAX_MESSAGE_LENGTH / 4];
@@ -337,28 +358,49 @@ class Gps : public TinyGPSPlus {
     bool mAidIniSent = false;
 
     time_t getGpsTime();
+
     void configureGpsModule();
+
     bool encodeUbx(uint8_t data);
+
     bool setBaud();
+
     bool checkCommunication();
+
     void addStatisticsMessage(String message);
+
     void sendUbx(uint16_t ubxMsgId, const uint8_t *payload = {}, uint16_t length = 0);
+
     void sendUbx(UBX_MSG ubxMsgId, const uint8_t *payload = {}, uint16_t length = 0);
+
     bool sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer, size_t size);
+
     void parseUbxMessage();
-    bool validNmeaMessageChar(uint8_t chr);
+
     void parseNmeaMessage();
+
     void sendUbxDirect();
-    static double haversine(double lat1, double lon1, double lat2, double lon2);
-    static void randomOffset(PrivacyArea &p);
-    static time_t toTime(uint16_t week, uint32_t weekTime);
-    static void logHexDump(const uint8_t *buffer, uint16_t length);
+
     void aidIni();
-    static uint8_t hexValue(uint8_t data);
 
     void enableAlpIfDataIsAvailable();
-};
 
+    void checkForCharThatCausesMessageReset(uint8_t data);
+
+    static uint8_t hexCharToInt(uint8_t data);
+
+    static double haversine(double lat1, double lon1, double lat2, double lon2);
+
+    static void randomOffset(PrivacyArea &p);
+
+    static time_t toTime(uint16_t week, uint32_t weekTime);
+
+    static void logHexDump(const uint8_t *buffer, uint16_t length);
+
+    static bool validNmeaMessageChar(uint8_t chr);
+
+    bool setMessageInterval(UBX_MSG msgId, uint8_t seconds);
+};
 
 
 #endif

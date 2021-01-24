@@ -58,8 +58,8 @@ BluetoothManager* bluetoothManager;
 
 Gps gps;
 
-const long BLUETOOTH_INTERVAL_MILLIS = 250;
-long lastBluetoothInterval = 0;
+const uint32_t BLUETOOTH_INTERVAL_MILLIS = 250;
+uint32_t lastBluetoothInterval = 0;
 
 float BatteryValue = -1;
 float TemperatureValue = -1;
@@ -378,9 +378,6 @@ void handleButtonInServerMode() {
     }
   }
 }
-
-
-long lastStatistics;
 
 void loop() {
   Serial.println("loop()");
