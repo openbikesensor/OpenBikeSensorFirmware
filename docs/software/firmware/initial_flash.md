@@ -30,8 +30,22 @@ flashed.
 
 ## Steps
 
-Connect ESP via USB (checkme - driver needed?). Windows should
-confirm that a new device was detected. 
+You likely need to install a so called USB 2 UART (serial) driver 
+for so that your Windows can communicate with the chip on the 
+ESP development board. Since it is a generic driver, you might 
+already have one installed from other projects?
+If in doubt please download and install the driver 1st from the 
+manufacturers page, Silicon Labs. It might also be worth to update 
+to the latest version. The driver is in the package for the 
+CP210x chips. As the time of writen the download is at 
+https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers  
+and called "CP210x Universal Windows Driver". Follow the 
+instructions given there. If the link does not work use Google 
+to get a updated version but as usual pay attention that you end
+on a trustworthy page.
+
+Now connect ESP via USB. Windows should confirm that a new
+device was detected. 
 
 Start `flash_download_tool_3.X.X.exe`, in the folder of the _Flash 
 Download Tool_. Give it some time to start. It will open a console 
