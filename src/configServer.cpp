@@ -475,8 +475,6 @@ String keyValue(const String& key, const uint64_t value, const String& suffix = 
 }
 
 void aboutPage() {
-  gps.updateStatistics();
-
   String page;
 
   page += "<h3>ESP32</h3>"; // SPDIFF
@@ -576,6 +574,8 @@ void aboutPage() {
   page += keyValue("GPS date", gps.date.value()); // fill all digits?
   page += keyValue("GPS hdop", gps.hdop.value()); // fill all digits?
   page += keyValue("GPS uptime", gps.getUptime(), "ms");
+  page += keyValue("GPS noise level", gps.getLastNoiseLevel());
+  page += keyValue("GPS baud rate", gps.getBaudRate());
   page += keyValue("GPS messages", gps.getMessages());
 
   page += "<h3>Display / Button</h3>";

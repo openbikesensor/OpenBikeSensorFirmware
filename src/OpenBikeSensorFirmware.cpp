@@ -256,8 +256,9 @@ void setup() {
     lastButtonState = buttonState;
     delay(200);
     startServer(&cfg);
-    OtaInit(esp_chipid);
     gps.begin();
+    OtaInit(esp_chipid);
+    gps.setStatisticsIntervalInSeconds(2); // ??
     while (true) {
       yield();
       serverLoop();
@@ -315,8 +316,9 @@ void setup() {
   displayTest->showTextOnGrid(2, displayTest->newLine(), "Wait for GPS");
   displayTest->newLine();
   gps.handle();
+  gps.setStatisticsIntervalInSeconds(1); // get regular updates.
+
   int gpsWaitFor = cfg.getProperty<int>(ObsConfig::PROPERTY_GPS_FIX);
-  uint32_t lastStatistics = 0;
   while (!gps.hasState(gpsWaitFor, displayTest)) {
     currentTimeMillis = millis();
     gps.handle();
@@ -326,10 +328,6 @@ void setup() {
       bluetoothManager->newSensorValues(currentTimeMillis, MAX_SENSOR_VALUE, MAX_SENSOR_VALUE);
     }
     gps.showWaitStatus(displayTest);
-    if (currentTimeMillis - lastStatistics > 10000) {
-      lastStatistics = currentTimeMillis;
-      gps.updateStatistics();
-    }
     buttonState = digitalRead(PushButton_PIN);
     if (buttonState == HIGH
         || (config.simRaMode && !gps.moduleIsAlive()) // no module && simRaMode
@@ -338,6 +336,10 @@ void setup() {
       displayTest->showTextOnGrid(2, displayTest->currentLine(), "...skipped");
       break;
     }
+  }
+  // now we have a fix only rate updates, could be set to 0?
+  if (!config.displayConfig & DisplayDistanceDetail) {
+    gps.setStatisticsIntervalInSeconds(60);
   }
 
   delay(1000); // Added for user experience
@@ -379,12 +381,6 @@ void handleButtonInServerMode() {
 long lastStatistics;
 
 void loop() {
-  if (currentTimeMillis - lastStatistics > 10000) {
-    lastStatistics = currentTimeMillis;
-    gps.updateStatistics();
-  }
-
-
   Serial.println("loop()");
 
   auto* currentSet = new DataSet;

@@ -31,10 +31,14 @@ static const time_t PAST_TIME = 1606672131;
 
 void Gps::begin() {
   setBaud();
-//  configureGpsModule(); // ONLY ONCE!
-  handle();
+///   configureGpsModule(); // FIXME ONLY ONCE!
+  handle(20);
   sendUbx(UBX_MSG::MON_VER);
+  handle(20);
   sendUbx(UBX_MSG::CFG_NAVX5);
+  handle(20);
+  sendUbx(UBX_MSG::CFG_NAV5);
+  handle(20);
 
   // Get initial data and send it to GPS Module
   // Last position, others?
@@ -124,18 +128,20 @@ void Gps::logHexDump(const uint8_t *buffer, uint16_t length) {
 
 /* Resets the stored GPS config and stores our config! */
 void Gps::configureGpsModule() {
-  log_e("RESET GPS!");
-  const uint8_t UBX_CFG_RST[] = {0xFF, 0xFF, 0x02, 0x00};
-  sendAndWaitForAck(UBX_MSG::CFG_RST, UBX_CFG_RST, 4);
-  delay(300);
+// RESET not needed, but we do not get startup messages then!?
+//  log_e("RESET GPS!");
+//  const uint8_t UBX_CFG_RST[] = {0xFF, 0xFF, 0x02, 0x00};
+//  sendAndWaitForAck(UBX_MSG::CFG_RST, UBX_CFG_RST, 4);
 
-  // TODO: Only if our setting was not found already (at 115200!?)
+  handle(300);
+
   // Clear configuration, RESET TO DEFAULT
   const uint8_t UBX_CFG_CFG_CLR[] = {
     0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0xFE, 0xFF, 0x00, 0x00, 0x03
   };
   sendAndWaitForAck(UBX_MSG::CFG_CFG, UBX_CFG_CFG_CLR, sizeof(UBX_CFG_CFG_CLR));
+  handle(300);
 
 //#endif
 
@@ -147,7 +153,7 @@ void Gps::configureGpsModule() {
   mSerial.print(F("$PUBX,40,VTG,0,0,0,0*5E\r\n"));
   mSerial.print(F("$PUBX,40,GGA,0,1,0,0*5B\r\n"));
   mSerial.print(F("$PUBX,40,RMC,0,1,0,0*46\r\n"));
-  handle();
+  handle(100);
 
 /*  // Messages we want
   // Requesting $PUBX,00
@@ -196,16 +202,12 @@ void Gps::configureGpsModule() {
     0x0A, 0x09, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00
   };
 
-  // request mon hw every second
-  ubxCfgMsg[0] = ((uint16_t) UBX_MSG::MON_HW) & 0xFFu;
-  ubxCfgMsg[1] = ((uint16_t) UBX_MSG::MON_HW) >> 8u;
-  sendAndWaitForAck(UBX_MSG::CFG_MSG, ubxCfgMsg, sizeof(ubxCfgMsg));
-
   if (AlpData::available()) {
     // Request AID-ALPSRV message to enable ALP
     ubxCfgMsg[0] = ((uint16_t) UBX_MSG::AID_ALPSRV) & 0xFFu;
     ubxCfgMsg[1] = ((uint16_t) UBX_MSG::AID_ALPSRV) >> 8u;
     sendAndWaitForAck(UBX_MSG::CFG_MSG, ubxCfgMsg, sizeof(ubxCfgMsg));
+#ifdef ASSIST_NOW_AUTONOMOUS
   } else {
     // Enable AssistNow Autonomous
     const uint8_t UBX_CFG_NAVX5[] = {
@@ -236,35 +238,53 @@ void Gps::configureGpsModule() {
       0x00, 0x00, 0x00, 0x00  // 36: U4
     };
     sendAndWaitForAck(UBX_MSG::CFG_NAVX5, UBX_CFG_NAVX5, sizeof(UBX_CFG_NAVX5));
+#endif
   }
 
-  // request AID_INI every 120 second
+  setStatisticsIntervalInSeconds(0);
+
+  // request AID_INI every 135 second
   ubxCfgMsg[0] = ((uint16_t) UBX_MSG::AID_INI) & 0xFFu;
   ubxCfgMsg[1] = ((uint16_t) UBX_MSG::AID_INI) >> 8u;
-  ubxCfgMsg[3] = 120; // every 2 minutes
+  ubxCfgMsg[3] = 135; // every 2 minutes
   sendAndWaitForAck(UBX_MSG::CFG_MSG, ubxCfgMsg, sizeof(ubxCfgMsg));
 
+// FIXME before release
+#ifdef PERSIST_GPS_CONFIF
   // Persist configuration
   const uint8_t UBX_CFG_CFG_SAVE[] = {
     0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x17
   };
   sendAndWaitForAck(UBX_MSG::CFG_CFG, UBX_CFG_CFG_SAVE, sizeof(UBX_CFG_CFG_SAVE));
+#endif
   log_d("Config GPS done!");
 }
 
+/* Zero means never. */
+void Gps::setStatisticsIntervalInSeconds(uint16_t seconds) {
+  uint8_t ubxCfgMsg[] = {
+    0x0A, 0x09, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00
+  };
+  ubxCfgMsg[3] = seconds;
 
-bool Gps::updateStatistics() {
-  mLastStatisticsRequest = millis();
-// We get this every sec now!  sendUbx(UBX_MSG::MON_HW);
-  handle();
-  sendUbx(UBX_MSG::NAV_STATUS);
-  handle();
-  // sendUbx(UBX_MSG::NAV_AOPSTATUS);
-  sendUbx(UBX_MSG::AID_ALP);
-  handle();
+  // Uptime ttf & fix info
+  ubxCfgMsg[0] = ((uint16_t) UBX_MSG::NAV_STATUS) & 0xFFu;
+  ubxCfgMsg[1] = ((uint16_t) UBX_MSG::NAV_STATUS) >> 8u;
+  sendAndWaitForAck(UBX_MSG::CFG_MSG, ubxCfgMsg, sizeof(ubxCfgMsg));
 
-  return true;
+  // noise level
+  ubxCfgMsg[0] = ((uint16_t) UBX_MSG::MON_HW) & 0xFFu;
+  ubxCfgMsg[1] = ((uint16_t) UBX_MSG::MON_HW) >> 8u;
+  sendAndWaitForAck(UBX_MSG::CFG_MSG, ubxCfgMsg, sizeof(ubxCfgMsg));
+
+  // alp status // FIXME, not accepted!?
+  ubxCfgMsg[0] = ((uint16_t) UBX_MSG::AID_ALP) & 0xFFu;
+  ubxCfgMsg[1] = ((uint16_t) UBX_MSG::AID_ALP) >> 8u;
+  if (!sendAndWaitForAck(UBX_MSG::CFG_MSG, ubxCfgMsg, sizeof(ubxCfgMsg))) {
+    sendUbx(UBX_MSG::AID_ALP);
+  }
+
 }
 
 bool Gps::setBaud() {
@@ -316,6 +336,16 @@ bool Gps::checkCommunication() {
   return sendAndWaitForAck(UBX_MSG::CFG_PRT, UBX_CFG_PRT_POLL, sizeof(UBX_CFG_PRT_POLL));
 }
 
+/* Will delay for the given number of ms and habdle GPS if needed. */
+void Gps::handle(uint32_t milliSeconds) {
+  const auto end = millis() + milliSeconds;
+  while (end > millis()) {
+    if (!handle()) {
+      delay(1);
+    }
+  }
+}
+
 bool Gps::sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer, size_t size) {
   const int tries = 10;
   const int timeoutMs = 500;
@@ -332,16 +362,17 @@ bool Gps::sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer, size_t size
     mSerial.flush();
     handle();
     while (!mAckReceived && !mNakReceived && millis() - start < timeoutMs) {
-      delay(2);
-      handle();
+      if (!handle()) {
+        delay(1);
+      }
     }
-    if (mAckReceived) {
-      result = true;
+    if (mAckReceived || mNakReceived) {
+      result = mAckReceived;
       break;
     }
   }
   if (result) {
-    log_e("Success in sending cfg. 0x%04x", ubxMsgId);
+    log_d("Success in sending cfg. 0x%04x", ubxMsgId);
   } else {
     log_e("Failed to send cfg. 0x%04x NAK: %d ", ubxMsgId, mNakReceived);
   }
@@ -349,7 +380,7 @@ bool Gps::sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer, size_t size
 }
 
 
-void Gps::handle() {
+bool Gps::handle() {
 // #ifdef DEVELOP
   if (mSerial.available() > 200) {
     time_t now;
@@ -389,13 +420,9 @@ void Gps::handle() {
       }
     }
   }
-
-  // TODO: Add timing logic to avoid collision
-  if (millis() - mLastStatisticsRequest > 10000) {
-    updateStatistics();
-  }
-
   // TODO: Add dead device detection re-init if no data for 60 seconds...
+
+  return gotGpsData;
 }
 
 void Gps::addStatisticsMessage(String newMessage) {
@@ -865,12 +892,13 @@ void Gps::parseUbxMessage() {
     case (uint16_t) UBX_MSG::AID_INI:
       // TODO: Save to disk for reuse....
       log_e("AID_INI received Status: %04x, Location valid: %d.", mGpsBuffer.aidIni.flags, (mGpsBuffer.aidIni.flags & GpsBuffer::AID_INI::FLAGS::POS) );
-      if (mGpsBuffer.aidIni.flags & GpsBuffer::AID_INI::FLAGS::POS) {
+      if ((mGpsBuffer.aidIni.flags & GpsBuffer::AID_INI::FLAGS::POS)
+          && mGpsBuffer.aidIni.posAcc < 50000) {
         AlpData::saveMessage(mGpsBuffer.u1Data, mGpsPayloadLength + 6);
         logHexDump(mGpsBuffer.u1Data, 48 + 8);
         log_e("Stored new AID_INI data.");
+        logHexDump(mGpsBuffer.u1Data, 48 + 8);
       }
-      logHexDump(mGpsBuffer.u1Data, 48 + 8);
       break;
     case (uint16_t) UBX_MSG::AID_ALPSRV: {
       uint32_t start = millis();
@@ -1013,4 +1041,12 @@ void Gps::aidIni() {
     logHexDump(mGpsBuffer.u1Data, 48 + 8);
     sendUbx(UBX_MSG::AID_ALP);
   }
+}
+
+uint16_t Gps::getLastNoiseLevel() {
+  return mLastNoiseLevel;
+}
+
+uint32_t Gps::getBaudRate() {
+  return mSerial.baudRate();
 }

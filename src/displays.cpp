@@ -82,12 +82,14 @@ void SSD1306DisplayDevice::showValues(
       char buffer[bufSize];
 //      snprintf(buffer, bufSize - 1, "%03d|%02d|%03d", sensor1.rawDistance,
 //        lastMeasurements, sensor2.rawDistance);
-      snprintf(buffer, bufSize - 1, "%03d|%02d|%uk", sensor1.rawDistance,
-               lastMeasurements, ESP.getFreeHeap() / 1024);
+//      snprintf(buffer, bufSize - 1, "%03d|%02d|%uk", sensor1.rawDistance,
+//               lastMeasurements, ESP.getFreeHeap() / 1024);
 //      snprintf(buffer, bufSize - 1, "%03d|%02d|%3.2fV", sensor1.rawDistance,
 //               lastMeasurements, voltageMeter->read());
+      snprintf(buffer, bufSize - 1, "%02ds|%s|%03u", gps.satellites.value(),
+               gps.getHdopAsString().c_str(), gps.getLastNoiseLevel() );
 
-      this->prepareTextOnGrid(0, 4, buffer, Dialog_plain_20);
+      this->prepareTextOnGrid(0, 4, buffer, Dialog_plain_16);
     } else if (config.displayConfig & DisplayNumConfirmed) {
       showNumButtonPressed();
       showNumConfirmed();

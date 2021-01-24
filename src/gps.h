@@ -51,8 +51,8 @@ class Gps : public TinyGPSPlus {
       FIX_POS = -2,
     };
     void begin();
-    /* read and process data from serial. */
-    void handle();
+    /* read and process data from serial, true if there was valid data. */
+    bool handle();
     /* Returns the current time - GPS time if available, system time otherwise. */
     time_t currentTime();
     bool hasState(int state, SSD1306DisplayDevice *display);
@@ -64,11 +64,12 @@ class Gps : public TinyGPSPlus {
     /* Returns current speed, negative value means unknown speed. */
     double getSpeed();
     String getHdopAsString();
+    uint16_t getLastNoiseLevel();
     String getMessages() const;
     static PrivacyArea newPrivacyArea(double latitude, double longitude, int radius);
-    bool updateStatistics();
+    void setStatisticsIntervalInSeconds(uint16_t seconds);
     uint32_t getUptime();
-
+    uint32_t getBaudRate();
 
   private:
     static const int MAX_MESSAGE_LENGTH = 128 * 3; // ALP msgs up to 0x16A, might be more
@@ -328,12 +329,11 @@ class Gps : public TinyGPSPlus {
     uint32_t mGpsPayloadLength;
     uint16_t mValidMessagesReceived = 0;
     uint8_t mNmeaChk;
-    uint32_t mLastStatisticsRequest = 0;
-    uint8_t hexValue(uint8_t data);
     uint16_t mLastNoiseLevel;
     AlpData mAlpData;
     bool mAidIniSent = false;
 
+    void handle(uint32_t milliSeconds);
     time_t getGpsTime();
     void configureGpsModule();
     bool encodeUbx(uint8_t data);
@@ -352,6 +352,7 @@ class Gps : public TinyGPSPlus {
     static time_t toTime(uint16_t week, uint32_t weekTime);
     static void logHexDump(const uint8_t *buffer, uint16_t length);
     void aidIni();
+    static uint8_t hexValue(uint8_t data);
 };
 
 

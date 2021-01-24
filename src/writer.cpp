@@ -198,7 +198,7 @@ bool CSVFileWriter::append(DataSet &set) {
   csv += date;
   csv += set.comment;
 
-#ifdef DEVELOP
+// FIXME #ifdef DEVELOP
   if (time.tm_sec == 0) {
     csv += "DEVELOP:  GPSMessages: " + String(gps.passedChecksum())
            + " GPS crc errors: " + String(gps.failedChecksum());
@@ -210,8 +210,23 @@ bool CSVFileWriter::append(DataSet &set) {
   } else if (time.tm_sec == 2) {
     csv += "DEVELOP: Mem min free: "
            + String(ESP.getMinFreeHeap() / 1024) + "k";
+  } else if (time.tm_sec == 3) {
+    csv += "DEVELOP: GPS messages: ";
+    csv += gps.getMessages();
+  } else if (time.tm_sec == 4) {
+    csv += "DEVELOP: GPS crc error: ";
+    csv += gps.failedChecksum();
+  } else if (time.tm_sec == 5) {
+    csv += "DEVELOP: GPS crc ok: ";
+    csv += gps.passedChecksum();
+  } else if (time.tm_sec == 6) {
+    csv += "DEVELOP: GPS lastNoiseLevel: ";
+    csv += gps.getLastNoiseLevel();
+  } else if (time.tm_sec == 7) {
+    csv += "DEVELOP: GPS baud: ";
+    csv += gps.getBaudRate();
   }
-#endif
+// #endif
   csv += ";";
 
   if ((!set.location.isValid()) ||
