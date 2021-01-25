@@ -283,6 +283,15 @@ class SSD1306DisplayDevice : public DisplayDevice {
       uint16_t minDistanceToConfirm,int16_t BatterieVolt, int16_t TemperaturValue,
       int lastMeasurements, boolean insidePrivacyArea, double speed, uint8_t satellites);
 
+    void restart_display(){
+        this->cleanGrid();
+        m_display->sendInitCommands();
+        m_display->resetDisplay();
+    }
+    void restart_display_with_current_content(){
+        return;
+    }
+
 };
 
 #endif
