@@ -1009,16 +1009,19 @@ uint8_t Gps::hexCharToInt(uint8_t data) {
  *  use time only as fallback.
  */
 void Gps::parseNmeaMessage() {
+#ifdef OLD_TXT_MESSAGE
   if (memcmp(&mGpsBuffer.charData[3], "TXT", 3) == 0) {
     mGpsBuffer.charData[mGpsBufferBytePos - 3] = 0;
     String msg = String(&mGpsBuffer.charData[16]);
     addStatisticsMessage("TXT: " + msg);
-  } else if (memcmp(&mGpsBuffer.charData[3], "RMC", 3) == 0) {
+  } else
+#endif
+  if (memcmp(&mGpsBuffer.charData[3], "RMC", 3) == 0) {
     mGpsBuffer.charData[mGpsBufferBytePos - 3] = 0;
-    log_v("??RMC Message '%s'", &mGpsBuffer.charData[0]);
+    log_e("??RMC Message '%s'", &mGpsBuffer.charData[0]);
   } else if (memcmp(&mGpsBuffer.charData[3], "GGA", 3) == 0) {
     mGpsBuffer.charData[mGpsBufferBytePos - 3] = 0;
-    log_v("??GGA Message '%s'", &mGpsBuffer.charData[0]);
+    log_e("??GGA Message '%s'", &mGpsBuffer.charData[0]);
   } else {
     log_e("Unparsed NMEA %c%c%c%c%c", mGpsBuffer.u1Data[1], mGpsBuffer.u1Data[2],
           mGpsBuffer.u1Data[3], mGpsBuffer.u1Data[4], mGpsBuffer.u1Data[5]);
