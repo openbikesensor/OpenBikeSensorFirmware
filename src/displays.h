@@ -23,6 +23,7 @@
 
 #include <Arduino.h>
 #include <SSD1306.h>
+#include <SSD1306Wire.h>
 
 #include "config.h"
 #include "font.h"
@@ -53,17 +54,29 @@ class DisplayDevice {
     virtual void clear() = 0;
 };
 
+class MySSD1306 : public SSD1306 {
+    public:
+    MySSD1306(uint8_t _address, int _sda = -1, int _scl = -1, OLEDDISPLAY_GEOMETRY g = GEOMETRY_128_64, HW_I2C _i2cBus = I2C_ONE, int _frequency = 700000) : SSD1306(_address, _sda, _scl, g, _i2cBus,_frequency){
+
+    }
+
+      void restartDisplay() {
+        sendInitCommands();
+        resetDisplay();
+      }
+};
+
 
 class SSD1306DisplayDevice : public DisplayDevice {
   private:
-    SSD1306* m_display;
+    MySSD1306* m_display;
     String gridText[ 4 ][ 6 ];
     uint8_t mLastProgress = 255;
     uint8_t mCurrentLine = 0;
 
   public:
     SSD1306DisplayDevice() : DisplayDevice() {
-      m_display = new SSD1306(0x3c, 21, 22); // ADDRESS, SDA, SCL
+      m_display = new MySSD1306(0x3c, 21, 22); // ADDRESS, SDA, SCL
       m_display->init();
       m_display->setBrightness(255);
       m_display->setTextAlignment(TEXT_ALIGN_LEFT);
@@ -285,12 +298,11 @@ class SSD1306DisplayDevice : public DisplayDevice {
 
     void restart_display(){
         this->cleanGrid();
-        m_display->sendInitCommands();
-        m_display->resetDisplay();
+        m_display->restartDisplay();
     }
-    void restart_display_with_current_content(){
-        return;
-    }
+    // void restart_display_with_current_content(){
+    //     return;
+    // }
 
 };
 

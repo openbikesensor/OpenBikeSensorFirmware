@@ -89,8 +89,8 @@ CircularBuffer<DataSet*, 10> dataBuffer;
 FileWriter* writer;
 
 const uint8_t displayAddress = 0x3c;
-const uint16_t displayResetValue = 3600; //3600 should reset every 2 Minutes
-uint16_t displayRestartCounter = 1;
+const long displayResetTime = 120 * 1000; //3600 should reset every 2 Minutes
+uint16_t displayRestartCounterStart = 0;
 
 // Enable dev-mode. Allows to
 // - set wifi config
@@ -154,6 +154,8 @@ void setup() {
     displayTest->showTextOnGrid(2, displayTest->newLine(), "WARNING!");
     delay(5000);
   }
+
+  displayRestartCounterStart = millis();
 
   //##############################################################
   // Load, print and save config
@@ -379,11 +381,10 @@ void loop() {
     sensorManager->getDistances();
     gps.handle();
 
-    if(displayRestartCounter % displayResetValue == 0){
+    if((currentTimeMillis - displayRestartCounterStart) > displayResetTime){
       displayTest->restart_display();
-      displayRestartCounter = 0;
+      displayRestartCounterStart = millis();
     }
-    displayRestartCounter++;
 
     displayTest->showValues(
       sensorManager->m_sensors[LEFT_SENSOR_ID],
