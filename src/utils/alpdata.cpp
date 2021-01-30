@@ -125,7 +125,6 @@ uint16_t AlpData::fill(uint8_t *data, size_t ofs, uint16_t dataSize) {
   }
 // not closing the file saves 10ms per message
 // - need to take care when writing!
-//  mAlpDataFile.close();
   return read;
 }
 
@@ -134,7 +133,7 @@ void AlpData::saveMessage(uint8_t *data, size_t size) {
   File f = SD.open(AID_INI_DATA_FILE_NAME, FILE_WRITE);
   size_t written = f.write(data, size);
   f.close();
-  log_e("Written %d bytes", written);
+  log_d("Written %d bytes", written);
 }
 
 /* Used to save AID_INI data. */
@@ -142,7 +141,7 @@ size_t AlpData::loadMessage(uint8_t *data, size_t size) {
   File f = SD.open(AID_INI_DATA_FILE_NAME, FILE_READ);
   size_t result = f.read(data, size);
   f.close();
-  log_e("Read %d bytes", result);
+  log_d("Read %d bytes", result);
   return result;
 }
 

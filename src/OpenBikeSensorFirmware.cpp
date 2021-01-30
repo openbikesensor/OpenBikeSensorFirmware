@@ -347,6 +347,7 @@ void setup() {
   gps.handle(1000); // Added for user experience
 
   displayTest->clear();
+  gps.enableSbas(); // NEEDED?
 }
 
 void serverLoop() {

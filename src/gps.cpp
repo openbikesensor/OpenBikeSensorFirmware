@@ -167,6 +167,13 @@ void Gps::configureGpsModule() {
   };
   sendAndWaitForAck(UBX_MSG::CFG_TP, UBX_CFG_TP, sizeof(UBX_CFG_TP));
 
+  // Leave some info in the GPS module
+  const uint8_t UBX_CFG_RINV[] =
+    "\x01" // none binary, dump at startup
+    "openbikesensor.org";
+
+  sendAndWaitForAck(UBX_MSG::CFG_RINV, UBX_CFG_RINV, sizeof(UBX_CFG_RINV));
+
   setMessageInterval(UBX_MSG::AID_ALPSRV, 1);
   setMessageInterval(UBX_MSG::NMEA_GGA, 1);
   setMessageInterval(UBX_MSG::NMEA_RMC, 1);
@@ -176,9 +183,14 @@ void Gps::configureGpsModule() {
   setMessageInterval(UBX_MSG::NMEA_VTG, 0);
 
 
-//  setMessageInterval(UBX_MSG::NAV_POSLLH, 1);
-//  setMessageInterval(UBX_MSG::NAV_DOP, 1);
+  setMessageInterval(UBX_MSG::NAV_POSLLH, 1);
+  setMessageInterval(UBX_MSG::NAV_DOP, 1);
+  setMessageInterval(UBX_MSG::NAV_SOL, 1);
+  setMessageInterval(UBX_MSG::NAV_VELNED, 1);
   setMessageInterval(UBX_MSG::NAV_TIMEUTC, 1);
+
+
+  setMessageInterval(UBX_MSG::NAV_SBAS, 20);
 
 #ifdef ASSIST_NOW_AUTONOMOUS
   setMessageInterval(UBX_MSG::NAV_AOPSTATUS, 1);
@@ -218,6 +230,7 @@ void Gps::configureGpsModule() {
 
   setStatisticsIntervalInSeconds(0);
   setMessageInterval(UBX_MSG::AID_INI, 135);
+  enableSbas();
 
 // FIXME before release
 #ifdef PERSIST_GPS_CONFIF
@@ -229,6 +242,26 @@ void Gps::configureGpsModule() {
   sendAndWaitForAck(UBX_MSG::CFG_CFG, UBX_CFG_CFG_SAVE, sizeof(UBX_CFG_CFG_SAVE));
 #endif
   log_d("Config GPS done!");
+}
+
+void Gps::enableSbas() {// Enable SBAS subsystem!
+  const uint8_t UBX_CFG_SBAS[] = {
+    0x01, // ON (no test to be tested! :))
+    0x03, // Ranging && Correction && !integrity (from default)
+    0x02, // max 2 sats
+//    0x00, 0x51, 0x62, 0x06, 0x00 // 7.01 firmware default
+
+    // NEO8-default:  120, 123, 127-129, 133, 135-138
+    // NEO8-egnos: 120, 123-124, 126, 131
+    // NEO6-egnos: 120, 123-124, 126, 131
+    // Wikipedia-egnos: 123, 136 (Test: 120) aus: 124 & 126
+//    0x00, 0x00, 0x00, 0x00, 0x00 // autoscan
+//    0x00, 0x59, 0x08, 0x00, 0x00 // NEO6-default EGNOS (Europe)
+    0x00, 0x08, 0x00, 0x01, 0x00 // EGNOS 123, 136 SATS as of 2021 (https://de.wikipedia.org/wiki/European_Geostationary_Navigation_Overlay_Service)
+  };
+  sendAndWaitForAck(UBX_MSG::CFG_SBAS, UBX_CFG_SBAS, sizeof(UBX_CFG_SBAS));
+
+  sendUbx(UBX_MSG::CFG_SBAS);
 }
 
 void Gps::enableAlpIfDataIsAvailable() {
@@ -247,13 +280,15 @@ void Gps::enableAlpIfDataIsAvailable() {
  * The wait times might allow some tuning!?
  */
 void Gps::pollStatistics() {
-  handle(20);
+  handle();
   sendUbx(UBX_MSG::AID_ALP);
-  handle(20);
+  handle();
   sendUbx(UBX_MSG::MON_VER);
-  handle(20);
+  handle();
   sendUbx(UBX_MSG::CFG_NAV5);
-  handle(20);
+  handle();
+  sendUbx(UBX_MSG::CFG_RINV);
+  handle(40);
 }
 
 
@@ -287,13 +322,15 @@ bool Gps::setMessageInterval(UBX_MSG msgId, uint8_t seconds, bool waitForAck) {
 }
 
 bool Gps::setBaud() {
+  mSerial.end();
   mSerial.begin(115200, SERIAL_8N1);
+  mSerial.setRxBufferSize(512); // FIXME only while supporting UBX && NMEA
   if (checkCommunication()) {
     log_e("GPS startup configured with 115200, fine!");
     return true;
   }
 
-  mSerial.begin(9600, SERIAL_8N1); // , 16, 17);
+  mSerial.updateBaudRate(9600);
   // switch to 115200 "blind"
   const uint8_t UBX_CFG_PRT[] = {
     0x01, 0x00, 0x00, 0x00, 0xd0, 0x08, 0x00, 0x00,
@@ -380,7 +417,7 @@ bool Gps::sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer, size_t size
 
 
 bool Gps::handle() {
-  if (mSerial.available() > 200) {
+  if (mSerial.available() > 350) { // FIXME: Adjust with smaller buffer
     addStatisticsMessage(String("readGPSData(av: ") + String(mSerial.available())
                          + " bytes in buffer, lastCall " + String(millis() - mMessageStarted)
                          + "ms ago, at " + ObsUtils::dateTimeToString() + ")");
@@ -408,6 +445,8 @@ bool Gps::handle() {
 }
 
 void Gps::addStatisticsMessage(String newMessage) {
+  newMessage.replace(';', '_');
+  newMessage.replace(',', '_');
   for (int i = 0; i < mMessages.size(); i++) {
     if (mMessages[i] == newMessage) {
       newMessage.clear();
@@ -820,6 +859,11 @@ void Gps::parseUbxMessage() {
       log_e("CFG-PRT Port: %d, Baud: %d",
             mGpsBuffer.cfgPrt.portId, mGpsBuffer.cfgPrt.baudRate);
       break;
+    case (uint16_t) UBX_MSG::CFG_RINV:
+      mGpsBuffer.cfgRinv.data[sizeof(mGpsBuffer.cfgRinv.data)] = 0;
+      log_e("CFG-RINV flags: %02x, Message %s",
+            mGpsBuffer.cfgRinv.flags, &mGpsBuffer.cfgRinv.data);
+      break;
     case (uint16_t) UBX_MSG::MON_VER:
       // a bit a hack - but do not let the strings none zero terminated.
       mGpsBuffer.monVer.swVersion[sizeof(mGpsBuffer.monVer.swVersion) - 1] = 0;
@@ -862,8 +906,36 @@ void Gps::parseUbxMessage() {
         aidIni();
       }
       break;
+    case (uint16_t) UBX_MSG::NAV_DOP: {
+        log_d("DOP: iTOW: %u, gDop: %04d, pDop: %04d, tDop: %04d, "
+              "vDop: %04d, hDop: %04d, nDop: %04d, eDop: %04d",
+              mGpsBuffer.navDop.iTow, mGpsBuffer.navDop.gDop, mGpsBuffer.navDop.pDop,
+              mGpsBuffer.navDop.tDop, mGpsBuffer.navDop.vDop, mGpsBuffer.navDop.hDop,
+              mGpsBuffer.navDop.nDop, mGpsBuffer.navDop.eDop);
+      }
+      break;
+    case (uint16_t) UBX_MSG::NAV_SOL: {
+      log_d("SOL: iTOW: %u, gpsFix: %d, flags: %02x, numSV: %d, pDop: %04d.",
+            mGpsBuffer.navSol.iTow, mGpsBuffer.navSol.gpsFix, mGpsBuffer.navSol.flags,
+            mGpsBuffer.navSol.numSv, mGpsBuffer.navSol.pDop);
+      }
+      break;
+    case (uint16_t) UBX_MSG::NAV_VELNED: {
+      log_d("VELNED: iTOW: %u, speed: %d cm/s, gSpeed: %d cm/s, heading: %d,"
+            " speedAcc: %d, cAcc: %d",
+            mGpsBuffer.navVelned.iTow, mGpsBuffer.navVelned.speed, mGpsBuffer.navVelned.gSpeed,
+            mGpsBuffer.navVelned.heading, mGpsBuffer.navVelned.sAcc, mGpsBuffer.navVelned.cAcc);
+    }
+      break;
+    case (uint16_t) UBX_MSG::NAV_POSLLH: {
+        log_d("POSLLH: iTOW: %u lon: %d lat: %d height: %d hMsl %d, hAcc %d, vAcc %d delay %dms",
+              mGpsBuffer.navPosllh.iTow, mGpsBuffer.navPosllh.lon, mGpsBuffer.navPosllh.lat,
+              mGpsBuffer.navPosllh.height, mGpsBuffer.navPosllh.hMsl, mGpsBuffer.navPosllh.hAcc,
+              mGpsBuffer.navPosllh.vAcc, delayMs);
+      }
+      break;
     case (uint16_t) UBX_MSG::NAV_TIMEUTC: {
-        log_e("TIMEUTC: iTOW: %u acc: %u nano: %d %04u-%02u-%02uT%02u:%02u:%02u valid 0x%02x delay %dms",
+        log_d("TIMEUTC: iTOW: %u acc: %u nano: %d %04u-%02u-%02uT%02u:%02u:%02u valid 0x%02x delay %dms",
               mGpsBuffer.navTimeUtc.iTow, mGpsBuffer.navTimeUtc.tAcc, mGpsBuffer.navTimeUtc.nano,
               mGpsBuffer.navTimeUtc.year, mGpsBuffer.navTimeUtc.month, mGpsBuffer.navTimeUtc.day,
               mGpsBuffer.navTimeUtc.hour, mGpsBuffer.navTimeUtc.minute, mGpsBuffer.navTimeUtc.sec,
@@ -893,6 +965,15 @@ void Gps::parseUbxMessage() {
           }
         }
       }
+      break;
+    case (uint16_t) UBX_MSG::NAV_SBAS:
+      log_e("SBAS: iTOW: %u geo: %u, mode: %u, sys: %u, service: %02x, cnt: %d",
+            mGpsBuffer.navSbas.iTow, mGpsBuffer.navSbas.geo, mGpsBuffer.navSbas.mode,
+            mGpsBuffer.navSbas.sys, mGpsBuffer.navSbas.service, mGpsBuffer.navSbas.cnt);
+      addStatisticsMessage(String("SBAS: mode: ")
+          + String((uint16_t) mGpsBuffer.navSbas.mode)
+          + " System: " + String((uint16_t) mGpsBuffer.navSbas.sys)
+          + " cnt: " + String((uint16_t) mGpsBuffer.navSbas.cnt));
       break;
 #ifdef ASSIST_NOW_AUTONOMOUS
     case (uint16_t) UBX_MSG::NAV_AOPSTATUS:
@@ -958,6 +1039,7 @@ void Gps::parseUbxMessage() {
                 millis() - start,
                 2 * mGpsBuffer.aidAlpsrvClientReq.ofs);
         }
+#ifdef RANDOM_ACCESS_FILE_AVAILAVLE
       } else {
         log_e("AID-ALPSRV-REQ Got store data request %d for type %d, offset %d, size %d, file %d",
               mGpsBuffer.aidAlpsrvClientReq.idSize,
@@ -966,11 +1048,11 @@ void Gps::parseUbxMessage() {
               mGpsBuffer.aidAlpsrvClientReq.size,
               mGpsBuffer.aidAlpsrvClientReq.fileId);
         // Check boundaries!
-//        mAlpData.save(&mGpsBuffer.u1Data[startOffset],
-//                      2 * mGpsBuffer.aidAlpsrvClientReq.ofs,
-//                      2 * mGpsBuffer.aidAlpsrvClientReq.size);
-
-//        log_e("save %d bytes took %d ms", 2 * mGpsBuffer.aidAlpsrvClientReq.size, millis() - start);
+        mAlpData.save(&mGpsBuffer.u1Data[startOffset],
+                      2 * mGpsBuffer.aidAlpsrvClientReq.ofs,
+                      2 * mGpsBuffer.aidAlpsrvClientReq.size);
+        log_e("save %d bytes took %d ms", 2 * mGpsBuffer.aidAlpsrvClientReq.size, millis() - start);
+#endif
       }
     }
       break;

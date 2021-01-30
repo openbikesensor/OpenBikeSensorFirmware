@@ -96,6 +96,8 @@ class Gps : public TinyGPSPlus {
 
     static PrivacyArea newPrivacyArea(double latitude, double longitude, int radius);
 
+    void enableSbas();
+
   private:
     /* ALP msgs up to 0x16A seen might be more. */
     static const int MAX_MESSAGE_LENGTH = 128 * 3;
@@ -122,8 +124,10 @@ class Gps : public TinyGPSPlus {
         NAV_POSLLH = 0x0201,
         NAV_STATUS = 0x0301,
         NAV_DOP = 0x0401,
-        NAV_TIMEGPS = 0x2001,
+        NAV_SOL = 0x0601,
+        NAV_VELNED = 0x1201,
         NAV_TIMEUTC = 0x2101,
+        NAV_SBAS = 0x3201,
         NAV_AOPSTATUS = 0x6001,
 
         // RXM 0x02
@@ -146,8 +150,10 @@ class Gps : public TinyGPSPlus {
         CFG_RST = 0x0406,
         CFG_TP = 0x0706,
         CFG_CFG = 0x0906,
+        CFG_SBAS = 0x1606,
         CFG_NAVX5 = 0x2306,
         CFG_NAV5 = 0x2406,
+        CFG_RINV = 0x3206,
 
         // MON 0x0A
         MON_VER = 0x040a,
@@ -171,6 +177,14 @@ class Gps : public TinyGPSPlus {
         NMEA_TXT = 0x41F0,
 
         // UBX, special 0xf1
+    };
+    enum GPS_FIX : uint8_t {
+      NO_FIX = 0,
+      DEAD_RECKONING_ONLY = 1,
+      FIX_2D = 2,
+      FIX_3D = 3,
+      GPS_AND_DEAD_RECKONING = 4,
+      TIME_ONLY = 5,
     };
     union GpsBuffer {
       uint8_t u1Data[MAX_MESSAGE_LENGTH];
@@ -233,6 +247,11 @@ class Gps : public TinyGPSPlus {
       } cfgNavx5;
       struct __attribute__((__packed__)) {
         UBX_HEADER ubxHeader;
+        uint8_t flags;
+        char data[30];
+      } cfgRinv;
+      struct __attribute__((__packed__)) {
+        UBX_HEADER ubxHeader;
         char swVersion[30];
         char hwVersion[10];
         char romVersion[30];
@@ -271,20 +290,66 @@ class Gps : public TinyGPSPlus {
       struct __attribute__((__packed__)) {
         UBX_HEADER ubxHeader;
         uint32_t iTow;
-        enum GPS_FIX : uint8_t {
-          NO_FIX = 0,
-          DEAD_RECKONING_ONLY = 1,
-          FIX_2D = 2,
-          FIX_3D = 3,
-          GPS_AND_DEAD_RECKONING = 4,
-          TIME_ONLY = 5,
-        } gpsFix;
+        int32_t lon;
+        int32_t lat;
+        int32_t height;
+        int32_t hMsl;
+        uint32_t hAcc;
+        uint32_t vAcc;
+      } navPosllh;
+      struct __attribute__((__packed__)) {
+        UBX_HEADER ubxHeader;
+        uint32_t iTow;
+        GPS_FIX gpsFix;
         uint8_t flags;
         uint8_t fixStat;
         uint8_t flags2;
         uint32_t ttff; // Time to first fix (millisecond time tag)
         uint32_t msss; // Milliseconds since Startup / Reset
       } navStatus;
+      struct __attribute__((__packed__)) {
+        UBX_HEADER ubxHeader;
+        uint32_t iTow;
+        uint16_t gDop;
+        uint16_t pDop;
+        uint16_t tDop;
+        uint16_t vDop;
+        uint16_t hDop;
+        uint16_t nDop;
+        uint16_t eDop;
+      } navDop;
+      struct __attribute__((__packed__)) {
+        UBX_HEADER ubxHeader;
+        uint32_t iTow;
+        int32_t fTow;
+        int16_t week;
+        GPS_FIX gpsFix;
+        uint8_t flags;
+        int32_t ecefX;
+        int32_t ecefY;
+        int32_t ecefZ;
+        uint32_t pAcc;
+        int32_t ecefVx;
+        int32_t ecefVy;
+        int32_t ecefVz;
+        uint32_t sAcc;
+        uint16_t pDop;
+        uint8_t reserved1;
+        uint8_t numSv;
+        uint32_t reserved2;
+      } navSol;
+      struct __attribute__((__packed__)) {
+        UBX_HEADER ubxHeader;
+        uint32_t iTow;
+        int32_t velN;
+        int32_t velE;
+        int32_t velD;
+        uint32_t speed;
+        uint32_t gSpeed;
+        int32_t  heading;
+        uint32_t sAcc;
+        uint32_t cAcc;
+      } navVelned;
       struct __attribute__((__packed__)) {
         UBX_HEADER ubxHeader;
         uint32_t iTow;
@@ -298,6 +363,17 @@ class Gps : public TinyGPSPlus {
         uint8_t sec;
         uint8_t valid; // 1 == validTOW // 2 == validWKN // 4 == validUTC
       } navTimeUtc;
+      struct __attribute__((__packed__)) {
+        UBX_HEADER ubxHeader;
+        uint32_t iTow;
+        uint8_t geo;
+        uint8_t mode;
+        int8_t sys;
+        uint8_t service;
+        uint8_t cnt;
+        uint8_t reserved0[3];
+        // ignore further data
+      } navSbas;
       struct __attribute__((__packed__)) {
         UBX_HEADER ubxHeader;
         uint32_t iTow;
