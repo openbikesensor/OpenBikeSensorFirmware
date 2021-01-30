@@ -101,6 +101,7 @@ void bluetoothConfirmed(const DataSet *dataSet, uint16_t measureIndex);
 uint8_t batteryPercentage();
 void serverLoop();
 void handleButtonInServerMode();
+void loadConfig(ObsConfig &cfg);
 
 // The BMP280 can keep up to 3.4MHz I2C speed, so no need for an individual slower speed
 void switch_wire_speed_to_VL53(){
@@ -155,49 +156,8 @@ void setup() {
   //##############################################################
   // Load, print and save config
   //##############################################################
-
-  displayTest->showTextOnGrid(2, displayTest->newLine(), "Config... ");
-
-  if (!SPIFFS.begin(true)) {
-    Serial.println("An Error has occurred while mounting SPIFFS");
-    displayTest->showTextOnGrid(2, displayTest->currentLine(), "Config... error ");
-    return;
-  }
-
-  Serial.println(F("Load config"));
   ObsConfig cfg; // this one is valid in setup!
-  if (!cfg.loadConfig()) {
-    displayTest->showTextOnGrid(2, displayTest->currentLine(), "Config...RESET");
-    delay(1000); // resetting config once, wait a moment
-  }
-
-  // Dump config file
-  log_d("Print config file...");
-  cfg.printConfig();
-
-  // TODO: Select Profile missing here or below!
-  // Copy data to static view on config!
-  cfg.fill(config);
-
-  if(config.devConfig & ShowGrid) {
-    displayTest->showGrid(true);
-  }
-  if (config.displayConfig & DisplayInvert) {
-    displayTest->invert();
-  } else {
-    displayTest->normalDisplay();
-  }
-
-  if (config.displayConfig & DisplayFlip) {
-    displayTest->flipScreen();
-  }
-
-  delay(333); // Added for user experience
-  char buffer[32];
-  snprintf(buffer, sizeof(buffer), "<%02d| - |%02d>",
-    config.sensorOffsets[LEFT_SENSOR_ID],
-    config.sensorOffsets[RIGHT_SENSOR_ID]);
-  displayTest->showTextOnGrid(2, displayTest->currentLine(), buffer);
+  loadConfig(cfg);
 
   //##############################################################
   // Handle SD
@@ -349,6 +309,7 @@ void setup() {
   displayTest->clear();
   gps.enableSbas(); // NEEDED?
 }
+
 
 void serverLoop() {
   gps.handle();
@@ -633,4 +594,67 @@ uint8_t batteryPercentage() {
     result = voltageMeter->readPercentage();
   }
   return result;
+}
+
+void loadConfig(ObsConfig &cfg) {
+  displayTest->showTextOnGrid(2, displayTest->newLine(), "Config... ");
+
+  if (!SPIFFS.begin(true)) {
+    log_e("An Error has occurred while mounting SPIFFS");
+    displayTest->showTextOnGrid(2, displayTest->currentLine(), "Config... error ");
+    displayTest->showTextOnGrid(2, displayTest->newLine(), "Please reboot!");
+    while (true) {
+      delay(1000);
+    }
+  }
+
+  if (SD.begin() && SD.exists("/obs.json")) {
+    displayTest->showTextOnGrid(2, displayTest->currentLine(), "Init from SD.");
+    log_i("Configuration init from SD.");
+    delay(1000);
+    File f = SD.open("/obs.json");
+    if (cfg.loadConfig(f)) {
+      cfg.saveConfig();
+      displayTest->showTextOnGrid(2, displayTest->newLine(), "done.");
+    } else {
+      displayTest->showTextOnGrid(2, displayTest->newLine(), "format error.");
+    }
+    f.close();
+    SD.remove("/obs.json");
+    delay(5000);
+  } else {
+    log_d("No configuration init from SD. SD: %d File: %d", SD.begin(), (SD.begin() && SD.exists("/obs.json")));
+  }
+
+  log_i("Load cfg");
+  if (!cfg.loadConfig()) {
+    displayTest->showTextOnGrid(2, displayTest->currentLine(), "Config...RESET");
+    delay(5000); // resetting cfg once, wait a moment
+  }
+
+  cfg.printConfig();
+
+  // TODO: Select Profile missing here or below!
+  // Copy data to static view on cfg!
+  cfg.fill(config);
+
+  // Setup display, this is not the right place ;)
+  if(config.devConfig & ShowGrid) {
+    displayTest->showGrid(true);
+  }
+  if (config.displayConfig & DisplayInvert) {
+    displayTest->invert();
+  } else {
+    displayTest->normalDisplay();
+  }
+  if (config.displayConfig & DisplayFlip) {
+    displayTest->flipScreen();
+  }
+
+  delay(333); // Added for user experience
+  char buffer[32];
+  snprintf(buffer, sizeof(buffer), "<%02d| - |%02d>",
+           config.sensorOffsets[LEFT_SENSOR_ID],
+           config.sensorOffsets[RIGHT_SENSOR_ID]);
+  displayTest->showTextOnGrid(2, displayTest->currentLine(), buffer);
 }
