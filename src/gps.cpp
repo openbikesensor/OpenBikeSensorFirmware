@@ -417,7 +417,7 @@ bool Gps::sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer, size_t size
 
 
 bool Gps::handle() {
-  if (mSerial.available() > 350) { // FIXME: Adjust with smaller buffer
+  if (mSerial.available() > 400) { // FIXME: Adjust with smaller buffer
     addStatisticsMessage(String("readGPSData(av: ") + String(mSerial.available())
                          + " bytes in buffer, lastCall " + String(millis() - mMessageStarted)
                          + "ms ago, at " + ObsUtils::dateTimeToString() + ")");
@@ -971,9 +971,9 @@ void Gps::parseUbxMessage() {
             mGpsBuffer.navSbas.iTow, mGpsBuffer.navSbas.geo, mGpsBuffer.navSbas.mode,
             mGpsBuffer.navSbas.sys, mGpsBuffer.navSbas.service, mGpsBuffer.navSbas.cnt);
       addStatisticsMessage(String("SBAS: mode: ")
-          + String((uint16_t) mGpsBuffer.navSbas.mode)
-          + " System: " + String((uint16_t) mGpsBuffer.navSbas.sys)
-          + " cnt: " + String((uint16_t) mGpsBuffer.navSbas.cnt));
+          + String((int16_t) mGpsBuffer.navSbas.mode)
+          + " System: " + String((int16_t) mGpsBuffer.navSbas.sys)
+          + " cnt: " + String((int16_t) mGpsBuffer.navSbas.cnt));
       break;
 #ifdef ASSIST_NOW_AUTONOMOUS
     case (uint16_t) UBX_MSG::NAV_AOPSTATUS:
