@@ -41,6 +41,11 @@ class GpsRecord {
     int mAltitudeCentiMeters; // * 10?
     uint8_t mSatellitesUsed;
     uint8_t mFixStatus; //? 0 = NoFix // 1 = Standard // 2 = diff GPS // 6 Estimated (DR) fix
+  private:
+    /* Just the GPS time of the record, to be able to merge two records together.
+     * Value is HHMMSS encoded as decimal number like NMEA.
+     */
+    uint32_t mCollectTime = 0;
 };
 
 class Gps : public TinyGPSPlus {
@@ -114,7 +119,11 @@ class Gps : public TinyGPSPlus {
     };
     enum class UBX_MSG {
         // NAV 0x01
+        NAV_POSLLH = 0x0201,
         NAV_STATUS = 0x0301,
+        NAV_DOP = 0x0401,
+        NAV_TIMEGPS = 0x2001,
+        NAV_TIMEUTC = 0x2101,
         NAV_AOPSTATUS = 0x6001,
 
         // RXM 0x02
@@ -279,6 +288,19 @@ class Gps : public TinyGPSPlus {
       struct __attribute__((__packed__)) {
         UBX_HEADER ubxHeader;
         uint32_t iTow;
+        uint32_t tAcc;
+        int32_t nano;
+        uint16_t year;
+        uint8_t month;
+        uint8_t day;
+        uint8_t hour;
+        uint8_t minute;
+        uint8_t sec;
+        uint8_t valid; // 1 == validTOW // 2 == validWKN // 4 == validUTC
+      } navTimeUtc;
+      struct __attribute__((__packed__)) {
+        UBX_HEADER ubxHeader;
+        uint32_t iTow;
         uint8_t config;
         uint8_t status;
         uint8_t reserved0;
@@ -356,6 +378,10 @@ class Gps : public TinyGPSPlus {
     uint16_t mLastNoiseLevel;
     AlpData mAlpData;
     bool mAidIniSent = false;
+    /* record that is exposed to the client */
+    GpsRecord mCurrentGpsRecord;
+    /* record that is currently filled with data. */
+    GpsRecord mIncomingGpsRecord;
 
     time_t getGpsTime();
 
@@ -399,7 +425,15 @@ class Gps : public TinyGPSPlus {
 
     static bool validNmeaMessageChar(uint8_t chr);
 
-    bool setMessageInterval(UBX_MSG msgId, uint8_t seconds);
+    uint16_t nextTerm(uint16_t startpos);
+
+    uint32_t parseNmeaTime(char *nmeaTime);
+
+    bool setMessageInterval(UBX_MSG msgId, uint8_t seconds, bool waitForAck = true);
+
+    /* last time, when the ESP clock was adjusted to the GPR UTC time,
+     * in millis ticker. */
+    uint32_t mLastTimeTimeSet = 0;
 };
 
 

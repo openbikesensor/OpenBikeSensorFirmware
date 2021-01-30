@@ -175,7 +175,13 @@ void Gps::configureGpsModule() {
   setMessageInterval(UBX_MSG::NMEA_GSV, 0);
   setMessageInterval(UBX_MSG::NMEA_VTG, 0);
 
+
+//  setMessageInterval(UBX_MSG::NAV_POSLLH, 1);
+//  setMessageInterval(UBX_MSG::NAV_DOP, 1);
+  setMessageInterval(UBX_MSG::NAV_TIMEUTC, 1);
+
 #ifdef ASSIST_NOW_AUTONOMOUS
+  setMessageInterval(UBX_MSG::NAV_AOPSTATUS, 1);
   // From the documentation: So we will not support this feature...
   // Note that the AssistNow Autonomous subsystem will not produce
   // any data and orbits while AssistNow Offline data is available.
@@ -262,15 +268,22 @@ void Gps::setStatisticsIntervalInSeconds(uint16_t seconds) {
   setMessageInterval(UBX_MSG::AID_ALP, seconds);
 }
 
-bool Gps::setMessageInterval(UBX_MSG msgId, uint8_t seconds) {
+bool Gps::setMessageInterval(UBX_MSG msgId, uint8_t seconds, bool waitForAck) {
   uint8_t ubxCfgMsg[] = {
     0x0A, 0x09, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00
   };
   ubxCfgMsg[0] = ((uint16_t) msgId) & 0xFFu;
   ubxCfgMsg[1] = ((uint16_t) msgId) >> 8u;
   ubxCfgMsg[3] = seconds;
-  return sendAndWaitForAck(
-    UBX_MSG::CFG_MSG, ubxCfgMsg, sizeof(ubxCfgMsg));
+  bool result;
+  if (waitForAck) {
+    result = sendAndWaitForAck(
+      UBX_MSG::CFG_MSG, ubxCfgMsg, sizeof(ubxCfgMsg));
+  } else {
+    result = true;
+    sendUbx(UBX_MSG::CFG_MSG, ubxCfgMsg, sizeof(ubxCfgMsg));
+  }
+  return result;
 }
 
 bool Gps::setBaud() {
@@ -333,8 +346,8 @@ void Gps::handle(uint32_t milliSeconds) {
 }
 
 bool Gps::sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer, size_t size) {
-  const int tries = 10;
-  const int timeoutMs = 500;
+  const int tries = 3;
+  const int timeoutMs = 50;
 
   bool result = false;
   for (int i = 0; i < tries; i++) {
@@ -367,19 +380,11 @@ bool Gps::sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer, size_t size
 
 
 bool Gps::handle() {
-// #ifdef DEVELOP
   if (mSerial.available() > 200) {
-    time_t now;
-    char buffer[64];
-    struct tm timeInfo;
-
-    ::time(&now);
-    localtime_r(&now, &timeInfo);
-    strftime(buffer, sizeof(buffer), "%c", &timeInfo);
-    Serial.printf("readGPSData(av: %d bytes, %s)\n",
-                  mSerial.available(), buffer);
+    addStatisticsMessage(String("readGPSData(av: ") + String(mSerial.available())
+                         + " bytes in buffer, lastCall " + String(millis() - mMessageStarted)
+                         + "ms ago, at " + ObsUtils::dateTimeToString() + ")");
   }
-// #endif
 
   boolean gotGpsData = false;
   int bytesProcessed = 0;
@@ -389,22 +394,13 @@ bool Gps::handle() {
     encodeUbx(data);
     if (encode(data)) {
       gotGpsData = true;
-      // set system time once every minute
-      if (time.isValid() && date.isValid() && time.isUpdated()
-          && date.month() != 0 && date.day() != 0 && date.year() > 2019
-          && (time.second() == 0 || ::time(nullptr) < PAST_TIME)
-          && time.age() < 100) {
-        time.value(); // reset "updated" flag
-        // We are in the precision of +/- 1 sec, ok for our purpose
-        const time_t t = getGpsTime();
-        const struct timeval now = {.tv_sec = t};
-        settimeofday(&now, nullptr);
-        log_d("Time set %ld.\n", t);
-      }
       if (bytesProcessed > 512) {
         break;
       }
     }
+  }
+  if (mSerial.available() == 0) {
+    mMessageStarted = millis(); // buffer empty next message might already start now
   }
   // TODO: Add dead device detection re-init if no data for 60 seconds...
 
@@ -655,12 +651,10 @@ bool Gps::encodeUbx(uint8_t data) {
     case GPS_NULL:
       if (data == 0xB5) {
         mReceiverState = UBX_SYNC;
-        mMessageStarted = millis(); // only of buffer was clear?
         mUbxChA = 0;
         mUbxChB = 0;
       } else if (data == '$') {
         mReceiverState = NMEA_START;
-        mMessageStarted = millis(); // only of buffer was clear?
         mNmeaChk = 0;
       } else {
         if (data != 0) {
@@ -708,14 +702,14 @@ bool Gps::encodeUbx(uint8_t data) {
       }
       break;
     case UBX_CHECKSUM1:
+      mReceiverState = GPS_NULL;
       if (mUbxChB != data) {
         log_e("UBX CK_B error: %02x != %02x after %b bytes for 0x%04x",
               mUbxChB, data, mGpsBufferBytePos, mGpsBuffer.ubxHeader.ubxMsgId);
       } else {
-        parseUbxMessage();
         mValidMessagesReceived++;
+        parseUbxMessage();
       }
-      mReceiverState = GPS_NULL;
       break;
     case NMEA_START:
       if (mGpsBufferBytePos == 6) {
@@ -810,6 +804,7 @@ void Gps::checkForCharThatCausesMessageReset(uint8_t data) {
 }
 
 void Gps::parseUbxMessage() {
+  uint32_t delayMs = millis() - mMessageStarted;
   switch (mGpsBuffer.ubxHeader.ubxMsgId) {
     case (uint16_t) UBX_MSG::ACK_ACK:
       log_d("ACK-ACK 0x%04x", mGpsBuffer.ack.ubxMsgId);
@@ -867,6 +862,38 @@ void Gps::parseUbxMessage() {
         aidIni();
       }
       break;
+    case (uint16_t) UBX_MSG::NAV_TIMEUTC: {
+        log_e("TIMEUTC: iTOW: %u acc: %u nano: %d %04u-%02u-%02uT%02u:%02u:%02u valid 0x%02x delay %dms",
+              mGpsBuffer.navTimeUtc.iTow, mGpsBuffer.navTimeUtc.tAcc, mGpsBuffer.navTimeUtc.nano,
+              mGpsBuffer.navTimeUtc.year, mGpsBuffer.navTimeUtc.month, mGpsBuffer.navTimeUtc.day,
+              mGpsBuffer.navTimeUtc.hour, mGpsBuffer.navTimeUtc.minute, mGpsBuffer.navTimeUtc.sec,
+              mGpsBuffer.navTimeUtc.valid, delayMs);
+        if ((mGpsBuffer.navTimeUtc.valid & 0x07) == 0x07 // all valid
+            && delayMs < 50
+            && mGpsBuffer.navTimeUtc.tAcc < (50 * 1000 * 1000 /* 50ms */)
+            && (mLastTimeTimeSet == 0
+              || (mLastTimeTimeSet + (2 * 60 * 1000 /* 2 minutes */)) < millis())) {
+          struct tm t;
+          t.tm_year = mGpsBuffer.navTimeUtc.year - 1900;
+          t.tm_mon = mGpsBuffer.navTimeUtc.month - 1;
+          t.tm_mday = mGpsBuffer.navTimeUtc.day;
+          t.tm_hour = mGpsBuffer.navTimeUtc.hour;
+          t.tm_min = mGpsBuffer.navTimeUtc.minute;
+          t.tm_sec = mGpsBuffer.navTimeUtc.sec;
+          const time_t gpsTime = mktime(&t);
+          const struct timeval now = {.tv_sec = gpsTime};
+          settimeofday(&now, nullptr);
+          log_e("Time set %ld: %s.\n", gpsTime, ObsUtils::dateTimeToString(gpsTime).c_str());
+          if (mLastTimeTimeSet == 0) {
+            mLastTimeTimeSet = millis();
+            // This triggers another NAV-TIMEUTC message!
+            setMessageInterval(UBX_MSG::NAV_TIMEUTC, 240); // every 4 minutes
+          } else {
+            mLastTimeTimeSet = millis();
+          }
+        }
+      }
+      break;
 #ifdef ASSIST_NOW_AUTONOMOUS
     case (uint16_t) UBX_MSG::NAV_AOPSTATUS:
       log_e("NAV-AOPSTATUS enabled: %d status: %d time: %d",
@@ -899,7 +926,6 @@ void Gps::parseUbxMessage() {
       if ((mGpsBuffer.aidIni.flags & GpsBuffer::AID_INI::FLAGS::POS)
           && mGpsBuffer.aidIni.posAcc < 50000) {
         AlpData::saveMessage(mGpsBuffer.u1Data, mGpsPayloadLength + 6);
-        logHexDump(mGpsBuffer.u1Data, 48 + 8);
         log_i("Stored new AID_INI data.");
       }
       break;
@@ -979,8 +1005,8 @@ void Gps::parseUbxMessage() {
           + " (0x" + String(mGpsBuffer.ubxHeader.ubxMsgId, 16) + ")");
       break;
     default:
-      log_e("Got UBX_MESSAGE! Id: 0x%04x Len %d", mGpsBuffer.ubxHeader.ubxMsgId,
-            mGpsBuffer.ubxHeader.length);
+      log_e("Got UBX_MESSAGE! Id: 0x%04x Len %d iTOW %d", mGpsBuffer.ubxHeader.ubxMsgId,
+            mGpsBuffer.ubxHeader.length, mGpsBuffer.navStatus.iTow);
   }
 }
 
@@ -1018,14 +1044,28 @@ void Gps::parseNmeaMessage() {
 #endif
   if (memcmp(&mGpsBuffer.charData[3], "RMC", 3) == 0) {
     mGpsBuffer.charData[mGpsBufferBytePos - 3] = 0;
-    log_e("??RMC Message '%s'", &mGpsBuffer.charData[0]);
+    int pos = nextTerm(0);
+    if (pos < mGpsBufferBytePos) {
+      uint32_t gpsTime = parseNmeaTime(&mGpsBuffer.charData[++pos]);
+    }
+
+
+    log_d("??RMC Message '%s'", &mGpsBuffer.charData[0]);
   } else if (memcmp(&mGpsBuffer.charData[3], "GGA", 3) == 0) {
     mGpsBuffer.charData[mGpsBufferBytePos - 3] = 0;
-    log_e("??GGA Message '%s'", &mGpsBuffer.charData[0]);
+    log_d("??GGA Message '%s'", &mGpsBuffer.charData[0]);
   } else {
     log_e("Unparsed NMEA %c%c%c%c%c", mGpsBuffer.u1Data[1], mGpsBuffer.u1Data[2],
           mGpsBuffer.u1Data[3], mGpsBuffer.u1Data[4], mGpsBuffer.u1Data[5]);
   }
+}
+
+uint16_t Gps::nextTerm(uint16_t startpos) {
+  uint16_t  pos = startpos;
+  while (pos < mGpsBufferBytePos && mGpsBuffer.charData[pos] != ',') {
+    pos++;
+  }
+  return pos;
 }
 
 time_t Gps::toTime(uint16_t week, uint32_t weekTime) {
@@ -1041,7 +1081,6 @@ void Gps::aidIni() {
     mGpsBuffer.aidIni.tAccMs = 3 * 24 * 60 * 60 * 1000; // 3 days!?
     mGpsBuffer.aidIni.flags = (GpsBuffer::AID_INI::FLAGS) 0x03;
     sendUbxDirect();
-    logHexDump(mGpsBuffer.u1Data, 48 + 8);
     handle(5);
   } else {
     log_e("Will not send AID_INI - invalid data on SD?");
@@ -1054,4 +1093,8 @@ uint16_t Gps::getLastNoiseLevel() const {
 
 uint32_t Gps::getBaudRate() {
   return mSerial.baudRate();
+}
+
+uint32_t Gps::parseNmeaTime(char *nmeaTime) {
+  return (uint32_t) atol(nmeaTime);
 }

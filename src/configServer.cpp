@@ -575,6 +575,7 @@ void aboutPage() {
   page += keyValue("GPS time", gps.time.value()); // fill all digits?
   page += keyValue("GPS date", gps.date.value()); // fill all digits?
   page += keyValue("GPS hdop", gps.hdop.value()); // fill all digits?
+  page += keyValue("GPS satellites", gps.satellites.value());
   page += keyValue("GPS uptime", gps.getUptime(), "ms");
   page += keyValue("GPS noise level", gps.getLastNoiseLevel());
   page += keyValue("GPS baud rate", gps.getBaudRate());
