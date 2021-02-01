@@ -355,14 +355,9 @@ void loop() {
   }
   currentSet->time = gps.currentTime();
   currentSet->millis = currentTimeMillis;
-  currentSet->location = gps.location;
-  currentSet->altitude = gps.altitude;
-  currentSet->course = gps.course;
-  currentSet->speed = gps.speed;
-  currentSet->hdop = gps.hdop;
-  currentSet->validSatellites = gps.getValidSatellites();
   currentSet->batteryLevel = voltageMeter->read();
   currentSet->isInsidePrivacyArea = gps.isInsidePrivacyArea();
+  currentSet->gpsRecord = gps.getCurrentGpsRecord();
 
   sensorManager->reset();
 

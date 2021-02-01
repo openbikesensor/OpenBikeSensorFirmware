@@ -200,8 +200,8 @@ bool CSVFileWriter::append(DataSet &set) {
 
 // FIXME #ifdef DEVELOP
   if (time.tm_sec == 0) {
-    csv += "DEVELOP:  GPSMessages: " + String(gps.passedChecksum())
-           + " GPS crc errors: " + String(gps.failedChecksum());
+    csv += "DEVELOP:  GPSMessages: " + String(gps.getValidMessageCount())
+           + " GPS crc errors: " + String(gps.getMessagesWithFailedCrcCount());
   } else if (time.tm_sec == 1) {
     csv += "DEVELOP: Mem: "
            + String(ESP.getFreeHeap() / 1024) + "k Buffer: "
@@ -212,13 +212,8 @@ bool CSVFileWriter::append(DataSet &set) {
            + String(ESP.getMinFreeHeap() / 1024) + "k";
   } else if (time.tm_sec == 3) {
     csv += "DEVELOP: GPS messages: ";
-    csv += gps.getMessages();
-  } else if (time.tm_sec == 4) {
-    csv += "DEVELOP: GPS crc error: ";
-    csv += gps.failedChecksum();
-  } else if (time.tm_sec == 5) {
-    csv += "DEVELOP: GPS crc ok: ";
-    csv += gps.passedChecksum();
+    csv += ObsUtils::encodeForCsvField(gps.getMessages());
+    gps.resetMessages();
   } else if (time.tm_sec == 6) {
     csv += "DEVELOP: GPS lastNoiseLevel: ";
     csv += gps.getLastNoiseLevel();
@@ -229,30 +224,20 @@ bool CSVFileWriter::append(DataSet &set) {
 // #endif
   csv += ";";
 
-  if ((!set.location.isValid()) ||
-        set.hdop.value() == 9999 ||
-        set.validSatellites == 0 ||
+  if ((!set.gpsRecord.hasValidFix()) ||
       ((config.privacyConfig & NoPosition) && set.isInsidePrivacyArea
     && !((config.privacyConfig & OverridePrivacy) && set.confirmed))) {
     csv += ";;;;;";
   } else {
-    csv += String(set.location.lat(), 6) + ";";
-    csv += String(set.location.lng(), 6) + ";";
-    csv += String(set.altitude.meters(), 1) + ";";
-    if (set.course.isValid()) {
-      csv += String(set.course.deg(), 2);
-    }
-    csv += ";";
-    if (set.speed.isValid()) {
-      csv += String(set.speed.kmph(), 2);
-    }
-    csv += ";";
+    csv += GpsRecord::posAsString(set.gpsRecord.mLatitude) + ";";
+    csv += GpsRecord::posAsString(set.gpsRecord.mLongitude) + ";";
+    csv += set.gpsRecord.getAltitudeMetersString() + ";";
+    csv += set.gpsRecord.getCourseString() + ";";
+    csv += set.gpsRecord.getSpeedKmHString() + ";";
   }
-  if (set.hdop.isValid()) {
-    csv += String(set.hdop.hdop(), 2);
-  }
-  csv += ";";
-  csv += String(set.validSatellites) + ";";
+  csv += set.gpsRecord.getHdopString() + ";";
+
+  csv += String(set.gpsRecord.mSatellitesUsed) + ";";
   csv += String(set.batteryLevel, 2) + ";";
   if (set.sensorValues[LEFT_SENSOR_ID] < MAX_SENSOR_VALUE) {
     csv += String(set.sensorValues[LEFT_SENSOR_ID]);

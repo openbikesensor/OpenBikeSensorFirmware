@@ -34,12 +34,7 @@ struct DataSet {
   time_t time;
   uint32_t  millis;
   String comment;
-  TinyGPSLocation location;
-  TinyGPSAltitude altitude;
-  TinyGPSCourse course;
-  TinyGPSSpeed speed;
-  TinyGPSHDOP hdop;
-  uint8_t validSatellites;
+  GpsRecord gpsRecord;
   float BatterieVoltage;
   double batteryLevel;
   std::vector<uint16_t> sensorValues;

@@ -22,33 +22,15 @@
 #define OBS_GPS_H
 
 #include <Arduino.h>
-#include <TinyGPS++.h> // http://arduiniana.org/libraries/tinygpsplus/
 #include <HardwareSerial.h>
 #include "utils/alpdata.h"
 #include "config.h" // PrivacyArea
 #include "displays.h"
+#include "gpsrecord.h"
 
 class SSD1306DisplayDevice;
 
-class GpsRecord {
-    uint32_t mRetrievedAt; // millis counter!
-    time_t mDateTime;
-    long mLongitude;
-    long mLatitude;
-    int mSpeedKmH; // * 100?
-    int mCourseOverGround; // * 100
-    int mHdop; // * 100
-    int mAltitudeCentiMeters; // * 10?
-    uint8_t mSatellitesUsed;
-    uint8_t mFixStatus; //? 0 = NoFix // 1 = Standard // 2 = diff GPS // 6 Estimated (DR) fix
-  private:
-    /* Just the GPS time of the record, to be able to merge two records together.
-     * Value is HHMMSS encoded as decimal number like NMEA.
-     */
-    uint32_t mCollectTime = 0;
-};
-
-class Gps : public TinyGPSPlus {
+class Gps {
   public:
     enum class WaitFor {
         FIX_NO_WAIT = 0,
@@ -73,7 +55,7 @@ class Gps : public TinyGPSPlus {
 
     uint8_t getValidSatellites();
 
-    void showWaitStatus(SSD1306DisplayDevice *display) const;
+    void showWaitStatus(SSD1306DisplayDevice *display);
 
     /* Returns current speed, negative value means unknown speed. */
     double getSpeed();
@@ -82,7 +64,11 @@ class Gps : public TinyGPSPlus {
 
     uint16_t getLastNoiseLevel() const;
 
+    /* Collected informational messages as String. */
     String getMessages() const;
+
+    /* Clears the collected informational messages. */
+    void resetMessages();
 
     void setStatisticsIntervalInSeconds(uint16_t seconds);
 
@@ -97,6 +83,13 @@ class Gps : public TinyGPSPlus {
     static PrivacyArea newPrivacyArea(double latitude, double longitude, int radius);
 
     void enableSbas();
+
+
+    GpsRecord getCurrentGpsRecord();
+
+    int32_t getValidMessageCount();
+
+    int32_t getMessagesWithFailedCrcCount();
 
   private:
     /* ALP msgs up to 0x16A seen might be more. */
@@ -153,7 +146,7 @@ class Gps : public TinyGPSPlus {
         CFG_SBAS = 0x1606,
         CFG_NAVX5 = 0x2306,
         CFG_NAV5 = 0x2406,
-        CFG_RINV = 0x3206,
+        CFG_RINV = 0x3406,
 
         // MON 0x0A
         MON_VER = 0x040a,
@@ -177,14 +170,6 @@ class Gps : public TinyGPSPlus {
         NMEA_TXT = 0x41F0,
 
         // UBX, special 0xf1
-    };
-    enum GPS_FIX : uint8_t {
-      NO_FIX = 0,
-      DEAD_RECKONING_ONLY = 1,
-      FIX_2D = 2,
-      FIX_3D = 3,
-      GPS_AND_DEAD_RECKONING = 4,
-      TIME_ONLY = 5,
     };
     union GpsBuffer {
       uint8_t u1Data[MAX_MESSAGE_LENGTH];
@@ -300,7 +285,7 @@ class Gps : public TinyGPSPlus {
       struct __attribute__((__packed__)) {
         UBX_HEADER ubxHeader;
         uint32_t iTow;
-        GPS_FIX gpsFix;
+        GpsRecord::GPS_FIX gpsFix;
         uint8_t flags;
         uint8_t fixStat;
         uint8_t flags2;
@@ -323,7 +308,7 @@ class Gps : public TinyGPSPlus {
         uint32_t iTow;
         int32_t fTow;
         int16_t week;
-        GPS_FIX gpsFix;
+        GpsRecord::GPS_FIX gpsFix;
         uint8_t flags;
         int32_t ecefX;
         int32_t ecefY;
@@ -448,8 +433,11 @@ class Gps : public TinyGPSPlus {
     std::vector<String> mMessages;
     bool mAckReceived = false;
     bool mNakReceived = false;
+    /* MsgId of the last received ack or nak message. */
+    uint16_t mLastAckMsgId;
     uint32_t mGpsPayloadLength;
     uint16_t mValidMessagesReceived = 0;
+    uint16_t mMessagesWithFailedCrcReceived = 0;
     uint8_t mNmeaChk;
     uint16_t mLastNoiseLevel;
     AlpData mAlpData;
@@ -475,7 +463,7 @@ class Gps : public TinyGPSPlus {
 
     void sendUbx(UBX_MSG ubxMsgId, const uint8_t *payload = {}, uint16_t length = 0);
 
-    bool sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer, size_t size);
+    bool sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer = {}, size_t size = 0);
 
     void parseUbxMessage();
 
@@ -497,8 +485,6 @@ class Gps : public TinyGPSPlus {
 
     static time_t toTime(uint16_t week, uint32_t weekTime);
 
-    static void logHexDump(const uint8_t *buffer, uint16_t length);
-
     static bool validNmeaMessageChar(uint8_t chr);
 
     uint16_t nextTerm(uint16_t startpos);
@@ -510,6 +496,11 @@ class Gps : public TinyGPSPlus {
     /* last time, when the ESP clock was adjusted to the GPR UTC time,
      * in millis ticker. */
     uint32_t mLastTimeTimeSet = 0;
+
+    bool prepareGpsData(uint32_t tow);
+
+    void checkGpsDataState();
+
 };
 
 

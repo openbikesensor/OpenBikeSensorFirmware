@@ -45,6 +45,19 @@ String ObsUtils::dateTimeToString(time_t theTime) {
   return String(date);
 }
 
+String ObsUtils::timeToString(time_t theTime) {
+  char date[32];
+  if (theTime == 0) {
+    theTime = time(nullptr);
+  }
+  tm timeStruct;
+  localtime_r(&theTime, &timeStruct);
+  snprintf(date, sizeof(date),
+           "%02d:%02d:%02dZ",
+           timeStruct.tm_hour, timeStruct.tm_min, timeStruct.tm_sec);
+  return String(date);
+}
+
 String ObsUtils::dateTimeToHttpHeaderString(time_t theTime) {
   char date[32];
   if (theTime == 0) {
@@ -134,6 +147,21 @@ String ObsUtils::encodeForXmlAttribute(const String &text) {
   return result;
 }
 
+String ObsUtils::encodeForXmlText(const String &text) {
+  String result(text);
+  result.replace("&", "&amp;");
+  result.replace("<", "&lt;");
+  return result;
+}
+
+String ObsUtils::encodeForCsvField(const String &field) {
+  String result(field);
+  result.replace('&', '_');
+  result.replace('\n', ' ');
+  result.replace('\r', ' ');
+  return result;
+}
+
 String ObsUtils::toScaledByteString(uint32_t size) {
   String result;
   if (size <= BYTES_PER_KB) {
@@ -145,3 +173,18 @@ String ObsUtils::toScaledByteString(uint32_t size) {
   }
   return result;
 }
+
+void ObsUtils::logHexDump(const uint8_t *buffer, uint16_t length) {
+  String debug;
+  char buf[16];
+  for (int i = 0; i < length; i++) {
+    if (i % 16 == 0) {
+      snprintf(buf, 8, "\n%04X  ", i);
+      debug += buf;
+    }
+    snprintf(buf, 8, "%02X ", buffer[i]);
+    debug += buf;
+  }
+  log_e("%s", debug.c_str());
+}
+
