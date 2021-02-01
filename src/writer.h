@@ -23,7 +23,6 @@
 
 #include <Arduino.h>
 #include <SD.h>
-#include <TinyGPS++.h>
 #include <utility>
 #include <vector>
 

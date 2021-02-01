@@ -567,7 +567,6 @@ void aboutPage() {
   page += keyValue("Right Sensor last start delay", sensorManager->getLastDelayTillStartUs(RIGHT_SENSOR_ID), "&#xB5;s");
 
   page += "<h3>GPS</h3>";
-  page += keyValue("TinyGPSPlus version", TinyGPSPlus::libraryVersion());
   page += keyValue("GPS valid checksum", gps.getValidMessageCount());
   page += keyValue("GPS failed checksum", gps.getMessagesWithFailedCrcCount());
   page += keyValue("GPS hdop", gps.getCurrentGpsRecord().getHdopString());

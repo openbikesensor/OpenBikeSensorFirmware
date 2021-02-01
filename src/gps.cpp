@@ -474,7 +474,6 @@ bool Gps::isInsidePrivacyArea() {
 }
 
 double Gps::haversine(double lat1, double lon1, double lat2, double lon2) {
-  // TODO: There is also TinyGPSPlus::distanceBetween()
   // https://www.geeksforgeeks.org/haversine-formula-to-find-distance-between-two-points-on-a-sphere/
   // distance between latitudes and longitudes
   double dLat = (lat2 - lat1) * M_PI / 180.0;
