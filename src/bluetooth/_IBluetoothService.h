@@ -53,26 +53,12 @@ class IBluetoothService {
     }
 
   protected:
-    /**
-     * Joins a list of integers by placing the `glue` string between the members.
-     */
-    static String joinList(const std::list<uint16_t>& list, const String& glue) {
-      String s;
-
-      boolean firstValue = true;
-      for (auto value : list) {
-        if (!firstValue) {
-          s += glue;
-        }
-        s += String(value);
-        firstValue = false;
-      }
-
-      return s;
-    }
-
     static String valueAsString(uint16_t value) {
-      return String(value);
+      if (value == MAX_SENSOR_VALUE || value == 0) {
+        return String("");
+      } else{
+        return String(value);
+      }
     }
 };
 

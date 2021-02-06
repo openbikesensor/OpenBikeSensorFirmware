@@ -15,8 +15,6 @@ void BluetoothManager::init(
   services.push_back(new HeartRateService);
   services.push_back(new BatteryService(batteryPercentage));
   services.push_back(new DistanceService);
-// ConnectionService disabled, max 6 services
-//  services.push_back(new ConnectionService);
   services.push_back(new ClosePassService);
   services.push_back(new ObsService(leftOffset, rightOffset, trackId));
 
