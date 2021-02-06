@@ -23,9 +23,22 @@
 
 /* Most input from u-blox6_ReceiverDescrProtSpec_(GPS.G6-SW-10018)_Public.pdf */
 
+/**
+ * TODO:
+ *  - AID_INI: we can not get exact time remove time conversion
+ *  - cleanup comments
+ *  - reduce code size?
+ *  - PERSIST_GPS_CONFIG
+ *  - ensure config is set
+ *  - check other TODOs
+ *  - reconsider log levels
+ */
 
-/* Value is in the past (just went by at the time of writing). */
-static const time_t PAST_TIME = 1606672131;
+
+const String Gps::INF_SEVERITY_STRING[] = {
+  String("ERR"), String("WRN"), String("NTC"),
+  String("TST"), String("DBG")
+};
 
 void Gps::begin() {
   setBaud();
@@ -86,11 +99,11 @@ void Gps::sendUbxDirect() {
 
 /* Resets the stored GPS config and stores our config! */
 void Gps::configureGpsModule() {
-// RESET not needed, but we do not get startup messages then!?
-//  log_e("RESET GPS!");
-//  const uint8_t UBX_CFG_RST[] = {0xFF, 0xFF, 0x02, 0x00};
-//  sendAndWaitForAck(UBX_MSG::CFG_RST, UBX_CFG_RST, 4);
-//  handle(300);
+  log_d("RESET GPS!");
+//  const uint8_t UBX_CFG_RST[] = {0xFF, 0xFF, 0x02, 0x00}; // FULL COLDSTART
+  const uint8_t UBX_CFG_RST[] = {0x00, 0x00, 0x02, 0x00}; // WARM START
+  sendAndWaitForAck(UBX_MSG::CFG_RST, UBX_CFG_RST, 4);
+  handle(300);
 
   // Clear configuration, RESET TO DEFAULT
   const uint8_t UBX_CFG_CFG_CLR[] = {
@@ -140,7 +153,9 @@ void Gps::configureGpsModule() {
     "\x01" // none binary, dump at startup
     "openbikesensor.org";
 
-  sendAndWaitForAck(UBX_MSG::CFG_RINV, UBX_CFG_RINV, sizeof(UBX_CFG_RINV));
+  String inv = String("\x01openbikesensor.org/") + OBSVersion;
+  sendAndWaitForAck(UBX_MSG::CFG_RINV, reinterpret_cast<const uint8_t *>(inv.c_str()),
+                    inv.length());
 
   setMessageInterval(UBX_MSG::AID_ALPSRV, 1);
   setMessageInterval(UBX_MSG::NMEA_GGA, 0);
@@ -150,13 +165,11 @@ void Gps::configureGpsModule() {
   setMessageInterval(UBX_MSG::NMEA_GSV, 0);
   setMessageInterval(UBX_MSG::NMEA_VTG, 0);
 
-
   setMessageInterval(UBX_MSG::NAV_POSLLH, 1);
   setMessageInterval(UBX_MSG::NAV_DOP, 1);
   setMessageInterval(UBX_MSG::NAV_SOL, 1);
   setMessageInterval(UBX_MSG::NAV_VELNED, 1);
   setMessageInterval(UBX_MSG::NAV_TIMEUTC, 1);
-
 
   setMessageInterval(UBX_MSG::NAV_SBAS, 20);
 
@@ -299,10 +312,10 @@ bool Gps::setBaud() {
   }
 
   mSerial.updateBaudRate(9600);
-  // switch to 115200 "blind"
+  // switch to 115200 "blind", switch off NMEA
   const uint8_t UBX_CFG_PRT[] = {
     0x01, 0x00, 0x00, 0x00, 0xd0, 0x08, 0x00, 0x00,
-    0x00, 0xc2, 0x01, 0x00, 0x03, 0x00, 0x03, 0x00,
+    0x00, 0xc2, 0x01, 0x00, 0x03, 0x00, 0x01, 0x00,
     0x00, 0x00, 0x00, 0x00
   };
   sendUbx(UBX_MSG::CFG_PRT, UBX_CFG_PRT, sizeof(UBX_CFG_PRT));
@@ -556,7 +569,7 @@ bool Gps::hasState(int state, SSD1306DisplayDevice *display) {
       }
       break;
     case (int) WaitFor::FIX_TIME:
-      if (mCurrentGpsRecord.hasTime()) {
+      if (mLastTimeTimeSet != 0) {
         log_d("Got time...");
         display->showTextOnGrid(2, 4, "Got time");
         result = true;
@@ -578,7 +591,7 @@ bool Gps::hasState(int state, SSD1306DisplayDevice *display) {
   return result;
 }
 
-int32_t Gps::getValidMessageCount() {
+int32_t Gps::getValidMessageCount() const {
   return mValidMessagesReceived;
 }
 
@@ -590,7 +603,7 @@ void Gps::showWaitStatus(SSD1306DisplayDevice *display) {
   String satellitesString[2];
   if (mValidMessagesReceived == 0) { // could not get any valid char from GPS module
     satellitesString[0] = "OFF?";
-  } else if (!mCurrentGpsRecord.hasTime()) {
+  } else if (mLastTimeTimeSet == 0) {
     char timeStr[32];
     snprintf(timeStr, sizeof(timeStr), "no time %d", mLastNoiseLevel);
     satellitesString[0] = String(timeStr);
@@ -600,7 +613,7 @@ void Gps::showWaitStatus(SSD1306DisplayDevice *display) {
   }
 
   if (mValidMessagesReceived != 0    //only do this if a communication is there and a valid time is there
-      && mCurrentGpsRecord.hasTime()) {
+      && mLastTimeTimeSet != 0) {
     // This is a hack :) if still the "Wait for GPS" version is displayed original line
     if (displayTest->get_gridTextofCell(2, 4).startsWith("Wait")) {
       display->newLine();
@@ -616,11 +629,11 @@ bool Gps::moduleIsAlive() const {
   return mValidMessagesReceived > 0;
 }
 
-uint8_t Gps::getValidSatellites() {
+uint8_t Gps::getValidSatellites() const {
   return mCurrentGpsRecord.mSatellitesUsed;
 }
 
-double Gps::getSpeed() {
+double Gps::getSpeed() const {
   return (double) mCurrentGpsRecord.mSpeed * (60.0 * 60.0) / 100.0 / 1000.0;
 }
 
@@ -631,8 +644,25 @@ String Gps::getHdopAsString() {
 String Gps::getMessages() const {
   String theGpsMessage = "";
   for (const String& msg : mMessages) {
-    theGpsMessage += "<br/>";
+    theGpsMessage += " // ";
     theGpsMessage += msg;
+  }
+  return theGpsMessage;
+}
+
+String Gps::getMessage(uint16_t idx) const {
+  String theGpsMessage = "";
+  if (mMessages.size() > idx) {
+    theGpsMessage = mMessages[idx];
+  }
+  return theGpsMessage;
+}
+
+String Gps::getMessagesHtml() const {
+  String theGpsMessage = "";
+  for (const String& msg : mMessages) {
+    theGpsMessage += "<br/>";
+    theGpsMessage += ObsUtils::encodeForXmlText(msg);
   }
   return theGpsMessage;
 }
@@ -840,9 +870,11 @@ void Gps::parseUbxMessage() {
             mGpsBuffer.cfgPrt.portId, mGpsBuffer.cfgPrt.baudRate);
       break;
     case (uint16_t) UBX_MSG::CFG_RINV:
-      mGpsBuffer.cfgRinv.data[sizeof(mGpsBuffer.cfgRinv.data)] = 0;
-      log_e("CFG-RINV flags: %02x, Message %s",
+      mGpsBuffer.u1Data[mGpsBufferBytePos - 2] = 0;
+      log_v("CFG-RINV flags: %02x, Message %s",
             mGpsBuffer.cfgRinv.flags, &mGpsBuffer.cfgRinv.data);
+      addStatisticsMessage(
+        String("RINV: ") + String(mGpsBuffer.cfgRinv.data));
       break;
     case (uint16_t) UBX_MSG::MON_VER:
       // a bit a hack - but do not let the strings none zero terminated.
@@ -930,13 +962,22 @@ void Gps::parseUbxMessage() {
         }
       }
       break;
+    case (uint16_t) UBX_MSG::NAV_TIMEGPS: {
+      log_e("TIMEGPS: iTOW: %u, fTOW: %d, week %d, leapS: %d, valid: %02x, tAcc %dns",
+            mGpsBuffer.navTimeGps.iTow, mGpsBuffer.navTimeGps.fTow, mGpsBuffer.navTimeGps.week,
+            mGpsBuffer.navTimeGps.leapS, mGpsBuffer.navTimeGps.valid, mGpsBuffer.navTimeGps.tAcc);
+      log_e("TIME_TEST: %s <> %s",
+            ObsUtils::dateTimeToString().c_str(),
+            ObsUtils::dateTimeToString(toTime(mGpsBuffer.navTimeGps.week, mGpsBuffer.navTimeGps.iTow / 1000)).c_str());
+      }
+      break;
     case (uint16_t) UBX_MSG::NAV_TIMEUTC: {
-        log_d("TIMEUTC: iTOW: %u acc: %u nano: %d %04u-%02u-%02uT%02u:%02u:%02u valid 0x%02x delay %dms",
+        log_e("TIMEUTC: iTOW: %u acc: %u nano: %d %04u-%02u-%02uT%02u:%02u:%02u valid 0x%02x delay %dms",
               mGpsBuffer.navTimeUtc.iTow, mGpsBuffer.navTimeUtc.tAcc, mGpsBuffer.navTimeUtc.nano,
               mGpsBuffer.navTimeUtc.year, mGpsBuffer.navTimeUtc.month, mGpsBuffer.navTimeUtc.day,
               mGpsBuffer.navTimeUtc.hour, mGpsBuffer.navTimeUtc.minute, mGpsBuffer.navTimeUtc.sec,
               mGpsBuffer.navTimeUtc.valid, delayMs);
-        if ((mGpsBuffer.navTimeUtc.valid & 0x07) == 0x07 // all valid
+        if ((mGpsBuffer.navTimeUtc.valid & 0x07) == 0x07 // all valid UTC comes last
             && delayMs < 50
             && mGpsBuffer.navTimeUtc.tAcc < (50 * 1000 * 1000 /* 50ms */)
             && (mLastTimeTimeSet == 0
@@ -1079,8 +1120,8 @@ void Gps::parseUbxMessage() {
       mGpsBuffer.u1Data[mGpsBufferBytePos - 2] = 0;
       log_d("INF %d message: %s",
             mGpsBuffer.ubxHeader.ubxMsgId, String(mGpsBuffer.inf.message).c_str());
-      addStatisticsMessage(String(mGpsBuffer.inf.message)
-          + " (0x" + String(mGpsBuffer.ubxHeader.ubxMsgId, 16) + ")");
+      addStatisticsMessage(
+        INF_SEVERITY_STRING[mGpsBuffer.u1Data[3]] + ": " + String(mGpsBuffer.inf.message));
       break;
     default:
       log_e("Got UBX_MESSAGE! Id: 0x%04x Len %d iTOW %d", mGpsBuffer.ubxHeader.ubxMsgId,
@@ -1108,10 +1149,6 @@ uint8_t Gps::hexCharToInt(uint8_t data) {
   return 99; // ERROR
 }
 
-/* TODO: Implement this and remove TinyGps++
- *  Make the GPS messages the trigger to start a measurement loop and
- *  use time only as fallback.
- */
 void Gps::parseNmeaMessage() {
 #ifdef OLD_TXT_MESSAGE
   if (memcmp(&mGpsBuffer.charData[3], "TXT", 3) == 0) {
@@ -1119,7 +1156,6 @@ void Gps::parseNmeaMessage() {
     String msg = String(&mGpsBuffer.charData[16]);
     addStatisticsMessage("TXT: " + msg);
   } else
-#endif
   if (memcmp(&mGpsBuffer.charData[3], "RMC", 3) == 0) {
     mGpsBuffer.charData[mGpsBufferBytePos - 3] = 0;
     int pos = nextTerm(0);
@@ -1133,9 +1169,10 @@ void Gps::parseNmeaMessage() {
     mGpsBuffer.charData[mGpsBufferBytePos - 3] = 0;
     log_d("??GGA Message '%s'", &mGpsBuffer.charData[0]);
   } else {
+#endif
     log_e("Unparsed NMEA %c%c%c%c%c", mGpsBuffer.u1Data[1], mGpsBuffer.u1Data[2],
           mGpsBuffer.u1Data[3], mGpsBuffer.u1Data[4], mGpsBuffer.u1Data[5]);
-  }
+//  }
 }
 
 uint16_t Gps::nextTerm(uint16_t startpos) {
@@ -1146,11 +1183,24 @@ uint16_t Gps::nextTerm(uint16_t startpos) {
   return pos;
 }
 
+static const uint32_t SECONDS_PER_WEEK = 60L * 60 * 24 * 7;
+  // use difftime() ?
+/* GPS Start time is 1980-01-06T00:00:00Z adding 18 leap seconds */
+static const uint32_t GPS_START_TIME_CORRECTED = 315964800L - 18;
+
 time_t Gps::toTime(uint16_t week, uint32_t weekTime) {
-  // ignoring leap seconds!
-  uint32_t gpsStartTime = 315964800; // 1980-01-06T00:00:00Z,
-  return (time_t) gpsStartTime + (7 * 24 * 60 * 60 * week) + weekTime;
+  return (time_t) GPS_START_TIME_CORRECTED + (SECONDS_PER_WEEK * week) + weekTime;
 }
+
+uint32_t Gps::timeToTimeOfWeek(time_t t) {
+  return (t - GPS_START_TIME_CORRECTED) % SECONDS_PER_WEEK;
+}
+
+uint16_t Gps::timeToWeekNumber(time_t t) {
+  return (t - GPS_START_TIME_CORRECTED) / SECONDS_PER_WEEK;
+}
+
+
 
 void Gps::aidIni() {
   if (AlpData::loadMessage(mGpsBuffer.u1Data, 48 + 8) > 48) {
@@ -1158,6 +1208,14 @@ void Gps::aidIni() {
     mGpsBuffer.aidIni.posAcc = 5000; // 50m
     mGpsBuffer.aidIni.tAccMs = 3 * 24 * 60 * 60 * 1000; // 3 days!?
     mGpsBuffer.aidIni.flags = (GpsBuffer::AID_INI::FLAGS) 0x03;
+    time_t t = time(nullptr);
+    if (t > ObsUtils::PAST_TIME) {
+      mGpsBuffer.aidIni.tAccMs = 1000; // 1 sec
+      mGpsBuffer.aidIni.tAccNs = 0;
+      mGpsBuffer.aidIni.towNs = 0;
+      mGpsBuffer.aidIni.tow = timeToTimeOfWeek(t);
+      mGpsBuffer.aidIni.wn = timeToWeekNumber(t);
+    }
     sendUbxDirect();
     handle(5);
   } else {
@@ -1225,4 +1283,3 @@ GpsRecord Gps::getCurrentGpsRecord() {
   // TODO: Register record was read!
   return mCurrentGpsRecord;
 }
-

@@ -57,21 +57,21 @@ class GpsRecord {
     uint8_t mFixStatusFlags;
     static String posAsString(uint32_t pos);
 
-    String getAltitudeMetersString();
+    String getAltitudeMetersString() const;
 
-    String getCourseString();
+    String getCourseString() const;
 
-    String getSpeedKmHString();
+    String getSpeedKmHString() const;
 
-    String getHdopString();
-    String getLatString();
-    String getLongString();
+    String getHdopString() const;
+    String getLatString() const;
+    String getLongString() const;
 
-    bool hasValidFix();
+    bool hasValidFix() const;
 
-    double getLatitude();
+    double getLatitude() const;
 
-    double getLongitude();
+    double getLongitude() const;
 
   protected:
     /* Just the GPS Millisecond time of Week of the record, to be able to
@@ -103,9 +103,6 @@ class GpsRecord {
     static uint32_t pow10[10];
 
     static String toScaledString(uint32_t value, uint16_t scale);
-
-    bool hasTime();
-
 };
 
 

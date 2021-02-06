@@ -80,20 +80,20 @@ String GpsRecord::posAsString(uint32_t pos) {
 }
 
 
-String GpsRecord::getAltitudeMetersString() {
+String GpsRecord::getAltitudeMetersString() const {
   // 3 digits is problematic, 2 are enough any way.
   return toScaledString((mHeight + 5) / 10, 2);
 }
 
-String GpsRecord::getCourseString() {
+String GpsRecord::getCourseString() const {
   return toScaledString(mCourseOverGround, 5);
 }
 
-String GpsRecord::getSpeedKmHString() {
+String GpsRecord::getSpeedKmHString() const {
   return toScaledString((mSpeed * 60 * 60) / 10000, 1);
 }
 
-String GpsRecord::getHdopString() {
+String GpsRecord::getHdopString() const {
   return toScaledString(mHdop, 2);
 }
 
@@ -112,27 +112,23 @@ String GpsRecord::toScaledString(const uint32_t value, const uint16_t scale) {
   return String(buffer);
 }
 
-bool GpsRecord::hasValidFix() {
+bool GpsRecord::hasValidFix() const {
   return (mFixStatus == FIX_2D || mFixStatus == FIX_3D || mFixStatus == GPS_AND_DEAD_RECKONING)
     && mHdop != 9999 && mSatellitesUsed != 0;
 }
 
-bool GpsRecord::hasTime() {
-  return (hasValidFix() || mFixStatus == TIME_ONLY);
-}
-
-String GpsRecord::getLatString() {
+String GpsRecord::getLatString() const {
   return toScaledString(mLatitude, 7);
 }
 
-String GpsRecord::getLongString() {
+String GpsRecord::getLongString() const {
   return toScaledString(mLongitude, 7);
 }
 
-double GpsRecord::getLatitude() {
+double GpsRecord::getLatitude() const {
   return ((double) mLatitude) / 10000000.0;
 }
 
-double GpsRecord::getLongitude() {
+double GpsRecord::getLongitude() const {
   return ((double) mLongitude) / 10000000.0;
 }

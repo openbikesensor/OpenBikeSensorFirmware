@@ -26,17 +26,22 @@
  * Takes 5 seconds to update the data.
 */
 void AlpData::update(SSD1306DisplayDevice *display) {
-  display->showTextOnGrid(0,5, "ALP data ...");
-  String lastModified = loadLastModified();
+  String lastModified = ""; // loadLastModified();
 
   File f = SD.open(ALP_DATA_FILE_NAME, FILE_READ);
-  if (!f || f.size() < ALP_DATA_MIN_FILE_SIZE) {
+  if (!f || f.size() < ALP_DATA_MIN_FILE_SIZE ) {
     lastModified = "";
-  } else {
-    log_e("Existing file seems valid. Size is %d", f.size());
+  } else if (f.getLastWrite() > ObsUtils::PAST_TIME &&
+      f.getLastWrite() < (time(nullptr) + 2 * 24  * 60 * 60)) {
+    log_d("File still current %s",
+          ObsUtils::dateTimeToString(f.getLastWrite()).c_str());
+    f.close();
+    return;
   }
   f.close();
-  log_e("Existing file is from %s", lastModified.c_str());
+  log_d("Existing file last write %s", ObsUtils::dateTimeToString(f.getLastWrite()).c_str());
+  log_d("Existing file is from %s", lastModified.c_str());
+  display->showTextOnGrid(0, 5, "ALP data ...");
 
   HTTPClient httpClient;
   httpClient.begin(ALP_DOWNLOAD_URL);
@@ -92,8 +97,10 @@ bool AlpData::available() {
 
 void AlpData::saveLastModified(String header) {
   File f = SD.open(LAST_MODIFIED_HEADER_FILE_NAME, FILE_WRITE);
-  f.print(header);
-  f.close();
+  if (f) {
+    f.print(header);
+    f.close();
+  }
 }
 
 String AlpData::loadLastModified() {
@@ -131,17 +138,22 @@ uint16_t AlpData::fill(uint8_t *data, size_t ofs, uint16_t dataSize) {
 /* Used to save AID_INI data. */
 void AlpData::saveMessage(uint8_t *data, size_t size) {
   File f = SD.open(AID_INI_DATA_FILE_NAME, FILE_WRITE);
-  size_t written = f.write(data, size);
-  f.close();
-  log_d("Written %d bytes", written);
+  if (f) {
+    size_t written = f.write(data, size);
+    f.close();
+    log_d("Written %d bytes", written);
+  }
 }
 
 /* Used to save AID_INI data. */
 size_t AlpData::loadMessage(uint8_t *data, size_t size) {
+  size_t result = 0;
   File f = SD.open(AID_INI_DATA_FILE_NAME, FILE_READ);
-  size_t result = f.read(data, size);
-  f.close();
-  log_d("Read %d bytes", result);
+  if (f) {
+    result = f.read(data, size);
+    f.close();
+    log_d("Read %d bytes", result);
+  }
   return result;
 }
 

@@ -25,6 +25,8 @@
 static const int BYTES_PER_KB = 1024;
 static const int BYTES_PER_MB = 1024 * 1024;
 
+const time_t ObsUtils::PAST_TIME = 30 * 365 * 24 * 60 * 60;
+
 String ObsUtils::createTrackUuid() {
   uint8_t data[16];
   esp_fill_random(data, 16);

@@ -44,7 +44,7 @@ class Gps {
     bool handle();
 
     /* Returns the current time - GPS time if available, system time otherwise. */
-    time_t currentTime();
+    static time_t currentTime();
 
     bool hasState(int state, SSD1306DisplayDevice *display);
 
@@ -53,12 +53,12 @@ class Gps {
 
     bool isInsidePrivacyArea();
 
-    uint8_t getValidSatellites();
+    uint8_t getValidSatellites() const;
 
     void showWaitStatus(SSD1306DisplayDevice *display);
 
     /* Returns current speed, negative value means unknown speed. */
-    double getSpeed();
+    double getSpeed() const;
 
     String getHdopAsString();
 
@@ -87,9 +87,13 @@ class Gps {
 
     GpsRecord getCurrentGpsRecord();
 
-    int32_t getValidMessageCount();
+    int32_t getValidMessageCount() const;
 
     int32_t getMessagesWithFailedCrcCount();
+
+    String getMessagesHtml() const;
+
+    String getMessage(uint16_t idx) const;
 
   private:
     /* ALP msgs up to 0x16A seen might be more. */
@@ -110,7 +114,6 @@ class Gps {
       UBX_PAYLOAD,
       UBX_CHECKSUM,
       UBX_CHECKSUM1
-
     };
     enum class UBX_MSG {
         // NAV 0x01
@@ -119,6 +122,7 @@ class Gps {
         NAV_DOP = 0x0401,
         NAV_SOL = 0x0601,
         NAV_VELNED = 0x1201,
+        NAV_TIMEGPS = 0x2001,
         NAV_TIMEUTC = 0x2101,
         NAV_SBAS = 0x3201,
         NAV_AOPSTATUS = 0x6001,
@@ -338,6 +342,15 @@ class Gps {
       struct __attribute__((__packed__)) {
         UBX_HEADER ubxHeader;
         uint32_t iTow;
+        int32_t fTow;
+        int16_t week;
+        int8_t leapS;
+        uint8_t valid; // 1 == tow; 2 = week; 4 = UTC
+        uint32_t tAcc;
+      } navTimeGps;
+      struct __attribute__((__packed__)) {
+        UBX_HEADER ubxHeader;
+        uint32_t iTow;
         uint32_t tAcc;
         int32_t nano;
         uint16_t year;
@@ -447,8 +460,6 @@ class Gps {
     /* record that is currently filled with data. */
     GpsRecord mIncomingGpsRecord;
 
-    time_t getGpsTime();
-
     void configureGpsModule();
 
     bool encodeUbx(uint8_t data);
@@ -489,7 +500,7 @@ class Gps {
 
     uint16_t nextTerm(uint16_t startpos);
 
-    uint32_t parseNmeaTime(char *nmeaTime);
+    static uint32_t parseNmeaTime(char *nmeaTime);
 
     bool setMessageInterval(UBX_MSG msgId, uint8_t seconds, bool waitForAck = true);
 
@@ -501,6 +512,11 @@ class Gps {
 
     void checkGpsDataState();
 
+    static uint32_t timeToTimeOfWeek(time_t t);
+
+    static uint16_t timeToWeekNumber(time_t t);
+
+    static const String INF_SEVERITY_STRING[];
 };
 
 

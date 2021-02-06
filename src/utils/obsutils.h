@@ -41,6 +41,7 @@ class ObsUtils {
     static String toScaledByteString(uint32_t size);
     static String dateTimeToHttpHeaderString(time_t theTime);
     static void logHexDump(const uint8_t *buffer, uint16_t length);
+    static const time_t PAST_TIME;
 
   private:
     static const char *weekDayToString(uint8_t wDay);

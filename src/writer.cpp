@@ -200,26 +200,28 @@ bool CSVFileWriter::append(DataSet &set) {
 
 // FIXME #ifdef DEVELOP
   if (time.tm_sec == 0) {
-    csv += "DEVELOP:  GPSMessages: " + String(gps.getValidMessageCount())
+    csv += "DEV: GPSMessages: " + String(gps.getValidMessageCount())
            + " GPS crc errors: " + String(gps.getMessagesWithFailedCrcCount());
   } else if (time.tm_sec == 1) {
-    csv += "DEVELOP: Mem: "
+    csv += "DEV: Mem: "
            + String(ESP.getFreeHeap() / 1024) + "k Buffer: "
            + String(getBufferLength() / 1024) + "k last write time: "
            + String(getWriteTimeMillis());
   } else if (time.tm_sec == 2) {
-    csv += "DEVELOP: Mem min free: "
+    csv += "DEV: Mem min free: "
            + String(ESP.getMinFreeHeap() / 1024) + "k";
   } else if (time.tm_sec == 3) {
-    csv += "DEVELOP: GPS messages: ";
-    csv += ObsUtils::encodeForCsvField(gps.getMessages());
-    gps.resetMessages();
-  } else if (time.tm_sec == 6) {
-    csv += "DEVELOP: GPS lastNoiseLevel: ";
+    csv += "DEV: GPS lastNoiseLevel: ";
     csv += gps.getLastNoiseLevel();
-  } else if (time.tm_sec == 7) {
-    csv += "DEVELOP: GPS baud: ";
+  } else if (time.tm_sec == 4) {
+    csv += "DEV: GPS baud: ";
     csv += gps.getBaudRate();
+  } else if (time.tm_sec >= 5 && time.tm_sec < 25) {
+    String msg = gps.getMessage(time.tm_sec - 5);
+    if (!msg.isEmpty()) {
+      csv += "DEV: GPS: ";
+      csv += ObsUtils::encodeForCsvField(msg);
+    }
   }
 // #endif
   csv += ";";

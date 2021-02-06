@@ -576,8 +576,7 @@ void aboutPage() {
   page += keyValue("GPS uptime", gps.getUptime(), "ms");
   page += keyValue("GPS noise level", gps.getLastNoiseLevel());
   page += keyValue("GPS baud rate", gps.getBaudRate());
-  page += keyValue("GPS messages",
-                   ObsUtils::encodeForXmlText(gps.getMessages()));
+  page += keyValue("GPS messages", gps.getMessagesHtml());
 
   page += "<h3>Display / Button</h3>";
   page += keyValue("Button State", digitalRead(PushButton_PIN));
