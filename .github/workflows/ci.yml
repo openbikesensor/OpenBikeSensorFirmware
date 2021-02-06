@@ -114,7 +114,7 @@ jobs:
         ./sonarqube/sonar-scanner-${{ env.SONAR_SCANNER_VERSION }}-linux/bin/sonar-scanner \
           -Dsonar.host.url=https://sonarcloud.io \
           -Dsonar.organization=openbikesensor \
-          -Dsonar.projectKey=OpenBikeSensor_OpenBikeSensorFirmware \
+          -Dsonar.projectKey=openbikesensor_OpenBikeSensorFirmware \
           -Dsonar.coverage.exclusions=**/* \
           -Dsonar.sources=src \
           -Dsonar.sourceEncoding=UTF-8 \
