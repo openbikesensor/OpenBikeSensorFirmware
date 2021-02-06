@@ -9,8 +9,8 @@
 [![OpenBikeSensor - CI](https://github.com/openbikesensor/OpenBikeSensorFirmware/workflows/OpenBikeSensor%20-%20CI/badge.svg)](https://github.com/openbikesensor/OpenBikeSensorFirmware/actions?query=workflow%3A%22OpenBikeSensor+-+CI%22)
 [![Open Issues](https://img.shields.io/github/issues/openbikesensor/OpenBikeSensorFirmware)](https://github.com/openbikesensor/OpenBikeSensorFirmware/issues)
 [![Contributors](https://img.shields.io/github/contributors/openbikesensor/OpenBikeSensorFirmware)](https://github.com/openbikesensor/OpenBikeSensorFirmware/contributors)
-[![quality gate](https://sonarcloud.io/api/project_badges/measure?project=Friends-of-OpenBikeSensor_OpenBikeSensorFirmware&metric=alert_status)](https://sonarcloud.io/dashboard?id=Friends-of-OpenBikeSensor_OpenBikeSensorFirmware    )
-[![bugs](https://sonarcloud.io/api/project_badges/measure?project=Friends-of-OpenBikeSensor_OpenBikeSensorFirmware&metric=bugs)](https://sonarcloud.io/project/issues?id=Friends-of-OpenBikeSensor_OpenBikeSensorFirmware&resolved=false&types=BUG)
+[![quality gate](https://sonarcloud.io/api/project_badges/measure?project=OpenBikeSensor_OpenBikeSensorFirmware&metric=alert_status)](https://sonarcloud.io/dashboard?id=OpenBikeSensor_OpenBikeSensorFirmware)
+[![bugs](https://sonarcloud.io/api/project_badges/measure?project=OpenBikeSensor_OpenBikeSensorFirmware&metric=bugs)](https://sonarcloud.io/project/issues?id=OpenBikeSensor_OpenBikeSensorFirmware&resolved=false&types=BUG)
 [![Slack](https://img.shields.io/badge/Slack-chat-success)](https://www.openbikesensor.org/slack/)
 
 
