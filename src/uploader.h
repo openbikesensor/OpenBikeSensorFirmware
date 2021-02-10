@@ -2,7 +2,11 @@
 #define UPLOADER_H
 
 #include <Arduino.h>
+#ifdef HTTP_INSECURE
+#include <WiFiClient.h>
+#else
 #include <WiFiClientSecure.h>
+#endif
 #include <FS.h>
 
 class Uploader {
@@ -18,7 +22,11 @@ class Uploader {
   private:
     const String mPortalUrl;
     const String mPortalUserToken;
+#ifdef HTTP_INSECURE
+    WiFiClient mWiFiClient;
+#else
     WiFiClientSecure mWiFiClient;
+#endif
     String mLastLocation = "";
     String mLastStatusMessage = "NO UPLOAD";
 

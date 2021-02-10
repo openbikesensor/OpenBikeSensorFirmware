@@ -36,3 +36,7 @@
 
 ; Verbose
 ;build_flags = -DCORE_DEBUG_LEVEL=5
+
+;;;; Enable insecure (HTTP) networking ;;;;
+
+;build_flags = -DHTTP_INSECURE

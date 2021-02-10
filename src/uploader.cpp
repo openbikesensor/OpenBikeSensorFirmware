@@ -27,6 +27,7 @@
 static char const *const HTTP_LOCATION_HEADER = "location";
 
 // Telekom rootCA certificate
+#ifndef HTTP_INSECURE
 static const char *const rootCACertificate =
   "-----BEGIN CERTIFICATE-----\n"
   "MIIDwzCCAqugAwIBAgIBATANBgkqhkiG9w0BAQsFADCBgjELMAkGA1UEBhMCREUx\n"
@@ -51,12 +52,16 @@ static const char *const rootCACertificate =
   "9noHV8cigwUtPJslJj0Ys6lDfMjIq2SPDqO/nBudMNva0Bkuqjzx+zOAduTNrRlP\n"
   "BSeOE6Fuwg==\n"
   "-----END CERTIFICATE-----\n";
+#endif
 
 Uploader::Uploader(String portalUrl, String userToken) :
     mPortalUrl(std::move(portalUrl)),
     mPortalUserToken(std::move(userToken)) {
   ObsUtils::setClockByNtpAndWait();
+
+#ifndef HTTP_INSECURE
   mWiFiClient.setCACert(rootCACertificate);
+#endif
 }
 
 /* Upload file as track data to "The Portal" as multipart form data.
