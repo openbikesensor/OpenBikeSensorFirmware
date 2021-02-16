@@ -576,6 +576,7 @@ void aboutPage() {
   page += keyValue("GPS uptime", gps.getUptime(), "ms");
   page += keyValue("GPS noise level", gps.getLastNoiseLevel());
   page += keyValue("GPS baud rate", gps.getBaudRate());
+  page += keyValue("GPS ALP bytes", gps.getNumberOfAlpBytesSent());
   page += keyValue("GPS messages", gps.getMessagesHtml());
 
   page += "<h3>Display / Button</h3>";

@@ -216,8 +216,11 @@ bool CSVFileWriter::append(DataSet &set) {
   } else if (time.tm_sec == 4) {
     csv += "DEV: GPS baud: ";
     csv += gps.getBaudRate();
-  } else if (time.tm_sec >= 5 && time.tm_sec < 25) {
-    String msg = gps.getMessage(time.tm_sec - 5);
+  } else if (time.tm_sec == 5) {
+    csv += "DEV: GPS alp bytes: ";
+    csv += gps.getNumberOfAlpBytesSent();
+  } else if (time.tm_sec >= 6 && time.tm_sec < 26) {
+    String msg = gps.getMessage(time.tm_sec - 6);
     if (!msg.isEmpty()) {
       csv += "DEV: GPS: ";
       csv += ObsUtils::encodeForCsvField(msg);

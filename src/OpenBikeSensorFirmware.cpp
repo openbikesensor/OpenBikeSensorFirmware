@@ -305,9 +305,9 @@ void setup() {
   }
 
   gps.handle(1000); // Added for user experience
-
+  gps.pollStatistics();
+  gps.enableSbas();
   displayTest->clear();
-  gps.enableSbas(); // NEEDED?
 }
 
 

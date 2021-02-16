@@ -55,7 +55,7 @@ class Gps {
 
     uint8_t getValidSatellites() const;
 
-    void showWaitStatus(SSD1306DisplayDevice *display);
+    void showWaitStatus(SSD1306DisplayDevice *display) const;
 
     /* Returns current speed, negative value means unknown speed. */
     double getSpeed() const;
@@ -89,11 +89,13 @@ class Gps {
 
     int32_t getValidMessageCount() const;
 
-    int32_t getMessagesWithFailedCrcCount();
+    int32_t getMessagesWithFailedCrcCount() const;
 
     String getMessagesHtml() const;
 
     String getMessage(uint16_t idx) const;
+
+    uint32_t getNumberOfAlpBytesSent() const;
 
   private:
     /* ALP msgs up to 0x16A seen might be more. */
@@ -462,7 +464,7 @@ class Gps {
 
     void configureGpsModule();
 
-    bool encodeUbx(uint8_t data);
+    bool encode(uint8_t data);
 
     bool setBaud();
 
@@ -517,6 +519,11 @@ class Gps {
     static uint16_t timeToWeekNumber(time_t t);
 
     static const String INF_SEVERITY_STRING[];
+
+    /* Number of bytes sent for alp request. */
+    uint32_t mAlpBytesSent = 0;
+    /* If true a outdated gps cfg was detected. */
+    bool mGpsNeedsConfigUpdate = false;
 };
 
 
