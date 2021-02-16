@@ -41,6 +41,7 @@ const String Gps::INF_SEVERITY_STRING[] = {
 
 void Gps::begin() {
   setBaud();
+  softResetGps();
   if (mGpsNeedsConfigUpdate) {
     configureGpsModule();
   }
@@ -103,12 +104,6 @@ void Gps::sendUbxDirect() {
 
 /* Resets the stored GPS config and stores our config! */
 void Gps::configureGpsModule() {
-  log_i("Soft-RESET GPS!");
-  const uint8_t UBX_CFG_RST[] = {0x00, 0x00, 0x02, 0x00}; // WARM START
-  sendAndWaitForAck(UBX_MSG::CFG_RST, UBX_CFG_RST, 4);
-  handle(150);
-
-  log_d("Clear CFG");
   // Clear configuration, RESET TO DEFAULT
   const uint8_t UBX_CFG_CFG_CLR[] = {
     0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -137,9 +132,9 @@ void Gps::configureGpsModule() {
   setMessageInterval(UBX_MSG::NMEA_GSV, 0);
   setMessageInterval(UBX_MSG::NMEA_VTG, 0);
   setStatisticsIntervalInSeconds(0);
+  setMessageInterval(UBX_MSG::AID_ALPSRV, 0);
   enableSbas();
   setMessageInterval(UBX_MSG::NAV_SBAS, 20);
-  enableAlpIfDataIsAvailable();
 
   setMessageInterval(UBX_MSG::NAV_POSLLH, 1);
   setMessageInterval(UBX_MSG::NAV_DOP, 1);
@@ -220,8 +215,17 @@ void Gps::configureGpsModule() {
     0x00, 0x00, 0x00, 0x00, 0x17
   };
   sendAndWaitForAck(UBX_MSG::CFG_CFG, UBX_CFG_CFG_SAVE, sizeof(UBX_CFG_CFG_SAVE));
+  handle(20);
 #endif
-  log_d("Config GPS done!");
+  log_i("Config GPS done!");
+}
+
+void Gps::softResetGps() {
+  log_i("Soft-RESET GPS!");
+  handle();
+  const uint8_t UBX_CFG_RST[] = {0x00, 0x00, 0x02, 0x00}; // WARM START
+  sendAndWaitForAck(UBX_MSG::CFG_RST, UBX_CFG_RST, 4);
+  handle(200);
 }
 
 /* There had been changes for the satellites used for SBAS
@@ -251,7 +255,7 @@ void Gps::enableAlpIfDataIsAvailable() {
   if (AlpData::available()) {
     log_i("Enable ALP");
     setMessageInterval(UBX_MSG::AID_ALPSRV, 1);
-    handle(10);
+    handle(100);
   } else {
     log_w("Disable ALP - no data!");
     setMessageInterval(UBX_MSG::AID_ALPSRV, 0);
@@ -361,7 +365,7 @@ bool Gps::checkCommunication() {
 
 bool Gps::sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer, size_t size) {
   const int tries = 3;
-  const int timeoutMs = 50;
+  const int timeoutMs = 1000;
 
   bool result = false;
   for (int i = 0; i < tries; i++) {
@@ -385,6 +389,7 @@ bool Gps::sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer, size_t size
       result = mAckReceived;
       break;
     }
+    log_e("Retry to send 0x%04x", ubxMsgId);
   }
   if (result) {
     log_d("Success in sending cfg. 0x%04x", ubxMsgId);
@@ -1218,7 +1223,7 @@ uint16_t Gps::timeToWeekNumber(time_t t) {
 
 void Gps::aidIni() {
   if (AlpData::loadMessage(mGpsBuffer.u1Data, 48 + 8) > 48) {
-    log_e("Will send AID_INI");
+    log_i("Will send AID_INI");
     mGpsBuffer.aidIni.posAcc = 5000; // 50m
     mGpsBuffer.aidIni.tAccMs = 3 * 24 * 60 * 60 * 1000; // 3 days!?
     mGpsBuffer.aidIni.flags = (GpsBuffer::AID_INI::FLAGS) 0x03;

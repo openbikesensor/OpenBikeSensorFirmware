@@ -524,6 +524,8 @@ class Gps {
     uint32_t mAlpBytesSent = 0;
     /* If true a outdated gps cfg was detected. */
     bool mGpsNeedsConfigUpdate = false;
+
+    void softResetGps();
 };
 
 
