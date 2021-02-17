@@ -44,7 +44,7 @@ class AlpData {
     void save(uint8_t *data, size_t offset, int length);
 
   private:
-    static void saveLastModified(String header);
+    static void saveLastModified(const String &header);
     static String loadLastModified();
     static void displayHttpClientError(SSD1306DisplayDevice *display, int httpError);
     File mAlpDataFile;

@@ -925,11 +925,10 @@ void Gps::parseUbxMessage() {
     }
       break;
     case (uint16_t) UBX_MSG::NAV_POSLLH: {
-      uint32_t delayMs1;
       log_d("POSLLH: iTOW: %u lon: %d lat: %d height: %d hMsl %d, hAcc %d, vAcc %d delay %dms",
             mGpsBuffer.navPosllh.iTow, mGpsBuffer.navPosllh.lon, mGpsBuffer.navPosllh.lat,
             mGpsBuffer.navPosllh.height, mGpsBuffer.navPosllh.hMsl, mGpsBuffer.navPosllh.hAcc,
-            mGpsBuffer.navPosllh.vAcc, delayMs1);
+            mGpsBuffer.navPosllh.vAcc, delayMs);
       if (prepareGpsData(mGpsBuffer.navSol.iTow)) {
         mIncomingGpsRecord.setPosition(mGpsBuffer.navPosllh.lon, mGpsBuffer.navPosllh.lat, mGpsBuffer.navPosllh.hMsl);
         checkGpsDataState();

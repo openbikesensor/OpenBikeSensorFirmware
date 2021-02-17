@@ -26,7 +26,7 @@
  * Takes 5 seconds to update the data.
 */
 void AlpData::update(SSD1306DisplayDevice *display) {
-  String lastModified = ""; // loadLastModified();
+  String lastModified = loadLastModified();
 
   File f = SD.open(ALP_DATA_FILE_NAME, FILE_READ);
   if (!f || f.size() < ALP_DATA_MIN_FILE_SIZE ) {
@@ -95,7 +95,7 @@ bool AlpData::available() {
   return SD.exists(LAST_MODIFIED_HEADER_FILE_NAME);
 }
 
-void AlpData::saveLastModified(String header) {
+void AlpData::saveLastModified(const String &header) {
   File f = SD.open(LAST_MODIFIED_HEADER_FILE_NAME, FILE_WRITE);
   if (f) {
     f.print(header);
@@ -141,7 +141,11 @@ void AlpData::saveMessage(const uint8_t *data, size_t size) {
   if (f) {
     size_t written = f.write(data, size);
     f.close();
-    log_d("Written %d bytes", written);
+    if (written != size) {
+      log_e("Written only %d of %d bytes", written, size);
+    } else {
+      log_d("Written %d bytes", written);
+    }
   }
 }
 
