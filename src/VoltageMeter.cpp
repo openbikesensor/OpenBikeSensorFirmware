@@ -1,3 +1,22 @@
+/*
+  Copyright (C) 2019 Zweirat
+  Contact: https://openbikesensor.org
+
+  This file is part of the OpenBikeSensor project.
+
+  The OpenBikeSensor sensor firmware is free software: you can redistribute
+  it and/or modify it under the terms of the GNU General Public License as
+  published by the Free Software Foundation, either version 3 of the License,
+  or (at your option) any later version.
+
+  The OpenBikeSensor sensor firmware is distributed in the hope that it will
+  be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
+  Public License for more details.
+
+  You should have received a copy of the GNU General Public License along with
+  the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include "VoltageMeter.h"
 #include "globals.h"
 
@@ -72,6 +91,27 @@ double VoltageMeter::read() {
 }
 
 uint8_t VoltageMeter::readPercentage() {
+  if (!hasReadings()) {
+    return -1;
+  }
+  /* TODO: Use the voltage returned by read() as input for the formula.
+  const int adc_value = readSmoothed();
+  // from get_batterie_percent
+  uint8_t percentage;
+  if (adc_value > 3193) {
+    percentage = 100;
+  } else if (adc_value > 2750) {
+    percentage = 0.113 * adc_value - 260.384;
+  } else if (adc_value > 2620) {
+    percentage = 0.192 * adc_value - 478.846;
+  } else if (adc_value > 2370) {
+    percentage = 0.1 * adc_value - 237;
+  } else {
+    percentage = 0;
+  }
+  return percentage;
+*/
+
   // TODO: Better formula from Benjamin!
   // 4.22 == 100% / 3.5 = 0%
   int16_t result = ((read() - 3.5) / 0.0072);

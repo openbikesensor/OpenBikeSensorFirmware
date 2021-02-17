@@ -17,7 +17,6 @@
   You should have received a copy of the GNU General Public License along with
   the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
 */
-
 #include <utils/obsutils.h>
 #include "OpenBikeSensorFirmware.h"
 
@@ -61,7 +60,6 @@ Gps gps;
 const long BLUETOOTH_INTERVAL_MILLIS = 250;
 long lastBluetoothInterval = 0;
 
-float BatteryValue = -1;
 float TemperatureValue = -1;
 
 
@@ -381,7 +379,7 @@ void loop() {
       sensorManager->m_sensors[LEFT_SENSOR_ID],
       sensorManager->m_sensors[RIGHT_SENSOR_ID],
       minDistanceToConfirm,
-      BatteryValue,
+      voltageMeter->readPercentage(),
       (int16_t) TemperatureValue,
       lastMeasurements,
       currentSet->isInsidePrivacyArea,
@@ -447,20 +445,6 @@ void loop() {
       timeOfMinimum = currentTimeMillis;
     }
     measurements++;
-
-      // #######################################################
-      // Batterievoltage
-      // #######################################################
-
-      if (voltageBuffer.available() == 0)
-      {
-        BatteryValue = (float) movingaverage(&voltageBuffer,&BatterieVoltage_movav,batterie_voltage_read(BatterieVoltage_PIN));
-        BatteryValue = (float)get_batterie_percent((uint16_t)BatteryValue);
-        currentSet->batteryLevel = BatteryValue;
-        }else{
-        (float) movingaverage(&voltageBuffer,&BatterieVoltage_movav,batterie_voltage_read(BatterieVoltage_PIN));
-        BatteryValue = -1;
-      }
 
        if(BMP280_active == true)  TemperatureValue = bmp280.readTemperature();
   } // end measureInterval while

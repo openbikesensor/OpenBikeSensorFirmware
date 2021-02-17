@@ -200,7 +200,7 @@ class SSD1306DisplayDevice : public DisplayDevice {
       m_display->setColor(WHITE);
     }
 
-    void cleanBatterie(int16_t x, int16_t y){
+    void cleanBattery(int16_t x, int16_t y){
       m_display->setColor(BLACK);
       m_display->drawXbm(x, y, 8, 9, BatterieLogo1);
       m_display->setColor(WHITE);
@@ -280,7 +280,7 @@ class SSD1306DisplayDevice : public DisplayDevice {
 
     void showValues(
       HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2,
-      uint16_t minDistanceToConfirm,int16_t BatterieVolt, int16_t TemperaturValue,
+      uint16_t minDistanceToConfirm, int16_t batteryPercentage, int16_t TemperaturValue,
       int lastMeasurements, boolean insidePrivacyArea, double speed, uint8_t satellites);
 
 };

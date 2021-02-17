@@ -19,7 +19,7 @@ void SSD1306DisplayDevice::showNumButtonPressed() {
 }
 
 void SSD1306DisplayDevice::showValues(
-  HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2, uint16_t minDistanceToConfirm,  int16_t BatterieVolt,
+  HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2, uint16_t minDistanceToConfirm,  int16_t batteryPercentage,
   int16_t TemperaturValue, int lastMeasurements, boolean insidePrivacyArea,
   double speed, uint8_t satellites) {
   // Show sensor1, when DisplaySimple or DisplayLeft is configured
@@ -108,8 +108,9 @@ void SSD1306DisplayDevice::showValues(
   // Show Batterie voltage
   #warning not checked if colliding with other stuff
 
-    if(BatterieVolt >=-1)
-        showBatterieValue((BatterieVolt));
+  if (batteryPercentage >= -1) {
+    showBatterieValue(batteryPercentage);
+  }
 
   if (!(config.displayConfig & DisplaySimple)){
     if(BMP280_active == true)
@@ -143,7 +144,7 @@ void SSD1306DisplayDevice::showBatterieValue(int16_t input_val){
     //cleanGridCellcomplete(3,0);
 
 /*     if(input_val == -1){
-      cleanBatterie(x_offset_batterie_logo, y_offset_batterie_logo);
+      cleanBattery(x_offset_batterie_logo, y_offset_batterie_logo);
       m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo6);
       m_display->setColor(BLACK);
       this->showTextOnGrid(3, 0, " " + String(0) + "%", Dialog_plain_8,3,0);
@@ -163,27 +164,27 @@ void SSD1306DisplayDevice::showBatterieValue(int16_t input_val){
        //m_display[0]->drawXbm(192, 0, 8, 9, BatterieLogo1);
 
        if(input_val > 90){
-         cleanBatterie(x_offset_batterie_logo, y_offset_batterie_logo);
+         cleanBattery(x_offset_batterie_logo, y_offset_batterie_logo);
          m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo1);
        }else if (input_val > 70)
        {
-         cleanBatterie(x_offset_batterie_logo, y_offset_batterie_logo);
+         cleanBattery(x_offset_batterie_logo, y_offset_batterie_logo);
          m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo2);
        }else if (input_val> 50)
        {
-         cleanBatterie(x_offset_batterie_logo, y_offset_batterie_logo);
+         cleanBattery(x_offset_batterie_logo, y_offset_batterie_logo);
          m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo3);
        }else if (input_val > 30)
        {
-         cleanBatterie(x_offset_batterie_logo, y_offset_batterie_logo);
+         cleanBattery(x_offset_batterie_logo, y_offset_batterie_logo);
          m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo4);
        }else if (input_val >10)
        {
-         cleanBatterie(x_offset_batterie_logo, y_offset_batterie_logo);
+         cleanBattery(x_offset_batterie_logo, y_offset_batterie_logo);
          m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo5);
        }else
        {
-         cleanBatterie(x_offset_batterie_logo, y_offset_batterie_logo);
+         cleanBattery(x_offset_batterie_logo, y_offset_batterie_logo);
          m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo6);
        }
 
