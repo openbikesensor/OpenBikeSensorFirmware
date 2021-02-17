@@ -161,7 +161,7 @@ size_t AlpData::loadMessage(uint8_t *data, size_t size) {
   return result;
 }
 
-void AlpData::save(uint8_t *data, size_t offset, int length) {
+void AlpData::save(const uint8_t *data, size_t offset, int length) {
 #ifdef RANDOM_ACCESS_FILE_AVAILAVLE
   // this is currently not possible to seek and modify data within an existing
   // file, we can only append :(

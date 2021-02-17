@@ -41,7 +41,7 @@ class AlpData {
     static size_t loadMessage(uint8_t *data, size_t size);
 
     uint16_t fill(uint8_t *data, size_t ofs, uint16_t dataSize);
-    void save(uint8_t *data, size_t offset, int length);
+    void save(const uint8_t *data, size_t offset, int length);
 
   private:
     static void saveLastModified(const String &header);
