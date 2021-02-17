@@ -63,10 +63,11 @@ BluetoothManager* bluetoothManager;
 
 Gps gps;
 
-#ifdef OBS_BLUETOOTH
-const uint32_t BLUETOOTH_INTERVAL_MILLIS = 250;
-uint32_t lastBluetoothInterval = 0;
-#endif
+static const long BLUETOOTH_INTERVAL_MILLIS = 250;
+static long lastBluetoothInterval = 0;
+
+static const long DISPLAY_INTERVAL_MILLIS = 20;
+static long lastDisplayInterval = 0;
 
 float BatteryValue = -1;
 float TemperatureValue = -1;
@@ -364,37 +365,55 @@ void loop() {
   currentSet->isInsidePrivacyArea = gps.isInsidePrivacyArea();
   currentSet->gpsRecord = gps.getCurrentGpsRecord();
 
+  lastMeasurements = sensorManager->m_sensors[confirmationSensorID].numberOfTriggers;
   sensorManager->reset();
-
-  int measurements = 0;
 
   // if the detected minimum was measured more than 5s ago, it is discarded and cannot be confirmed
   int timeDelta = (int) (currentTimeMillis - timeOfMinimum);
   if ((timeDelta ) > (config.confirmationTimeWindow * 1000)) {
     Serial.println(">>> CTW reached - reset() <<<");
+    // TODO: Setting to zero might cause a flicker if there is already a new value!
     minDistanceToConfirm = MAX_SENSOR_VALUE;
     datasetToConfirm = nullptr;
   }
 
+  int loops = 0;
   // do this for the time specified by measureInterval, e.g. 1s
   while ((currentTimeMillis - startTimeMillis) < measureInterval) {
+    loops++;
 
     currentTimeMillis = millis();
-    sensorManager->getDistances();
+    if (sensorManager->pollDistancesParallel()) {
+      // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
+      if (sensorManager->sensorValues[confirmationSensorID] > 0
+          && sensorManager->sensorValues[confirmationSensorID] < minDistanceToConfirm) {
+        minDistanceToConfirm = sensorManager->sensorValues[confirmationSensorID];
+        minDistanceToConfirmIndex = sensorManager->getCurrentMeasureIndex();
+        // if there was no measurement of this sensor for this index, it is the
+        // one before. This happens with fast confirmations.
+        if (sensorManager->m_sensors[confirmationSensorID].echoDurationMicroseconds[minDistanceToConfirm - 1] <= 0) {
+          minDistanceToConfirmIndex--;
+        }
+        datasetToConfirm = currentSet;
+        timeOfMinimum = currentTimeMillis;
+      }
+    }
     gps.handle();
 
-    displayTest->showValues(
-      sensorManager->m_sensors[LEFT_SENSOR_ID],
-      sensorManager->m_sensors[RIGHT_SENSOR_ID],
-      minDistanceToConfirm,
-      BatteryValue,
-      (int16_t) TemperatureValue,
-      lastMeasurements,
-      currentSet->isInsidePrivacyArea,
-      gps.getSpeed(),
-      gps.getValidSatellites()
-    );
-
+    if (lastDisplayInterval != (currentTimeMillis / DISPLAY_INTERVAL_MILLIS)) {
+      lastDisplayInterval = currentTimeMillis / DISPLAY_INTERVAL_MILLIS;
+      displayTest->showValues(
+        sensorManager->m_sensors[LEFT_SENSOR_ID],
+        sensorManager->m_sensors[RIGHT_SENSOR_ID],
+        minDistanceToConfirm,
+        BatteryValue,
+        (int16_t) TemperatureValue,
+        lastMeasurements,
+        currentSet->isInsidePrivacyArea,
+        gps.getSpeed(),
+        gps.getValidSatellites()
+      );
+    }
 
 #ifdef OBS_BLUETOOTH
     if (bluetoothManager && bluetoothManager->hasConnectedClients()
@@ -440,21 +459,6 @@ void loop() {
       lastButtonState = buttonState;
     }
 
-    // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
-    if (sensorManager->sensorValues[confirmationSensorID] > 0
-      && sensorManager->sensorValues[confirmationSensorID] < minDistanceToConfirm) {
-      minDistanceToConfirm = sensorManager->sensorValues[confirmationSensorID];
-      minDistanceToConfirmIndex = sensorManager->getCurrentMeasureIndex();
-      // if there was no measurement of this sensor for this index, it is the
-      // one before. This happens with fast confirmations.
-      if (sensorManager->m_sensors[confirmationSensorID].echoDurationMicroseconds[minDistanceToConfirm - 1] <= 0) {
-        minDistanceToConfirmIndex--;
-      }
-      datasetToConfirm = currentSet;
-      timeOfMinimum = currentTimeMillis;
-    }
-    measurements++;
-
       // #######################################################
       // Batterievoltage
       // #######################################################
@@ -470,6 +474,8 @@ void loop() {
       }
 
        if(BMP280_active == true)  TemperatureValue = bmp280.readTemperature();
+
+       delay(1);
   } // end measureInterval while
 
   // Write the minimum values of the while-loop to a set
@@ -485,11 +491,9 @@ void loop() {
     &(sensorManager->startOffsetMilliseconds), currentSet->measurements * sizeof(uint16_t));
 
 #ifdef DEVELOP
-  Serial.write("min. distance: ");
-  Serial.print(currentSet->sensorValues[confirmationSensorID]) ;
-  Serial.write(" cm,");
-  Serial.print(measurements);
-  Serial.write(" measurements  \n");
+  log_i("min. distance: %dcm, loops %d",
+        currentSet->sensorValues[confirmationSensorID],
+        loops);
 #endif
 
   // if nothing was detected, write the dataset to file, otherwise write it to the buffer for confirmation
@@ -504,9 +508,6 @@ void loop() {
   } else {
     dataBuffer.push(currentSet);
   }
-
-
-  lastMeasurements = measurements;
 
   if (transmitConfirmedData) {
     // Empty buffer by writing it, after confirmation it will be written to SD card directly so no confirmed sets will be lost

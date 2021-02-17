@@ -27,7 +27,7 @@
 /*
  * Sensor types:
  *  getLastDelayTillStartUs:
- *  - HC-SR04       = ~2900us
+ *  - HC-SR04       = ~2900us / ~290us
  *  - JSN-SR04T-2.0 =  ~290us
  *
  *  getMaxDurationUs:
@@ -64,7 +64,7 @@ static const uint32_t SENSOR_QUIET_PERIOD_AFTER_END_MICRO_SEC = 10 * 1000;
    - With 30ms I could get stable readings down to 25/35cm only (new sensor)
    - It looked fine with the old sensor for all values
  */
-static const uint32_t SENSOR_QUIET_PERIOD_AFTER_START_MICRO_SEC = 35 * 1000;
+static const uint32_t SENSOR_QUIET_PERIOD_AFTER_START_MICRO_SEC = 30 * 1000;
 
 /* Value of HCSR04SensorInfo::end during an ongoing measurement. */
 static const uint32_t MEASUREMENT_IN_PROGRESS = 0;
@@ -131,6 +131,7 @@ void HCSR04SensorManager::reset() {
   for (size_t idx = 0; idx < m_sensors.size(); ++idx) {
     m_sensors[idx].minDistance = MAX_SENSOR_VALUE;
     memset(&(m_sensors[idx].echoDurationMicroseconds), 0, sizeof(m_sensors[idx].echoDurationMicroseconds));
+    m_sensors[idx].numberOfTriggers = 0;
   }
   startReadingMilliseconds = 0; // cheat a bit, we start the clock just with the 1st measurement
   lastReadingCount = 0;
@@ -202,6 +203,34 @@ void HCSR04SensorManager::getDistancesNoWait() {
   setSensorTriggersToLow();
 }
 
+/* Polls for new readings, if sensors are not ready, the
+ * method simply exits and returns false. If readings are available,
+ * data is read and updated. If the primary sensor is ready for
+ * new measurement, a fresh measurement is triggered.
+ * Method returns true if new data (no timeout measurement) was
+ * generated.
+ */
+bool HCSR04SensorManager::pollDistancesParallel() {
+  bool newMeasurements = false;
+  if (isReadyForStart(primarySensor)) {
+    setSensorTriggersToLow();
+    newMeasurements = collectSensorResult(primarySensor);
+    if (isReadyForStart(1 - primarySensor)) {
+      if (collectSensorResult(1 - primarySensor)) {
+        newMeasurements = true;
+      }
+      sendTriggerToSensor(1 - primarySensor);
+    }
+    sendTriggerToSensor(primarySensor);
+    if (newMeasurements) {
+      registerReadings();
+    }
+    delayMicroseconds(20);
+    setSensorTriggersToLow();
+  }
+  return newMeasurements;
+}
+
 /* Method that reads the sensors in parallel. We observed false readings
  * that are likely caused by both sensors operated at the same time.
  * So once the alternating implementation is established this code must
@@ -262,7 +291,12 @@ void HCSR04SensorManager::sendTriggerToSensor(uint8_t sensorId) {
   updateStatistics(sensor);
   sensor->trigger = sensor->start = micros(); // will be updated with HIGH signal
   sensor->end = MEASUREMENT_IN_PROGRESS; // will be updated with LOW signal
+  sensor->numberOfTriggers++;
   digitalWrite(sensor->triggerPin, HIGH);
+}
+
+boolean HCSR04SensorManager::isReadyForStart(uint8_t sensorId) {
+  return isReadyForStart(&m_sensors[sensorId]);
 }
 
 boolean HCSR04SensorManager::isReadyForStart(HCSR04SensorInfo* sensor) {
@@ -287,17 +321,29 @@ boolean HCSR04SensorManager::isReadyForStart(HCSR04SensorInfo* sensor) {
   return ready;
 }
 
-void HCSR04SensorManager::collectSensorResults() {
+bool HCSR04SensorManager::collectSensorResults() {
+  bool validReading = false;
   for (size_t idx = 0; idx < m_sensors.size(); ++idx) {
-    collectSensorResult(idx);
+    if (collectSensorResult(idx)) {
+      validReading = true;
+    }
   }
+  if (validReading) {
+    registerReadings();
+  }
+  return validReading;
+}
+
+void HCSR04SensorManager::registerReadings() {
   startOffsetMilliseconds[lastReadingCount] = millisSince(startReadingMilliseconds);
   if (lastReadingCount < MAX_NUMBER_MEASUREMENTS_PER_INTERVAL - 1) {
     lastReadingCount++;
   }
 }
 
-void HCSR04SensorManager::collectSensorResult(uint8_t sensorId) {
+/* Returns true if there was a no timeout reading. */
+bool HCSR04SensorManager::collectSensorResult(uint8_t sensorId) {
+  bool validReading = false;
   HCSR04SensorInfo* const sensor = &m_sensors[sensorId];
   const uint32_t end = sensor->end;
   const uint32_t start = getFixedStart(sensorId, sensor);
@@ -322,6 +368,7 @@ void HCSR04SensorManager::collectSensorResult(uint8_t sensorId) {
   if (duration < MIN_DURATION_MICRO_SEC || duration >= MAX_DURATION_MICRO_SEC) {
     dist = MAX_SENSOR_VALUE;
   } else {
+    validReading = true;
     dist = static_cast<uint16_t>(duration / MICRO_SEC_TO_CM_DIVIDER);
   }
   sensor->rawDistance = dist;
@@ -339,6 +386,7 @@ void HCSR04SensorManager::collectSensorResult(uint8_t sensorId) {
     sensor->minDistance = sensor->distance;
     sensor->lastMinUpdate = millis();
   }
+  return validReading;
 }
 
 uint16_t HCSR04SensorManager::getRawMedianDistance(uint8_t sensorId) {

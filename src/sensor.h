@@ -53,7 +53,7 @@ const uint32_t MICRO_SEC_TO_CM_DIVIDER = 58; // sound speed 340M/S, 2 times back
 
 
 const uint16_t MEDIAN_DISTANCE_MEASURES = 3;
-const uint16_t MAX_NUMBER_MEASUREMENTS_PER_INTERVAL = 60;
+const uint16_t MAX_NUMBER_MEASUREMENTS_PER_INTERVAL = 30; //  60;
 extern const uint16_t MAX_SENSOR_VALUE;
 
 struct HCSR04SensorInfo {
@@ -78,6 +78,7 @@ struct HCSR04SensorInfo {
   uint32_t maxDurationUs = 0;
   uint32_t minDurationUs = UINT32_MAX;
   uint32_t lastDelayTillStartUs = 0;
+  uint16_t numberOfTriggers = 0;
 };
 
 class HCSR04SensorManager {
@@ -107,6 +108,7 @@ class HCSR04SensorManager {
     std::vector<uint16_t> sensorValues;
     uint16_t lastReadingCount = 0;
     uint16_t startOffsetMilliseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
+    bool pollDistancesParallel();
 
   protected:
 
@@ -114,16 +116,18 @@ class HCSR04SensorManager {
     void waitTillSensorIsReady(uint8_t sensorId);
     void sendTriggerToSensor(uint8_t sensorId);
     void waitForEchosOrTimeout(uint8_t sensorId);
-    void collectSensorResult(uint8_t sensorId);
+    bool collectSensorResult(uint8_t sensorId);
     void setNoMeasureDate(uint8_t sensorId);
     void waitTillPrimarySensorIsReady();
     void waitForEchosOrTimeout();
     void setSensorTriggersToLow();
-    void collectSensorResults();
+    bool collectSensorResults();
     void sendTriggerToReadySensor();
     void attachSensorInterrupt(HCSR04SensorInfo &sensorInfo);
     void IRAM_ATTR isr(int idx);
     uint32_t getFixedStart(size_t idx, const HCSR04SensorInfo *sensor);
+    boolean isReadyForStart(uint8_t sensorId);
+    void registerReadings();
     static uint16_t medianMeasure(HCSR04SensorInfo* const sensor, uint16_t value);
     static uint16_t median(uint16_t a, uint16_t b, uint16_t c);
     static uint16_t correctSensorOffset(uint16_t dist, uint16_t offset);
