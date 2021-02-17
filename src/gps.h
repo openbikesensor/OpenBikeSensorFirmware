@@ -38,6 +38,7 @@ class Gps {
         FIX_POS = -2,
     };
 
+    /* init all gps stuff, incl port and config. */
     void begin();
 
     /* read and process data from serial, true if there was valid data. */
@@ -70,6 +71,10 @@ class Gps {
     /* Clears the collected informational messages. */
     void resetMessages();
 
+    String getMessagesHtml() const;
+
+    String getMessage(uint16_t idx) const;
+
     void setStatisticsIntervalInSeconds(uint16_t seconds);
 
     uint32_t getUptime() const;
@@ -84,21 +89,16 @@ class Gps {
 
     void enableSbas();
 
-
     GpsRecord getCurrentGpsRecord();
 
     int32_t getValidMessageCount() const;
 
     int32_t getMessagesWithFailedCrcCount() const;
 
-    String getMessagesHtml() const;
-
-    String getMessage(uint16_t idx) const;
-
     uint32_t getNumberOfAlpBytesSent() const;
 
   private:
-    /* ALP msgs up to 0x16A seen might be more. */
+    /* ALP msgs up to 0x16A seen might be more? */
     static const int MAX_MESSAGE_LENGTH = 128 * 3;
     HardwareSerial mSerial = HardwareSerial(2);
     uint16_t mGpsBufferBytePos = 0;
@@ -179,13 +179,6 @@ class Gps {
     };
     union GpsBuffer {
       uint8_t u1Data[MAX_MESSAGE_LENGTH];
-      uint16_t u2Data[MAX_MESSAGE_LENGTH / 2];
-      uint32_t u4Data[MAX_MESSAGE_LENGTH / 4];
-      int8_t i1Data[MAX_MESSAGE_LENGTH];
-      int16_t i2Data[MAX_MESSAGE_LENGTH / 2];
-      int32_t i4Data[MAX_MESSAGE_LENGTH / 4];
-      float r4Data[MAX_MESSAGE_LENGTH / 4];
-      double r8Data[MAX_MESSAGE_LENGTH / 8];
       char charData[MAX_MESSAGE_LENGTH];
       struct __attribute__((__packed__)) UBX_HEADER {
         uint8_t syncChar1;
@@ -461,6 +454,14 @@ class Gps {
     GpsRecord mCurrentGpsRecord;
     /* record that is currently filled with data. */
     GpsRecord mIncomingGpsRecord;
+    /* last time, when the ESP clock was adjusted to the GPR UTC time,
+     * in millis ticker. */
+    uint32_t mLastTimeTimeSet = 0;
+    /* Number of bytes sent for alp request. */
+    uint32_t mAlpBytesSent = 0;
+    /* If true a outdated gps cfg was detected. */
+    bool mGpsNeedsConfigUpdate = false;
+    static const String INF_SEVERITY_STRING[];
 
     void configureGpsModule();
 
@@ -500,15 +501,7 @@ class Gps {
 
     static bool validNmeaMessageChar(uint8_t chr);
 
-    uint16_t nextTerm(uint16_t startpos);
-
-    static uint32_t parseNmeaTime(char *nmeaTime);
-
     bool setMessageInterval(UBX_MSG msgId, uint8_t seconds, bool waitForAck = true);
-
-    /* last time, when the ESP clock was adjusted to the GPR UTC time,
-     * in millis ticker. */
-    uint32_t mLastTimeTimeSet = 0;
 
     bool prepareGpsData(uint32_t tow);
 
@@ -518,15 +511,8 @@ class Gps {
 
     static uint16_t timeToWeekNumber(time_t t);
 
-    static const String INF_SEVERITY_STRING[];
-
-    /* Number of bytes sent for alp request. */
-    uint32_t mAlpBytesSent = 0;
-    /* If true a outdated gps cfg was detected. */
-    bool mGpsNeedsConfigUpdate = false;
-
     void softResetGps();
-};
 
+};
 
 #endif

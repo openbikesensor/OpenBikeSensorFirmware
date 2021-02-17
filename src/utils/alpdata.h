@@ -37,7 +37,7 @@ class AlpData {
   public:
     static void update(SSD1306DisplayDevice *display);
     static bool available();
-    static void saveMessage(uint8_t *data, size_t size);
+    static void saveMessage(const uint8_t *data, size_t size);
     static size_t loadMessage(uint8_t *data, size_t size);
 
     uint16_t fill(uint8_t *data, size_t ofs, uint16_t dataSize);
