@@ -41,44 +41,20 @@ class GpsRecord {
 
     friend Gps;
   public:
-    uint32_t mRetrievedAt; // millis counter!
-    time_t mDateTime;
-    /* deg, scale 1e-7 */
-    int32_t mLongitude;
-    /* deg, scale 1e-7 */
-    int32_t mLatitude;
-    int mSpeed; // * 100?
-    int mCourseOverGround; // * 100
-    int mHdop; // * 100
-    /* millimeter */
-    int32_t mHeight; // * 10?
-    uint8_t mSatellitesUsed;
-    GPS_FIX mFixStatus; //
-    uint8_t mFixStatusFlags;
-    static String posAsString(uint32_t pos);
-
     String getAltitudeMetersString() const;
-
     String getCourseString() const;
-
     String getSpeedKmHString() const;
-
     String getHdopString() const;
     String getLatString() const;
     String getLongString() const;
-
     bool hasValidFix() const;
-
     double getLatitude() const;
-
     double getLongitude() const;
+    uint8_t getSatellitesUsed() const;
+    uint8_t getFixStatusFlags() const;
+    GPS_FIX getFixStatus() const;
 
   protected:
-    /* Just the GPS Millisecond time of Week of the record, to be able to
-     * merge records together.
-     */
-    uint32_t mCollectTow = 0;
-
     /* Clear all collected data */
     void reset();
 
@@ -93,16 +69,32 @@ class GpsRecord {
 
     void setHdop(uint16_t hDop);
 
-    bool isAllSet();
+    bool isAllSet() const;
 
+  private:
+    /* Just the GPS Millisecond time of Week of the record, to be able to
+     * merge records together.
+     */
+    uint32_t mCollectTow = 0;
+    /* deg, scale 1e-7 */
+    int32_t mLongitude;
+    /* deg, scale 1e-7 */
+    int32_t mLatitude;
+    int mSpeed; // * 100?
+    int mCourseOverGround; // * 100
+    int mHdop; // * 100
+    /* millimeter */
+    int32_t mHeight; // * 10?
+    uint8_t mSatellitesUsed;
+    GPS_FIX mFixStatus; //
+    uint8_t mFixStatusFlags;
     bool mPositionSet = false;
     bool mVelocitySet = false;
     bool mInfoSet = false;
     bool mHdopSet = false;
+    static const int32_t pow10[10];
+    static String toScaledString(int32_t value, uint16_t scale);
 
-    static uint32_t pow10[10];
-
-    static String toScaledString(uint32_t value, uint16_t scale);
 };
 
 

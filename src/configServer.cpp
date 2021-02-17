@@ -570,8 +570,8 @@ void aboutPage() {
   page += keyValue("GPS valid checksum", gps.getValidMessageCount());
   page += keyValue("GPS failed checksum", gps.getMessagesWithFailedCrcCount());
   page += keyValue("GPS hdop", gps.getCurrentGpsRecord().getHdopString());
-  page += keyValue("GPS fix", String(gps.getCurrentGpsRecord().mFixStatus, 16));
-  page += keyValue("GPS fix flags", String(gps.getCurrentGpsRecord().mFixStatus, 16));
+  page += keyValue("GPS fix", String(gps.getCurrentGpsRecord().getFixStatus(), 16));
+  page += keyValue("GPS fix flags", String(gps.getCurrentGpsRecord().getFixStatusFlags(), 16));
   page += keyValue("GPS satellites", gps.getValidSatellites());
   page += keyValue("GPS uptime", gps.getUptime(), "ms");
   page += keyValue("GPS noise level", gps.getLastNoiseLevel());

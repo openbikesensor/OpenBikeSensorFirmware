@@ -234,15 +234,15 @@ bool CSVFileWriter::append(DataSet &set) {
     && !((config.privacyConfig & OverridePrivacy) && set.confirmed))) {
     csv += ";;;;;";
   } else {
-    csv += GpsRecord::posAsString(set.gpsRecord.mLatitude) + ";";
-    csv += GpsRecord::posAsString(set.gpsRecord.mLongitude) + ";";
+    csv += set.gpsRecord.getLatString() + ";";
+    csv += set.gpsRecord.getLongString() + ";";
     csv += set.gpsRecord.getAltitudeMetersString() + ";";
     csv += set.gpsRecord.getCourseString() + ";";
     csv += set.gpsRecord.getSpeedKmHString() + ";";
   }
   csv += set.gpsRecord.getHdopString() + ";";
 
-  csv += String(set.gpsRecord.mSatellitesUsed) + ";";
+  csv += String(set.gpsRecord.getSatellitesUsed()) + ";";
   csv += String(set.batteryLevel, 2) + ";";
   if (set.sensorValues[LEFT_SENSOR_ID] < MAX_SENSOR_VALUE) {
     csv += String(set.sensorValues[LEFT_SENSOR_ID]);

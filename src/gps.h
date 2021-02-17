@@ -47,7 +47,7 @@ class Gps {
     /* Returns the current time - GPS time if available, system time otherwise. */
     static time_t currentTime();
 
-    bool hasState(int state, SSD1306DisplayDevice *display);
+    bool hasState(int state, SSD1306DisplayDevice *display) const;
 
     /* Returns true if valid communication with the gps module was possible. */
     bool moduleIsAlive() const;
@@ -61,7 +61,7 @@ class Gps {
     /* Returns current speed, negative value means unknown speed. */
     double getSpeed() const;
 
-    String getHdopAsString();
+    String getHdopAsString() const;
 
     uint16_t getLastNoiseLevel() const;
 
@@ -89,7 +89,7 @@ class Gps {
 
     void enableSbas();
 
-    GpsRecord getCurrentGpsRecord();
+    GpsRecord getCurrentGpsRecord() const;
 
     int32_t getValidMessageCount() const;
 
@@ -481,7 +481,7 @@ class Gps {
 
     void parseUbxMessage();
 
-    void parseNmeaMessage();
+    void parseNmeaMessage() const;
 
     void sendUbxDirect();
 

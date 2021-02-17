@@ -80,15 +80,23 @@ void SSD1306DisplayDevice::showValues(
     if (config.displayConfig & DisplayDistanceDetail) {
       const int bufSize = 64;
       char buffer[bufSize];
-//      snprintf(buffer, bufSize - 1, "%03d|%02d|%03d", sensor1.rawDistance,
-//        lastMeasurements, sensor2.rawDistance);
-//      snprintf(buffer, bufSize - 1, "%03d|%02d|%uk", sensor1.rawDistance,
-//               lastMeasurements, ESP.getFreeHeap() / 1024);
-//      snprintf(buffer, bufSize - 1, "%03d|%02d|%3.2fV", sensor1.rawDistance,
-//               lastMeasurements, voltageMeter->read());
-      snprintf(buffer, bufSize - 1, "%02ds|%s|%03u", gps.getCurrentGpsRecord().mSatellitesUsed,
+#ifdef NERD_SENSOR_DISTANCE
+      snprintf(buffer, bufSize - 1, "%03d|%02d|%03d", sensor1.rawDistance,
+        lastMeasurements, sensor2.rawDistance);
+#endif
+#ifdef NERD_HEAP
+      snprintf(buffer, bufSize - 1, "%03d|%02d|%uk", sensor1.rawDistance,
+               lastMeasurements, ESP.getFreeHeap() / 1024);
+#endif
+#ifdef NERD_VOLT
+      snprintf(buffer, bufSize - 1, "%03d|%02d|%3.2fV", sensor1.rawDistance,
+               lastMeasurements, voltageMeter->read());
+#endif
+//#ifdef NERD_GPS
+      snprintf(buffer, bufSize - 1, "%02ds|%s|%03u",
+               satellites,
                gps.getHdopAsString().c_str(), gps.getLastNoiseLevel() );
-
+//#endif
       this->prepareTextOnGrid(0, 4, buffer, Dialog_plain_16);
     } else if (config.displayConfig & DisplayNumConfirmed) {
       showNumButtonPressed();

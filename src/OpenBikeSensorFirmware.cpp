@@ -353,7 +353,7 @@ void loop() {
   if (startTimeMillis == 0) {
     startTimeMillis = (currentTimeMillis / measureInterval) * measureInterval;
   }
-  currentSet->time = gps.currentTime();
+  currentSet->time = Gps::currentTime();
   currentSet->millis = currentTimeMillis;
   currentSet->batteryLevel = voltageMeter->read();
   currentSet->isInsidePrivacyArea = gps.isInsidePrivacyArea();

@@ -25,11 +25,7 @@
 
 /**
  * TODO:
- *  - cleanup comments
- *  - reduce code size?
- *  - PERSIST_GPS_CONFIG
- *  - check other TODOs
- *  - reconsider log levels
+ *  - PERSIST_GPS_CONFIG after next release (0.5?)
  */
 
 
@@ -202,8 +198,8 @@ void Gps::softResetGps() {
 void Gps::enableSbas() {// Enable SBAS subsystem!
   const uint8_t UBX_CFG_SBAS[] = {
     0x01, // ON
-    0x03, // Ranging && Correction && !integrity (from default)
-    0x02, // max 2 sats
+    0x03, // Ranging | Correction | !integrity (like default)
+    0x02, // max 2 sats, default is 3
     // NEO8-default:  120, 123, 127-129, 133, 135-138
     // NEO8-egnos: 120, 123-124, 126, 131
     // NEO6-egnos: 120, 123-124, 126, 131
@@ -524,7 +520,7 @@ PrivacyArea Gps::newPrivacyArea(double latitude, double longitude, int radius) {
   return newPrivacyArea;
 }
 
-bool Gps::hasState(int state, SSD1306DisplayDevice *display) {
+bool Gps::hasState(int state, SSD1306DisplayDevice *display) const {
   bool result = false;
   switch (state) {
     case (int) WaitFor::FIX_POS:
@@ -601,7 +597,7 @@ double Gps::getSpeed() const {
   return (double) mCurrentGpsRecord.mSpeed * (60.0 * 60.0) / 100.0 / 1000.0;
 }
 
-String Gps::getHdopAsString() {
+String Gps::getHdopAsString() const {
   return mCurrentGpsRecord.getHdopString();
 }
 
@@ -952,12 +948,11 @@ void Gps::parseUbxMessage() {
       break;
 #endif
     case (uint16_t) UBX_MSG::NAV_TIMEUTC: {
-      uint32_t delayMs1;
       log_i("TIMEUTC: iTOW: %u acc: %u nano: %d %04u-%02u-%02uT%02u:%02u:%02u valid 0x%02x delay %dms",
             mGpsBuffer.navTimeUtc.iTow, mGpsBuffer.navTimeUtc.tAcc, mGpsBuffer.navTimeUtc.nano,
             mGpsBuffer.navTimeUtc.year, mGpsBuffer.navTimeUtc.month, mGpsBuffer.navTimeUtc.day,
             mGpsBuffer.navTimeUtc.hour, mGpsBuffer.navTimeUtc.minute, mGpsBuffer.navTimeUtc.sec,
-            mGpsBuffer.navTimeUtc.valid, delayMs1);
+            mGpsBuffer.navTimeUtc.valid, delayMs);
       if ((mGpsBuffer.navTimeUtc.valid & 0x07) == 0x07 // all valid, UTC comes last
           && delayMs < 50
           && mGpsBuffer.navTimeUtc.tAcc < (50 * 1000 * 1000 /* 50ms */)
@@ -1005,7 +1000,6 @@ void Gps::parseUbxMessage() {
     }
       break;
     case (uint16_t) UBX_MSG::AID_ALPSRV: {
-      uint32_t start = millis();
       uint16_t startOffset
         = mGpsBuffer.aidAlpsrvClientReq.idSize + 6;
       if (mGpsBuffer.aidAlpsrvClientReq.type != 0xFF) {
@@ -1029,9 +1023,8 @@ void Gps::parseUbxMessage() {
             = mGpsBuffer.aidAlpsrvClientReq.dataSize + mGpsBuffer.aidAlpsrvClientReq.idSize;
           sendUbxDirect();
           mAlpBytesSent += mGpsBuffer.aidAlpsrvClientReq.dataSize;
-          log_d("Did send %d bytes in %d ms  Pos: 0x%x",
+          log_d("Did send %d bytes Pos: 0x%x",
                 mGpsBuffer.ubxHeader.length,
-                millis() - start,
                 2 * mGpsBuffer.aidAlpsrvClientReq.ofs);
         }
 #ifdef RANDOM_ACCESS_FILE_AVAILAVLE
@@ -1112,7 +1105,7 @@ uint8_t Gps::hexCharToInt(uint8_t data) {
   return 99; // ERROR
 }
 
-void Gps::parseNmeaMessage() {
+void Gps::parseNmeaMessage() const {
   log_w("Unparsed NMEA %c%c%c%c%c", mGpsBuffer.u1Data[1], mGpsBuffer.u1Data[2],
         mGpsBuffer.u1Data[3], mGpsBuffer.u1Data[4], mGpsBuffer.u1Data[5]);
 }
@@ -1202,7 +1195,7 @@ void Gps::checkGpsDataState() {
   }
 }
 
-GpsRecord Gps::getCurrentGpsRecord() {
+GpsRecord Gps::getCurrentGpsRecord() const {
   return mCurrentGpsRecord;
 }
 

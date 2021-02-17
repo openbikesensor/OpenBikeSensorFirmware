@@ -24,14 +24,12 @@ void GpsRecord::reset() {
   mCollectTow = 0;
   mLatitude = 0;
   mLongitude = 0;
-  mDateTime = 0;
   mCourseOverGround = 0;
   mSatellitesUsed = 0;
   mFixStatus = GPS_FIX::NO_FIX;
   mFixStatusFlags = 0;
   mHdop = 0;
   mHeight = 0;
-  mRetrievedAt = 0;
   mSpeed = 0;
   mPositionSet = false;
   mVelocitySet = false;
@@ -42,7 +40,6 @@ void GpsRecord::reset() {
 /* Store tow and related date time data. */
 void GpsRecord::setTow(uint32_t tow) {
   mCollectTow = tow;
-  mDateTime = time(nullptr); // use system time not gps time - ok?
 }
 
 void GpsRecord::setPosition(int32_t lon, int32_t lat, int32_t height) {
@@ -70,15 +67,9 @@ void GpsRecord::setHdop(uint16_t hDop) {
   mHdopSet = true;
 }
 
-bool GpsRecord::isAllSet() {
+bool GpsRecord::isAllSet() const {
   return mPositionSet && mVelocitySet && mInfoSet && mHdopSet;
 }
-
-/* Convert a position with 1e-7 scale to a string representation */
-String GpsRecord::posAsString(uint32_t pos) {
-  return toScaledString(pos, 7);
-}
-
 
 String GpsRecord::getAltitudeMetersString() const {
   // 3 digits is problematic, 2 are enough any way.
@@ -98,16 +89,16 @@ String GpsRecord::getHdopString() const {
 }
 
 
-uint32_t GpsRecord::pow10[] = {
+const int32_t GpsRecord::pow10[] = {
   1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000
 };
 
-String GpsRecord::toScaledString(const uint32_t value, const uint16_t scale) {
+String GpsRecord::toScaledString(const int32_t value, const uint16_t scale) {
   if (value == 0) {
     return "";
   }
   char buffer[32];
-  const uint32_t scl = pow10[scale];
+  const int32_t scl = pow10[scale];
   snprintf(buffer, sizeof(buffer), "%d.%0*d", value / scl, scale, value % scl );
   return String(buffer);
 }
@@ -131,4 +122,16 @@ double GpsRecord::getLatitude() const {
 
 double GpsRecord::getLongitude() const {
   return ((double) mLongitude) / 10000000.0;
+}
+
+uint8_t GpsRecord::getSatellitesUsed() const {
+  return mSatellitesUsed;
+}
+
+GpsRecord::GPS_FIX GpsRecord::getFixStatus() const {
+  return mFixStatus;
+}
+
+uint8_t GpsRecord::getFixStatusFlags() const {
+  return mFixStatusFlags;
 }
