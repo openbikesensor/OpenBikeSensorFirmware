@@ -1132,9 +1132,10 @@ void startServer(ObsConfig *obsConfig) {
  * seen on the display if connected.
  */
 void uploadTracks(bool httpRequest) {
+  const String &portalToken
+    = theObsConfig->getProperty<String>(ObsConfig::PROPERTY_PORTAL_TOKEN);
   Uploader uploader(
-    theObsConfig->getProperty<String>(ObsConfig::PROPERTY_PORTAL_URL),
-    theObsConfig->getProperty<String>(ObsConfig::PROPERTY_PORTAL_TOKEN));
+    theObsConfig->getProperty<String>(ObsConfig::PROPERTY_PORTAL_URL), portalToken);
 
   configServerWasConnectedViaHttpFlag = true;
   SDFileSystem.mkdir("/uploaded");
@@ -1158,6 +1159,20 @@ void uploadTracks(bool httpRequest) {
     server.sendContent(html);
   }
   html.clear();
+
+  if (portalToken.isEmpty()) {
+    if (httpRequest) {
+      html += "</div><h3>API Key not set</h3/>";
+      html += "See <a href='https://www.openbikesensor.org/benutzer-anleitung/konfiguration.html'>";
+      html += "configuration</a>.</div>";
+      html += "<input type=button onclick=\"window.location.href='/'\" class='btn' value='OK' />";
+      html += footer;
+      server.sendContent(html);
+    }
+    displayTest->showTextOnGrid(0, 3, "Error:");
+    displayTest->showTextOnGrid(0, 4, "API Key not set");
+    return;
+  }
 
   const uint16_t numberOfFiles = countFilesInRoot();
 
