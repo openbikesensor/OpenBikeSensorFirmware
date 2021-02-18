@@ -3,6 +3,8 @@
 [![GitHub version](https://img.shields.io/github/v/release/openbikesensor/OpenBikeSensorFirmware)](https://github.com/openbikesensor/OpenBikeSensorFirmware/releases/latest)
 [![GitHub version](https://img.shields.io/github/release-date/openbikesensor/OpenBikeSensorFirmware)](https://github.com/openbikesensor/OpenBikeSensorFirmware/releases/latest)
 [![GitHub downloads](https://img.shields.io/github/downloads/openbikesensor/OpenBikeSensorFirmware/latest/total)](https://github.com/openbikesensor/OpenBikeSensorFirmware/releases/latest)
+![GitHub commits since latest release (by date)](https://img.shields.io/github/commits-since/openbikesensor/OpenBikeSensorFirmware/latest)
+
 
 [![GitHub version](https://img.shields.io/github/v/release/openbikesensor/OpenBikeSensorFirmware?include_prereleases&label=pre-release)](https://github.com/openbikesensor/OpenBikeSensorFirmware/releases)
 [![GitHub version](https://img.shields.io/github/release-date-pre/openbikesensor/OpenBikeSensorFirmware?label=pre-release+date)](https://github.com/openbikesensor/OpenBikeSensorFirmware/releases/latest)
