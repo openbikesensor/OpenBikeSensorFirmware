@@ -28,6 +28,8 @@
 #endif
 //#define DEVELOP
 
+httpsserver::SSLCert * certTest;
+
 // --- Global variables ---
 // Version only change the "vN.M" part if needed.
 const char *OBSVersion = "v0.4" BUILD_NUMBER;
@@ -111,8 +113,8 @@ void switch_wire_speed_to_SSD1306(){
 	Wire.setClock(500000);
 }
 
-void setup() {
-  Serial.begin(115200);
+void setup2() {
+  // Serial.begin(115200);
 
   // Serial.println("setup()");
 
@@ -215,7 +217,7 @@ void setup() {
     buttonStateChanged = 0;
     lastButtonState = buttonState;
     delay(200);
-    startServer(&cfg);
+    startServer(&cfg, *certTest);
     gps.begin();
     gps.setStatisticsIntervalInSeconds(2); // ??
     while (true) {
@@ -308,10 +310,29 @@ void setup() {
   displayTest->clear();
 }
 
+void setup() {
+  Serial.begin(115200);
+  log_i("Certificate create 1");
+  certTest = new httpsserver::SSLCert();
+  log_i("Certificate create 2");
+  int createCertResult = createSelfSignedCert(
+    *certTest,
+    httpsserver::KEYSIZE_1024,
+    "CN=obs.local,O=openbikesensor,C=DE");
+
+  if (createCertResult != 0) {
+    log_e("Error generating certificate %d", createCertResult);
+    return;
+  }
+  log_i("Certificate created with success");
+  log_i("Certificate created with success!!!! %d", certTest->getPKLength());
+  setup2();
+}
+
 
 void serverLoop() {
   gps.handle();
-  server.handleClient();
+  server->loop();
   sensorManager->getDistancesNoWait();
   handleButtonInServerMode();
 }
@@ -333,7 +354,7 @@ void handleButtonInServerMode() {
     const uint32_t buttonPressedMs = now - buttonStateChanged;
     displayTest->drawProgressBar(5, buttonPressedMs, LONG_BUTTON_PRESS_TIME_MS);
     if (buttonPressedMs > LONG_BUTTON_PRESS_TIME_MS) {
-      uploadTracks(false);
+// FIXME      uploadTracks(false);
     }
   }
 }

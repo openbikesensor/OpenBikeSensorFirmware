@@ -202,6 +202,12 @@ bool ObsConfig::setProperty(int profile, String const &key, String const &value)
   return value == oldValue;
 }
 
+bool ObsConfig::setProperty(int profile, String const &key, std::string const &value) {
+  auto oldValue = jsonData["obs"][profile][key];
+  jsonData["obs"][profile][key] = value;
+  return value == oldValue;
+}
+
 bool ObsConfig::setOffsets(int profile, const std::vector<int> &offsets) {
   bool changed = false;
   auto jOffsets = jsonData["obs"][profile].createNestedArray(PROPERTY_OFFSET);
