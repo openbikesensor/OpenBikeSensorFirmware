@@ -615,9 +615,9 @@ bool CreateWifiSoftAP(String chipID) {
   IPAddress apIP(172, 20, 0, 1);
   IPAddress netMsk(255, 255, 255, 0);
 
-  displayTest->showTextOnGrid(0, 2, "AP:",DEFAULT_FONT);
-  displayTest->showTextOnGrid(1, 2, "",DEFAULT_FONT);
-  displayTest->showTextOnGrid(0, 3, APName.c_str(),DEFAULT_FONT);
+  displayTest->showTextOnGrid(0, 2, "AP:");
+  displayTest->showTextOnGrid(1, 2, "");
+  displayTest->showTextOnGrid(0, 3, APName.c_str());
 
 
   WiFi.softAPConfig(apIP, apIP, netMsk);
@@ -628,10 +628,10 @@ bool CreateWifiSoftAP(String chipID) {
 
     Serial.println(F("AP successful."));
 
-    displayTest->showTextOnGrid(0, 4, "Pass:",DEFAULT_FONT);
-    displayTest->showTextOnGrid(1, 4, APPassword,DEFAULT_FONT);
+    displayTest->showTextOnGrid(0, 4, "Pass:");
+    displayTest->showTextOnGrid(1, 4, APPassword);
 
-    displayTest->showTextOnGrid(0, 5, "IP:",DEFAULT_FONT);
+    displayTest->showTextOnGrid(0, 5, "IP:");
     displayTest->showTextOnGrid(1, 5, WiFi.softAPIP().toString());
   } else {
     Serial.println(F("Soft AP Error."));
@@ -651,12 +651,12 @@ void startServer(ObsConfig *obsConfig) {
   esp_chipid += String((uint32_t)chipid_num, HEX);
 
   displayTest->clear();
-  displayTest->showTextOnGrid(0, 0, "Ver.:", DEFAULT_FONT);
-  displayTest->showTextOnGrid(1, 0, OBSVersion, DEFAULT_FONT);
+  displayTest->showTextOnGrid(0, 0, "Ver.:");
+  displayTest->showTextOnGrid(1, 0, OBSVersion);
 
-  displayTest->showTextOnGrid(0, 1, "SSID:", DEFAULT_FONT);
+  displayTest->showTextOnGrid(0, 1, "SSID:");
   displayTest->showTextOnGrid(1, 1,
-                              theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID), DEFAULT_FONT);
+                              theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID));
 
   tryWiFiConnect(obsConfig);
 
@@ -670,8 +670,8 @@ void startServer(ObsConfig *obsConfig) {
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
 
-    displayTest->showTextOnGrid(0, 2, "IP:", DEFAULT_FONT);
-    displayTest->showTextOnGrid(1, 2, WiFi.localIP().toString().c_str(), DEFAULT_FONT);
+    displayTest->showTextOnGrid(0, 2, "IP:");
+    displayTest->showTextOnGrid(1, 2, WiFi.localIP().toString().c_str());
   }
 
   /*use mdns for host name resolution*/
