@@ -25,11 +25,28 @@
 #include <SSD1306.h>
 
 #include "config.h"
-#include "fonts/fonts.h"
 #include "globals.h"
 #include "gps.h"
 #include "logo.h"
 #include "sensor.h"
+
+
+extern const uint8_t Clear_Sans_Plain_8[];
+extern const uint8_t ArialMT_Plain_10[]; // :(
+extern const uint8_t Clear_Sans_Plain_10[];
+extern const uint8_t Clear_Sans_Plain_20[];
+extern const uint8_t Clear_Sans_Plain_30[];
+extern const uint8_t Clear_Sans_Plain_50[];
+extern const uint8_t BatterieLogo1[];
+extern const uint8_t TempLogo[];
+
+#define TINY_FONT Clear_Sans_Plain_8
+// this font is part of OLEDDisplay::OLEDDisplay :/
+// #define SMALL_FONT ArialMT_Plain_10
+#define SMALL_FONT Clear_Sans_Plain_10
+#define MEDIUM_FONT Clear_Sans_Plain_20
+#define LARGE_FONT Clear_Sans_Plain_30
+#define HUGE_FONT Clear_Sans_Plain_50
 
 // Forward declare classes to build (because there is a cyclic dependency between sensor.h and displays.h)
 class HCSR04SensorInfo;

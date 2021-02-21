@@ -10,14 +10,6 @@
 #include "clearsans20.h"
 #include "clearsans30.h"
 #include "clearsans50.h"
-
 #include "logos.h"
-
-#define TINY_FONT Clear_Sans_Plain_8
-#define SMALL_FONT Clear_Sans_Plain_10
-#define MEDIUM_FONT Clear_Sans_Plain_20
-#define LARGE_FONT Clear_Sans_Plain_30
-#define HUGE_FONT Clear_Sans_Plain_50
-
 
 #endif //OPENBIKESENSORFIRMWARE_FONTS_H

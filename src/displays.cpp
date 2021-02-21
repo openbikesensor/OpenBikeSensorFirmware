@@ -1,5 +1,7 @@
 #include "displays.h"
 
+#include "fonts/fonts.h"
+
 void SSD1306DisplayDevice::showNumConfirmed() {
   String val = String(confirmedMeasurements);
   if (confirmedMeasurements <= 9) {
