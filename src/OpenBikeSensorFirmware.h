@@ -10,7 +10,6 @@
 #include "displays.h"
 #include "globals.h"
 #include "gps.h"
-#include "ota.h"
 #include "sensor.h"
 #include "writer.h"
 #include "battery.h"
