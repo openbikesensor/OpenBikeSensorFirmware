@@ -477,20 +477,16 @@ void aboutPage() {
   String page;
 
   page += "<h3>ESP32</h3>"; // SPDIFF
-  page += keyValue("Heap size", ESP.getHeapSize() / 1024, "kb");
-  page += keyValue("Free heap", ESP.getFreeHeap() / 1024, "kb");
-  page += keyValue("Min. free heap", ESP.getMinFreeHeap() / 1024, "kb");
+  page += keyValue("Heap size", ObsUtils::toScaledByteString(ESP.getHeapSize()));
+  page += keyValue("Free heap", ObsUtils::toScaledByteString(ESP.getFreeHeap()));
+  page += keyValue("Min. free heap", ObsUtils::toScaledByteString(ESP.getMinFreeHeap()));
   String chipId = String((uint32_t) ESP.getEfuseMac(), HEX) + String((uint32_t) (ESP.getEfuseMac() >> 32), HEX);
   chipId.toUpperCase();
   page += keyValue("Chip id", chipId);
   page += keyValue("IDF Version", esp_get_idf_version());
 
-//  page += keyValue("Chip model", ESP.getChipModel());
-  page += keyValue("Chip revision", ESP.getChipRevision());
-  page += keyValue("App size", ESP.getSketchSize() / 1024, "kb");
-  page += keyValue("App space", ESP.getFreeSketchSpace() / 1024, "kb");
-// Needs to much RAM:   page += keyValue("App MD5", ESP.getSketchMD5());
-  page += keyValue("Flash size", ESP.getFlashChipSize() / 1024, "kb");
+  page += keyValue("App size", ObsUtils::toScaledByteString(ESP.getSketchSize()));
+  page += keyValue("App space", ObsUtils::toScaledByteString(ESP.getFreeSketchSpace()));
   page += keyValue("Flash speed", ESP.getFlashChipSpeed() / 1000 / 1000, "MHz");
   page += keyValue("App 'DEVELOP'",
 #ifdef DEVELOP
@@ -521,7 +517,7 @@ void aboutPage() {
     files += "<br />";
     files += file.name();
     files += " ";
-    files +=  ObsUtils::toScaledByteString(file.size());
+    files += ObsUtils::toScaledByteString(file.size());
     files += " ";
     files += ObsUtils::dateTimeToString(file.getLastWrite());
     file.close();
@@ -538,7 +534,7 @@ void aboutPage() {
 
   page += "<h3>SD Card</h3>";
 
-  page += keyValue("SD card size", String((uint32_t) (SD.cardSize() / 1024 / 1024)), "mb");
+  page += keyValue("SD card size", ObsUtils::toScaledByteString(SD.cardSize()));
 
   String sdCardType;
   switch (SD.cardType()) {
@@ -550,8 +546,8 @@ void aboutPage() {
   }
 
   page += keyValue("SD card type", sdCardType);
-  page += keyValue("SD fs size", SD.totalBytes() / 1024 / 1024, "mb");
-  page += keyValue("SD fs used", SD.usedBytes() / 1024 / 1024, "mb");
+  page += keyValue("SD fs size", ObsUtils::toScaledByteString(SD.totalBytes()));
+  page += keyValue("SD fs used", ObsUtils::toScaledByteString(SD.usedBytes()));
 
   page += "<h3>TOF Sensors</h3>";
   page += keyValue("Left Sensor raw", sensorManager->getRawMedianDistance(LEFT_SENSOR_ID), "cm");
