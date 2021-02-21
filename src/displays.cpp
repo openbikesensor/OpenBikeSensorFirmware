@@ -161,7 +161,7 @@ void SSD1306DisplayDevice::showBatterieValue(int16_t input_val){
 		if(input_val >= 0){
 			String val = String(input_val);
       //showLogo(true);
-			this->showTextOnGrid(xlocation, 0, " " + val + "%", TINY_FONT,3,0);
+      this->showTextOnGrid(xlocation, 0, val + "%", TINY_FONT, 6, 0);
        //m_display[0]->drawXbm(192, 0, 8, 9, BatterieLogo1);
 
        if(input_val > 90){
