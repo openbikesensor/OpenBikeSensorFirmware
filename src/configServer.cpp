@@ -26,6 +26,7 @@
 #include "configServer.h"
 #include "OpenBikeSensorFirmware.h"
 #include <uploader.h>
+#include <utils/alpdata.h>
 #include "SPIFFS.h"
 
 static const char *const HTML_ENTITY_FAILED_CROSS = "&#x274C;";
@@ -474,6 +475,8 @@ String keyValue(const String& key, const uint64_t value, const String& suffix = 
 }
 
 void aboutPage() {
+  gps.pollStatistics(); // takes ~100ms!
+
   String page;
 
   page += "<h3>ESP32</h3>"; // SPDIFF
@@ -564,15 +567,17 @@ void aboutPage() {
   page += keyValue("Right Sensor last start delay", sensorManager->getLastDelayTillStartUs(RIGHT_SENSOR_ID), "&#xB5;s");
 
   page += "<h3>GPS</h3>";
-  page += keyValue("TinyGPSPlus version", TinyGPSPlus::libraryVersion());
-  page += keyValue("GPS chars processed", gps.charsProcessed());
-  page += keyValue("GPS valid checksum", gps.passedChecksum());
-  page += keyValue("GPS failed checksum", gps.failedChecksum());
-  page += keyValue("GPS sentences with fix", gps.sentencesWithFix());
-  page += keyValue("GPS time", gps.time.value()); // fill all digits?
-  page += keyValue("GPS date", gps.date.value()); // fill all digits?
-  page += keyValue("GPS hdop", gps.hdop.value()); // fill all digits?
-  page += keyValue("GPS messages", gps.getMessages());
+  page += keyValue("GPS valid checksum", gps.getValidMessageCount());
+  page += keyValue("GPS failed checksum", gps.getMessagesWithFailedCrcCount());
+  page += keyValue("GPS hdop", gps.getCurrentGpsRecord().getHdopString());
+  page += keyValue("GPS fix", String(gps.getCurrentGpsRecord().getFixStatus(), 16));
+  page += keyValue("GPS fix flags", String(gps.getCurrentGpsRecord().getFixStatusFlags(), 16));
+  page += keyValue("GPS satellites", gps.getValidSatellites());
+  page += keyValue("GPS uptime", gps.getUptime(), "ms");
+  page += keyValue("GPS noise level", gps.getLastNoiseLevel());
+  page += keyValue("GPS baud rate", gps.getBaudRate());
+  page += keyValue("GPS ALP bytes", gps.getNumberOfAlpBytesSent());
+  page += keyValue("GPS messages", gps.getMessagesHtml());
 
   page += "<h3>Display / Button</h3>";
   page += keyValue("Button State", digitalRead(PushButton_PIN));
@@ -644,7 +649,6 @@ bool CreateWifiSoftAP(String chipID) {
 void startServer(ObsConfig *obsConfig) {
   theObsConfig = obsConfig;
 
-  gps.handle();
   uint64_t chipid_num;
   chipid_num = ESP.getEfuseMac();
   esp_chipid = String((uint16_t)(chipid_num >> 32), HEX);
@@ -684,13 +688,15 @@ void startServer(ObsConfig *obsConfig) {
   }
   /*return index page which is stored in serverIndex */
 
-  gps.handle();
   ObsUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
-  gps.handle();
   if (!voltageMeter) {
     voltageMeter = new VoltageMeter();
   }
-  gps.handle();
+
+  if (SD.begin()) {
+    AlpData::update(displayTest);
+  }
+
 
   // #############################################
   // Handle web pages
@@ -952,11 +958,12 @@ void startServer(ObsConfig *obsConfig) {
       log_d("GPSData not valid");
       buttonState = digitalRead(PushButton_PIN);
       gps.handle();
-      validGPSData = gps.location.isValid();
+      validGPSData = gps.getCurrentGpsRecord().hasValidFix();
       if (validGPSData) {
         log_d("GPSData valid");
         // FIXME: Not used?
-        Gps::newPrivacyArea(gps.location.lat(), gps.location.lng(), 500);
+        Gps::newPrivacyArea(gps.getCurrentGpsRecord().getLatitude(),
+                            gps.getCurrentGpsRecord().getLongitude(), 500);
       }
       delay(300);
     }
@@ -983,10 +990,10 @@ void startServer(ObsConfig *obsConfig) {
 
     privacyPage += "<h3>New Privacy Area  <a href='javascript:window.location.reload()'>&#8635;</a></h3>";
     gps.handle();
-    bool validGPSData = gps.location.isValid();
+    bool validGPSData = gps.getCurrentGpsRecord().hasValidFix();
     if (validGPSData) {
-      privacyPage += "Latitude<input name='newlatitude' value='" + String(gps.location.lat(), 7) + "' />";
-      privacyPage += "Longitude<input name='newlongitude' value='" + String(gps.location.lng(), 7) + "' />";
+      privacyPage += "Latitude<input name='newlatitude' value='" + gps.getCurrentGpsRecord().getLatString() + "' />";
+      privacyPage += "Longitude<input name='newlongitude' value='" + gps.getCurrentGpsRecord().getLongString() + "' />";
     } else {
       privacyPage += "Latitude<input name='newlatitude' placeholder='48.12345' />";
       privacyPage += "Longitude<input name='newlongitude' placeholder='9.12345' />";

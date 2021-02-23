@@ -221,6 +221,7 @@ class SSD1306DisplayDevice : public DisplayDevice {
     }
 
     void drawProgressBar(uint8_t y, uint8_t progress) {
+      clearTextLine(y);
       uint16_t rowOffset = y * 10 + 3;
 
       if (mLastProgress != progress) {
@@ -246,12 +247,21 @@ class SSD1306DisplayDevice : public DisplayDevice {
     }
 
     void clearProgressBar(uint8_t y) {
+      clearTextLine(y);
       uint16_t rowOffset = y * 10 + 3;
       m_display->setColor(BLACK);
       m_display->fillRect(12, rowOffset, 104, 8);
       m_display->setColor(WHITE);
       m_display->display();
       mLastProgress = UINT8_MAX;
+    }
+
+    void clearTextLine(uint8_t y) {
+      for(int i = 0; i < 4; i++) {
+        if (!gridText[i][y].isEmpty()) {
+          prepareTextOnGrid(i, y, "");
+        }
+      }
     }
 
     String get_gridTextofCell(uint8_t x, uint8_t y){
