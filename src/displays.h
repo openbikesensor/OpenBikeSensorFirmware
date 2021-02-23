@@ -31,22 +31,22 @@
 #include "sensor.h"
 
 
-extern const uint8_t Clear_Sans_Plain_8[];
+extern const uint8_t Ubuntu_Regular_Plain_8[];
 extern const uint8_t ArialMT_Plain_10[]; // :(
-extern const uint8_t Clear_Sans_Plain_10[];
-extern const uint8_t Clear_Sans_Plain_20[];
-extern const uint8_t Clear_Sans_Plain_30[];
-extern const uint8_t Clear_Sans_Plain_50[];
+extern const uint8_t Ubuntu_Regular_Plain_10[];
+extern const uint8_t Ubuntu_Regular_Plain_22[];
+extern const uint8_t Ubuntu_Regular_Plain_34[];
+extern const uint8_t Ubuntu_Regular_Plain_54[];
 extern const uint8_t BatterieLogo1[];
 extern const uint8_t TempLogo[];
 
-#define TINY_FONT Clear_Sans_Plain_8
+#define TINY_FONT Ubuntu_Regular_Plain_8
 // this font is part of OLEDDisplay::OLEDDisplay :/
 // #define SMALL_FONT ArialMT_Plain_10
-#define SMALL_FONT Clear_Sans_Plain_10
-#define MEDIUM_FONT Clear_Sans_Plain_20
-#define LARGE_FONT Clear_Sans_Plain_30
-#define HUGE_FONT Clear_Sans_Plain_50
+#define SMALL_FONT Ubuntu_Regular_Plain_10
+#define MEDIUM_FONT Ubuntu_Regular_Plain_22
+#define LARGE_FONT Ubuntu_Regular_Plain_34
+#define HUGE_FONT Ubuntu_Regular_Plain_54
 
 // Forward declare classes to build (because there is a cyclic dependency between sensor.h and displays.h)
 class HCSR04SensorInfo;
@@ -238,6 +238,7 @@ class SSD1306DisplayDevice : public DisplayDevice {
     }
 
     void drawProgressBar(uint8_t y, uint8_t progress) {
+      clearTextLine(y);
       uint16_t rowOffset = y * 10 + 3;
 
       if (mLastProgress != progress) {
@@ -263,12 +264,21 @@ class SSD1306DisplayDevice : public DisplayDevice {
     }
 
     void clearProgressBar(uint8_t y) {
+      clearTextLine(y);
       uint16_t rowOffset = y * 10 + 3;
       m_display->setColor(BLACK);
       m_display->fillRect(12, rowOffset, 104, 8);
       m_display->setColor(WHITE);
       m_display->display();
       mLastProgress = UINT8_MAX;
+    }
+
+    void clearTextLine(uint8_t y) {
+      for(int i = 0; i < 4; i++) {
+        if (!gridText[i][y].isEmpty()) {
+          prepareTextOnGrid(i, y, "");
+        }
+      }
     }
 
     String get_gridTextofCell(uint8_t x, uint8_t y){

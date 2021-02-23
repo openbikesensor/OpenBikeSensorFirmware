@@ -5,11 +5,12 @@
 #ifndef OPENBIKESENSORFIRMWARE_FONTS_H
 #define OPENBIKESENSORFIRMWARE_FONTS_H
 
-#include "clearsans8.h"
-#include "clearsans10.h"
-#include "clearsans20.h"
-#include "clearsans30.h"
-#include "clearsans50.h"
+#include "ubuntu8.h"
+#include "ubuntu10.h"
+#include "ubuntu22.h"
+#include "ubuntu34.h"
+#include "ubuntu54.h"
+
 #include "logos.h"
 
 #endif //OPENBIKESENSORFIRMWARE_FONTS_H

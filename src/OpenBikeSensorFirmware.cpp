@@ -58,8 +58,8 @@ BluetoothManager* bluetoothManager;
 
 Gps gps;
 
-const long BLUETOOTH_INTERVAL_MILLIS = 250;
-long lastBluetoothInterval = 0;
+const uint32_t BLUETOOTH_INTERVAL_MILLIS = 250;
+uint32_t lastBluetoothInterval = 0;
 
 float BatteryValue = -1;
 float TemperatureValue = -1;
@@ -159,8 +159,6 @@ void setup() {
   ObsConfig cfg; // this one is valid in setup!
   loadConfig(cfg);
 
-  gps.begin();
-
   //##############################################################
   // Handle SD
   //##############################################################
@@ -218,6 +216,8 @@ void setup() {
     lastButtonState = buttonState;
     delay(200);
     startServer(&cfg);
+    gps.begin();
+    gps.setStatisticsIntervalInSeconds(2); // ??
     while (true) {
       yield();
       serverLoop();
@@ -225,6 +225,7 @@ void setup() {
   }
   SPIFFS.end();
   WiFiGenericClass::mode(WIFI_OFF);
+  gps.begin();
 
   //##############################################################
   // Prepare CSV file
@@ -243,6 +244,7 @@ void setup() {
     displayTest->showTextOnGrid(2, displayTest->currentLine(), "CSV. skipped");
   }
 
+  gps.handle();
   //##############################################################
   // Temperatur Sensor BMP280
   //##############################################################
@@ -251,6 +253,7 @@ void setup() {
   if(BMP280_active == true) TemperatureValue = bmp280.readTemperature();
 
 
+  gps.handle();
   //##############################################################
   // Bluetooth
   //##############################################################
@@ -274,6 +277,8 @@ void setup() {
   displayTest->showTextOnGrid(2, displayTest->newLine(), "Wait for GPS");
   displayTest->newLine();
   gps.handle();
+  gps.setStatisticsIntervalInSeconds(1); // get regular updates.
+
   int gpsWaitFor = cfg.getProperty<int>(ObsConfig::PROPERTY_GPS_FIX);
   while (!gps.hasState(gpsWaitFor, displayTest)) {
     currentTimeMillis = millis();
@@ -283,9 +288,7 @@ void setup() {
       lastBluetoothInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
       bluetoothManager->newSensorValues(currentTimeMillis, MAX_SENSOR_VALUE, MAX_SENSOR_VALUE);
     }
-    delay(50);
     gps.showWaitStatus(displayTest);
-
     buttonState = digitalRead(PushButton_PIN);
     if (buttonState == HIGH
         || (config.simRaMode && !gps.moduleIsAlive()) // no module && simRaMode
@@ -296,8 +299,12 @@ void setup() {
     }
   }
 
-  delay(1000); // Added for user experience
+  // now we have a fix only rate updates, could be set to 0?
+  gps.setStatisticsIntervalInSeconds(0);
 
+  gps.handle(1000); // Added for user experience
+  gps.pollStatistics();
+  gps.enableSbas();
   displayTest->clear();
 }
 
@@ -331,9 +338,7 @@ void handleButtonInServerMode() {
   }
 }
 
-
 void loop() {
-
   Serial.println("loop()");
 
   auto* currentSet = new DataSet;
@@ -345,16 +350,11 @@ void loop() {
   if (startTimeMillis == 0) {
     startTimeMillis = (currentTimeMillis / measureInterval) * measureInterval;
   }
-  currentSet->time = gps.currentTime();
+  currentSet->time = Gps::currentTime();
   currentSet->millis = currentTimeMillis;
-  currentSet->location = gps.location;
-  currentSet->altitude = gps.altitude;
-  currentSet->course = gps.course;
-  currentSet->speed = gps.speed;
-  currentSet->hdop = gps.hdop;
-  currentSet->validSatellites = gps.getValidSatellites();
   currentSet->batteryLevel = voltageMeter->read();
   currentSet->isInsidePrivacyArea = gps.isInsidePrivacyArea();
+  currentSet->gpsRecord = gps.getCurrentGpsRecord();
 
   sensorManager->reset();
 
