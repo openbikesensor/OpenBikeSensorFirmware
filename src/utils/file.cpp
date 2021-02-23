@@ -30,7 +30,6 @@ bool FileUtil::appendFile(fs::FS &fs, const char * path, const char * message) {
   }
   if (file.print(message)) {
     result = true;
-    Serial.println("Message appended");
   } else {
     Serial.println("Append failed");
   }
