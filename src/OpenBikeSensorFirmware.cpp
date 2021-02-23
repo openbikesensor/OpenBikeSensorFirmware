@@ -299,10 +299,9 @@ void setup() {
       break;
     }
   }
+
   // now we have a fix only rate updates, could be set to 0?
-  if (!(config.displayConfig & DisplayDistanceDetail)) {
-    gps.setStatisticsIntervalInSeconds(60);
-  }
+  gps.setStatisticsIntervalInSeconds(0);
 
   gps.handle(1000); // Added for user experience
   gps.pollStatistics();
