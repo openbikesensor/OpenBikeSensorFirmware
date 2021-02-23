@@ -568,8 +568,8 @@ void Gps::showWaitStatus(SSD1306DisplayDevice *display) const {
   } else if (mLastTimeTimeSet == 0) {
     satellitesString[0] = "no time " + String(mLastNoiseLevel);
   } else {
-    satellitesString[0] = ObsUtils::timeToString() + " " + String(mLastNoiseLevel);
-    satellitesString[1] = String(mCurrentGpsRecord.mSatellitesUsed) + " satellites";
+    satellitesString[0] = ObsUtils::timeToString();
+    satellitesString[1] = String(mCurrentGpsRecord.mSatellitesUsed) + "sats SN:" + String(mLastNoiseLevel);
   }
 
   if (mValidMessagesReceived != 0    //only do this if a communication is there and a valid time is there
