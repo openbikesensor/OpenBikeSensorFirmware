@@ -9,7 +9,6 @@
 
 #include "_IBluetoothService.h"
 #include "ClosePassService.h"
-#include "ConnectionService.h"
 #include "DeviceInfoService.h"
 #include "DistanceService.h"
 #include "HeartRateService.h"

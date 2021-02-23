@@ -5,8 +5,8 @@ void SSD1306DisplayDevice::showNumConfirmed() {
   if (confirmedMeasurements <= 9) {
     val = "0" + val;
   }
-  this->prepareTextOnGrid(2, 4, val, Dialog_plain_20);
-  this->prepareTextOnGrid(3, 5, "conf",DEFAULT_FONT);
+  this->prepareTextOnGrid(2, 4, val, MEDIUM_FONT);
+  this->prepareTextOnGrid(3, 5, "conf");
 }
 
 void SSD1306DisplayDevice::showNumButtonPressed() {
@@ -14,8 +14,8 @@ void SSD1306DisplayDevice::showNumButtonPressed() {
   if (numButtonReleased <= 9) {
     val = "0" + val;
   }
-  this->prepareTextOnGrid(0, 4, val, Dialog_plain_20);
-  this->prepareTextOnGrid(1, 5, "press",DEFAULT_FONT);
+  this->prepareTextOnGrid(0, 4, val, MEDIUM_FONT);
+  this->prepareTextOnGrid(1, 5, "press");
 }
 
 void SSD1306DisplayDevice::showValues(
@@ -36,11 +36,11 @@ void SSD1306DisplayDevice::showValues(
 
     // Do not show location, when DisplaySimple is configured
     if (!(config.displayConfig & DisplaySimple)) {
-      this->prepareTextOnGrid(0, 0, loc1,DEFAULT_FONT);
+      this->prepareTextOnGrid(0, 0, loc1);
     }
 
     if (value1 == MAX_SENSOR_VALUE) {
-      this->prepareTextOnGrid(0, 1, "---", Dialog_plain_26);
+      this->prepareTextOnGrid(0, 1, "---", LARGE_FONT);
     } else {
       String val = String(value1);
       if (value1 <= 9) {
@@ -49,11 +49,11 @@ void SSD1306DisplayDevice::showValues(
         val = "0" + val;
       }
 
-      this->prepareTextOnGrid(0, 1, val, Dialog_plain_26);
+      this->prepareTextOnGrid(0, 1, val, LARGE_FONT);
     }
 
     if (config.displayConfig & DisplaySimple) {
-      this->prepareTextOnGrid(2, 2, "cm", Dialog_plain_20,5,0);
+      this->prepareTextOnGrid(2, 2, "cm", MEDIUM_FONT,5,0);
     }
   }
 
@@ -64,9 +64,9 @@ void SSD1306DisplayDevice::showValues(
       uint16_t value2 = sensor2.distance;
       String loc2 = sensor2.sensorLocation;
 
-      this->prepareTextOnGrid(3, 0, loc2,DEFAULT_FONT);
+      this->prepareTextOnGrid(3, 0, loc2);
       if (value2 == MAX_SENSOR_VALUE) {
-        this->prepareTextOnGrid(2, 1, "---", Dialog_plain_26,5,0);
+        this->prepareTextOnGrid(2, 1, "---", LARGE_FONT,5,0);
       } else {
         String val = String(value2);
         if (value2 <= 9) {
@@ -74,7 +74,7 @@ void SSD1306DisplayDevice::showValues(
         } else if (value2 >= 10 && value2 <= 99) {
           val = "0" + val;
         }
-        this->prepareTextOnGrid(2, 1, val, Dialog_plain_26,5,0);
+        this->prepareTextOnGrid(2, 1, val, LARGE_FONT,5,0);
       }
     }
     if (config.displayConfig & DisplayDistanceDetail) {
@@ -97,7 +97,7 @@ void SSD1306DisplayDevice::showValues(
                satellites,
                gps.getHdopAsString().c_str(), gps.getLastNoiseLevel() );
 //#endif
-      this->prepareTextOnGrid(0, 4, buffer, Dialog_plain_16);
+      this->prepareTextOnGrid(0, 4, buffer, MEDIUM_FONT);
     } else if (config.displayConfig & DisplayNumConfirmed) {
       showNumButtonPressed();
       showNumConfirmed();
@@ -135,8 +135,8 @@ void SSD1306DisplayDevice::showGPS(uint8_t sats) {
   if (sats <= 9) {
     val = "0" + val;
   }
-  this->prepareTextOnGrid(2, 4, val, Dialog_plain_20);
-  this->prepareTextOnGrid(3, 5, "sats",DEFAULT_FONT);
+  this->prepareTextOnGrid(2, 4, val, MEDIUM_FONT);
+  this->prepareTextOnGrid(3, 5, "sats");
 }
 
 void SSD1306DisplayDevice::showBatterieValue(int16_t input_val){
@@ -169,7 +169,7 @@ void SSD1306DisplayDevice::showBatterieValue(int16_t input_val){
 		if(input_val >= 0){
 			String val = String(input_val);
       //showLogo(true);
-			this->showTextOnGrid(xlocation, 0, " " + val + "%", Dialog_plain_8,3,0);
+			this->showTextOnGrid(xlocation, 0, " " + val + "%", TINY_FONT,3,0);
        //m_display[0]->drawXbm(192, 0, 8, 9, BatterieLogo1);
 
        if(input_val > 90){
@@ -207,7 +207,7 @@ void SSD1306DisplayDevice::showTemperatureValue(int16_t input_val){
     cleanTemperatur(x_offset_temp_logo,y_offset_temp_logo);
     m_display->drawXbm(x_offset_temp_logo, y_offset_temp_logo, 8, 9, TempLogo);
     String val = String(input_val);
-    this->showTextOnGrid(1, 0, " " + val + "°C", Dialog_plain_8,-3,0);
+    this->showTextOnGrid(1, 0, val + "°C", TINY_FONT);
 }
 
 void SSD1306DisplayDevice::showSpeed(double velocity) {
@@ -218,8 +218,8 @@ void SSD1306DisplayDevice::showSpeed(double velocity) {
   } else {
     snprintf(buffer, bufSize - 1, "--");
   }
-  this->prepareTextOnGrid(0, 4, buffer, Dialog_plain_20);
-  this->prepareTextOnGrid(1, 5, "km/h",DEFAULT_FONT);
+  this->prepareTextOnGrid(0, 4, buffer, MEDIUM_FONT);
+  this->prepareTextOnGrid(1, 5, "km/h");
 }
 
 uint8_t SSD1306DisplayDevice::currentLine() const {

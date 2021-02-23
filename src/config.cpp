@@ -135,7 +135,13 @@ void ObsConfig::makeSureSystemDefaultsAreSet() {
     data[PROPERTY_WIFI_PASSWORD] = "Freifunk";
   }
   ensureSet(data, PROPERTY_PORTAL_URL, "https://openbikesensor.hlrs.de");
-  ensureSet(data, PROPERTY_PORTAL_TOKEN, "5e8f2f43e7e3b3668ca13151");
+
+  const String &token = getProperty<const char*>(PROPERTY_PORTAL_TOKEN);
+  if (token && token.equals("5e8f2f43e7e3b3668ca13151")) {
+    log_e("Ignored old default API-KEY.");
+    setProperty(0, PROPERTY_PORTAL_TOKEN, "");
+  }
+  ensureSet(data, PROPERTY_PORTAL_TOKEN, "");
   ensureSet(data, PROPERTY_GPS_FIX, (int) Gps::WaitFor::FIX_POS);
   ensureSet(data, PROPERTY_DISPLAY_CONFIG, DisplaySimple);
   if (getProperty<int>(PROPERTY_DISPLAY_CONFIG) == 0) {

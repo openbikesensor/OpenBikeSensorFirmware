@@ -39,9 +39,6 @@ class ObsService : public IBluetoothService {
     void newPassEvent(uint32_t millis, uint16_t leftValue, uint16_t rightValue) override;
 
   private:
-    void sendEventData(BLECharacteristic *characteristic,
-                       uint32_t millis, uint16_t leftValue, uint16_t rightValue);
-
     BLEService *mService = nullptr;
 
     BLECharacteristic mTimeCharacteristic
@@ -66,6 +63,9 @@ class ObsService : public IBluetoothService {
     static const BLEUUID OBS_BUTTON_CHARACTERISTIC_UUID;
     static const BLEUUID OBS_OFFSET_CHARACTERISTIC_UUID;
     static const BLEUUID OBS_TRACK_ID_CHARACTERISTIC_UUID;
+    static void sendEventData(BLECharacteristic *characteristic,
+                              uint32_t millis, uint16_t leftValue, uint16_t rightValue);
+
 };
 
 #endif

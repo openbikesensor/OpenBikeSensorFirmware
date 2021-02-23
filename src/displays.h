@@ -25,13 +25,11 @@
 #include <SSD1306.h>
 
 #include "config.h"
-#include "font.h"
+#include "fonts/fonts.h"
 #include "globals.h"
 #include "gps.h"
 #include "logo.h"
 #include "sensor.h"
-
-#define DEFAULT_FONT ArialMT_Plain_10
 
 // Forward declare classes to build (because there is a cyclic dependency between sensor.h and displays.h)
 class HCSR04SensorInfo;
@@ -150,14 +148,14 @@ class SSD1306DisplayDevice : public DisplayDevice {
     // | (0,5) | (1,5) | (2,5) | (3,5) |
     // ---------------------------------
 
-    void showTextOnGrid(int16_t x, int16_t y, String text, const uint8_t* font = DEFAULT_FONT, int8_t offset_x_ = 0, int8_t offset_y_ = 0) {
+    void showTextOnGrid(int16_t x, int16_t y, String text, const uint8_t* font = SMALL_FONT, int8_t offset_x_ = 0, int8_t offset_y_ = 0) {
       if (prepareTextOnGrid(x, y, text, font,offset_x_,offset_y_)) {
         m_display->display();
       }
     }
 
     bool prepareTextOnGrid(
-      int16_t x, int16_t y, String text, const uint8_t* font = DEFAULT_FONT ,int8_t offset_x_ = 0, int8_t offset_y_ = 0) {
+      int16_t x, int16_t y, String text, const uint8_t* font = SMALL_FONT , int8_t offset_x_ = 0, int8_t offset_y_ = 0) {
       bool changed = false;
       if (!text.equals(gridText[x][y])) {
         m_display->setFont(font);
