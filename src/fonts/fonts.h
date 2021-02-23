@@ -5,7 +5,7 @@
 #ifndef OPENBIKESENSORFIRMWARE_FONTS_H
 #define OPENBIKESENSORFIRMWARE_FONTS_H
 
-#include "clearsans8.h"
+#include "clearsans9.h"
 #include "clearsans10.h"
 #include "clearsans20.h"
 #include "clearsans30.h"
@@ -13,7 +13,7 @@
 
 #include "logos.h"
 
-#define TINY_FONT Clear_Sans_Plain_8
+#define TINY_FONT Clear_Sans_Plain_9
 #define SMALL_FONT Clear_Sans_Plain_10
 #define MEDIUM_FONT Clear_Sans_Plain_20
 #define LARGE_FONT Clear_Sans_Plain_30
