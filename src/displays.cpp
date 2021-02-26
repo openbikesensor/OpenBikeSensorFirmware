@@ -65,13 +65,13 @@ void SSD1306DisplayDevice::showValues(
       String loc2 = sensor2.sensorLocation;
 
       this->prepareTextOnGrid(3, 0, loc2);
-      if (value2 == MAX_SENSOR_VALUE) {
+      if (value2 == MAX_SENSOR_VALUE || value2 == 0) {
         this->prepareTextOnGrid(2, 1, "---", LARGE_FONT,5,0);
       } else {
         String val = String(value2);
         if (value2 <= 9) {
           val = "00" + val;
-        } else if (value2 >= 10 && value2 <= 99) {
+        } else if (value2 <= 99) {
           val = "0" + val;
         }
         this->prepareTextOnGrid(2, 1, val, LARGE_FONT,5,0);
