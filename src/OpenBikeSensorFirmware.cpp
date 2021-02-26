@@ -217,7 +217,6 @@ void setup() {
     delay(200);
     startServer(&cfg);
     gps.begin();
-    OtaInit(esp_chipid);
     gps.setStatisticsIntervalInSeconds(2); // ??
     while (true) {
       yield();
@@ -313,7 +312,6 @@ void setup() {
 void serverLoop() {
   gps.handle();
   server.handleClient();
-  ArduinoOTA.handle();
   sensorManager->getDistancesNoWait();
   handleButtonInServerMode();
 }

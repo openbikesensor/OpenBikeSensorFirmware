@@ -13,11 +13,4 @@
 
 #include "logos.h"
 
-#define TINY_FONT Ubuntu_Regular_Plain_8
-#define SMALL_FONT Ubuntu_Regular_Plain_10
-#define MEDIUM_FONT Ubuntu_Regular_Plain_22
-#define LARGE_FONT Ubuntu_Regular_Plain_34
-#define HUGE_FONT Ubuntu_Regular_Plain_54
-
-
 #endif //OPENBIKESENSORFIRMWARE_FONTS_H

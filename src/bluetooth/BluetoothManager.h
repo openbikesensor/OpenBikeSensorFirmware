@@ -2,9 +2,6 @@
 #define OBS_BLUETOOTH_BLUETOOTHMANAGER_H
 
 #include <Arduino.h>
-#include <BLEDevice.h>
-#include <BLEServer.h>
-#include <BLEDescriptor.h>
 #include <list>
 
 #include "_IBluetoothService.h"
