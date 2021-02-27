@@ -616,9 +616,9 @@ bool CreateWifiSoftAP(String chipID) {
   IPAddress apIP(172, 20, 0, 1);
   IPAddress netMsk(255, 255, 255, 0);
 
-  displayTest->showTextOnGrid(0, 2, "AP:");
-  displayTest->showTextOnGrid(1, 2, "");
-  displayTest->showTextOnGrid(0, 3, APName.c_str());
+  displayTest->showTextOnGrid(0, 1, "AP:");
+  displayTest->showTextOnGrid(1, 1, "");
+  displayTest->showTextOnGrid(0, 2, APName.c_str());
 
 
   WiFi.softAPConfig(apIP, apIP, netMsk);
@@ -629,11 +629,11 @@ bool CreateWifiSoftAP(String chipID) {
 
     Serial.println(F("AP successful."));
 
-    displayTest->showTextOnGrid(0, 4, "Pass:");
-    displayTest->showTextOnGrid(1, 4, APPassword);
+    displayTest->showTextOnGrid(0, 3, "Pass:");
+    displayTest->showTextOnGrid(1, 3, APPassword);
 
-    displayTest->showTextOnGrid(0, 5, "IP:");
-    displayTest->showTextOnGrid(1, 5, WiFi.softAPIP().toString());
+    displayTest->showTextOnGrid(0, 4, "IP:");
+    displayTest->showTextOnGrid(1, 4, WiFi.softAPIP().toString());
   } else {
     Serial.println(F("Soft AP Error."));
     Serial.println(APName.c_str());
@@ -689,7 +689,7 @@ void startServer(ObsConfig *obsConfig) {
     voltageMeter = new VoltageMeter();
   }
 
-  if (SD.begin()) {
+  if (SD.begin() && WiFiClass::status() == WL_CONNECTED) {
     AlpData::update(displayTest);
   }
 
