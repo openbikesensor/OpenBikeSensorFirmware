@@ -302,13 +302,12 @@ bool ObsConfig::loadJson(JsonDocument &jsonDocument, File &file) {
   } else {
     success = true;
   }
-  file.close();
-
 #ifdef DEVELOP
   log_d("Config found in file '%s':", file.name());
   serializeJsonPretty(jsonDocument, Serial);
   log_d("------------------------------------------");
 #endif
+  file.close();
   return success;
 }
 
