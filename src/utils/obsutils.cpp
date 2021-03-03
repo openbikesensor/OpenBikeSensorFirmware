@@ -166,9 +166,9 @@ String ObsUtils::encodeForCsvField(const String &field) {
 
 String ObsUtils::toScaledByteString(uint32_t size) {
   String result;
-  if (size <= BYTES_PER_KB) {
+  if (size <= BYTES_PER_KB * 10) {
     result = String(size) + "b";
-  } else if (size <= BYTES_PER_MB) {
+  } else if (size <= BYTES_PER_MB * 10) {
     result = String(size / BYTES_PER_KB) + "kb";
   } else {
     result = String(size / BYTES_PER_MB) + "mb";

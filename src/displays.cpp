@@ -1,5 +1,7 @@
 #include "displays.h"
 
+#include "fonts/fonts.h"
+
 void SSD1306DisplayDevice::showNumConfirmed() {
   String val = String(confirmedMeasurements);
   if (confirmedMeasurements <= 9) {
@@ -65,13 +67,13 @@ void SSD1306DisplayDevice::showValues(
       String loc2 = sensor2.sensorLocation;
 
       this->prepareTextOnGrid(3, 0, loc2);
-      if (value2 == MAX_SENSOR_VALUE) {
+      if (value2 == MAX_SENSOR_VALUE || value2 == 0) {
         this->prepareTextOnGrid(2, 1, "---", LARGE_FONT,5,0);
       } else {
         String val = String(value2);
         if (value2 <= 9) {
           val = "00" + val;
-        } else if (value2 >= 10 && value2 <= 99) {
+        } else if (value2 <= 99) {
           val = "0" + val;
         }
         this->prepareTextOnGrid(2, 1, val, LARGE_FONT,5,0);
@@ -170,7 +172,7 @@ void SSD1306DisplayDevice::showBatterieValue(int16_t input_val){
 		if(input_val >= 0){
 			String val = String(input_val);
       //showLogo(true);
-			this->showTextOnGrid(xlocation, 0, " " + val + "%", TINY_FONT,3,0);
+      this->showTextOnGrid(xlocation, 0, val + "%", TINY_FONT, 6, 0);
        //m_display[0]->drawXbm(192, 0, 8, 9, BatterieLogo1);
 
        if(input_val > 90){
