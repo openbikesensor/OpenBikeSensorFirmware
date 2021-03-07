@@ -364,6 +364,8 @@ static void handlePrivacyDeleteAction(HTTPRequest *req, HTTPResponse *res);
 static void handleAbout(HTTPRequest *req, HTTPResponse *res);
 static void handleSd(HTTPRequest *req, HTTPResponse *res);
 
+static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<void()> next);
+
 bool configServerWasConnectedViaHttpFlag = false;
 
 static void tryWiFiConnect(const ObsConfig *obsConfig);
@@ -372,7 +374,7 @@ static String ensureSdIsAvailable();
 static void moveToUploaded(const String &fileName);
 
 void beginPages() {
-  server->registerNode(new ResourceNode("", "",  handleNotFound));
+  server->setDefaultNode(new ResourceNode("", HTTP_GET,  handleNotFound));
   server->registerNode(new ResourceNode("/", HTTP_GET,  handleIndex));
   server->registerNode(new ResourceNode("/about", HTTP_GET,  handleAbout));
   server->registerNode(new ResourceNode("/reboot", HTTP_GET,  handleReboot));
@@ -395,6 +397,8 @@ void beginPages() {
   server->registerNode(new ResourceNode("/settings/privacy", HTTP_GET, handlePrivacy));
   server->registerNode(new ResourceNode("/privacy_delete", HTTP_GET, handlePrivacyDeleteAction));
   server->registerNode(new ResourceNode("/sd", HTTP_GET, handleSd));
+
+  server->addMiddleware(&accessFilter);
 }
 
 
@@ -1418,4 +1422,34 @@ uint16_t countFilesInRoot() {
   root.close();
   displayTest->clearProgressBar(4);
   return numberOfFiles;
+}
+
+static String httpPassword = String(esp_random());
+
+void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<void()> next) {
+  configServerWasConnectedViaHttpFlag = true;
+
+  log_w("Access Filter!");
+  log_w("HTTP password: %s", req->getBasicAuthPassword().c_str());
+
+  const String incomingPassword(req->getBasicAuthPassword().c_str());
+
+  if (incomingPassword != httpPassword) {
+    res->setStatusCode(401);
+    res->setStatusText("Unauthorized");
+    res->setHeader("Content-Type", "text/plain");
+    res->setHeader("WWW-Authenticate", "Basic realm=\"OBS\""); // name of OBS?
+    res->println("401: See OBS display");
+
+    displayTest->cleanGridCell(0, 3);
+    displayTest->cleanGridCell(0, 4);
+    displayTest->cleanGridCell(1, 3);
+    displayTest->cleanGridCell(1, 4);
+    displayTest->showTextOnGrid(0,3, httpPassword, MEDIUM_FONT);
+    // No call denies access to protected handler function.
+  } else {
+    displayTest->cleanGridCell(0, 3);
+    // Everything else will be allowed, so we call next()
+    next();
+  }
 }
