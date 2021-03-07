@@ -43,7 +43,7 @@
 //DNSServer dnsServer;
 
 extern httpsserver::HTTPSServer* server;
-void startServer(ObsConfig *pConfig, httpsserver::SSLCert &cert);
+void startServer(ObsConfig *pConfig);
 bool configServerWasConnectedViaHttp();
 void uploadTracks(httpsserver::HTTPResponse *res = nullptr);
 void createPrivacyPage();

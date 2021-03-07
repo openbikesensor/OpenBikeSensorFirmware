@@ -26,6 +26,8 @@
 #include <configServer.h>
 #include <OpenBikeSensorFirmware.h>
 #include <uploader.h>
+#include <https/cert.h>
+#include <https/private_key.h>
 #include "SPIFFS.h"
 #include "SSLCert.hpp"
 #include "HTTPMultipartBodyParser.hpp"
@@ -44,6 +46,11 @@ const char* host = "openbikesensor";
 
 static ObsConfig *theObsConfig;
 HTTPSServer * server;
+
+static SSLCert obsCert = SSLCert(
+  obs_crt_DER, obs_crt_DER_len,
+  obs_key_DER, obs_key_DER_len
+);
 
 /* Style */
 // TODO
@@ -359,11 +366,6 @@ static uint16_t countFilesInRoot();
 static String ensureSdIsAvailable();
 static void moveToUploaded(const String &fileName);
 
-void beginCert(SSLCert& cert) {
-  log_i("Start Server");
-  server = new HTTPSServer(&cert);
-}
-
 void beginPages() {
   server->registerNode(new ResourceNode("", "",  handleNotFound));
   server->registerNode(new ResourceNode("/", HTTP_GET,  handleIndex));
@@ -391,10 +393,8 @@ void beginPages() {
 }
 
 
-void createHttpServer(SSLCert& cert) {
-  log_i("About to create cert.");
-
-  beginCert(cert);
+void createHttpServer() {
+  server = new HTTPSServer(&obsCert);
   log_i("About to create pages.");
   beginPages();
 
@@ -521,7 +521,7 @@ bool CreateWifiSoftAP(String chipID) {
   return SoftAccOK;
 }
 
-void startServer(ObsConfig *obsConfig, SSLCert &cert) {
+void startServer(ObsConfig *obsConfig) {
   theObsConfig = obsConfig;
 
   uint64_t chipid_num;
@@ -573,7 +573,7 @@ void startServer(ObsConfig *obsConfig, SSLCert &cert) {
   }
 
   log_i("About to create http server.");
-  createHttpServer(cert);
+  createHttpServer();
 }
 
 void tryWiFiConnect(const ObsConfig *obsConfig) {
