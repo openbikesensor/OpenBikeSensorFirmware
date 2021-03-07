@@ -26,12 +26,8 @@
 #include <configServer.h>
 #include <OpenBikeSensorFirmware.h>
 #include <uploader.h>
-#include <utils/alpdata.h>
 #include "SPIFFS.h"
-#include "HTTPSServer.hpp"
 #include "SSLCert.hpp"
-#include "HTTPRequest.hpp"
-#include "HTTPResponse.hpp"
 #include "HTTPMultipartBodyParser.hpp"
 
 using namespace httpsserver;
@@ -42,10 +38,11 @@ static const char *const HTML_ENTITY_OK_MARK = "&#x2705;";
 static const char *const HTTP_GET = "GET";
 static const char *const HTTP_POST = "POST";
 
+static const size_t HTTP_UPLOAD_BUFLEN = 1024; // TODO: refine
 
 const char* host = "openbikesensor";
 
-ObsConfig *theObsConfig;
+static ObsConfig *theObsConfig;
 HTTPSServer * server;
 
 /* Style */
@@ -53,7 +50,7 @@ HTTPSServer * server;
 //  - Fix CSS Style for mobile && desktop
 //  - a vs. button
 //  - back navigation after save
-String style =
+static String style =
   "<style>"
   "#file-input,input, button {width:100%;height:44px;border-radius:4px;margin:10px auto;font-size:15px;}"
   "input, button, a.back {background:#f1f1f1;border:0;padding:0;text-align:center;}"
@@ -99,13 +96,13 @@ String header =
   "<p>Firmware version: {version}</p>"
   + previous;
 
-const String footer = "</form></body></html>";
+static const String footer = "</form></body></html>";
 
 // #########################################
 // Upload form
 // #########################################
 
-String xhrUpload =   "<input type='file' name='upload' id='file' accept='{accept}'>"
+static String xhrUpload =   "<input type='file' name='upload' id='file' accept='{accept}'>"
   "<label id='file-input' for='file'>Choose file...</label>"
   "<input id='btn' type='submit' class=btn value='Upload'>"
   "<br><br>"
@@ -173,7 +170,7 @@ String xhrUpload =   "<input type='file' name='upload' id='file' accept='{accept
 // Navigation
 // #########################################
 
-String navigationIndex =
+static String navigationIndex =
   "<input type=button onclick=\"window.location.href='/upload'\" class=btn value='Upload Tracks'>"
   "<h3>Settings</h3>"
   "<input type=button onclick=\"window.location.href='/settings/general'\" class=btn value='General'>"
@@ -191,7 +188,7 @@ String navigationIndex =
 // Development
 // #########################################
 
-String development =
+static String development =
   "<h3>Development</h3>"
   "<input type=button onclick=\"window.location.href='/settings/development'\" class=btn value='Development'>";
 
@@ -199,14 +196,14 @@ String development =
 // Reboot
 // #########################################
 
-String rebootIndex =
+static String rebootIndex =
   "<div>Device reboots now.</div>";
 
 // #########################################
 // Wifi
 // #########################################
 
-String wifiSettingsIndex =
+static String wifiSettingsIndex =
   "<script>"
   "function resetPassword() { document.getElementById('pass').value = ''; }"
   "</script>"
@@ -221,7 +218,7 @@ String wifiSettingsIndex =
 // Backup and Restore
 // #########################################
 
-String backupIndex =
+static String backupIndex =
   "<p>This backups and restores the device configuration incl. the Basic Config, Privacy Zones and Wifi Settings.</p>"
   "<h3>Backup</h3>"
   "<input type='button' onclick=\"window.location.href='/settings/backup.json'\" class=btn value='Download' />"
@@ -231,7 +228,7 @@ String backupIndex =
 // Development Index
 // #########################################
 
-String devIndex =
+static String devIndex =
   "<h3>Display</h3>"
   "Show Grid<br><input type='checkbox' name='showGrid' {showGrid}>"
   "Print WLAN password to serial<br><input type='checkbox' name='printWifiPassword' {printWifiPassword}>"
@@ -242,7 +239,7 @@ String devIndex =
 // Config
 // #########################################
 
-String configIndex =
+static String configIndex =
   "<h3>Sensor</h3>"
   "Offset Sensor Left<input name='offsetS1' placeholder='Offset Sensor Left' value='{offset1}'>"
   "<hr>"
@@ -307,50 +304,60 @@ String configIndex =
 // #########################################
 
 /* Server Index Page */
-const String uploadIndex = "<h3>Update</h3>";
+static const String uploadIndex = "<h3>Update</h3>";
 
 // #########################################
 // Privacy
 // #########################################
 
-String privacyIndexPostfix =
+static String privacyIndexPostfix =
   "<input type=submit onclick=\"window.location.href='/'\" class=btn value=Save>"
   "<input type=button onclick=\"window.location.href='/settings/privacy/makeCurrentLocationPrivate'\" class=btn value='Make current location private'>";
 
 
-String makeCurrentLocationPrivateIndex =
+static String makeCurrentLocationPrivateIndex =
   "<div>Making current location private, waiting for fix. Press device button to cancel.</div>";
 
 // #########################################
 
-static String getParameter(HTTPRequest *req, const String& name) {
+static String getParameter(HTTPRequest *req, const String& name, const String&  def = "") {
   std::string value;
   if (req->getParams()->getQueryParameter(name.c_str(), value)) {
     return String(value.c_str());
   }
-  return "";
+  return def;
 }
 
 
-void handleIndex(HTTPRequest * req, HTTPResponse * res);
-void handleAbout(HTTPRequest * req, HTTPResponse * res);
-void handleReboot(HTTPRequest * req, HTTPResponse * res);
-void handleBackup(HTTPRequest * req, HTTPResponse * res);
-void handleBackupDownload(HTTPRequest * req, HTTPResponse * res);
-void handleBackupRestore(HTTPRequest * req, HTTPResponse * res);
-void handleWifi(HTTPRequest * req, HTTPResponse * res);
-void handleWifiSave(HTTPRequest * req, HTTPResponse * res);
-void handleConfig(HTTPRequest * req, HTTPResponse * res);
-void handleConfigSave(HTTPRequest * req, HTTPResponse * res);
-void handleFirmwareUpdate(HTTPRequest * req, HTTPResponse * res);
-void handleFirmwareUpdateAction(HTTPRequest * req, HTTPResponse * res);
+static void handleNotFound(HTTPRequest * req, HTTPResponse * res);
+static void handleIndex(HTTPRequest * req, HTTPResponse * res);
+static void handleAbout(HTTPRequest * req, HTTPResponse * res);
+static void handleReboot(HTTPRequest * req, HTTPResponse * res);
+static void handleBackup(HTTPRequest * req, HTTPResponse * res);
+static void handleBackupDownload(HTTPRequest * req, HTTPResponse * res);
+static void handleBackupRestore(HTTPRequest * req, HTTPResponse * res);
+static void handleWifi(HTTPRequest * req, HTTPResponse * res);
+static void handleWifiSave(HTTPRequest * req, HTTPResponse * res);
+static void handleConfig(HTTPRequest * req, HTTPResponse * res);
+static void handleConfigSave(HTTPRequest * req, HTTPResponse * res);
+static void handleFirmwareUpdate(HTTPRequest * req, HTTPResponse * res);
+static void handleFirmwareUpdateAction(HTTPRequest * req, HTTPResponse * res);
+static void handleDev(HTTPRequest * req, HTTPResponse * res);
+static void handleDevAction(HTTPRequest * req, HTTPResponse * res);
+static void handlePrivacyAction(HTTPRequest * req, HTTPResponse * res);
+static void handleUpload(HTTPRequest * req, HTTPResponse * res);
+static void handleMakeCurrentLocationPrivate(HTTPRequest * req, HTTPResponse * res);
+static void handlePrivacy(HTTPRequest *req, HTTPResponse *res);
+static void handlePrivacyDeleteAction(HTTPRequest *req, HTTPResponse *res);
+static void handleAbout(HTTPRequest *req, HTTPResponse *res);
+static void handleSd(HTTPRequest *req, HTTPResponse *res);
 
 bool configServerWasConnectedViaHttpFlag = false;
 
-void tryWiFiConnect(const ObsConfig *obsConfig);
-uint16_t countFilesInRoot();
-String ensureSdIsAvailable();
-void moveToUploaded(const String &fileName);
+static void tryWiFiConnect(const ObsConfig *obsConfig);
+static uint16_t countFilesInRoot();
+static String ensureSdIsAvailable();
+static void moveToUploaded(const String &fileName);
 
 void beginCert(SSLCert& cert) {
   log_i("Start Server");
@@ -358,6 +365,7 @@ void beginCert(SSLCert& cert) {
 }
 
 void beginPages() {
+  server->registerNode(new ResourceNode("", "",  handleNotFound));
   server->registerNode(new ResourceNode("/", HTTP_GET,  handleIndex));
   server->registerNode(new ResourceNode("/about", HTTP_GET,  handleAbout));
   server->registerNode(new ResourceNode("/reboot", HTTP_GET,  handleReboot));
@@ -370,6 +378,16 @@ void beginPages() {
   server->registerNode(new ResourceNode("/settings/general/action", HTTP_GET, handleConfigSave));
   server->registerNode(new ResourceNode("/update", HTTP_GET, handleFirmwareUpdate));
   server->registerNode(new ResourceNode("/update", HTTP_POST, handleFirmwareUpdateAction));
+#ifdef DEVELOP
+  server->registerNode(new ResourceNode("/settings/development/action", HTTP_GET, handleDevAction));
+  server->registerNode(new ResourceNode("/settings/development", HTTP_GET, handleDev));
+#endif
+  server->registerNode(new ResourceNode("/privacy_action", HTTP_GET, handlePrivacyAction));
+  server->registerNode(new ResourceNode("/upload", HTTP_GET, handleUpload));
+  server->registerNode(new ResourceNode("/settings/privacy/makeCurrentLocationPrivate", HTTP_GET, handleMakeCurrentLocationPrivate));
+  server->registerNode(new ResourceNode("/settings/privacy", HTTP_GET, handlePrivacy));
+  server->registerNode(new ResourceNode("/privacy_delete", HTTP_GET, handlePrivacyDeleteAction));
+  server->registerNode(new ResourceNode("/sd", HTTP_GET, handleSd));
 }
 
 
@@ -427,10 +445,6 @@ String replaceDefault(String html, const String& subTitle, const String& action 
   return html;
 }
 
-void handleUpload() {
-  uploadTracks(true);
-}
-
 void handleNotFound(HTTPRequest * req, HTTPResponse * res) {
   // Discard request body, if we received any
   // We do this, as this is the default node and may also server POST/PUT requests
@@ -469,40 +483,6 @@ void sendRedirect(HTTPResponse * res, String location) {
   res->finalize();
 }
 
-
-/*
-// #########################################
-void devAction() {
-  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DEVELOPER, ShowGrid,
-    server->arg("showGrid") == "on");
-  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DEVELOPER, PrintWifiPassword,
-                                   server->arg("printWifiPassword") == "on");
-
-  theObsConfig->saveConfig();
-  String s = "<meta http-equiv='refresh' content='0; url=/settings/development'><a href='/settings/development'>Go Back</a>";
-  server->send(200, "text/html", s); //Send web page
-}
-
-
-
-void privacyAction() {
-
-  String latitude = server->arg("newlatitude");
-  latitude.replace(",", ".");
-  String longitude = server->arg("newlongitude");
-  longitude.replace(",", ".");
-  String radius = server->arg("newradius");
-
-  if ( (latitude != "") && (longitude != "") && (radius != "") ) {
-    Serial.println(F("Valid privacyArea!"));
-    theObsConfig->addPrivacyArea(0,
-      Gps::newPrivacyArea(atof(latitude.c_str()), atof(longitude.c_str()), atoi(radius.c_str())));
-  }
-
-  String s = "<meta http-equiv='refresh' content='0; url=/settings/privacy'><a href='/settings/privacy'>Go Back</a>";
-  server->send(200, "text/html", s);
-}
-*/
 bool CreateWifiSoftAP(String chipID) {
   bool SoftAccOK;
   WiFi.disconnect();
@@ -594,379 +574,7 @@ void startServer(ObsConfig *obsConfig, SSLCert &cert) {
 
   log_i("About to create http server.");
   createHttpServer(cert);
-/*
-  // #############################################
-  // Handle web pages
-  // #############################################
-
-  server->on("/upload", handleUpload);
-
-#ifdef DEVELOP
-  server->on("/settings/development/action", devAction);
-
-  server->on("/settings/development", HTTP_GET, []() {
-    String html = createPage(devIndex);
-    html = replaceDefault(html, "Development Setting", "/settings/development/action");
-
-    // SHOWGRID
-    bool showGrid = theObsConfig->getBitMaskProperty(
-      0, ObsConfig::PROPERTY_DEVELOPER, ShowGrid);
-    html.replace("{showGrid}", showGrid ? "checked" : "");
-
-    bool printWifiPassword = theObsConfig->getBitMaskProperty(
-      0, ObsConfig::PROPERTY_DEVELOPER, PrintWifiPassword);
-    html.replace("{printWifiPassword}", printWifiPassword ? "checked" : "");
-
-    server->send(200, "text/html", html);
-  });
-
-#endif
-
-  // ###############################################################
-  // ### Privacy ###
-  // ###############################################################
-
-  // Make current location private
-  server->on("/settings/privacy/makeCurrentLocationPrivate", HTTP_GET, []() {
-
-    String html = createPage(makeCurrentLocationPrivateIndex);
-    html = replaceDefault(html, "MakeLocationPrivate");
-
-    server->send(200, "text/html", html);
-
-    bool validGPSData = false;
-    buttonState = digitalRead(PushButton_PIN);
-    while (!validGPSData && (buttonState == LOW)) {
-      log_d("GPSData not valid");
-      buttonState = digitalRead(PushButton_PIN);
-      gps.handle();
-      validGPSData = gps.getCurrentGpsRecord().hasValidFix();
-      if (validGPSData) {
-        log_d("GPSData valid");
-        // FIXME: Not used?
-        Gps::newPrivacyArea(gps.getCurrentGpsRecord().getLatitude(),
-                            gps.getCurrentGpsRecord().getLongitude(), 500);
-      }
-      delay(300);
-    }
-
-    // #77 - 200 cannot be send twice via HTTP
-    //String s = "<meta http-equiv='refresh' content='0; url=/settings/privacy'><a href='/settings/privacy'>Go Back</a>";
-    //server->send(200, "text/html", s); //Send web page
-
-  });
-
-  server->on("/settings/privacy", HTTP_GET, []() {
-    String privacyPage;
-    for (int idx = 0; idx < theObsConfig->getNumberOfPrivacyAreas(0); ++idx) {
-      auto pa = theObsConfig->getPrivacyArea(0, idx);
-      privacyPage += "<h3>Privacy Area #" + String(idx + 1) + "</h3>";
-      privacyPage += "Latitude <input name=latitude" + String(idx)
-        + " placeholder='latitude' value='" + String(pa.latitude, 7) + "' disabled />";
-      privacyPage += "Longitude <input name='longitude" + String(idx)
-        + "' placeholder='longitude' value='" + String(pa.longitude, 7) + "' disabled />";
-      privacyPage += "Radius (m) <input name='radius" + String(idx)
-        + "' placeholder='radius' value='" + String(pa.radius) + "' disabled />";
-      privacyPage += "<a class='deletePrivacyArea' href='/privacy_delete?erase=" + String(idx) + "'>&#x2716;</a>";
-    }
-
-    privacyPage += "<h3>New Privacy Area  <a href='javascript:window.location.reload()'>&#8635;</a></h3>";
-    gps.handle();
-    bool validGPSData = gps.getCurrentGpsRecord().hasValidFix();
-    if (validGPSData) {
-      privacyPage += "Latitude<input name='newlatitude' value='" + gps.getCurrentGpsRecord().getLatString() + "' />";
-      privacyPage += "Longitude<input name='newlongitude' value='" + gps.getCurrentGpsRecord().getLongString() + "' />";
-    } else {
-      privacyPage += "Latitude<input name='newlatitude' placeholder='48.12345' />";
-      privacyPage += "Longitude<input name='newlongitude' placeholder='9.12345' />";
-    }
-    privacyPage += "Radius (m)<input name='newradius' placeholder='radius' value='500' />";
-
-    String html = createPage(privacyPage, privacyIndexPostfix);
-    html = replaceDefault(html, "Privacy Zones", "/privacy_action");
-    server->send(200, "text/html", html);
-  });
-
-  server->on("/privacy_delete", HTTP_GET, []() {
-
-    String erase = server->arg("erase");
-    if (erase != "") {
-      theObsConfig->removePrivacyArea(0, atoi(erase.c_str()));
-      theObsConfig->saveConfig();
-    }
-
-    String s = "<meta http-equiv='refresh' content='0; url=/settings/privacy'><a href='/settings/privacy'>Go Back</a>";
-    server->send(200, "text/html", s);
-  });
-
-  server->on("/about", aboutPage);
-
-  server->on("/privacy_action", privacyAction);
-
-  // ###############################################################
-  // SD card file systen access
-  // ###############################################################
-
-  server->on("/sd", []() {
-    String path = "/";
-    if (server->hasArg("path")) {
-      path = server->arg("path");
-    }
-
-    File file = SDFileSystem.open(path);
-
-    if (!file) {
-      server->send(404, "text/plain", "File not found.");
-      return;
-    }
-
-    if (file.isDirectory()) {
-      server->setContentLength(CONTENT_LENGTH_UNKNOWN);
-      server->send(200, "text/html");
-
-      String html = header;
-      html = replaceDefault(html, "SD Card Contents " + String(file.name()));
-      html += "<ul class=\"directory-listing\">";
-      server->sendContent(html);
-      html.clear();
-      displayTest->showTextOnGrid(0, 3, "Path:");
-      displayTest->showTextOnGrid(1, 3, path);
-
-      // Iterate over directories
-      File child = file.openNextFile();
-      uint16_t counter = 0;
-      while (child) {
-        displayTest->drawWaitBar(5, counter++);
-
-        String fileName = String(child.name());
-        fileName = fileName.substring(int (fileName.lastIndexOf("/") + 1));
-        bool isDirectory = child.isDirectory();
-        html +=
-          ("<li class=\""
-          + String(isDirectory ? "directory" : "file")
-          + "\"><a href=\"/sd?path="
-          + String(child.name())
-          + "\">"
-          + String(isDirectory ? "&#x1F4C1;" : "&#x1F4C4;")
-          + fileName
-          + String(isDirectory ? "/" : "")
-          + "</a></li>");
-
-        child.close();
-        child = file.openNextFile();
-
-        if (html.length() >= (HTTP_UPLOAD_BUFLEN - 80)) {
-          server->sendContent(html);
-          html.clear();
-        }
-      }
-      file.close();
-      html += "</ul>";
-      html += footer;
-      server->sendContent(html);
-      displayTest->clearProgressBar(5);
-      return;
-    }
-
-    String dataType;
-    if (path.endsWith(".htm")) {
-      dataType = "text/html";
-    } else if (path.endsWith(".css")) {
-      dataType = "text/css";
-    } else if (path.endsWith(".js")) {
-      dataType = "application/javascript";
-    } else if (path.endsWith(".png")) {
-      dataType = "image/png";
-    } else if (path.endsWith(".gif")) {
-      dataType = "image/gif";
-    } else if (path.endsWith(".jpg")) {
-      dataType = "image/jpeg";
-    } else if (path.endsWith(".ico")) {
-      dataType = "image/x-icon";
-    } else if (path.endsWith(".xml")) {
-      dataType = "text/xml";
-    } else if (path.endsWith(".pdf")) {
-      dataType = "application/pdf";
-    } else if (path.endsWith(".zip")) {
-      dataType = "application/zip";
-    } else if (path.endsWith(".csv")) {
-      dataType = "text/csv";
-    } else {
-      // arbitrary data
-      dataType = "application/octet-stream";
-    }
-
-    String fileName = String(file.name());
-    fileName = fileName.substring((int) (fileName.lastIndexOf("/") + 1));
-    server->sendHeader("Content-Disposition", String("attachment; filename=\"") + fileName + String("\""));
-    server->streamFile(file, dataType);
-    file.close();
-  });
-
-  // ###############################################################
-  // Default, send 404
-  // ###############################################################
-
-  server->onNotFound(handle_NotFound);
-
-  server->begin();
-  Serial.println("Server Ready");
-*/
 }
-
-/* Upload tracks found on SD card to the portal server->
- * This method also takes care to give appropriate feedback
- * to the user about the progress. If httpRequest is true
- * a html response page is created. Also the progress can be
- * seen on the display if connected.
- */
-/*
-void uploadTracks(bool httpRequest) {
-  const String &portalToken
-    = theObsConfig->getProperty<String>(ObsConfig::PROPERTY_PORTAL_TOKEN);
-  Uploader uploader(
-    theObsConfig->getProperty<String>(ObsConfig::PROPERTY_PORTAL_URL), portalToken);
-
-  configServerWasConnectedViaHttpFlag = true;
-  SDFileSystem.mkdir("/uploaded");
-
-  String sdErrorMessage = ensureSdIsAvailable();
-  if (sdErrorMessage != "") {
-    if (httpRequest) {
-      server->send(500, "text/plain", sdErrorMessage);
-    }
-    displayTest->showTextOnGrid(0, 3, "Error:");
-    displayTest->showTextOnGrid(0, 4, sdErrorMessage);
-    return;
-  }
-
-  String html = replaceDefault(header, "Upload Tracks");
-  html += "<h3>Uploading tracks...</h3>";
-  html += "<div>";
-  if (httpRequest) {
-    server->setContentLength(CONTENT_LENGTH_UNKNOWN);
-    server->send(200, "text/html");
-    server->sendContent(html);
-  }
-  html.clear();
-
-  if (portalToken.isEmpty()) {
-    if (httpRequest) {
-      html += "</div><h3>API Key not set</h3/>";
-      html += "See <a href='https://www.openbikesensor.org/benutzer-anleitung/konfiguration.html'>";
-      html += "configuration</a>.</div>";
-      html += "<input type=button onclick=\"window.location.href='/'\" class='btn' value='OK' />";
-      html += footer;
-      server->sendContent(html);
-    }
-    displayTest->showTextOnGrid(0, 3, "Error:");
-    displayTest->showTextOnGrid(0, 4, "API Key not set");
-    return;
-  }
-
-  const uint16_t numberOfFiles = countFilesInRoot();
-
-  uint16_t currentFileIndex = 0;
-  uint16_t okCount = 0;
-  uint16_t failedCount = 0;
-  File root = SDFileSystem.open("/");
-  File file = root.openNextFile();
-  while (file) {
-    const String fileName(file.name());
-    log_d("Upload file: %s", fileName.c_str());
-    if (!file.isDirectory()
-        && fileName.endsWith(CSVFileWriter::EXTENSION)) {
-      const String friendlyFileName = ObsUtils::stripCsvFileName(fileName);
-      currentFileIndex++;
-
-      displayTest->showTextOnGrid(0, 4, friendlyFileName);
-      displayTest->drawProgressBar(3, currentFileIndex, numberOfFiles);
-      if (httpRequest) {
-        server->sendContent(friendlyFileName);
-      }
-      const boolean uploaded = uploader.upload(file.name());
-      file.close();
-      if (uploaded) {
-        moveToUploaded(fileName);
-        html += "<a href='" + ObsUtils::encodeForXmlAttribute(uploader.getLastLocation())
-          + "' title='" + ObsUtils::encodeForXmlAttribute(uploader.getLastStatusMessage())
-          + "' target='_blank'>" + HTML_ENTITY_OK_MARK  + "</a>";
-        okCount++;
-      } else {
-        html += "<a href='#' title='" + ObsUtils::encodeForXmlAttribute(uploader.getLastStatusMessage())
-          + "'>" + HTML_ENTITY_FAILED_CROSS + "</a>";
-        failedCount++;
-      }
-      if (httpRequest) {
-        html += "<br />\n";
-        server->sendContent(html);
-      }
-      html.clear();
-      displayTest->clearProgressBar(5);
-    } else {
-      file.close();
-    }
-    file = root.openNextFile();
-  }
-  root.close();
-
-  displayTest->clearProgressBar(3);
-  displayTest->showTextOnGrid(0, 4, "");
-  displayTest->showTextOnGrid(1, 3, "Upload done.");
-  displayTest->showTextOnGrid(0, 5, "OK:");
-  displayTest->showTextOnGrid(1, 5, String(okCount));
-  displayTest->showTextOnGrid(2, 5, "Failed:");
-  displayTest->showTextOnGrid(3, 5, String(failedCount));
-  if (httpRequest) {
-    html += "</div><h3>...all files done</h3/>";
-    html += keyValue("OK", okCount);
-    html += keyValue("Failed", failedCount);
-    html += "<input type=button onclick=\"window.location.href='/'\" class='btn' value='OK' />";
-    html += footer;
-    server->sendContent(html);
-  }
-}
-
-void moveToUploaded(const String &fileName) {
-  int i = 0;
-  while (!SDFileSystem.rename(
-    fileName, String("/uploaded") + fileName + (i == 0 ? "" : String(i)))) {
-    i++;
-    if (i > 100) {
-      break;
-    }
-  }
-}
-
-String ensureSdIsAvailable() {
-  String result = "";
-  File root = SDFileSystem.open("/");
-  if (!root) {
-    result = "Failed to open SD directory";
-  } else if (!root.isDirectory()) {
-    result = "SD root is not a directory?";
-  }
-  root.close();
-  return result;
-}
-
-uint16_t countFilesInRoot() {
-  uint16_t numberOfFiles = 0;
-  File root = SDFileSystem.open("/");
-  File file = root.openNextFile("r");
-  while (file) {
-    if (!file.isDirectory()
-        && String(file.name()).endsWith(CSVFileWriter::EXTENSION)) {
-      numberOfFiles++;
-      displayTest->drawWaitBar(4, numberOfFiles);
-    }
-    file = root.openNextFile();
-  }
-  root.close();
-  displayTest->clearProgressBar(4);
-  return numberOfFiles;
-}
-*/
 
 void tryWiFiConnect(const ObsConfig *obsConfig) {
   if (!WiFiGenericClass::mode(WIFI_MODE_STA)) {
@@ -1435,4 +1043,373 @@ void handleFirmwareUpdateAction(HTTPRequest * req, HTTPResponse * res) {
     }
   }
   sensorManager->attachInterrupts();
+}
+
+#ifdef DEVELOP
+void handleDevAction(HTTPRequest *req, HTTPResponse *res) {
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DEVELOPER, ShowGrid,
+                                   getParameter(req, "showGrid") == "on");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DEVELOPER, PrintWifiPassword,
+                                   getParameter(req, "printWifiPassword") == "on");
+  theObsConfig->saveConfig();
+  sendRedirect(res, "/settings/development");
+}
+
+void handleDev(HTTPRequest *req, HTTPResponse *res) {
+  String html = createPage(devIndex);
+  html = replaceDefault(html, "Development Setting", "/settings/development/action");
+
+  // SHOWGRID
+  bool showGrid = theObsConfig->getBitMaskProperty(
+    0, ObsConfig::PROPERTY_DEVELOPER, ShowGrid);
+  html.replace("{showGrid}", showGrid ? "checked" : "");
+
+  bool printWifiPassword = theObsConfig->getBitMaskProperty(
+    0, ObsConfig::PROPERTY_DEVELOPER, PrintWifiPassword);
+  html.replace("{printWifiPassword}", printWifiPassword ? "checked" : "");
+
+  sendHtml(res, html);
+}
+#endif
+
+void handlePrivacyAction(HTTPRequest *req, HTTPResponse *res) {
+
+  String latitude = getParameter(req, "newlatitude");
+  latitude.replace(",", ".");
+  String longitude = getParameter(req, "newlongitude");
+  longitude.replace(",", ".");
+  String radius = getParameter(req, "newradius");
+
+  if ( (latitude != "") && (longitude != "") && (radius != "") ) {
+    Serial.println(F("Valid privacyArea!"));
+    theObsConfig->addPrivacyArea(0,
+      Gps::newPrivacyArea(atof(latitude.c_str()), atof(longitude.c_str()), atoi(radius.c_str())));
+  }
+
+  String s = "<meta http-equiv='refresh' content='0; url=/settings/privacy'><a href='/settings/privacy'>Go Back</a>";
+  sendHtml(res, s);
+}
+
+/* Upload tracks found on SD card to the portal server->
+ * This method also takes care to give appropriate feedback
+ * to the user about the progress. If httpRequest is true
+ * a html response page is created. Also the progress can be
+ * seen on the display if connected.
+ */
+void uploadTracks(HTTPResponse *res) {
+  const String &portalToken
+    = theObsConfig->getProperty<String>(ObsConfig::PROPERTY_PORTAL_TOKEN);
+  Uploader uploader(
+    theObsConfig->getProperty<String>(ObsConfig::PROPERTY_PORTAL_URL), portalToken);
+
+  configServerWasConnectedViaHttpFlag = true;
+  SDFileSystem.mkdir("/uploaded");
+
+  String sdErrorMessage = ensureSdIsAvailable();
+  if (sdErrorMessage != "") {
+    if (res) {
+      res->setStatusCode(500);
+      res->print(sdErrorMessage);
+    }
+    displayTest->showTextOnGrid(0, 3, "Error:");
+    displayTest->showTextOnGrid(0, 4, sdErrorMessage);
+    return;
+  }
+
+  String html = replaceDefault(header, "Upload Tracks");
+  html += "<h3>Uploading tracks...</h3>";
+  html += "<div>";
+  if (res) {
+    sendHtml(res, html);
+  }
+  html.clear();
+
+  if (portalToken.isEmpty()) {
+    if (res) {
+      html += "</div><h3>API Key not set</h3/>";
+      html += "See <a href='https://www.openbikesensor.org/benutzer-anleitung/konfiguration.html'>";
+      html += "configuration</a>.</div>";
+      html += "<input type=button onclick=\"window.location.href='/'\" class='btn' value='OK' />";
+      html += footer;
+      res->print(html);
+    }
+    displayTest->showTextOnGrid(0, 3, "Error:");
+    displayTest->showTextOnGrid(0, 4, "API Key not set");
+    return;
+  }
+
+  const uint16_t numberOfFiles = countFilesInRoot();
+
+  uint16_t currentFileIndex = 0;
+  uint16_t okCount = 0;
+  uint16_t failedCount = 0;
+  File root = SDFileSystem.open("/");
+  File file = root.openNextFile();
+  while (file) {
+    const String fileName(file.name());
+    log_d("Upload file: %s", fileName.c_str());
+    if (!file.isDirectory()
+        && fileName.endsWith(CSVFileWriter::EXTENSION)) {
+      const String friendlyFileName = ObsUtils::stripCsvFileName(fileName);
+      currentFileIndex++;
+
+      displayTest->showTextOnGrid(0, 4, friendlyFileName);
+      displayTest->drawProgressBar(3, currentFileIndex, numberOfFiles);
+      if (res) {
+        res->print(friendlyFileName);
+      }
+      const boolean uploaded = uploader.upload(file.name());
+      file.close();
+      if (uploaded) {
+        moveToUploaded(fileName);
+        html += "<a href='" + ObsUtils::encodeForXmlAttribute(uploader.getLastLocation())
+                + "' title='" + ObsUtils::encodeForXmlAttribute(uploader.getLastStatusMessage())
+                + "' target='_blank'>" + HTML_ENTITY_OK_MARK  + "</a>";
+        okCount++;
+      } else {
+        html += "<a href='#' title='" + ObsUtils::encodeForXmlAttribute(uploader.getLastStatusMessage())
+                + "'>" + HTML_ENTITY_FAILED_CROSS + "</a>";
+        failedCount++;
+      }
+      if (res) {
+        html += "<br />\n";
+        res->print(html);
+      }
+      html.clear();
+      displayTest->clearProgressBar(5);
+    } else {
+      file.close();
+    }
+    file = root.openNextFile();
+  }
+  root.close();
+
+  displayTest->clearProgressBar(3);
+  displayTest->showTextOnGrid(0, 4, "");
+  displayTest->showTextOnGrid(1, 3, "Upload done.");
+  displayTest->showTextOnGrid(0, 5, "OK:");
+  displayTest->showTextOnGrid(1, 5, String(okCount));
+  displayTest->showTextOnGrid(2, 5, "Failed:");
+  displayTest->showTextOnGrid(3, 5, String(failedCount));
+  if (res) {
+    html += "</div><h3>...all files done</h3/>";
+    html += keyValue("OK", okCount);
+    html += keyValue("Failed", failedCount);
+    html += "<input type=button onclick=\"window.location.href='/'\" class='btn' value='OK' />";
+    html += footer;
+    res->print(html);
+  }
+}
+
+void moveToUploaded(const String &fileName) {
+  int i = 0;
+  while (!SDFileSystem.rename(
+    fileName, String("/uploaded") + fileName + (i == 0 ? "" : String(i)))) {
+    i++;
+    if (i > 100) {
+      break;
+    }
+  }
+}
+
+void handleUpload(HTTPRequest * req, HTTPResponse * res) {
+  uploadTracks(res);
+}
+
+void handleMakeCurrentLocationPrivate(HTTPRequest *req, HTTPResponse *res) {
+  String html = createPage(makeCurrentLocationPrivateIndex);
+  html = replaceDefault(html, "MakeLocationPrivate");
+  sendHtml(res, html);
+
+  bool validGPSData = false;
+  buttonState = digitalRead(PushButton_PIN);
+  while (!validGPSData && (buttonState == LOW)) {
+    log_d("GPSData not valid");
+    buttonState = digitalRead(PushButton_PIN);
+    gps.handle();
+    validGPSData = gps.getCurrentGpsRecord().hasValidFix();
+    if (validGPSData) {
+      log_d("GPSData valid");
+// FIXME: Not used?
+      Gps::newPrivacyArea(gps.getCurrentGpsRecord().getLatitude(),
+                          gps.getCurrentGpsRecord().getLongitude(), 500);
+    }
+    delay(300);
+  }
+
+// #77 - 200 cannot be send twice via HTTP
+//String s = "<meta http-equiv='refresh' content='0; url=/settings/privacy'><a href='/settings/privacy'>Go Back</a>";
+//server->send(200, "text/html", s); //Send web page
+
+}
+
+void handlePrivacy(HTTPRequest *req, HTTPResponse *res) {
+  String privacyPage;
+  for (int idx = 0; idx < theObsConfig->getNumberOfPrivacyAreas(0); ++idx) {
+    auto pa = theObsConfig->getPrivacyArea(0, idx);
+    privacyPage += "<h3>Privacy Area #" + String(idx + 1) + "</h3>";
+    privacyPage += "Latitude <input name=latitude" + String(idx)
+                   + " placeholder='latitude' value='" + String(pa.latitude, 7) + "' disabled />";
+    privacyPage += "Longitude <input name='longitude" + String(idx)
+                   + "' placeholder='longitude' value='" + String(pa.longitude, 7) + "' disabled />";
+    privacyPage += "Radius (m) <input name='radius" + String(idx)
+                   + "' placeholder='radius' value='" + String(pa.radius) + "' disabled />";
+    privacyPage += "<a class='deletePrivacyArea' href='/privacy_delete?erase=" + String(idx) + "'>&#x2716;</a>";
+  }
+
+  privacyPage += "<h3>New Privacy Area  <a href='javascript:window.location.reload()'>&#8635;</a></h3>";
+  gps.handle();
+  bool validGPSData = gps.getCurrentGpsRecord().hasValidFix();
+  if (validGPSData) {
+    privacyPage += "Latitude<input name='newlatitude' value='" + gps.getCurrentGpsRecord().getLatString() + "' />";
+    privacyPage += "Longitude<input name='newlongitude' value='" + gps.getCurrentGpsRecord().getLongString() + "' />";
+  } else {
+    privacyPage += "Latitude<input name='newlatitude' placeholder='48.12345' />";
+    privacyPage += "Longitude<input name='newlongitude' placeholder='9.12345' />";
+  }
+  privacyPage += "Radius (m)<input name='newradius' placeholder='radius' value='500' />";
+
+  String html = createPage(privacyPage, privacyIndexPostfix);
+  html = replaceDefault(html, "Privacy Zones", "/privacy_action");
+  sendHtml(res, html);
+}
+
+void handlePrivacyDeleteAction(HTTPRequest *req, HTTPResponse *res) {
+  String erase = getParameter(req, "erase");
+  if (erase != "") {
+    theObsConfig->removePrivacyArea(0, atoi(erase.c_str()));
+    theObsConfig->saveConfig();
+  }
+  sendRedirect(res, "/settings/privacy");
+}
+
+void handleSd(HTTPRequest *req, HTTPResponse *res) {
+  String path = getParameter(req, "path", "/");
+
+  File file = SDFileSystem.open(path);
+
+  if (!file) {
+    handleNotFound(req, res);
+    return;
+  }
+
+  if (file.isDirectory()) {
+    String html = header;
+    html = replaceDefault(html, "SD Card Contents " + String(file.name()));
+    html += "<ul class=\"directory-listing\">";
+    sendHtml(res, html);
+    html.clear();
+    displayTest->showTextOnGrid(0, 3, "Path:");
+    displayTest->showTextOnGrid(1, 3, path);
+
+// Iterate over directories
+    File child = file.openNextFile();
+    uint16_t counter = 0;
+    while (child) {
+      displayTest->drawWaitBar(5, counter++);
+
+      String fileName = String(child.name());
+      fileName = fileName.substring(int(fileName.lastIndexOf("/") + 1));
+      bool isDirectory = child.isDirectory();
+      html +=
+        ("<li class=\""
+         + String(isDirectory ? "directory" : "file")
+         + "\"><a href=\"/sd?path="
+         + String(child.name())
+         + "\">"
+         + String(isDirectory ? "&#x1F4C1;" : "&#x1F4C4;")
+         + fileName
+         + String(isDirectory ? "/" : "")
+         + "</a></li>");
+
+      child.close();
+      child = file.openNextFile();
+
+      if (html.length() >= (HTTP_UPLOAD_BUFLEN - 80)) {
+        res->print(html);
+        html.clear();
+      }
+    }
+    file.close();
+    html += "</ul>";
+    html += footer;
+    res->print(html);
+    displayTest->clearProgressBar(5);
+    return;
+  }
+
+  String dataType;
+  if (path.endsWith(".htm")) {
+    dataType = "text/html";
+  } else if (path.endsWith(".css")) {
+    dataType = "text/css";
+  } else if (path.endsWith(".js")) {
+    dataType = "application/javascript";
+  } else if (path.endsWith(".png")) {
+    dataType = "image/png";
+  } else if (path.endsWith(".gif")) {
+    dataType = "image/gif";
+  } else if (path.endsWith(".jpg")) {
+    dataType = "image/jpeg";
+  } else if (path.endsWith(".ico")) {
+    dataType = "image/x-icon";
+  } else if (path.endsWith(".xml")) {
+    dataType = "text/xml";
+  } else if (path.endsWith(".pdf")) {
+    dataType = "application/pdf";
+  } else if (path.endsWith(".zip")) {
+    dataType = "application/zip";
+  } else if (path.endsWith(".csv")) {
+    dataType = "text/csv";
+  } else if (path.endsWith(".txt")) {
+    dataType = "text/plain";
+  }
+
+  String fileName = String(file.name());
+  fileName = fileName.substring((int) (fileName.lastIndexOf("/") + 1));
+  res->setHeader("Content-Disposition", (String("attachment; filename=\"") + fileName + String("\"")).c_str());
+  if (dataType) {
+    res->setHeader("Content-Type", dataType.c_str());
+  }
+  res->setHeader("Content-Length", String((uint32_t) file.size()).c_str());
+
+  uint8_t buffer[HTTP_UPLOAD_BUFLEN];
+  size_t read;
+  while ((read = file.read(buffer, HTTP_UPLOAD_BUFLEN)) > 0) {
+    size_t written = res->write(buffer, read);
+    if (written != read) {
+      log_d("Broken http connection wanted to write %d, but only %d written, abort.", read, written);
+      break;
+    }
+  }
+  file.close();
+}
+
+String ensureSdIsAvailable() {
+  String result = "";
+  File root = SDFileSystem.open("/");
+  if (!root) {
+    result = "Failed to open SD directory";
+  } else if (!root.isDirectory()) {
+    result = "SD root is not a directory?";
+  }
+  root.close();
+  return result;
+}
+
+uint16_t countFilesInRoot() {
+  uint16_t numberOfFiles = 0;
+  File root = SDFileSystem.open("/");
+  File file = root.openNextFile("r");
+  while (file) {
+    if (!file.isDirectory()
+        && String(file.name()).endsWith(CSVFileWriter::EXTENSION)) {
+      numberOfFiles++;
+      displayTest->drawWaitBar(4, numberOfFiles);
+    }
+    file = root.openNextFile();
+  }
+  root.close();
+  displayTest->clearProgressBar(4);
+  return numberOfFiles;
 }

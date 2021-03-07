@@ -32,6 +32,7 @@
 #include <ESPmDNS.h>
 #include <Update.h>
 #include <HTTPSServer.hpp>
+#include <HTTPResponse.hpp>
 
 #include "config.h"
 #include "globals.h"
@@ -44,7 +45,7 @@
 extern httpsserver::HTTPSServer* server;
 void startServer(ObsConfig *pConfig, httpsserver::SSLCert &cert);
 bool configServerWasConnectedViaHttp();
-void uploadTracks(bool httpRequest = true);
+void uploadTracks(httpsserver::HTTPResponse *res = nullptr);
 void createPrivacyPage();
 
 #endif
