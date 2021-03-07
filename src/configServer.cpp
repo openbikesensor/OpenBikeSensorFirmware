@@ -361,7 +361,6 @@ static void handleUpload(HTTPRequest * req, HTTPResponse * res);
 static void handleMakeCurrentLocationPrivate(HTTPRequest * req, HTTPResponse * res);
 static void handlePrivacy(HTTPRequest *req, HTTPResponse *res);
 static void handlePrivacyDeleteAction(HTTPRequest *req, HTTPResponse *res);
-static void handleAbout(HTTPRequest *req, HTTPResponse *res);
 static void handleSd(HTTPRequest *req, HTTPResponse *res);
 
 static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<void()> next);
@@ -654,7 +653,6 @@ void handleAbout(HTTPRequest * req, HTTPResponse * res) {
   res->setHeader("Content-Type", "text/html");
   res->print(replaceDefault(header, "About"));
   String page;
-#ifdef NO_ABOUT_FOR_NOW
   gps.pollStatistics(); // takes ~100ms!
 
   res->print("<h3>ESP32</h3>"); // SPDIFF
@@ -769,7 +767,6 @@ void handleAbout(HTTPRequest * req, HTTPResponse * res) {
   page += keyValue("Display i2c timeout", Wire.getTimeOut(), "ms");
 
   res->print(page);
-#endif
   res->print(footer);
 }
 
