@@ -302,6 +302,9 @@ static String configIndex =
   "<input name='obsUserID' placeholder='API ID' value='{userId}' >"
   "<h3>Operation</h3>"
   "Enable Bluetooth <input type='checkbox' name='bluetooth' {bluetooth}>"
+#ifndef OBS_BLUETOOTH
+  "<small>Bluetooth is not enabled in this firmware, setting will have no effect.</small>"
+#endif
   "<hr>"
   "SimRa Mode <input type='checkbox' name='simRaMode' {simRaMode}>"
   "<input type=submit class=btn value=Save>";
