@@ -561,15 +561,7 @@ void startServer(ObsConfig *obsConfig) {
     displayTest->showTextOnGrid(1, 2, WiFi.localIP().toString().c_str());
   }
 
-  /*use mdns for host name resolution*/
-  if (WiFiGenericClass::getMode() != WIFI_MODE_STA) {
-    if (!MDNS.begin(host)) { //http://openbikesensor.local
-      log_e("Error setting up MDNS responder for %s!", host);
-    } else {
-      log_i("mDNS responder started for %s!", host);
-    }
-  }
-  /*return index page which is stored in serverIndex */
+  MDNS.begin("obs");
 
   ObsUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
   if (!voltageMeter) {
