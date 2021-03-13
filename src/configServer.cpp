@@ -1413,7 +1413,7 @@ uint16_t countFilesInRoot() {
   return numberOfFiles;
 }
 
-static String httpPassword = String(esp_random());
+static String httpPassword = String(esp_random() % 999999);
 
 void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<void()> next) {
   configServerWasConnectedViaHttpFlag = true;
@@ -1434,10 +1434,10 @@ void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<void()> n
     displayTest->cleanGridCell(0, 4);
     displayTest->cleanGridCell(1, 3);
     displayTest->cleanGridCell(1, 4);
-    displayTest->showTextOnGrid(0,3, httpPassword, MEDIUM_FONT);
+    displayTest->showTextOnGrid(1,3, httpPassword, MEDIUM_FONT);
     // No call denies access to protected handler function.
   } else {
-    displayTest->cleanGridCell(0, 3);
+    displayTest->cleanGridCell(1, 3);
     // Everything else will be allowed, so we call next()
     next();
   }
