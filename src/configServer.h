@@ -42,11 +42,9 @@
 //const byte DNS_PORT = 53;
 //DNSServer dnsServer;
 
-extern httpsserver::HTTPSServer* server;
-extern httpsserver::HTTPServer* insecureServer;
 void startServer(ObsConfig *pConfig);
 bool configServerWasConnectedViaHttp();
 void uploadTracks(httpsserver::HTTPResponse *res = nullptr);
-void createPrivacyPage();
+void configServerHandle();
 
 #endif

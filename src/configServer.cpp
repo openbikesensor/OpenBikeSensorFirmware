@@ -45,8 +45,8 @@ static const size_t HTTP_UPLOAD_BUFLEN = 1024; // TODO: refine
 const char* host = "openbikesensor";
 
 static ObsConfig *theObsConfig;
-HTTPSServer * server;
-HTTPServer * insecureServer;
+static HTTPSServer * server;
+static HTTPServer * insecureServer;
 
 static SSLCert obsCert = SSLCert(
   obs_crt_DER, obs_crt_DER_len,
@@ -1477,4 +1477,9 @@ void handleHttpsRedirect(HTTPRequest *req, HTTPResponse *res) {
   }
   html.replace("{host}", linkHost);
   sendHtml(res, html);
+}
+
+void configServerHandle() {
+  server->loop();
+  insecureServer->loop();
 }
