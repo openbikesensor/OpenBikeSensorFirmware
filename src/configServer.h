@@ -43,6 +43,7 @@
 //DNSServer dnsServer;
 
 extern httpsserver::HTTPSServer* server;
+extern httpsserver::HTTPServer* insecureServer;
 void startServer(ObsConfig *pConfig);
 bool configServerWasConnectedViaHttp();
 void uploadTracks(httpsserver::HTTPResponse *res = nullptr);

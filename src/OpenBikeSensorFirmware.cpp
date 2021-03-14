@@ -319,6 +319,7 @@ void setup() {
 void serverLoop() {
   gps.handle();
   server->loop();
+  insecureServer->loop();
   sensorManager->getDistancesNoWait();
   handleButtonInServerMode();
 }

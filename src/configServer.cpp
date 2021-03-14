@@ -46,6 +46,7 @@ const char* host = "openbikesensor";
 
 static ObsConfig *theObsConfig;
 HTTPSServer * server;
+HTTPServer * insecureServer;
 
 static SSLCert obsCert = SSLCert(
   obs_crt_DER, obs_crt_DER_len,
@@ -190,6 +191,14 @@ static String navigationIndex =
   "<input type=button onclick=\"window.location.href='/about'\" class=btn value='About'>"
   "<input type=button onclick=\"window.location.href='/reboot'\" class=btn value='Reboot'>"
   "{dev}";
+
+static String httpsRedirect =
+  "<h3>HTTPS</h3>"
+  "You need to access the obs via secure https. If not done already, you also need to "
+  "accept the self signed cert from the OBS after pressing 'Goto https'. Login is 'obs' "
+  "and the up to 6 digit pin displayed "
+  "on the OBS."
+  "<input type=button onclick=\"window.location.href='https://{host}'\" class=btn value='Goto https'>";
 
 // #########################################
 // Development
@@ -363,6 +372,8 @@ static void handlePrivacy(HTTPRequest *req, HTTPResponse *res);
 static void handlePrivacyDeleteAction(HTTPRequest *req, HTTPResponse *res);
 static void handleSd(HTTPRequest *req, HTTPResponse *res);
 
+static void handleHttpsRedirect(HTTPRequest *req, HTTPResponse *res);
+
 static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<void()> next);
 
 bool configServerWasConnectedViaHttpFlag = false;
@@ -398,16 +409,21 @@ void beginPages() {
   server->registerNode(new ResourceNode("/sd", HTTP_GET, handleSd));
 
   server->addMiddleware(&accessFilter);
+
+  insecureServer->setDefaultNode(new ResourceNode("", HTTP_GET,  handleHttpsRedirect));
 }
 
 
 void createHttpServer() {
   server = new HTTPSServer(&obsCert);
+  insecureServer = new HTTPServer();
+
   log_i("About to create pages.");
   beginPages();
 
   log_i("About to start.");
   server->start();
+  insecureServer->start();
 }
 
 
@@ -489,6 +505,14 @@ void sendRedirect(HTTPResponse * res, String location) {
   res->setStatusCode(302);
 //  String s = "<meta http-equiv='refresh' content='0; url=/settings/general'><a href='/settings/general'>Go Back</a>";
   res->finalize();
+}
+
+String getIp() {
+  if (WiFiClass::status() != WL_CONNECTED) {
+    return WiFi.softAPIP().toString();
+  } else {
+    return WiFi.localIP().toString();
+  }
 }
 
 bool CreateWifiSoftAP(String chipID) {
@@ -1441,4 +1465,16 @@ void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<void()> n
     // Everything else will be allowed, so we call next()
     next();
   }
+}
+
+void handleHttpsRedirect(HTTPRequest *req, HTTPResponse *res) {
+  String html = createPage(httpsRedirect);
+  html = replaceDefault(html, "Https Redirect");
+  String linkHost(req->getHTTPHeaders()->getValue("linkHost").c_str());
+  // this could be more hardened?
+  if (!linkHost || linkHost == "") {
+    linkHost = getIp();
+  }
+  html.replace("{host}", linkHost);
+  sendHtml(res, html);
 }
