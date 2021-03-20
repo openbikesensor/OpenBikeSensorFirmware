@@ -43,6 +43,8 @@ static const char *const HTTP_POST = "POST";
 
 static const size_t HTTP_UPLOAD_BUFLEN = 1024; // TODO: refine
 
+static const String httpPassword = String(esp_random() % 999999);
+
 static ObsConfig *theObsConfig;
 static HTTPSServer * server;
 static HTTPServer * insecureServer;
@@ -57,7 +59,7 @@ static SSLCert obsCert = SSLCert(
 //  - Fix CSS Style for mobile && desktop
 //  - a vs. button
 //  - back navigation after save
-static String style =
+static const String style =
   "<style>"
   "#file-input,input, button {width:100%;height:44px;border-radius:4px;margin:10px auto;font-size:15px;}"
   "input, button, a.back {background:#f1f1f1;border:0;padding:0;text-align:center;}"
@@ -81,9 +83,9 @@ static String style =
   "li.file a {text-decoration: none;}"
   "</style>";
 
-const String previous = "<a href=\"javascript:history.back()\" class='previous'>&#8249;</a>";
+static const String previous = "<a href=\"javascript:history.back()\" class='previous'>&#8249;</a>";
 
-String header =
+static const String header =
   "<!DOCTYPE html>\n"
   "<html lang='en'><head><meta charset='utf-8'/><title>{title}</title>" + style +
   "<link rel='icon' href='data:;base64,iVBORw0KGgo=' />"
@@ -109,7 +111,7 @@ static const String footer = "</form></body></html>";
 // Upload form
 // #########################################
 
-static String xhrUpload =   "<input type='file' name='upload' id='file' accept='{accept}'>"
+static const String xhrUpload =   "<input type='file' name='upload' id='file' accept='{accept}'>"
   "<label id='file-input' for='file'>Choose file...</label>"
   "<input id='btn' type='submit' class=btn value='Upload'>"
   "<br><br>"
@@ -177,7 +179,7 @@ static String xhrUpload =   "<input type='file' name='upload' id='file' accept='
 // Navigation
 // #########################################
 
-static String navigationIndex =
+static const String navigationIndex =
   "<input type=button onclick=\"window.location.href='/upload'\" class=btn value='Upload Tracks'>"
   "<h3>Settings</h3>"
   "<input type=button onclick=\"window.location.href='/settings/general'\" class=btn value='General'>"
@@ -191,7 +193,7 @@ static String navigationIndex =
   "<input type=button onclick=\"window.location.href='/reboot'\" class=btn value='Reboot'>"
   "{dev}";
 
-static String httpsRedirect =
+static const String httpsRedirect =
   "<h3>HTTPS</h3>"
   "You need to access the obs via secure https. If not done already, you also need to "
   "accept the self signed cert from the OBS after pressing 'Goto https'. Login is 'obs' "
@@ -203,7 +205,7 @@ static String httpsRedirect =
 // Development
 // #########################################
 
-static String development =
+static const String development =
   "<h3>Development</h3>"
   "<input type=button onclick=\"window.location.href='/settings/development'\" class=btn value='Development'>";
 
@@ -211,14 +213,14 @@ static String development =
 // Reboot
 // #########################################
 
-static String rebootIndex =
-  "<div>Device reboots now.</div>";
+static const String rebootIndex =
+  "<h3>Device reboots now.</h3>";
 
 // #########################################
 // Wifi
 // #########################################
 
-static String wifiSettingsIndex =
+static const String wifiSettingsIndex =
   "<script>"
   "function resetPassword() { document.getElementById('pass').value = ''; }"
   "</script>"
@@ -233,7 +235,7 @@ static String wifiSettingsIndex =
 // Backup and Restore
 // #########################################
 
-static String backupIndex =
+static const String backupIndex =
   "<p>This backups and restores the device configuration incl. the Basic Config, Privacy Zones and Wifi Settings.</p>"
   "<h3>Backup</h3>"
   "<input type='button' onclick=\"window.location.href='/settings/backup.json'\" class=btn value='Download' />"
@@ -243,7 +245,7 @@ static String backupIndex =
 // Development Index
 // #########################################
 
-static String devIndex =
+static const String devIndex =
   "<h3>Display</h3>"
   "Show Grid<br><input type='checkbox' name='showGrid' {showGrid}>"
   "Print WLAN password to serial<br><input type='checkbox' name='printWifiPassword' {printWifiPassword}>"
@@ -254,7 +256,7 @@ static String devIndex =
 // Config
 // #########################################
 
-static String configIndex =
+static const String configIndex =
   "<h3>Sensor</h3>"
   "Offset Sensor Left<input name='offsetS1' placeholder='Offset Sensor Left' value='{offset1}'>"
   "<hr>"
@@ -328,12 +330,12 @@ static const String uploadIndex = "<h3>Update</h3>";
 // Privacy
 // #########################################
 
-static String privacyIndexPostfix =
+static const String privacyIndexPostfix =
   "<input type=submit onclick=\"window.location.href='/'\" class=btn value=Save>"
   "<input type=button onclick=\"window.location.href='/settings/privacy/makeCurrentLocationPrivate'\" class=btn value='Make current location private'>";
 
 
-static String makeCurrentLocationPrivateIndex =
+static const String makeCurrentLocationPrivateIndex =
   "<div>Making current location private, waiting for fix. Press device button to cancel.</div>";
 
 // #########################################
@@ -794,7 +796,8 @@ static void handleAbout(HTTPRequest *, HTTPResponse * res) {
 }
 
 static void handleReboot(HTTPRequest *, HTTPResponse * res) {
-  String html = replaceDefault(rebootIndex, "Reboot");
+  String html = createPage(rebootIndex);
+  html = replaceDefault(html, "Reboot");
   sendHtml(res, html);
   res->finalize();
   delay(1000);
@@ -878,16 +881,14 @@ static void handleWifi(HTTPRequest *, HTTPResponse * res) {
 };
 
 static void handleWifiSave(HTTPRequest * req, HTTPResponse * res) {
-  auto params = req->getParams();
-  std::string ssid;
-  if (params->getQueryParameter("ssid", ssid)) {
+  const auto params = extractParameters(req);
+  const auto ssid = getParameter(params, "ssid");
+  if (ssid) {
     theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_SSID, ssid);
   }
-  std::string password;
-  if (params->getQueryParameter("pass", password)) {
-    if (strcmp(password.c_str(), "******") != 0) {
-      theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_PASSWORD, password);
-    }
+  const auto password = getParameter(params, "pass");
+  if (password != "******") {
+    theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_PASSWORD, password);
   }
   theObsConfig->saveConfig();
   sendRedirect(res, "/settings/wifi");
@@ -1440,8 +1441,6 @@ static uint16_t countFilesInRoot() {
   displayTest->clearProgressBar(4);
   return numberOfFiles;
 }
-
-static String httpPassword = String(esp_random() % 999999);
 
 static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<void()> next) {
   configServerWasConnectedViaHttpFlag = true;
