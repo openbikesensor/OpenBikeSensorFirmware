@@ -478,7 +478,7 @@ String replaceDefault(String html, const String& subTitle, const String& action 
   return html;
 }
 
-void handleNotFound(HTTPRequest * req, HTTPResponse * res) {
+static void handleNotFound(HTTPRequest * req, HTTPResponse * res) {
   // Discard request body, if we received any
   // We do this, as this is the default node and may also server POST/PUT requests
   req->discardRequestBody();
@@ -509,10 +509,8 @@ void sendHtml(HTTPResponse * res, const char * data) {
 }
 
 void sendRedirect(HTTPResponse * res, String location) {
-  res->setHeader("Content-Type", "text/html");
   res->setHeader("Location", location.c_str());
   res->setStatusCode(302);
-//  String s = "<meta http-equiv='refresh' content='0; url=/settings/general'><a href='/settings/general'>Go Back</a>";
   res->finalize();
 }
 
@@ -609,7 +607,7 @@ void startServer(ObsConfig *obsConfig) {
   createHttpServer();
 }
 
-void tryWiFiConnect(const ObsConfig *obsConfig) {
+static void tryWiFiConnect(const ObsConfig *obsConfig) {
   if (!WiFiGenericClass::mode(WIFI_MODE_STA)) {
     log_e("Failed to enable WiFi station mode.");
   }
@@ -643,7 +641,7 @@ void tryWiFiConnect(const ObsConfig *obsConfig) {
 }
 
 
-void handleIndex(HTTPRequest * req, HTTPResponse * res) {
+static void handleIndex(HTTPRequest *, HTTPResponse * res) {
 // ###############################################################
 // ### Index ###
 // ###############################################################
@@ -657,24 +655,24 @@ void handleIndex(HTTPRequest * req, HTTPResponse * res) {
   sendHtml(res, html);
 }
 
-String keyValue(const String& key, const String& value, const String& suffix = "") {
+static String keyValue(const String& key, const String& value, const String& suffix = "") {
   return "<b>" + key + ":</b> " + value + suffix + "<br />";
 }
 
-String keyValue(const String& key, const uint32_t value, const String& suffix = "") {
+static String keyValue(const String& key, const uint32_t value, const String& suffix = "") {
   return keyValue(key, String(value), suffix);
 }
 
-String keyValue(const String& key, const int32_t value, const String& suffix = "") {
+static String keyValue(const String& key, const int32_t value, const String& suffix = "") {
   return keyValue(key, String(value), suffix);
 }
 
-String keyValue(const String& key, const uint64_t value, const String& suffix = "") {
+static String keyValue(const String& key, const uint64_t value, const String& suffix = "") {
   // is long this sufficient?
   return keyValue(key, String((unsigned long) value), suffix);
 }
 
-void handleAbout(HTTPRequest * req, HTTPResponse * res) {
+static void handleAbout(HTTPRequest *, HTTPResponse * res) {
   res->setHeader("Content-Type", "text/html");
   res->print(replaceDefault(header, "About"));
   String page;
@@ -795,7 +793,7 @@ void handleAbout(HTTPRequest * req, HTTPResponse * res) {
   res->print(footer);
 }
 
-void handleReboot(HTTPRequest * req, HTTPResponse * res) {
+static void handleReboot(HTTPRequest *, HTTPResponse * res) {
   String html = replaceDefault(rebootIndex, "Reboot");
   sendHtml(res, html);
   res->finalize();
@@ -804,7 +802,7 @@ void handleReboot(HTTPRequest * req, HTTPResponse * res) {
 };
 
 
-void handleBackup(HTTPRequest * req, HTTPResponse * res) {
+static void handleBackup(HTTPRequest *, HTTPResponse * res) {
   String html = createPage(backupIndex, xhrUpload);
   html = replaceDefault(html, "Backup & Restore");
   html.replace("{method}", "/settings/restore");
@@ -812,7 +810,7 @@ void handleBackup(HTTPRequest * req, HTTPResponse * res) {
   sendHtml(res, html);
 };
 
-void handleBackupDownload(HTTPRequest * req, HTTPResponse * res) {
+static void handleBackupDownload(HTTPRequest *, HTTPResponse * res) {
   const String fileName
     = String(theObsConfig->getProperty<String>(ObsConfig::PROPERTY_OBS_NAME)) + "-" + OBSVersion;
   res->setHeader("Content-Disposition",
@@ -824,7 +822,7 @@ void handleBackupDownload(HTTPRequest * req, HTTPResponse * res) {
   res->print(data);
 }
 
-void handleBackupRestore(HTTPRequest * req, HTTPResponse * res) {
+static void handleBackupRestore(HTTPRequest * req, HTTPResponse * res) {
   HTTPMultipartBodyParser parser(req);
   sensorManager->detachInterrupts();
 
@@ -842,7 +840,6 @@ void handleBackupRestore(HTTPRequest * req, HTTPResponse * res) {
     while (!parser.endOfField()) {
       byte buffer[256];
       size_t len = parser.read(buffer, 256);
-log_i("Read data %d", len);
       for (int i = 0; i < len; i++) {
         json_buffer.concat((char) buffer[i]);
       }
@@ -850,7 +847,6 @@ log_i("Read data %d", len);
     if (theObsConfig->parseJson(json_buffer)) {
       theObsConfig->fill(config); // OK here??
       theObsConfig->printConfig();
-      log_i("Saving configuration...");
       theObsConfig->saveConfig();
       res->setHeader("Content-Type", "text/plain");
       res->setStatusCode(200);
@@ -867,8 +863,7 @@ log_i("Read data %d", len);
 };
 
 
-void handleWifi(HTTPRequest * req, HTTPResponse * res) {
-// server->on("/settings/wifi", HTTP_GET, []() {
+static void handleWifi(HTTPRequest *, HTTPResponse * res) {
   String html = createPage(wifiSettingsIndex);
   html = replaceDefault(html, "WiFi", "/settings/wifi/action");
 
@@ -882,8 +877,7 @@ void handleWifi(HTTPRequest * req, HTTPResponse * res) {
   sendHtml(res, html);
 };
 
-// FIXME: Should be a POST request!!!
-void handleWifiSave(HTTPRequest * req, HTTPResponse * res) {
+static void handleWifiSave(HTTPRequest * req, HTTPResponse * res) {
   auto params = req->getParams();
   std::string ssid;
   if (params->getQueryParameter("ssid", ssid)) {
@@ -899,9 +893,7 @@ void handleWifiSave(HTTPRequest * req, HTTPResponse * res) {
   sendRedirect(res, "/settings/wifi");
 }
 
-
-// FIXME: Use POST
-void handleConfigSave(HTTPRequest * req, HTTPResponse * res) {
+static void handleConfigSave(HTTPRequest * req, HTTPResponse * res) {
   const auto params = extractParameters(req);
 
   theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplaySatellites,
@@ -962,7 +954,7 @@ void handleConfigSave(HTTPRequest * req, HTTPResponse * res) {
 }
 
 
-void handleConfig(HTTPRequest * req, HTTPResponse * res) {
+static void handleConfig(HTTPRequest *, HTTPResponse * res) {
   String html = createPage(configIndex);
   html = replaceDefault(html, "General", "/settings/general/action");
 
@@ -1027,7 +1019,7 @@ void handleConfig(HTTPRequest * req, HTTPResponse * res) {
   sendHtml(res, html);
 };
 
-void handleFirmwareUpdate(HTTPRequest * req, HTTPResponse * res) {
+static void handleFirmwareUpdate(HTTPRequest *, HTTPResponse * res) {
   String html = createPage(uploadIndex, xhrUpload);
   html = replaceDefault(html, "Update Firmware");
   html.replace("{method}", "/update");
@@ -1035,7 +1027,7 @@ void handleFirmwareUpdate(HTTPRequest * req, HTTPResponse * res) {
   sendHtml(res, html);
 };
 
-void handleFirmwareUpdateAction(HTTPRequest * req, HTTPResponse * res) {
+static void handleFirmwareUpdateAction(HTTPRequest * req, HTTPResponse * res) {
   HTTPMultipartBodyParser parser(req);
   sensorManager->detachInterrupts();
   Update.begin();
@@ -1079,16 +1071,17 @@ void handleFirmwareUpdateAction(HTTPRequest * req, HTTPResponse * res) {
 }
 
 #ifdef DEVELOP
-void handleDevAction(HTTPRequest *req, HTTPResponse *res) {
+static void handleDevAction(HTTPRequest *req, HTTPResponse *res) {
+  auto params = req->getParams();
   theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DEVELOPER, ShowGrid,
-                                   getParameter(req, "showGrid") == "on");
+                                   getParameter(params, "showGrid") == "on");
   theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DEVELOPER, PrintWifiPassword,
-                                   getParameter(req, "printWifiPassword") == "on");
+                                   getParameter(params, "printWifiPassword") == "on");
   theObsConfig->saveConfig();
   sendRedirect(res, "/settings/development");
 }
 
-void handleDev(HTTPRequest *req, HTTPResponse *res) {
+static void handleDev(HTTPRequest *, HTTPResponse *res) {
   String html = createPage(devIndex);
   html = replaceDefault(html, "Development Setting", "/settings/development/action");
 
@@ -1105,7 +1098,7 @@ void handleDev(HTTPRequest *req, HTTPResponse *res) {
 }
 #endif
 
-void handlePrivacyAction(HTTPRequest *req, HTTPResponse *res) {
+static void handlePrivacyAction(HTTPRequest *req, HTTPResponse *res) {
   const auto params = extractParameters(req);
 
   String latitude = getParameter(params, "newlatitude");
@@ -1235,7 +1228,7 @@ void uploadTracks(HTTPResponse *res) {
   }
 }
 
-void moveToUploaded(const String &fileName) {
+static void moveToUploaded(const String &fileName) {
   int i = 0;
   while (!SDFileSystem.rename(
     fileName, String("/uploaded") + fileName + (i == 0 ? "" : String(i)))) {
@@ -1246,11 +1239,11 @@ void moveToUploaded(const String &fileName) {
   }
 }
 
-void handleUpload(HTTPRequest * req, HTTPResponse * res) {
+static void handleUpload(HTTPRequest *, HTTPResponse * res) {
   uploadTracks(res);
 }
 
-void handleMakeCurrentLocationPrivate(HTTPRequest *req, HTTPResponse *res) {
+static void handleMakeCurrentLocationPrivate(HTTPRequest *, HTTPResponse *res) {
   String html = createPage(makeCurrentLocationPrivateIndex);
   html = replaceDefault(html, "MakeLocationPrivate");
   sendHtml(res, html);
@@ -1277,7 +1270,7 @@ void handleMakeCurrentLocationPrivate(HTTPRequest *req, HTTPResponse *res) {
 
 }
 
-void handlePrivacy(HTTPRequest *req, HTTPResponse *res) {
+static void handlePrivacy(HTTPRequest *, HTTPResponse *res) {
   String privacyPage;
   for (int idx = 0; idx < theObsConfig->getNumberOfPrivacyAreas(0); ++idx) {
     auto pa = theObsConfig->getPrivacyArea(0, idx);
@@ -1308,7 +1301,7 @@ void handlePrivacy(HTTPRequest *req, HTTPResponse *res) {
   sendHtml(res, html);
 }
 
-void handlePrivacyDeleteAction(HTTPRequest *req, HTTPResponse *res) {
+static void handlePrivacyDeleteAction(HTTPRequest *req, HTTPResponse *res) {
   String erase = getParameter(req, "erase");
   if (erase != "") {
     theObsConfig->removePrivacyArea(0, atoi(erase.c_str()));
@@ -1317,7 +1310,7 @@ void handlePrivacyDeleteAction(HTTPRequest *req, HTTPResponse *res) {
   sendRedirect(res, "/settings/privacy");
 }
 
-void handleSd(HTTPRequest *req, HTTPResponse *res) {
+static void handleSd(HTTPRequest *req, HTTPResponse *res) {
   String path = getParameter(req, "path", "/");
 
   File file = SDFileSystem.open(path);
@@ -1342,7 +1335,7 @@ void handleSd(HTTPRequest *req, HTTPResponse *res) {
     while (child) {
       displayTest->drawWaitBar(5, counter++);
 
-      String fileName = String(child.name());
+      auto fileName = String(child.name());
       fileName = fileName.substring(int(fileName.lastIndexOf("/") + 1));
       bool isDirectory = child.isDirectory();
       html +=
@@ -1399,7 +1392,7 @@ void handleSd(HTTPRequest *req, HTTPResponse *res) {
     dataType = "text/plain";
   }
 
-  String fileName = String(file.name());
+  auto fileName = String(file.name());
   fileName = fileName.substring((int) (fileName.lastIndexOf("/") + 1));
   res->setHeader("Content-Disposition", (String("attachment; filename=\"") + fileName + String("\"")).c_str());
   if (dataType) {
@@ -1419,7 +1412,7 @@ void handleSd(HTTPRequest *req, HTTPResponse *res) {
   file.close();
 }
 
-String ensureSdIsAvailable() {
+static String ensureSdIsAvailable() {
   String result = "";
   File root = SDFileSystem.open("/");
   if (!root) {
@@ -1431,7 +1424,7 @@ String ensureSdIsAvailable() {
   return result;
 }
 
-uint16_t countFilesInRoot() {
+static uint16_t countFilesInRoot() {
   uint16_t numberOfFiles = 0;
   File root = SDFileSystem.open("/");
   File file = root.openNextFile("r");
@@ -1450,7 +1443,7 @@ uint16_t countFilesInRoot() {
 
 static String httpPassword = String(esp_random() % 999999);
 
-void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<void()> next) {
+static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<void()> next) {
   configServerWasConnectedViaHttpFlag = true;
 
   log_w("Access Filter!");
@@ -1478,7 +1471,7 @@ void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<void()> n
   }
 }
 
-void handleHttpsRedirect(HTTPRequest *req, HTTPResponse *res) {
+static void handleHttpsRedirect(HTTPRequest *req, HTTPResponse *res) {
   String html = createPage(httpsRedirect);
   html = replaceDefault(html, "Https Redirect");
   String linkHost(req->getHTTPHeaders()->getValue("linkHost").c_str());
