@@ -28,6 +28,7 @@
 #include <uploader.h>
 #include <https/cert.h>
 #include <https/private_key.h>
+#include <HTTPURLEncodedBodyParser.hpp>
 #include "SPIFFS.h"
 #include "SSLCert.hpp"
 #include "HTTPMultipartBodyParser.hpp"
@@ -41,8 +42,6 @@ static const char *const HTTP_GET = "GET";
 static const char *const HTTP_POST = "POST";
 
 static const size_t HTTP_UPLOAD_BUFLEN = 1024; // TODO: refine
-
-const char* host = "openbikesensor";
 
 static ObsConfig *theObsConfig;
 static HTTPSServer * server;
@@ -98,7 +97,7 @@ String header =
   "}"
   "</script></head><body>"
   ""
-  "<form action='{action}'>"
+  "<form action='{action}' method='POST'>"
   "<h1><a href='/'>OpenBikeSensor</a></h1>"
   "<h2>{subtitle}</h2>"
   "<p>Firmware version: {version}</p>"
@@ -338,6 +337,15 @@ static String makeCurrentLocationPrivateIndex =
   "<div>Making current location private, waiting for fix. Press device button to cancel.</div>";
 
 // #########################################
+static String getParameter(const std::vector<std::pair<String,String>> &params, const String& name, const String&  def = "") {
+  for (auto param : params) {
+    if (param.first == name) {
+      return param.second;
+    }
+  }
+  return def;
+}
+
 
 static String getParameter(HTTPRequest *req, const String& name, const String&  def = "") {
   std::string value;
@@ -347,6 +355,7 @@ static String getParameter(HTTPRequest *req, const String& name, const String&  
   return def;
 }
 
+static std::vector<std::pair<String,String>> extractParameters(HTTPRequest *req);
 
 static void handleNotFound(HTTPRequest * req, HTTPResponse * res);
 static void handleIndex(HTTPRequest * req, HTTPResponse * res);
@@ -392,16 +401,16 @@ void beginPages() {
   server->registerNode(new ResourceNode("/settings/backup.json", HTTP_GET,  handleBackupDownload));
   server->registerNode(new ResourceNode("/settings/restore", HTTP_POST,  handleBackupRestore));
   server->registerNode(new ResourceNode("/settings/wifi", HTTP_GET,  handleWifi));
-  server->registerNode(new ResourceNode("/settings/wifi/action", HTTP_GET, handleWifiSave));
+  server->registerNode(new ResourceNode("/settings/wifi/action", HTTP_POST, handleWifiSave));
   server->registerNode(new ResourceNode("/settings/general", HTTP_GET,  handleConfig));
-  server->registerNode(new ResourceNode("/settings/general/action", HTTP_GET, handleConfigSave));
+  server->registerNode(new ResourceNode("/settings/general/action", HTTP_POST, handleConfigSave));
   server->registerNode(new ResourceNode("/update", HTTP_GET, handleFirmwareUpdate));
   server->registerNode(new ResourceNode("/update", HTTP_POST, handleFirmwareUpdateAction));
 #ifdef DEVELOP
   server->registerNode(new ResourceNode("/settings/development/action", HTTP_GET, handleDevAction));
   server->registerNode(new ResourceNode("/settings/development", HTTP_GET, handleDev));
 #endif
-  server->registerNode(new ResourceNode("/privacy_action", HTTP_GET, handlePrivacyAction));
+  server->registerNode(new ResourceNode("/privacy_action", HTTP_POST, handlePrivacyAction));
   server->registerNode(new ResourceNode("/upload", HTTP_GET, handleUpload));
   server->registerNode(new ResourceNode("/settings/privacy/makeCurrentLocationPrivate", HTTP_GET, handleMakeCurrentLocationPrivate));
   server->registerNode(new ResourceNode("/settings/privacy", HTTP_GET, handlePrivacy));
@@ -893,50 +902,51 @@ void handleWifiSave(HTTPRequest * req, HTTPResponse * res) {
 
 // FIXME: Use POST
 void handleConfigSave(HTTPRequest * req, HTTPResponse * res) {
+  const auto params = extractParameters(req);
+
   theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplaySatellites,
-                                   getParameter(req, "displayGPS") == "on");
+                                   getParameter(params, "displayGPS") == "on");
   theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayVelocity,
-                                   getParameter(req, "displayVELO") == "on");
+                                   getParameter(params, "displayVELO") == "on");
   theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplaySimple,
-                                   getParameter(req, "displaySimple") == "on");
+                                   getParameter(params, "displaySimple") == "on");
   theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayLeft,
-                                   getParameter(req, "displayLeft") == "on");
+                                   getParameter(params, "displayLeft") == "on");
   theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayRight,
-                                   getParameter(req, "displayRight") == "on");
+                                   getParameter(params, "displayRight") == "on");
   // NOT a display setting!?
   theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplaySwapSensors,
-                                   getParameter(req, "displaySwapSensors") == "on");
+                                   getParameter(params, "displaySwapSensors") == "on");
   theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayInvert,
-                                   getParameter(req, "displayInvert") == "on");
+                                   getParameter(params, "displayInvert") == "on");
   theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayFlip,
-                                   getParameter(req, "displayFlip") == "on");
+                                   getParameter(params, "displayFlip") == "on");
   theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayNumConfirmed,
-                                   getParameter(req, "displayNumConfirmed") == "on");
+                                   getParameter(params, "displayNumConfirmed") == "on");
   theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayDistanceDetail,
-                                   getParameter(req, "displayDistanceDetail") == "on");
+                                   getParameter(params, "displayDistanceDetail") == "on");
   theObsConfig->setProperty(0, ObsConfig::PROPERTY_CONFIRMATION_TIME_SECONDS,
-                            atoi(getParameter(req, "confirmationTimeWindow").c_str()));
+                            atoi(getParameter(params, "confirmationTimeWindow").c_str()));
   theObsConfig->setProperty(0, ObsConfig::PROPERTY_BLUETOOTH,
-                            (bool) (getParameter(req, "bluetooth") == "on"));
+                            (bool) (getParameter(params, "bluetooth") == "on"));
   theObsConfig->setProperty(0, ObsConfig::PROPERTY_SIM_RA,
-                            (bool) (getParameter(req, "simRaMode") == "on"));
+                            (bool) (getParameter(params, "simRaMode") == "on"));
   theObsConfig->setProperty(0, ObsConfig::PROPERTY_PORTAL_TOKEN,
-                            getParameter(req, "obsUserID"));
+                            getParameter(params, "obsUserID"));
   theObsConfig->setProperty(0, ObsConfig::PROPERTY_PORTAL_URL,
-                            getParameter(req, "hostname"));
+                            getParameter(params, "hostname"));
 
   std::vector<int> offsets;
-  offsets.push_back(atoi(getParameter(req, "offsetS2").c_str()));
-  offsets.push_back(atoi(getParameter(req, "offsetS1").c_str()));
+  offsets.push_back(atoi(getParameter(params, "offsetS2").c_str()));
+  offsets.push_back(atoi(getParameter(params, "offsetS1").c_str()));
   theObsConfig->setOffsets(0, offsets);
 
-  const String gpsFix = getParameter(req, "gpsFix");
   theObsConfig->setProperty(0, ObsConfig::PROPERTY_GPS_FIX,
-                            atoi(getParameter(req, "gpsFix").c_str()));
+                            atoi(getParameter(params, "gpsFix").c_str()));
 
   // TODO: cleanup
-  const String privacyOptions = getParameter(req, "privacyOptions");
-  const String overridePrivacy = getParameter(req, "overridePrivacy");
+  const String privacyOptions = getParameter(params, "privacyOptions");
+  const String overridePrivacy = getParameter(params, "overridePrivacy");
   theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_PRIVACY_CONFIG, AbsolutePrivacy,
                                    privacyOptions == "absolutePrivacy");
   theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_PRIVACY_CONFIG, NoPosition,
@@ -1096,12 +1106,13 @@ void handleDev(HTTPRequest *req, HTTPResponse *res) {
 #endif
 
 void handlePrivacyAction(HTTPRequest *req, HTTPResponse *res) {
+  const auto params = extractParameters(req);
 
-  String latitude = getParameter(req, "newlatitude");
+  String latitude = getParameter(params, "newlatitude");
   latitude.replace(",", ".");
-  String longitude = getParameter(req, "newlongitude");
+  String longitude = getParameter(params, "newlongitude");
   longitude.replace(",", ".");
-  String radius = getParameter(req, "newradius");
+  String radius = getParameter(params, "newradius");
 
   if ( (latitude != "") && (longitude != "") && (radius != "") ) {
     Serial.println(F("Valid privacyArea!"));
@@ -1482,4 +1493,28 @@ void handleHttpsRedirect(HTTPRequest *req, HTTPResponse *res) {
 void configServerHandle() {
   server->loop();
   insecureServer->loop();
+}
+
+std::vector<std::pair<String,String>> extractParameters(HTTPRequest *req) {
+  log_e("Extracting parameters");
+  std::vector<std::pair<String,String>> parameters;
+//  if (String(req->getHeader("Content-Type").c_str()).startsWith("application/x-www-form-urlencoded")) {
+    HTTPURLEncodedBodyParser parser(req);
+    while(parser.nextField()) {
+      std::pair<String,String> data;
+      data.first = String(parser.getFieldName().c_str());
+      data.second = String();
+      while (!parser.endOfField()) {
+        char buf[513];
+        size_t readLength = parser.read((uint8_t *)buf, 512);
+        buf[readLength] = 0;
+        data.second += String(buf);
+      }
+      log_e("Http Parameter %s = %s", data.first.c_str(), data.second.c_str());
+      parameters.push_back(data);
+    }
+//  } else {
+//    log_e("Unexpected content type: %s", req->getHeader("Content-Type").c_str());
+//  }
+  return parameters;
 }
