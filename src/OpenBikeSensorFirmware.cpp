@@ -71,8 +71,6 @@ float TemperatureValue = -1;
 
 VoltageMeter* voltageMeter;
 
-String esp_chipid;
-
 Adafruit_BMP280 bmp280(&Wire);
 bool BMP280_active = false;
 
