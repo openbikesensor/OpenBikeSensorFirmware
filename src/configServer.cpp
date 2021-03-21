@@ -48,6 +48,8 @@ static const String httpPassword = String(esp_random() % 999999);
 static ObsConfig *theObsConfig;
 static HTTPSServer * server;
 static HTTPServer * insecureServer;
+static String OBS_ID;
+static String OBS_ID_SHORT;
 
 static SSLCert obsCert = SSLCert(
   obs_crt_DER, obs_crt_DER_len,
@@ -357,6 +359,12 @@ static String getParameter(HTTPRequest *req, const String& name, const String&  
   return def;
 }
 
+static String replaceHtml(String &body, const String &key, const String &value) {
+  String str(body);
+  str.replace(key, ObsUtils::encodeForXmlAttribute(value));
+  return str;
+}
+
 static std::vector<std::pair<String,String>> extractParameters(HTTPRequest *req);
 
 static void handleNotFound(HTTPRequest * req, HTTPResponse * res);
@@ -420,8 +428,10 @@ void beginPages() {
   server->registerNode(new ResourceNode("/sd", HTTP_GET, handleSd));
 
   server->addMiddleware(&accessFilter);
+  server->setDefaultHeader("Server", std::string("OBS/") + OBSVersion);
 
   insecureServer->setDefaultNode(new ResourceNode("", HTTP_GET,  handleHttpsRedirect));
+  insecureServer->setDefaultHeader("Server", std::string("OBS/") + OBSVersion);
 }
 
 
@@ -459,11 +469,10 @@ String createPage(const String& content, const String& additionalContent = "") {
 
 String replaceDefault(String html, const String& subTitle, const String& action = "#") {
   configServerWasConnectedViaHttpFlag = true;
-  html.replace("{title}",
-               theObsConfig->getProperty<String>(ObsConfig::PROPERTY_OBS_NAME) + " - " + subTitle);
-  html.replace("{version}", OBSVersion);
-  html.replace("{subtitle}", subTitle);
-  html.replace("{action}", action);
+  html = replaceHtml(html, "{title}",OBS_ID_SHORT + " - " + subTitle);
+  html = replaceHtml(html, "{version}", OBSVersion);
+  html = replaceHtml(html, "{subtitle}", subTitle);
+  html = replaceHtml(html, "{action}", action);
   displayTest->clear();
   displayTest->showTextOnGrid(0, 0,
                               theObsConfig->getProperty<String>(ObsConfig::PROPERTY_OBS_NAME));
@@ -524,11 +533,11 @@ String getIp() {
   }
 }
 
-bool CreateWifiSoftAP(String chipID) {
+bool CreateWifiSoftAP() {
   bool SoftAccOK;
   WiFi.disconnect();
   Serial.print(F("Initalize SoftAP "));
-  String APName = "OpenBikeSensor-" + chipID;
+  String APName = OBS_ID;
   String APPassword = "12345678";
   SoftAccOK  =  WiFi.softAP(APName.c_str(), APPassword.c_str()); // Passwortlänge mindestens 8 Zeichen !
   delay(2000); // Without delay I've seen the IP address blank
@@ -565,10 +574,13 @@ bool CreateWifiSoftAP(String chipID) {
 void startServer(ObsConfig *obsConfig) {
   theObsConfig = obsConfig;
 
-  uint64_t chipid_num;
-  chipid_num = ESP.getEfuseMac();
-  esp_chipid = String((uint16_t)(chipid_num >> 32), HEX);
+  const uint64_t chipid_num = ESP.getEfuseMac();
+  String esp_chipid = String((uint16_t)(chipid_num >> 32), HEX);
   esp_chipid += String((uint32_t)chipid_num, HEX);
+  esp_chipid.toUpperCase();
+  OBS_ID = "OpenBikeSensor-" + esp_chipid;
+  OBS_ID_SHORT = "OBS-" + String((uint16_t)(ESP.getEfuseMac() >> 32), HEX);
+  OBS_ID_SHORT.toUpperCase();
 
   displayTest->clear();
   displayTest->showTextOnGrid(0, 0, "Ver.:");
@@ -581,7 +593,7 @@ void startServer(ObsConfig *obsConfig) {
   tryWiFiConnect(obsConfig);
 
   if (WiFiClass::status() != WL_CONNECTED) {
-    CreateWifiSoftAP(esp_chipid);
+    CreateWifiSoftAP();
     touchConfigServerHttp(); // side effect do not allow track upload via button
   } else {
     Serial.println("");
@@ -658,7 +670,7 @@ static void handleIndex(HTTPRequest *, HTTPResponse * res) {
 }
 
 static String keyValue(const String& key, const String& value, const String& suffix = "") {
-  return "<b>" + key + ":</b> " + value + suffix + "<br />";
+  return "<b>" + ObsUtils::encodeForXmlText(key) + ":</b> " + value + suffix + "<br />";
 }
 
 static String keyValue(const String& key, const uint32_t value, const String& suffix = "") {
@@ -808,8 +820,8 @@ static void handleReboot(HTTPRequest *, HTTPResponse * res) {
 static void handleBackup(HTTPRequest *, HTTPResponse * res) {
   String html = createPage(backupIndex, xhrUpload);
   html = replaceDefault(html, "Backup & Restore");
-  html.replace("{method}", "/settings/restore");
-  html.replace("{accept}", ".json");
+  html = replaceHtml(html, "{method}", "/settings/restore");
+  html = replaceHtml(html, "{accept}", ".json");
   sendHtml(res, html);
 };
 
@@ -871,11 +883,11 @@ static void handleWifi(HTTPRequest *, HTTPResponse * res) {
   html = replaceDefault(html, "WiFi", "/settings/wifi/action");
 
   // Form data
-  html.replace("{ssid}", theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID));
+  html = replaceHtml(html, "{ssid}", theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID));
   if (theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID).length() > 0) {
-    html.replace("{password}", "******");
+    html = replaceHtml(html, "{password}", "******");
   } else {
-    html.replace("{password}", "");
+    html = replaceHtml(html, "{password}", "");
   }
   sendHtml(res, html);
 };
@@ -962,13 +974,13 @@ static void handleConfig(HTTPRequest *, HTTPResponse * res) {
 // Form data
   const std::vector<int> offsets
     = theObsConfig->getIntegersProperty(ObsConfig::PROPERTY_OFFSET);
-  html.replace("{offset1}", String(offsets[LEFT_SENSOR_ID]));
-  html.replace("{offset2}", String(offsets[RIGHT_SENSOR_ID]));
-  html.replace("{hostname}",
+  html = replaceHtml(html, "{offset1}", String(offsets[LEFT_SENSOR_ID]));
+  html = replaceHtml(html, "{offset2}", String(offsets[RIGHT_SENSOR_ID]));
+  html = replaceHtml(html, "{hostname}",
                theObsConfig->getProperty<String>(ObsConfig::PROPERTY_PORTAL_URL));
-  html.replace("{userId}",
+  html = replaceHtml(html, "{userId}",
                theObsConfig->getProperty<String>(ObsConfig::PROPERTY_PORTAL_TOKEN));
-  html.replace("{confirmationTimeWindow}",
+  html = replaceHtml(html, "{confirmationTimeWindow}",
                String(theObsConfig->getProperty<String>(ObsConfig::PROPERTY_CONFIRMATION_TIME_SECONDS)));
 
   const uint displayConfig = (uint) theObsConfig->getProperty<uint>(
@@ -984,26 +996,26 @@ static void handleConfig(HTTPRequest *, HTTPResponse * res) {
   bool displayNumConfirmed = displayConfig & DisplayNumConfirmed;
   bool displayDistanceDetail = displayConfig & DisplayDistanceDetail;
 
-  html.replace("{displaySimple}", displaySimple ? "checked" : "");
-  html.replace("{displayGPS}", displayGPS ? "checked" : "");
-  html.replace("{displayVELO}", displayVelo ? "checked" : "");
-  html.replace("{displayLeft}", displayLeft ? "checked" : "");
-  html.replace("{displayRight}", displayRight ? "checked" : "");
-  html.replace("{displaySwapSensors}", displaySwapSensors ? "checked" : "");
-  html.replace("{displayInvert}", displayInvert ? "checked" : "");
-  html.replace("{displayFlip}", displayFlip ? "checked" : "");
-  html.replace("{displayNumConfirmed}", displayNumConfirmed ? "checked" : "");
-  html.replace("{displayDistanceDetail}", displayDistanceDetail ? "checked" : "");
+  html = replaceHtml(html, "{displaySimple}", displaySimple ? "checked" : "");
+  html = replaceHtml(html, "{displayGPS}", displayGPS ? "checked" : "");
+  html = replaceHtml(html, "{displayVELO}", displayVelo ? "checked" : "");
+  html = replaceHtml(html, "{displayLeft}", displayLeft ? "checked" : "");
+  html = replaceHtml(html, "{displayRight}", displayRight ? "checked" : "");
+  html = replaceHtml(html, "{displaySwapSensors}", displaySwapSensors ? "checked" : "");
+  html = replaceHtml(html, "{displayInvert}", displayInvert ? "checked" : "");
+  html = replaceHtml(html, "{displayFlip}", displayFlip ? "checked" : "");
+  html = replaceHtml(html, "{displayNumConfirmed}", displayNumConfirmed ? "checked" : "");
+  html = replaceHtml(html, "{displayDistanceDetail}", displayDistanceDetail ? "checked" : "");
 
-  html.replace("{bluetooth}",
+  html = replaceHtml(html, "{bluetooth}",
                theObsConfig->getProperty<bool>(ObsConfig::PROPERTY_BLUETOOTH) ? "checked" : "");
-  html.replace("{simRaMode}",
+  html = replaceHtml(html, "{simRaMode}",
                theObsConfig->getProperty<bool>(ObsConfig::PROPERTY_SIM_RA) ? "checked" : "");
 
   int gpsFix = theObsConfig->getProperty<int>(ObsConfig::PROPERTY_GPS_FIX);
-  html.replace("{fixPos}", gpsFix == (int) Gps::WaitFor::FIX_POS || gpsFix > 0 ? "selected" : "");
-  html.replace("{fixTime}", gpsFix == (int) Gps::WaitFor::FIX_TIME ? "selected" : "");
-  html.replace("{fixNoWait}", gpsFix == (int) Gps::WaitFor::FIX_NO_WAIT ? "selected" : "");
+  html = replaceHtml(html, "{fixPos}", gpsFix == (int) Gps::WaitFor::FIX_POS || gpsFix > 0 ? "selected" : "");
+  html = replaceHtml(html, "{fixTime}", gpsFix == (int) Gps::WaitFor::FIX_TIME ? "selected" : "");
+  html = replaceHtml(html, "{fixNoWait}", gpsFix == (int) Gps::WaitFor::FIX_NO_WAIT ? "selected" : "");
 
   const uint privacyConfig = (uint) theObsConfig->getProperty<int>(
     ObsConfig::PROPERTY_PRIVACY_CONFIG);
@@ -1012,10 +1024,10 @@ static void handleConfig(HTTPRequest *, HTTPResponse * res) {
   const bool noPrivacy = privacyConfig & NoPrivacy;
   const bool overridePrivacy = privacyConfig & OverridePrivacy;
 
-  html.replace("{absolutePrivacy}", absolutePrivacy ? "checked" : "");
-  html.replace("{noPosition}", noPosition ? "checked" : "");
-  html.replace("{noPrivacy}", noPrivacy ? "checked" : "");
-  html.replace("{overridePrivacy}", overridePrivacy ? "checked" : "");
+  html = replaceHtml(html, "{absolutePrivacy}", absolutePrivacy ? "checked" : "");
+  html = replaceHtml(html, "{noPosition}", noPosition ? "checked" : "");
+  html = replaceHtml(html, "{noPrivacy}", noPrivacy ? "checked" : "");
+  html = replaceHtml(html, "{overridePrivacy}", overridePrivacy ? "checked" : "");
 
   sendHtml(res, html);
 };
@@ -1023,8 +1035,8 @@ static void handleConfig(HTTPRequest *, HTTPResponse * res) {
 static void handleFirmwareUpdate(HTTPRequest *, HTTPResponse * res) {
   String html = createPage(uploadIndex, xhrUpload);
   html = replaceDefault(html, "Update Firmware");
-  html.replace("{method}", "/update");
-  html.replace("{accept}", ".bin");
+  html = replaceHtml(html, "{method}", "/update");
+  html = replaceHtml(html, "{accept}", ".bin");
   sendHtml(res, html);
 };
 
@@ -1454,7 +1466,7 @@ static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<vo
     res->setStatusCode(401);
     res->setStatusText("Unauthorized");
     res->setHeader("Content-Type", "text/plain");
-    res->setHeader("WWW-Authenticate", "Basic realm=\"OBS\""); // name of OBS?
+    res->setHeader("WWW-Authenticate", std::string("Basic realm=\"") + OBS_ID_SHORT.c_str() + "\"");
     res->println("401: See OBS display");
 
     displayTest->clearProgressBar(5);
@@ -1479,7 +1491,7 @@ static void handleHttpsRedirect(HTTPRequest *req, HTTPResponse *res) {
   if (!linkHost || linkHost == "") {
     linkHost = getIp();
   }
-  html.replace("{host}", linkHost);
+  html = replaceHtml(html, "{host}", linkHost);
   sendHtml(res, html);
 }
 
