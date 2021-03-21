@@ -1457,6 +1457,7 @@ static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<vo
     res->setHeader("WWW-Authenticate", "Basic realm=\"OBS\""); // name of OBS?
     res->println("401: See OBS display");
 
+    displayTest->clearProgressBar(5);
     displayTest->cleanGridCell(0, 3);
     displayTest->cleanGridCell(0, 4);
     displayTest->cleanGridCell(1, 3);
