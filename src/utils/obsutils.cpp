@@ -164,6 +164,18 @@ String ObsUtils::encodeForCsvField(const String &field) {
   return result;
 }
 
+// Poor man....
+String ObsUtils::encodeForUrl(const String &url) {
+  String result(url);
+  result.replace("%", "%25");
+  result.replace("+", "%2B");
+  result.replace(" ", "+");
+  result.replace("\"", "%22");
+  result.replace("\'", "%27");
+  result.replace("=", "%3D");
+  return result;
+}
+
 String ObsUtils::toScaledByteString(uint32_t size) {
   String result;
   if (size <= BYTES_PER_KB * 10) {

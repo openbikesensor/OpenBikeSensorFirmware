@@ -41,8 +41,6 @@ extern VoltageMeter* voltageMeter;
 class Gps;
 extern Gps gps;
 
-extern String esp_chipid;
-
 extern const uint32_t MAX_DURATION_MICRO_SEC;
 extern const uint8_t LEFT_SENSOR_ID;
 extern const uint8_t RIGHT_SENSOR_ID;

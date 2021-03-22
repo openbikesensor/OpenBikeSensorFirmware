@@ -95,6 +95,7 @@ class ObsConfig {
     bool setBitMaskProperty(int profile, const String &key, uint value, bool state);
     uint getBitMaskProperty(int profile, const String &key, uint mask) const;
 
+    bool setProperty(int profile, const String &key, std::string const &value);
     bool setProperty(int profile, const String &key, String const &value);
     template<typename T> bool setProperty(int profile, const String &key, T const &value);
     bool setOffsets(int profile, std::vector<int> const &value);
@@ -139,6 +140,7 @@ class ObsConfig {
     static const String PROPERTY_PA_LAT_T;
     static const String PROPERTY_PA_LONG_T;
     static const String PROPERTY_PA_RADIUS;
+    static const String PROPERTY_HTTP_PIN;
 
   private:
     static bool loadJson(JsonDocument &jsonDocument, const String &filename);

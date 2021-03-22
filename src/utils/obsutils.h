@@ -35,6 +35,7 @@ class ObsUtils {
     static String encodeForXmlAttribute(const String & text);
     static String encodeForXmlText(const String &text);
     static String encodeForCsvField(const String &field);
+    static String encodeForUrl(const String &url);
     static void setClockByNtp(const char *ntpServer = nullptr);
     static void setClockByNtpAndWait(const char *ntpServer = nullptr);
     static bool systemTimeIsSet();

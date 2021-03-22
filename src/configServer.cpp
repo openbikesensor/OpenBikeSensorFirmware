@@ -23,29 +23,43 @@
 // remix, transform, build upon the material and distributed for any purposes
 // only if provided appropriate credit to the author and link to the original article.
 
-#include "configServer.h"
-#include "OpenBikeSensorFirmware.h"
+#include <configServer.h>
+#include <OpenBikeSensorFirmware.h>
 #include <uploader.h>
-#include <utils/alpdata.h>
+#include <https/cert.h>
+#include <https/private_key.h>
+#include <HTTPURLEncodedBodyParser.hpp>
 #include "SPIFFS.h"
+#include "SSLCert.hpp"
+#include "HTTPMultipartBodyParser.hpp"
+
+using namespace httpsserver;
 
 static const char *const HTML_ENTITY_FAILED_CROSS = "&#x274C;";
 static const char *const HTML_ENTITY_OK_MARK = "&#x2705;";
 
+static const char *const HTTP_GET = "GET";
+static const char *const HTTP_POST = "POST";
 
-const char* host = "openbikesensor";
+static const size_t HTTP_UPLOAD_BUFLEN = 1024; // TODO: refine
 
-ObsConfig *theObsConfig;
+static ObsConfig *theObsConfig;
+static HTTPSServer * server;
+static HTTPServer * insecureServer;
+static String OBS_ID;
+static String OBS_ID_SHORT;
 
-WebServer server(80);
-String json_buffer;
+static SSLCert obsCert = SSLCert(
+  obs_crt_DER, obs_crt_DER_len,
+  obs_key_DER, obs_key_DER_len
+);
 
 /* Style */
 // TODO
 //  - Fix CSS Style for mobile && desktop
 //  - a vs. button
 //  - back navigation after save
-String style =
+static const String style =
   "<style>"
   "#file-input,input, button {width:100%;height:44px;border-radius:4px;margin:10px auto;font-size:15px;}"
   "input, button, a.back {background:#f1f1f1;border:0;padding:0;text-align:center;}"
@@ -69,9 +83,9 @@ String style =
   "li.file a {text-decoration: none;}"
   "</style>";
 
-const String previous = "<a href=\"javascript:history.back()\" class='previous'>&#8249;</a>";
+static const String previous = "<a href=\"javascript:history.back()\" class='previous'>&#8249;</a>";
 
-String header =
+static const String header =
   "<!DOCTYPE html>\n"
   "<html lang='en'><head><meta charset='utf-8'/><title>{title}</title>" + style +
   "<link rel='icon' href='data:;base64,iVBORw0KGgo=' />"
@@ -85,19 +99,19 @@ String header =
   "}"
   "</script></head><body>"
   ""
-  "<form action='{action}'>"
+  "<form action='{action}' method='POST'>"
   "<h1><a href='/'>OpenBikeSensor</a></h1>"
   "<h2>{subtitle}</h2>"
   "<p>Firmware version: {version}</p>"
   + previous;
 
-const String footer = "</form></body></html>";
+static const String footer = "</form></body></html>";
 
 // #########################################
 // Upload form
 // #########################################
 
-String xhrUpload =   "<input type='file' name='upload' id='file' accept='{accept}'>"
+static const String xhrUpload =   "<input type='file' name='upload' id='file' accept='{accept}'>"
   "<label id='file-input' for='file'>Choose file...</label>"
   "<input id='btn' type='submit' class=btn value='Upload'>"
   "<br><br>"
@@ -165,7 +179,7 @@ String xhrUpload =   "<input type='file' name='upload' id='file' accept='{accept
 // Navigation
 // #########################################
 
-String navigationIndex =
+static const String navigationIndex =
   "<input type=button onclick=\"window.location.href='/upload'\" class=btn value='Upload Tracks'>"
   "<h3>Settings</h3>"
   "<input type=button onclick=\"window.location.href='/settings/general'\" class=btn value='General'>"
@@ -179,11 +193,19 @@ String navigationIndex =
   "<input type=button onclick=\"window.location.href='/reboot'\" class=btn value='Reboot'>"
   "{dev}";
 
+static const String httpsRedirect =
+  "<h3>HTTPS</h3>"
+  "You need to access the obs via secure https. If not done already, you also need to "
+  "accept the self signed cert from the OBS after pressing 'Goto https'. Login is 'obs' "
+  "and the up to 6 digit pin displayed "
+  "on the OBS."
+  "<input type=button onclick=\"window.location.href='https://{host}'\" class=btn value='Goto https'>";
+
 // #########################################
 // Development
 // #########################################
 
-String development =
+static const String development =
   "<h3>Development</h3>"
   "<input type=button onclick=\"window.location.href='/settings/development'\" class=btn value='Development'>";
 
@@ -191,14 +213,14 @@ String development =
 // Reboot
 // #########################################
 
-String rebootIndex =
-  "<div>Device reboots now.</div>";
+static const String rebootIndex =
+  "<h3>Device reboots now.</h3>";
 
 // #########################################
 // Wifi
 // #########################################
 
-String wifiSettingsIndex =
+static const String wifiSettingsIndex =
   "<script>"
   "function resetPassword() { document.getElementById('pass').value = ''; }"
   "</script>"
@@ -213,7 +235,7 @@ String wifiSettingsIndex =
 // Backup and Restore
 // #########################################
 
-String backupIndex =
+static const String backupIndex =
   "<p>This backups and restores the device configuration incl. the Basic Config, Privacy Zones and Wifi Settings.</p>"
   "<h3>Backup</h3>"
   "<input type='button' onclick=\"window.location.href='/settings/backup.json'\" class=btn value='Download' />"
@@ -223,7 +245,7 @@ String backupIndex =
 // Development Index
 // #########################################
 
-String devIndex =
+static const String devIndex =
   "<h3>Display</h3>"
   "Show Grid<br><input type='checkbox' name='showGrid' {showGrid}>"
   "Print WLAN password to serial<br><input type='checkbox' name='printWifiPassword' {printWifiPassword}>"
@@ -234,7 +256,7 @@ String devIndex =
 // Config
 // #########################################
 
-String configIndex =
+static const String configIndex =
   "<h3>Sensor</h3>"
   "Offset Sensor Left<input name='offsetS1' placeholder='Offset Sensor Left' value='{offset1}'>"
   "<hr>"
@@ -290,6 +312,9 @@ String configIndex =
   "<input name='obsUserID' placeholder='API ID' value='{userId}' >"
   "<h3>Operation</h3>"
   "Enable Bluetooth <input type='checkbox' name='bluetooth' {bluetooth}>"
+#ifndef OBS_BLUETOOTH
+  "<small>Bluetooth is not enabled in this firmware, setting will have no effect.</small>"
+#endif
   "<hr>"
   "SimRa Mode <input type='checkbox' name='simRaMode' {simRaMode}>"
   "<input type=submit class=btn value=Save>";
@@ -299,28 +324,127 @@ String configIndex =
 // #########################################
 
 /* Server Index Page */
-const String uploadIndex = "<h3>Update</h3>";
+static const String uploadIndex = "<h3>Update</h3>";
 
 // #########################################
 // Privacy
 // #########################################
 
-String privacyIndexPostfix =
+static const String privacyIndexPostfix =
   "<input type=submit onclick=\"window.location.href='/'\" class=btn value=Save>"
   "<input type=button onclick=\"window.location.href='/settings/privacy/makeCurrentLocationPrivate'\" class=btn value='Make current location private'>";
 
 
-String makeCurrentLocationPrivateIndex =
+static const String makeCurrentLocationPrivateIndex =
   "<div>Making current location private, waiting for fix. Press device button to cancel.</div>";
 
 // #########################################
+static String getParameter(const std::vector<std::pair<String,String>> &params, const String& name, const String&  def = "") {
+  for (auto param : params) {
+    if (param.first == name) {
+      return param.second;
+    }
+  }
+  return def;
+}
+
+
+static String getParameter(HTTPRequest *req, const String& name, const String&  def = "") {
+  std::string value;
+  if (req->getParams()->getQueryParameter(name.c_str(), value)) {
+    return String(value.c_str());
+  }
+  return def;
+}
+
+static String replaceHtml(String &body, const String &key, const String &value) {
+  String str(body);
+  str.replace(key, ObsUtils::encodeForXmlAttribute(value));
+  return str;
+}
+
+static std::vector<std::pair<String,String>> extractParameters(HTTPRequest *req);
+
+static void handleNotFound(HTTPRequest * req, HTTPResponse * res);
+static void handleIndex(HTTPRequest * req, HTTPResponse * res);
+static void handleAbout(HTTPRequest * req, HTTPResponse * res);
+static void handleReboot(HTTPRequest * req, HTTPResponse * res);
+static void handleBackup(HTTPRequest * req, HTTPResponse * res);
+static void handleBackupDownload(HTTPRequest * req, HTTPResponse * res);
+static void handleBackupRestore(HTTPRequest * req, HTTPResponse * res);
+static void handleWifi(HTTPRequest * req, HTTPResponse * res);
+static void handleWifiSave(HTTPRequest * req, HTTPResponse * res);
+static void handleConfig(HTTPRequest * req, HTTPResponse * res);
+static void handleConfigSave(HTTPRequest * req, HTTPResponse * res);
+static void handleFirmwareUpdate(HTTPRequest * req, HTTPResponse * res);
+static void handleFirmwareUpdateAction(HTTPRequest * req, HTTPResponse * res);
+#ifdef DEVELOP
+static void handleDev(HTTPRequest * req, HTTPResponse * res);
+static void handleDevAction(HTTPRequest * req, HTTPResponse * res);
+#endif
+static void handlePrivacyAction(HTTPRequest * req, HTTPResponse * res);
+static void handleUpload(HTTPRequest * req, HTTPResponse * res);
+static void handleMakeCurrentLocationPrivate(HTTPRequest * req, HTTPResponse * res);
+static void handlePrivacy(HTTPRequest *req, HTTPResponse *res);
+static void handlePrivacyDeleteAction(HTTPRequest *req, HTTPResponse *res);
+static void handleSd(HTTPRequest *req, HTTPResponse *res);
+
+static void handleHttpsRedirect(HTTPRequest *req, HTTPResponse *res);
+
+static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<void()> next);
 
 bool configServerWasConnectedViaHttpFlag = false;
 
-void tryWiFiConnect(const ObsConfig *obsConfig);
-uint16_t countFilesInRoot();
-String ensureSdIsAvailable();
-void moveToUploaded(const String &fileName);
+static void tryWiFiConnect(const ObsConfig *obsConfig);
+static uint16_t countFilesInRoot();
+static String ensureSdIsAvailable();
+static void moveToUploaded(const String &fileName);
+
+void beginPages() {
+  server->setDefaultNode(new ResourceNode("", HTTP_GET,  handleNotFound));
+  server->registerNode(new ResourceNode("/", HTTP_GET,  handleIndex));
+  server->registerNode(new ResourceNode("/about", HTTP_GET,  handleAbout));
+  server->registerNode(new ResourceNode("/reboot", HTTP_GET,  handleReboot));
+  server->registerNode(new ResourceNode("/settings/backup", HTTP_GET,  handleBackup));
+  server->registerNode(new ResourceNode("/settings/backup.json", HTTP_GET,  handleBackupDownload));
+  server->registerNode(new ResourceNode("/settings/restore", HTTP_POST,  handleBackupRestore));
+  server->registerNode(new ResourceNode("/settings/wifi", HTTP_GET,  handleWifi));
+  server->registerNode(new ResourceNode("/settings/wifi/action", HTTP_POST, handleWifiSave));
+  server->registerNode(new ResourceNode("/settings/general", HTTP_GET,  handleConfig));
+  server->registerNode(new ResourceNode("/settings/general/action", HTTP_POST, handleConfigSave));
+  server->registerNode(new ResourceNode("/update", HTTP_GET, handleFirmwareUpdate));
+  server->registerNode(new ResourceNode("/update", HTTP_POST, handleFirmwareUpdateAction));
+#ifdef DEVELOP
+  server->registerNode(new ResourceNode("/settings/development/action", HTTP_GET, handleDevAction));
+  server->registerNode(new ResourceNode("/settings/development", HTTP_GET, handleDev));
+#endif
+  server->registerNode(new ResourceNode("/privacy_action", HTTP_POST, handlePrivacyAction));
+  server->registerNode(new ResourceNode("/upload", HTTP_GET, handleUpload));
+  server->registerNode(new ResourceNode("/settings/privacy/makeCurrentLocationPrivate", HTTP_GET, handleMakeCurrentLocationPrivate));
+  server->registerNode(new ResourceNode("/settings/privacy", HTTP_GET, handlePrivacy));
+  server->registerNode(new ResourceNode("/privacy_delete", HTTP_GET, handlePrivacyDeleteAction));
+  server->registerNode(new ResourceNode("/sd", HTTP_GET, handleSd));
+
+  server->addMiddleware(&accessFilter);
+  server->setDefaultHeader("Server", std::string("OBS/") + OBSVersion);
+
+  insecureServer->setDefaultNode(new ResourceNode("", HTTP_GET,  handleHttpsRedirect));
+  insecureServer->setDefaultHeader("Server", std::string("OBS/") + OBSVersion);
+}
+
+
+void createHttpServer() {
+  server = new HTTPSServer(&obsCert);
+  insecureServer = new HTTPServer();
+
+  log_i("About to create pages.");
+  beginPages();
+
+  log_i("About to start.");
+  server->start();
+  insecureServer->start();
+}
+
 
 bool configServerWasConnectedViaHttp() {
   return configServerWasConnectedViaHttpFlag;
@@ -343,11 +467,10 @@ String createPage(const String& content, const String& additionalContent = "") {
 
 String replaceDefault(String html, const String& subTitle, const String& action = "#") {
   configServerWasConnectedViaHttpFlag = true;
-  html.replace("{title}",
-               theObsConfig->getProperty<String>(ObsConfig::PROPERTY_OBS_NAME) + " - " + subTitle);
-  html.replace("{version}", OBSVersion);
-  html.replace("{subtitle}", subTitle);
-  html.replace("{action}", action);
+  html = replaceHtml(html, "{title}",OBS_ID_SHORT + " - " + subTitle);
+  html = replaceHtml(html, "{version}", OBSVersion);
+  html = replaceHtml(html, "{subtitle}", subTitle);
+  html = replaceHtml(html, "{action}", action);
   displayTest->clear();
   displayTest->showTextOnGrid(0, 0,
                               theObsConfig->getProperty<String>(ObsConfig::PROPERTY_OBS_NAME));
@@ -364,122 +487,210 @@ String replaceDefault(String html, const String& subTitle, const String& action 
   return html;
 }
 
-void handleUpload() {
-  uploadTracks(true);
+static void handleNotFound(HTTPRequest * req, HTTPResponse * res) {
+  // Discard request body, if we received any
+  // We do this, as this is the default node and may also server POST/PUT requests
+  req->discardRequestBody();
+
+  // Set the response status
+  res->setStatusCode(404);
+  res->setStatusText("Not Found");
+
+  // Set content type of the response
+  res->setHeader("Content-Type", "text/html");
+
+  // Write a tiny HTTP page
+  res->println("<!DOCTYPE html>");
+  res->println("<html>");
+  res->println("<head><title>Not Found</title></head>");
+  res->println("<body><h1>404 Not Found</h1><p>The requested resource was not found on this server.</p></body>");
+  res->println("</html>");
 }
 
-void handle_NotFound() {
-  server.send(404, "text/plain", "Not found");
+void sendHtml(HTTPResponse * res, String& data) {
+  res->setHeader("Content-Type", "text/html");
+  res->print(data);
 }
 
-// #########################################
-void devAction() {
-  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DEVELOPER, ShowGrid,
-    server.arg("showGrid") == "on");
-  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DEVELOPER, PrintWifiPassword,
-                                   server.arg("printWifiPassword") == "on");
-
-  theObsConfig->saveConfig();
-  String s = "<meta http-equiv='refresh' content='0; url=/settings/development'><a href='/settings/development'>Go Back</a>";
-  server.send(200, "text/html", s); //Send web page
+void sendHtml(HTTPResponse * res, const char * data) {
+  res->setHeader("Content-Type", "text/html");
+  res->print(data);
 }
 
-void configAction() {
-  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplaySatellites,
-                                   server.arg("displayGPS") == "on");
-  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayVelocity,
-                                   server.arg("displayVELO") == "on");
-  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplaySimple,
-                                   server.arg("displaySimple") == "on");
-  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayLeft,
-                                   server.arg("displayLeft") == "on");
-  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayRight,
-                                   server.arg("displayRight") == "on");
-  // NOT a display setting!?
-  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplaySwapSensors,
-                                   server.arg("displaySwapSensors") == "on");
-  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayInvert,
-                                   server.arg("displayInvert") == "on");
-  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayFlip,
-                                   server.arg("displayFlip") == "on");
-  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayNumConfirmed,
-                                   server.arg("displayNumConfirmed") == "on");
-  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayDistanceDetail,
-                                   server.arg("displayDistanceDetail") == "on");
-  theObsConfig->setProperty(0, ObsConfig::PROPERTY_CONFIRMATION_TIME_SECONDS,
-                            atoi(server.arg("confirmationTimeWindow").c_str()));
-  theObsConfig->setProperty(0, ObsConfig::PROPERTY_BLUETOOTH,
-                            (bool) (server.arg("bluetooth") == "on"));
-  theObsConfig->setProperty(0, ObsConfig::PROPERTY_SIM_RA,
-                            (bool) (server.arg("simRaMode") == "on"));
-  theObsConfig->setProperty(0, ObsConfig::PROPERTY_PORTAL_TOKEN,
-                            server.arg("obsUserID"));
-  theObsConfig->setProperty(0, ObsConfig::PROPERTY_PORTAL_URL,
-                            server.arg("hostname"));
-
-  std::vector<int> offsets;
-  offsets.push_back(atoi(server.arg("offsetS2").c_str()));
-  offsets.push_back(atoi(server.arg("offsetS1").c_str()));
-  theObsConfig->setOffsets(0, offsets);
-
-  const String gpsFix = server.arg("gpsFix");
-  theObsConfig->setProperty(0, ObsConfig::PROPERTY_GPS_FIX,
-                            atoi(server.arg("gpsFix").c_str()));
-
-  // TODO: cleanup
-  const String privacyOptions = server.arg("privacyOptions");
-  const String overridePrivacy = server.arg("overridePrivacy");
-  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_PRIVACY_CONFIG, AbsolutePrivacy,
-                                   privacyOptions == "absolutePrivacy");
-  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_PRIVACY_CONFIG, NoPosition,
-                                   privacyOptions == "noPosition");
-  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_PRIVACY_CONFIG, NoPrivacy,
-                                   privacyOptions == "noPrivacy");
-  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_PRIVACY_CONFIG, OverridePrivacy,
-                                   overridePrivacy == "on");
-
-  theObsConfig->saveConfig();
-
-  String s = "<meta http-equiv='refresh' content='0; url=/settings/general'><a href='/settings/general'>Go Back</a>";
-  server.send(200, "text/html", s); //Send web page
+void sendRedirect(HTTPResponse * res, String location) {
+  res->setHeader("Location", location.c_str());
+  res->setStatusCode(302);
+  res->finalize();
 }
 
-void wifiAction() {
-  const String ssid = server.arg("ssid");
-  const String password = server.arg("pass");
-  theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_SSID, ssid);
-  if(strcmp(password.c_str(), "******") != 0) {
-    theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_PASSWORD, password);
+String getIp() {
+  if (WiFiClass::status() != WL_CONNECTED) {
+    return WiFi.softAPIP().toString();
+  } else {
+    return WiFi.localIP().toString();
   }
-  theObsConfig->saveConfig();
-
-  String s = "<meta http-equiv='refresh' content='0; url=/settings/wifi'><a href='/settings/wifi'>Go Back</a>";
-  server.send(200, "text/html", s);
 }
 
-String keyValue(const String& key, const String& value, const String& suffix = "") {
-  return "<b>" + key + ":</b> " + value + suffix + "<br />";
+bool CreateWifiSoftAP() {
+  bool SoftAccOK;
+  WiFi.disconnect();
+  Serial.print(F("Initalize SoftAP "));
+  String APName = OBS_ID;
+  String APPassword = "12345678";
+  SoftAccOK  =  WiFi.softAP(APName.c_str(), APPassword.c_str()); // Passwortlänge mindestens 8 Zeichen !
+  delay(2000); // Without delay I've seen the IP address blank
+  /* Soft AP network parameters */
+  IPAddress apIP(172, 20, 0, 1);
+  IPAddress netMsk(255, 255, 255, 0);
+
+  displayTest->showTextOnGrid(0, 1, "AP:");
+  displayTest->showTextOnGrid(1, 1, "");
+  displayTest->showTextOnGrid(0, 2, APName.c_str());
+
+
+  WiFi.softAPConfig(apIP, apIP, netMsk);
+  if (SoftAccOK) {
+    /* Setup the DNS server redirecting all the domains to the apIP */
+    //dnsserver->setErrorReplyCode(DNSReplyCode::NoError);
+    //dnsserver->start(DNS_PORT, "*", apIP);
+
+    Serial.println(F("AP successful."));
+
+    displayTest->showTextOnGrid(0, 3, "Pass:");
+    displayTest->showTextOnGrid(1, 3, APPassword);
+
+    displayTest->showTextOnGrid(0, 4, "IP:");
+    displayTest->showTextOnGrid(1, 4, WiFi.softAPIP().toString());
+  } else {
+    Serial.println(F("Soft AP Error."));
+    Serial.println(APName.c_str());
+    Serial.println(APPassword.c_str());
+  }
+  return SoftAccOK;
 }
 
-String keyValue(const String& key, const uint32_t value, const String& suffix = "") {
+void startServer(ObsConfig *obsConfig) {
+  theObsConfig = obsConfig;
+
+  const uint64_t chipid_num = ESP.getEfuseMac();
+  String esp_chipid = String((uint16_t)(chipid_num >> 32), HEX);
+  esp_chipid += String((uint32_t)chipid_num, HEX);
+  esp_chipid.toUpperCase();
+  OBS_ID = "OpenBikeSensor-" + esp_chipid;
+  OBS_ID_SHORT = "OBS-" + String((uint16_t)(ESP.getEfuseMac() >> 32), HEX);
+  OBS_ID_SHORT.toUpperCase();
+
+  displayTest->clear();
+  displayTest->showTextOnGrid(0, 0, "Ver.:");
+  displayTest->showTextOnGrid(1, 0, OBSVersion);
+
+  displayTest->showTextOnGrid(0, 1, "SSID:");
+  displayTest->showTextOnGrid(1, 1,
+                              theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID));
+
+  tryWiFiConnect(obsConfig);
+
+  if (WiFiClass::status() != WL_CONNECTED) {
+    CreateWifiSoftAP();
+    touchConfigServerHttp(); // side effect do not allow track upload via button
+  } else {
+    Serial.println("");
+    Serial.print("Connected to ");
+    Serial.println(WiFi.SSID());
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
+
+    displayTest->showTextOnGrid(0, 2, "IP:");
+    displayTest->showTextOnGrid(1, 2, WiFi.localIP().toString().c_str());
+  }
+
+  MDNS.begin("obs");
+
+  ObsUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
+  if (!voltageMeter) {
+    voltageMeter = new VoltageMeter();
+  }
+
+  if (SD.begin() && WiFiClass::status() == WL_CONNECTED) {
+    AlpData::update(displayTest);
+  }
+
+  log_i("About to create http server.");
+  createHttpServer();
+}
+
+static void tryWiFiConnect(const ObsConfig *obsConfig) {
+  if (!WiFiGenericClass::mode(WIFI_MODE_STA)) {
+    log_e("Failed to enable WiFi station mode.");
+  }
+  const char* hostname
+    = obsConfig->getProperty<const char *>(ObsConfig::PROPERTY_OBS_NAME);
+  if (!WiFi.setHostname(hostname)) {
+    log_e("Failed to set hostname to %s.", hostname);
+  }
+
+  const auto startTime = millis();
+  const uint16_t timeout = 10000;
+  // Connect to WiFi network
+  while ((WiFiClass::status() != WL_CONNECTED) && (( millis() - startTime) <= timeout)) {
+    log_d("Trying to connect to %s",
+      theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_SSID));
+    wl_status_t status = WiFi.begin(
+      theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_SSID),
+      theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_PASSWORD));
+    log_d("WiFi status after begin is %d", status);
+    status = static_cast<wl_status_t>(WiFi.waitForConnectResult());
+    log_d("WiFi status after wait is %d", status);
+    if (status >= WL_CONNECT_FAILED) {
+      log_d("WiFi resetting connection for retry.");
+      WiFi.disconnect(true, true);
+    } else if (status == WL_NO_SSID_AVAIL){
+      log_d("WiFi SSID not found - try rescan.");
+      WiFi.scanNetworks(false);
+    }
+    delay(250);
+  }
+}
+
+
+static void handleIndex(HTTPRequest *, HTTPResponse * res) {
+// ###############################################################
+// ### Index ###
+// ###############################################################
+  String html = createPage(navigationIndex);
+  html = replaceDefault(html, "Navigation");
+#ifdef DEVELOP
+  html.replace("{dev}", development);
+#else
+  html.replace("{dev}", "");
+#endif
+  sendHtml(res, html);
+}
+
+static String keyValue(const String& key, const String& value, const String& suffix = "") {
+  return "<b>" + ObsUtils::encodeForXmlText(key) + ":</b> " + value + suffix + "<br />";
+}
+
+static String keyValue(const String& key, const uint32_t value, const String& suffix = "") {
   return keyValue(key, String(value), suffix);
 }
 
-String keyValue(const String& key, const int32_t value, const String& suffix = "") {
+static String keyValue(const String& key, const int32_t value, const String& suffix = "") {
   return keyValue(key, String(value), suffix);
 }
 
-String keyValue(const String& key, const uint64_t value, const String& suffix = "") {
+static String keyValue(const String& key, const uint64_t value, const String& suffix = "") {
   // is long this sufficient?
   return keyValue(key, String((unsigned long) value), suffix);
 }
 
-void aboutPage() {
+static void handleAbout(HTTPRequest *, HTTPResponse * res) {
+  res->setHeader("Content-Type", "text/html");
+  res->print(replaceDefault(header, "About"));
+  String page;
   gps.pollStatistics(); // takes ~100ms!
 
-  String page;
-
-  page += "<h3>ESP32</h3>"; // SPDIFF
+  res->print("<h3>ESP32</h3>"); // SPDIFF
   page += keyValue("Heap size", ObsUtils::toScaledByteString(ESP.getHeapSize()));
   page += keyValue("Free heap", ObsUtils::toScaledByteString(ESP.getFreeHeap()));
   page += keyValue("Min. free heap", ObsUtils::toScaledByteString(ESP.getMinFreeHeap()));
@@ -488,14 +699,16 @@ void aboutPage() {
   page += keyValue("Chip id", chipId);
   page += keyValue("IDF Version", esp_get_idf_version());
 
-  page += keyValue("App size", ObsUtils::toScaledByteString(ESP.getSketchSize()));
+  res->print(page);
+  page.clear();
+
+  res->print(keyValue("App size", ObsUtils::toScaledByteString(ESP.getSketchSize())));
   page += keyValue("App space", ObsUtils::toScaledByteString(ESP.getFreeSketchSpace()));
-  page += keyValue("Flash speed", ESP.getFlashChipSpeed() / 1000 / 1000, "MHz");
   page += keyValue("App 'DEVELOP'",
 #ifdef DEVELOP
-                   "true"
+    "true"
 #else
-                        "false"
+                   "false"
 #endif
   );
 #ifdef CONFIG_LOG_DEFAULT_LEVEL
@@ -504,6 +717,9 @@ void aboutPage() {
 #ifdef CORE_DEBUG_LEVEL
   page += keyValue("Core debug level", String(CORE_DEBUG_LEVEL));
 #endif
+
+  res->print(page);
+  page.clear();
 
   esp_chip_info_t ci;
   esp_chip_info(&ci);
@@ -535,6 +751,8 @@ void aboutPage() {
     page += keyValue("Battery voltage", String(voltageMeter->read(), 2), "V");
   }
 
+  res->print(page);
+  page.clear();
   page += "<h3>SD Card</h3>";
 
   page += keyValue("SD card size", ObsUtils::toScaledByteString(SD.cardSize()));
@@ -562,6 +780,8 @@ void aboutPage() {
   page += keyValue("Right Sensor min duration", sensorManager->getMinDurationUs(RIGHT_SENSOR_ID), "&#xB5;s");
   page += keyValue("Right Sensor last start delay", sensorManager->getLastDelayTillStartUs(RIGHT_SENSOR_ID), "&#xB5;s");
 
+  res->print(page);
+  page.clear();
   page += "<h3>GPS</h3>";
   page += keyValue("GPS valid checksum", gps.getValidMessageCount());
   page += keyValue("GPS failed checksum", gps.getMessagesWithFailedCrcCount());
@@ -581,18 +801,322 @@ void aboutPage() {
   page += keyValue("Display i2c speed", Wire.getClock() / 1000, "KHz");
   page += keyValue("Display i2c timeout", Wire.getTimeOut(), "ms");
 
-  page = createPage(page);
-  page = replaceDefault(page, "About");
-  server.send(200, "text/html", page);
+  res->print(page);
+  res->print(footer);
 }
 
-void privacyAction() {
+static void handleReboot(HTTPRequest *, HTTPResponse * res) {
+  String html = createPage(rebootIndex);
+  html = replaceDefault(html, "Reboot");
+  sendHtml(res, html);
+  res->finalize();
+  delay(1000);
+  ESP.restart();
+};
 
-  String latitude = server.arg("newlatitude");
+
+static void handleBackup(HTTPRequest *, HTTPResponse * res) {
+  String html = createPage(backupIndex, xhrUpload);
+  html = replaceDefault(html, "Backup & Restore");
+  html = replaceHtml(html, "{method}", "/settings/restore");
+  html = replaceHtml(html, "{accept}", ".json");
+  sendHtml(res, html);
+};
+
+static void handleBackupDownload(HTTPRequest *, HTTPResponse * res) {
+  const String fileName
+    = String(theObsConfig->getProperty<String>(ObsConfig::PROPERTY_OBS_NAME)) + "-" + OBSVersion;
+  res->setHeader("Content-Disposition",
+                 (String("attachment; filename=\"") + fileName + ".json\"").c_str());
+  res->setHeader("Content-Type", "application/json");
+  log_d("Sending config for backup %s:", fileName.c_str());
+  theObsConfig->printConfig();
+  String data = theObsConfig->asJsonString();
+  res->print(data);
+}
+
+static void handleBackupRestore(HTTPRequest * req, HTTPResponse * res) {
+  HTTPMultipartBodyParser parser(req);
+  sensorManager->detachInterrupts();
+
+  while(parser.nextField()) {
+
+    if (parser.getFieldName() != "upload") {
+      log_i("Skipping form data %s type %s filename %s", parser.getFieldName().c_str(),
+            parser.getFieldMimeType().c_str(), parser.getFieldFilename().c_str());
+      continue;
+    }
+    log_i("Got form data %s type %s filename %s", parser.getFieldName().c_str(),
+          parser.getFieldMimeType().c_str(), parser.getFieldFilename().c_str());
+
+    String json_buffer = "";
+    while (!parser.endOfField()) {
+      byte buffer[256];
+      size_t len = parser.read(buffer, 256);
+      for (int i = 0; i < len; i++) {
+        json_buffer.concat((char) buffer[i]);
+      }
+    }
+    if (theObsConfig->parseJson(json_buffer)) {
+      theObsConfig->fill(config); // OK here??
+      theObsConfig->printConfig();
+      theObsConfig->saveConfig();
+      res->setHeader("Content-Type", "text/plain");
+      res->setStatusCode(200);
+      res->setStatusText("Restore successful!");
+      res->print("OK");
+    } else {
+      res->setHeader("Content-Type", "text/plain");
+      res->setStatusCode(400);
+      res->setStatusText("Invalid data!");
+      res->print("ERROR");
+    }
+  }
+  sensorManager->attachInterrupts();
+};
+
+
+static void handleWifi(HTTPRequest *, HTTPResponse * res) {
+  String html = createPage(wifiSettingsIndex);
+  html = replaceDefault(html, "WiFi", "/settings/wifi/action");
+
+  // Form data
+  html = replaceHtml(html, "{ssid}", theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID));
+  if (theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID).length() > 0) {
+    html = replaceHtml(html, "{password}", "******");
+  } else {
+    html = replaceHtml(html, "{password}", "");
+  }
+  sendHtml(res, html);
+};
+
+static void handleWifiSave(HTTPRequest * req, HTTPResponse * res) {
+  const auto params = extractParameters(req);
+  const auto ssid = getParameter(params, "ssid");
+  if (ssid) {
+    theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_SSID, ssid);
+  }
+  const auto password = getParameter(params, "pass");
+  if (password != "******") {
+    theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_PASSWORD, password);
+  }
+  theObsConfig->saveConfig();
+  sendRedirect(res, "/settings/wifi");
+}
+
+static void handleConfigSave(HTTPRequest * req, HTTPResponse * res) {
+  const auto params = extractParameters(req);
+
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplaySatellites,
+                                   getParameter(params, "displayGPS") == "on");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayVelocity,
+                                   getParameter(params, "displayVELO") == "on");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplaySimple,
+                                   getParameter(params, "displaySimple") == "on");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayLeft,
+                                   getParameter(params, "displayLeft") == "on");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayRight,
+                                   getParameter(params, "displayRight") == "on");
+  // NOT a display setting!?
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplaySwapSensors,
+                                   getParameter(params, "displaySwapSensors") == "on");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayInvert,
+                                   getParameter(params, "displayInvert") == "on");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayFlip,
+                                   getParameter(params, "displayFlip") == "on");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayNumConfirmed,
+                                   getParameter(params, "displayNumConfirmed") == "on");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DISPLAY_CONFIG, DisplayDistanceDetail,
+                                   getParameter(params, "displayDistanceDetail") == "on");
+  theObsConfig->setProperty(0, ObsConfig::PROPERTY_CONFIRMATION_TIME_SECONDS,
+                            atoi(getParameter(params, "confirmationTimeWindow").c_str()));
+  theObsConfig->setProperty(0, ObsConfig::PROPERTY_BLUETOOTH,
+                            (bool) (getParameter(params, "bluetooth") == "on"));
+  theObsConfig->setProperty(0, ObsConfig::PROPERTY_SIM_RA,
+                            (bool) (getParameter(params, "simRaMode") == "on"));
+  theObsConfig->setProperty(0, ObsConfig::PROPERTY_PORTAL_TOKEN,
+                            getParameter(params, "obsUserID"));
+  theObsConfig->setProperty(0, ObsConfig::PROPERTY_PORTAL_URL,
+                            getParameter(params, "hostname"));
+
+  std::vector<int> offsets;
+  offsets.push_back(atoi(getParameter(params, "offsetS2").c_str()));
+  offsets.push_back(atoi(getParameter(params, "offsetS1").c_str()));
+  theObsConfig->setOffsets(0, offsets);
+
+  theObsConfig->setProperty(0, ObsConfig::PROPERTY_GPS_FIX,
+                            atoi(getParameter(params, "gpsFix").c_str()));
+
+  // TODO: cleanup
+  const String privacyOptions = getParameter(params, "privacyOptions");
+  const String overridePrivacy = getParameter(params, "overridePrivacy");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_PRIVACY_CONFIG, AbsolutePrivacy,
+                                   privacyOptions == "absolutePrivacy");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_PRIVACY_CONFIG, NoPosition,
+                                   privacyOptions == "noPosition");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_PRIVACY_CONFIG, NoPrivacy,
+                                   privacyOptions == "noPrivacy");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_PRIVACY_CONFIG, OverridePrivacy,
+                                   overridePrivacy == "on");
+
+  theObsConfig->saveConfig();
+
+  sendRedirect(res, "/settings/general");
+}
+
+
+static void handleConfig(HTTPRequest *, HTTPResponse * res) {
+  String html = createPage(configIndex);
+  html = replaceDefault(html, "General", "/settings/general/action");
+
+// Form data
+  const std::vector<int> offsets
+    = theObsConfig->getIntegersProperty(ObsConfig::PROPERTY_OFFSET);
+  html = replaceHtml(html, "{offset1}", String(offsets[LEFT_SENSOR_ID]));
+  html = replaceHtml(html, "{offset2}", String(offsets[RIGHT_SENSOR_ID]));
+  html = replaceHtml(html, "{hostname}",
+               theObsConfig->getProperty<String>(ObsConfig::PROPERTY_PORTAL_URL));
+  html = replaceHtml(html, "{userId}",
+               theObsConfig->getProperty<String>(ObsConfig::PROPERTY_PORTAL_TOKEN));
+  html = replaceHtml(html, "{confirmationTimeWindow}",
+               String(theObsConfig->getProperty<String>(ObsConfig::PROPERTY_CONFIRMATION_TIME_SECONDS)));
+
+  const uint displayConfig = (uint) theObsConfig->getProperty<uint>(
+    ObsConfig::PROPERTY_DISPLAY_CONFIG);
+  bool displaySimple = displayConfig & DisplaySimple;
+  bool displayGPS = displayConfig & DisplaySatellites;
+  bool displayLeft = displayConfig & DisplayLeft;
+  bool displayRight = displayConfig & DisplayRight;
+  bool displayVelo = displayConfig & DisplayVelocity;
+  bool displaySwapSensors = displayConfig & DisplaySwapSensors;
+  bool displayInvert = displayConfig & DisplayInvert;
+  bool displayFlip = displayConfig & DisplayFlip;
+  bool displayNumConfirmed = displayConfig & DisplayNumConfirmed;
+  bool displayDistanceDetail = displayConfig & DisplayDistanceDetail;
+
+  html = replaceHtml(html, "{displaySimple}", displaySimple ? "checked" : "");
+  html = replaceHtml(html, "{displayGPS}", displayGPS ? "checked" : "");
+  html = replaceHtml(html, "{displayVELO}", displayVelo ? "checked" : "");
+  html = replaceHtml(html, "{displayLeft}", displayLeft ? "checked" : "");
+  html = replaceHtml(html, "{displayRight}", displayRight ? "checked" : "");
+  html = replaceHtml(html, "{displaySwapSensors}", displaySwapSensors ? "checked" : "");
+  html = replaceHtml(html, "{displayInvert}", displayInvert ? "checked" : "");
+  html = replaceHtml(html, "{displayFlip}", displayFlip ? "checked" : "");
+  html = replaceHtml(html, "{displayNumConfirmed}", displayNumConfirmed ? "checked" : "");
+  html = replaceHtml(html, "{displayDistanceDetail}", displayDistanceDetail ? "checked" : "");
+
+  html = replaceHtml(html, "{bluetooth}",
+               theObsConfig->getProperty<bool>(ObsConfig::PROPERTY_BLUETOOTH) ? "checked" : "");
+  html = replaceHtml(html, "{simRaMode}",
+               theObsConfig->getProperty<bool>(ObsConfig::PROPERTY_SIM_RA) ? "checked" : "");
+
+  int gpsFix = theObsConfig->getProperty<int>(ObsConfig::PROPERTY_GPS_FIX);
+  html = replaceHtml(html, "{fixPos}", gpsFix == (int) Gps::WaitFor::FIX_POS || gpsFix > 0 ? "selected" : "");
+  html = replaceHtml(html, "{fixTime}", gpsFix == (int) Gps::WaitFor::FIX_TIME ? "selected" : "");
+  html = replaceHtml(html, "{fixNoWait}", gpsFix == (int) Gps::WaitFor::FIX_NO_WAIT ? "selected" : "");
+
+  const uint privacyConfig = (uint) theObsConfig->getProperty<int>(
+    ObsConfig::PROPERTY_PRIVACY_CONFIG);
+  const bool absolutePrivacy = privacyConfig & AbsolutePrivacy;
+  const bool noPosition = privacyConfig & NoPosition;
+  const bool noPrivacy = privacyConfig & NoPrivacy;
+  const bool overridePrivacy = privacyConfig & OverridePrivacy;
+
+  html = replaceHtml(html, "{absolutePrivacy}", absolutePrivacy ? "checked" : "");
+  html = replaceHtml(html, "{noPosition}", noPosition ? "checked" : "");
+  html = replaceHtml(html, "{noPrivacy}", noPrivacy ? "checked" : "");
+  html = replaceHtml(html, "{overridePrivacy}", overridePrivacy ? "checked" : "");
+
+  sendHtml(res, html);
+};
+
+static void handleFirmwareUpdate(HTTPRequest *, HTTPResponse * res) {
+  String html = createPage(uploadIndex, xhrUpload);
+  html = replaceDefault(html, "Update Firmware");
+  html = replaceHtml(html, "{method}", "/update");
+  html = replaceHtml(html, "{accept}", ".bin");
+  sendHtml(res, html);
+};
+
+static void handleFirmwareUpdateAction(HTTPRequest * req, HTTPResponse * res) {
+  HTTPMultipartBodyParser parser(req);
+  sensorManager->detachInterrupts();
+  Update.begin();
+  Update.onProgress([](size_t pos, size_t all) {
+    displayTest->drawProgressBar(4, pos, all);
+  });
+  while(parser.nextField()) {
+    if (parser.getFieldName() != "upload") {
+      log_i("Skipping form data %s type %s filename %s", parser.getFieldName().c_str(),
+            parser.getFieldMimeType().c_str(), parser.getFieldFilename().c_str());
+      continue;
+    }
+    log_i("Got form data %s type %s filename %s", parser.getFieldName().c_str(),
+          parser.getFieldMimeType().c_str(), parser.getFieldFilename().c_str());
+
+    while (!parser.endOfField()) {
+      byte buffer[512];
+      size_t len = parser.read(buffer, 512);
+      log_i("Read data %d", len);
+      if (Update.write(buffer, len) != len) {
+        Update.printError(Serial);
+      }
+    }
+    log_i("Done reading");
+    if (Update.end(true)) { //true to set the size to the current progress
+      sendHtml(res, "<h1>Update successful! Device reboots now!</h1>");
+      displayTest->showTextOnGrid(0, 3, "Success rebooting...");
+      delay(250);
+      ESP.restart();
+    } else {
+      String errorMsg = Update.errorString();
+      log_e("Update: %s", errorMsg.c_str());
+      displayTest->showTextOnGrid(0, 3, "Error");
+      displayTest->showTextOnGrid(0, 4, errorMsg);
+      res->setStatusCode(400);
+      res->setStatusText("Invalid data!");
+      res->print("ERROR");
+    }
+  }
+  sensorManager->attachInterrupts();
+}
+
+#ifdef DEVELOP
+static void handleDevAction(HTTPRequest *req, HTTPResponse *res) {
+  auto params = req->getParams();
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DEVELOPER, ShowGrid,
+                                   getParameter(params, "showGrid") == "on");
+  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DEVELOPER, PrintWifiPassword,
+                                   getParameter(params, "printWifiPassword") == "on");
+  theObsConfig->saveConfig();
+  sendRedirect(res, "/settings/development");
+}
+
+static void handleDev(HTTPRequest *, HTTPResponse *res) {
+  String html = createPage(devIndex);
+  html = replaceDefault(html, "Development Setting", "/settings/development/action");
+
+  // SHOWGRID
+  bool showGrid = theObsConfig->getBitMaskProperty(
+    0, ObsConfig::PROPERTY_DEVELOPER, ShowGrid);
+  html.replace("{showGrid}", showGrid ? "checked" : "");
+
+  bool printWifiPassword = theObsConfig->getBitMaskProperty(
+    0, ObsConfig::PROPERTY_DEVELOPER, PrintWifiPassword);
+  html.replace("{printWifiPassword}", printWifiPassword ? "checked" : "");
+
+  sendHtml(res, html);
+}
+#endif
+
+static void handlePrivacyAction(HTTPRequest *req, HTTPResponse *res) {
+  const auto params = extractParameters(req);
+
+  String latitude = getParameter(params, "newlatitude");
   latitude.replace(",", ".");
-  String longitude = server.arg("newlongitude");
+  String longitude = getParameter(params, "newlongitude");
   longitude.replace(",", ".");
-  String radius = server.arg("newradius");
+  String radius = getParameter(params, "newradius");
 
   if ( (latitude != "") && (longitude != "") && (radius != "") ) {
     Serial.println(F("Valid privacyArea!"));
@@ -601,540 +1125,16 @@ void privacyAction() {
   }
 
   String s = "<meta http-equiv='refresh' content='0; url=/settings/privacy'><a href='/settings/privacy'>Go Back</a>";
-  server.send(200, "text/html", s);
+  sendHtml(res, s);
 }
 
-bool CreateWifiSoftAP(String chipID) {
-  bool SoftAccOK;
-  WiFi.disconnect();
-  Serial.print(F("Initalize SoftAP "));
-  String APName = "OpenBikeSensor-" + chipID;
-  String APPassword = "12345678";
-  SoftAccOK  =  WiFi.softAP(APName.c_str(), APPassword.c_str()); // Passwortlänge mindestens 8 Zeichen !
-  delay(2000); // Without delay I've seen the IP address blank
-  /* Soft AP network parameters */
-  IPAddress apIP(172, 20, 0, 1);
-  IPAddress netMsk(255, 255, 255, 0);
-
-  displayTest->showTextOnGrid(0, 1, "AP:");
-  displayTest->showTextOnGrid(1, 1, "");
-  displayTest->showTextOnGrid(0, 2, APName.c_str());
-
-
-  WiFi.softAPConfig(apIP, apIP, netMsk);
-  if (SoftAccOK) {
-    /* Setup the DNS server redirecting all the domains to the apIP */
-    //dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
-    //dnsServer.start(DNS_PORT, "*", apIP);
-
-    Serial.println(F("AP successful."));
-
-    displayTest->showTextOnGrid(0, 3, "Pass:");
-    displayTest->showTextOnGrid(1, 3, APPassword);
-
-    displayTest->showTextOnGrid(0, 4, "IP:");
-    displayTest->showTextOnGrid(1, 4, WiFi.softAPIP().toString());
-  } else {
-    Serial.println(F("Soft AP Error."));
-    Serial.println(APName.c_str());
-    Serial.println(APPassword.c_str());
-  }
-  return SoftAccOK;
-}
-
-void startServer(ObsConfig *obsConfig) {
-  theObsConfig = obsConfig;
-
-  uint64_t chipid_num;
-  chipid_num = ESP.getEfuseMac();
-  esp_chipid = String((uint16_t)(chipid_num >> 32), HEX);
-  esp_chipid += String((uint32_t)chipid_num, HEX);
-
-  displayTest->clear();
-  displayTest->showTextOnGrid(0, 0, "Ver.:");
-  displayTest->showTextOnGrid(1, 0, OBSVersion);
-
-  displayTest->showTextOnGrid(0, 1, "SSID:");
-  displayTest->showTextOnGrid(1, 1,
-                              theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID));
-
-  tryWiFiConnect(obsConfig);
-
-  if (WiFiClass::status() != WL_CONNECTED) {
-    CreateWifiSoftAP(esp_chipid);
-    touchConfigServerHttp(); // side effect do not allow track upload via button
-  } else {
-    Serial.println("");
-    Serial.print("Connected to ");
-    Serial.println(WiFi.SSID());
-    Serial.print("IP address: ");
-    Serial.println(WiFi.localIP());
-
-    displayTest->showTextOnGrid(0, 2, "IP:");
-    displayTest->showTextOnGrid(1, 2, WiFi.localIP().toString().c_str());
-  }
-
-  /*use mdns for host name resolution*/
-  if (WiFiGenericClass::getMode() != WIFI_MODE_STA) {
-    if (!MDNS.begin(host)) { //http://openbikesensor.local
-      log_e("Error setting up MDNS responder for %s!", host);
-    } else {
-      log_i("mDNS responder started for %s!", host);
-    }
-  }
-  /*return index page which is stored in serverIndex */
-
-  ObsUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
-  if (!voltageMeter) {
-    voltageMeter = new VoltageMeter();
-  }
-
-  if (SD.begin() && WiFiClass::status() == WL_CONNECTED) {
-    AlpData::update(displayTest);
-  }
-
-
-  // #############################################
-  // Handle web pages
-  // #############################################
-
-  // ### Reboot ###
-
-  server.on("/reboot", HTTP_GET, []() {
-
-    String html = createPage(rebootIndex);
-    html = replaceDefault(html, "Reboot");
-    server.send(200, "text/html", html);
-    delay(100);
-    ESP.restart();
-  });
-
-  server.on("/upload", handleUpload);
-
-  // ###############################################################
-  // ### Index ###
-  // ###############################################################
-
-  server.on("/", HTTP_GET, []() {
-    String html = createPage(navigationIndex);
-    html = replaceDefault(html, "Navigation");
-#ifdef DEVELOP
-    html.replace("{dev}", development);
-#else
-    html.replace("{dev}", "");
-#endif
-
-    server.send(200, "text/html", html);
-  });
-
-  // ###############################################################
-  // ### Backup ###
-  // ###############################################################
-
-  server.on("/settings/backup", HTTP_GET, []() {
-    String html = createPage(backupIndex, xhrUpload);
-    html = replaceDefault(html, "Backup & Restore");
-    html.replace("{method}", "/settings/restore");
-    html.replace("{accept}", ".json");
-    server.send(200, "text/html", html);
-  });
-
-  server.on("/settings/backup.json", HTTP_GET, []() {
-    const String fileName
-      = String(theObsConfig->getProperty<String>(ObsConfig::PROPERTY_OBS_NAME)) + "-" + OBSVersion;
-    server.sendHeader("Content-Disposition", "attachment; filename=\"" + fileName + ".json\"");
-    log_d("Sending config for backup %s:", fileName.c_str());
-    theObsConfig->printConfig();
-    server.send(200, "application/json", theObsConfig->asJsonString());
-  });
-
-  server.on("/settings/restore", HTTP_POST, []() {
-    server.send(200, "text/plain", "Restore successful!");
-  }, []() {
-    //Serial.println("Recover Config...");
-    HTTPUpload& upload = server.upload();
-    if (upload.status == UPLOAD_FILE_START) {
-      Serial.printf("Recover: %s\n", upload.filename.c_str());
-      json_buffer = "";
-    } else if (upload.status == UPLOAD_FILE_WRITE) {
-      // Convert all uint8_t elements until currentSize to String
-      for(int i = 0; i<upload.currentSize; i++) {
-        json_buffer += (char) upload.buf[i];
-      }
-    } else if (upload.status == UPLOAD_FILE_END) {
-      theObsConfig->parseJson(json_buffer);
-      theObsConfig->fill(config); // OK here??
-      theObsConfig->printConfig();
-      log_d("Saving configuration...");
-      theObsConfig->saveConfig();
-    }
-  });
-
-  // ###############################################################
-  // ### Wifi ###
-  // ###############################################################
-
-  server.on("/settings/wifi/action", wifiAction);
-
-  server.on("/settings/wifi", HTTP_GET, []() {
-    String html = createPage(wifiSettingsIndex);
-    html = replaceDefault(html, "WiFi", "/settings/wifi/action");
-
-    // Form data
-    html.replace("{ssid}", theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID));
-    if(theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID).length() > 0) {
-      html.replace("{password}", "******");
-    } else {
-      html.replace("{password}", "");
-    }
-    server.send(200, "text/html", html);
-  });
-
-  // ###############################################################
-  // ### Development Options ###
-  // ###############################################################
-
-#ifdef DEVELOP
-  server.on("/settings/development/action", devAction);
-
-  server.on("/settings/development", HTTP_GET, []() {
-    String html = createPage(devIndex);
-    html = replaceDefault(html, "Development Setting", "/settings/development/action");
-
-    // SHOWGRID
-    bool showGrid = theObsConfig->getBitMaskProperty(
-      0, ObsConfig::PROPERTY_DEVELOPER, ShowGrid);
-    html.replace("{showGrid}", showGrid ? "checked" : "");
-
-    bool printWifiPassword = theObsConfig->getBitMaskProperty(
-      0, ObsConfig::PROPERTY_DEVELOPER, PrintWifiPassword);
-    html.replace("{printWifiPassword}", printWifiPassword ? "checked" : "");
-
-    server.send(200, "text/html", html);
-  });
-
-#endif
-
-  // ###############################################################
-  // ### Config ###
-  // ###############################################################
-
-  server.on("/settings/general/action", configAction);
-
-  server.on("/settings/general", HTTP_GET, []() {
-    String html = createPage(configIndex);
-    html = replaceDefault(html, "General", "/settings/general/action");
-
-    // Form data
-    const std::vector<int> offsets
-      = theObsConfig->getIntegersProperty(ObsConfig::PROPERTY_OFFSET);
-    html.replace("{offset1}", String(offsets[LEFT_SENSOR_ID]));
-    html.replace("{offset2}", String(offsets[RIGHT_SENSOR_ID]));
-    html.replace("{hostname}",
-                 theObsConfig->getProperty<String>(ObsConfig::PROPERTY_PORTAL_URL));
-    html.replace("{userId}",
-                theObsConfig->getProperty<String>(ObsConfig::PROPERTY_PORTAL_TOKEN));
-    html.replace("{confirmationTimeWindow}",
-                 String(theObsConfig->getProperty<String>(ObsConfig::PROPERTY_CONFIRMATION_TIME_SECONDS)));
-
-    const uint displayConfig = (uint) theObsConfig->getProperty<uint>(
-      ObsConfig::PROPERTY_DISPLAY_CONFIG);
-    bool displaySimple = displayConfig & DisplaySimple;
-    bool displayGPS = displayConfig & DisplaySatellites;
-    bool displayLeft = displayConfig & DisplayLeft;
-    bool displayRight = displayConfig & DisplayRight;
-    bool displayVelo = displayConfig & DisplayVelocity;
-    bool displaySwapSensors = displayConfig & DisplaySwapSensors;
-    bool displayInvert = displayConfig & DisplayInvert;
-    bool displayFlip = displayConfig & DisplayFlip;
-    bool displayNumConfirmed = displayConfig & DisplayNumConfirmed;
-    bool displayDistanceDetail = displayConfig & DisplayDistanceDetail;
-
-    html.replace("{displaySimple}", displaySimple ? "checked" : "");
-    html.replace("{displayGPS}", displayGPS ? "checked" : "");
-    html.replace("{displayVELO}", displayVelo ? "checked" : "");
-    html.replace("{displayLeft}", displayLeft ? "checked" : "");
-    html.replace("{displayRight}", displayRight ? "checked" : "");
-    html.replace("{displaySwapSensors}", displaySwapSensors ? "checked" : "");
-    html.replace("{displayInvert}", displayInvert ? "checked" : "");
-    html.replace("{displayFlip}", displayFlip ? "checked" : "");
-    html.replace("{displayNumConfirmed}", displayNumConfirmed ? "checked" : "");
-    html.replace("{displayDistanceDetail}", displayDistanceDetail ? "checked" : "");
-
-    html.replace("{bluetooth}",
-                 theObsConfig->getProperty<bool>(ObsConfig::PROPERTY_BLUETOOTH) ? "checked" : "");
-    html.replace("{simRaMode}",
-                 theObsConfig->getProperty<bool>(ObsConfig::PROPERTY_SIM_RA) ? "checked" : "");
-
-    int gpsFix = theObsConfig->getProperty<int>(ObsConfig::PROPERTY_GPS_FIX);
-    html.replace("{fixPos}", gpsFix == (int) Gps::WaitFor::FIX_POS || gpsFix > 0 ? "selected" : "");
-    html.replace("{fixTime}", gpsFix == (int) Gps::WaitFor::FIX_TIME ? "selected" : "");
-    html.replace("{fixNoWait}", gpsFix == (int) Gps::WaitFor::FIX_NO_WAIT ? "selected" : "");
-
-    const uint privacyConfig = (uint) theObsConfig->getProperty<int>(
-      ObsConfig::PROPERTY_PRIVACY_CONFIG);
-    const bool absolutePrivacy = privacyConfig & AbsolutePrivacy;
-    const bool noPosition = privacyConfig & NoPosition;
-    const bool noPrivacy = privacyConfig & NoPrivacy;
-    const bool overridePrivacy = privacyConfig & OverridePrivacy;
-
-    html.replace("{absolutePrivacy}", absolutePrivacy ? "checked" : "");
-    html.replace("{noPosition}", noPosition ? "checked" : "");
-    html.replace("{noPrivacy}", noPrivacy ? "checked" : "");
-    html.replace("{overridePrivacy}", overridePrivacy ? "checked" : "");
-
-    server.send(200, "text/html", html);
-  });
-
-  // ###############################################################
-  // ### Update Firmware ###
-  // ###############################################################
-
-  server.on("/update", HTTP_GET, []() {
-    String html = createPage(uploadIndex, xhrUpload);
-    html = replaceDefault(html, "Update Firmware");
-    html.replace("{method}", "/update");
-    html.replace("{accept}", ".bin");
-
-    server.send(200, "text/html", html);
-  });
-
-  // Handling uploading firmware file
-  server.on("/update", HTTP_POST, []() {
-    if (Update.hasError()) {
-      server.send(500, "text/plain",
-        "Update failed! Note: update from v0.2.x to v0.3 or newer needs to be done once with USB cable!");
-      displayTest->showTextOnGrid(0, 3, Update.errorString());
-      sensorManager->attachInterrupts();
-    } else {
-      server.send(200, "text/plain", "Update successful! Device reboots now!");
-      displayTest->showTextOnGrid(0, 3, "Success rebooting...");
-      delay(250);
-      ESP.restart();
-    }
-  }, []() {
-    sensorManager->detachInterrupts();
-    HTTPUpload &upload = server.upload();
-    Update.onProgress([](size_t pos, size_t all) {
-      displayTest->drawProgressBar(4, pos, all);
-    });
-    if (upload.status == UPLOAD_FILE_START) {
-      Serial.printf("Update: %s\n", upload.filename.c_str());
-      if (!Update.begin()) {
-        Update.printError(Serial);
-      }
-    } else if (upload.status == UPLOAD_FILE_WRITE) {
-      if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
-        Update.printError(Serial);
-      }
-    } else if (upload.status == UPLOAD_FILE_END) {
-      if (Update.end(true)) { //true to set the size to the current progress
-        Serial.printf("Update Success: %ul\nRebooting...\n", upload.totalSize);
-      } else {
-        Update.printError(Serial);
-      }
-    }
-  });
-
-  // ###############################################################
-  // ### Privacy ###
-  // ###############################################################
-
-  // Make current location private
-  server.on("/settings/privacy/makeCurrentLocationPrivate", HTTP_GET, []() {
-
-    String html = createPage(makeCurrentLocationPrivateIndex);
-    html = replaceDefault(html, "MakeLocationPrivate");
-
-    server.send(200, "text/html", html);
-
-    bool validGPSData = false;
-    buttonState = digitalRead(PushButton_PIN);
-    while (!validGPSData && (buttonState == LOW)) {
-      log_d("GPSData not valid");
-      buttonState = digitalRead(PushButton_PIN);
-      gps.handle();
-      validGPSData = gps.getCurrentGpsRecord().hasValidFix();
-      if (validGPSData) {
-        log_d("GPSData valid");
-        // FIXME: Not used?
-        Gps::newPrivacyArea(gps.getCurrentGpsRecord().getLatitude(),
-                            gps.getCurrentGpsRecord().getLongitude(), 500);
-      }
-      delay(300);
-    }
-
-    // #77 - 200 cannot be send twice via HTTP
-    //String s = "<meta http-equiv='refresh' content='0; url=/settings/privacy'><a href='/settings/privacy'>Go Back</a>";
-    //server.send(200, "text/html", s); //Send web page
-
-  });
-
-  server.on("/settings/privacy", HTTP_GET, []() {
-    String privacyPage;
-    for (int idx = 0; idx < theObsConfig->getNumberOfPrivacyAreas(0); ++idx) {
-      auto pa = theObsConfig->getPrivacyArea(0, idx);
-      privacyPage += "<h3>Privacy Area #" + String(idx + 1) + "</h3>";
-      privacyPage += "Latitude <input name=latitude" + String(idx)
-        + " placeholder='latitude' value='" + String(pa.latitude, 7) + "' disabled />";
-      privacyPage += "Longitude <input name='longitude" + String(idx)
-        + "' placeholder='longitude' value='" + String(pa.longitude, 7) + "' disabled />";
-      privacyPage += "Radius (m) <input name='radius" + String(idx)
-        + "' placeholder='radius' value='" + String(pa.radius) + "' disabled />";
-      privacyPage += "<a class='deletePrivacyArea' href='/privacy_delete?erase=" + String(idx) + "'>&#x2716;</a>";
-    }
-
-    privacyPage += "<h3>New Privacy Area  <a href='javascript:window.location.reload()'>&#8635;</a></h3>";
-    gps.handle();
-    bool validGPSData = gps.getCurrentGpsRecord().hasValidFix();
-    if (validGPSData) {
-      privacyPage += "Latitude<input name='newlatitude' value='" + gps.getCurrentGpsRecord().getLatString() + "' />";
-      privacyPage += "Longitude<input name='newlongitude' value='" + gps.getCurrentGpsRecord().getLongString() + "' />";
-    } else {
-      privacyPage += "Latitude<input name='newlatitude' placeholder='48.12345' />";
-      privacyPage += "Longitude<input name='newlongitude' placeholder='9.12345' />";
-    }
-    privacyPage += "Radius (m)<input name='newradius' placeholder='radius' value='500' />";
-
-    String html = createPage(privacyPage, privacyIndexPostfix);
-    html = replaceDefault(html, "Privacy Zones", "/privacy_action");
-    server.send(200, "text/html", html);
-  });
-
-  server.on("/privacy_delete", HTTP_GET, []() {
-
-    String erase = server.arg("erase");
-    if (erase != "") {
-      theObsConfig->removePrivacyArea(0, atoi(erase.c_str()));
-      theObsConfig->saveConfig();
-    }
-
-    String s = "<meta http-equiv='refresh' content='0; url=/settings/privacy'><a href='/settings/privacy'>Go Back</a>";
-    server.send(200, "text/html", s);
-  });
-
-  server.on("/about", aboutPage);
-
-  server.on("/privacy_action", privacyAction);
-
-  // ###############################################################
-  // SD card file systen access
-  // ###############################################################
-
-  server.on("/sd", []() {
-    String path = "/";
-    if (server.hasArg("path")) {
-      path = server.arg("path");
-    }
-
-    File file = SDFileSystem.open(path);
-
-    if (!file) {
-      server.send(404, "text/plain", "File not found.");
-      return;
-    }
-
-    if (file.isDirectory()) {
-      server.setContentLength(CONTENT_LENGTH_UNKNOWN);
-      server.send(200, "text/html");
-
-      String html = header;
-      html = replaceDefault(html, "SD Card Contents " + String(file.name()));
-      html += "<ul class=\"directory-listing\">";
-      server.sendContent(html);
-      html.clear();
-      displayTest->showTextOnGrid(0, 3, "Path:");
-      displayTest->showTextOnGrid(1, 3, path);
-
-      // Iterate over directories
-      File child = file.openNextFile();
-      uint16_t counter = 0;
-      while (child) {
-        displayTest->drawWaitBar(5, counter++);
-
-        String fileName = String(child.name());
-        fileName = fileName.substring(int (fileName.lastIndexOf("/") + 1));
-        bool isDirectory = child.isDirectory();
-        html +=
-          ("<li class=\""
-          + String(isDirectory ? "directory" : "file")
-          + "\"><a href=\"/sd?path="
-          + String(child.name())
-          + "\">"
-          + String(isDirectory ? "&#x1F4C1;" : "&#x1F4C4;")
-          + fileName
-          + String(isDirectory ? "/" : "")
-          + "</a></li>");
-
-        child.close();
-        child = file.openNextFile();
-
-        if (html.length() >= (HTTP_UPLOAD_BUFLEN - 80)) {
-          server.sendContent(html);
-          html.clear();
-        }
-      }
-      file.close();
-      html += "</ul>";
-      html += footer;
-      server.sendContent(html);
-      displayTest->clearProgressBar(5);
-      return;
-    }
-
-    String dataType;
-    if (path.endsWith(".htm")) {
-      dataType = "text/html";
-    } else if (path.endsWith(".css")) {
-      dataType = "text/css";
-    } else if (path.endsWith(".js")) {
-      dataType = "application/javascript";
-    } else if (path.endsWith(".png")) {
-      dataType = "image/png";
-    } else if (path.endsWith(".gif")) {
-      dataType = "image/gif";
-    } else if (path.endsWith(".jpg")) {
-      dataType = "image/jpeg";
-    } else if (path.endsWith(".ico")) {
-      dataType = "image/x-icon";
-    } else if (path.endsWith(".xml")) {
-      dataType = "text/xml";
-    } else if (path.endsWith(".pdf")) {
-      dataType = "application/pdf";
-    } else if (path.endsWith(".zip")) {
-      dataType = "application/zip";
-    } else if (path.endsWith(".csv")) {
-      dataType = "text/csv";
-    } else {
-      // arbitrary data
-      dataType = "application/octet-stream";
-    }
-
-    String fileName = String(file.name());
-    fileName = fileName.substring((int) (fileName.lastIndexOf("/") + 1));
-    server.sendHeader("Content-Disposition", String("attachment; filename=\"") + fileName + String("\""));
-    server.streamFile(file, dataType);
-    file.close();
-  });
-
-  // ###############################################################
-  // Default, send 404
-  // ###############################################################
-
-  server.onNotFound(handle_NotFound);
-
-  server.begin();
-  Serial.println("Server Ready");
-
-}
-
-/* Upload tracks found on SD card to the portal server.
+/* Upload tracks found on SD card to the portal server->
  * This method also takes care to give appropriate feedback
  * to the user about the progress. If httpRequest is true
  * a html response page is created. Also the progress can be
  * seen on the display if connected.
  */
-void uploadTracks(bool httpRequest) {
+void uploadTracks(HTTPResponse *res) {
   const String &portalToken
     = theObsConfig->getProperty<String>(ObsConfig::PROPERTY_PORTAL_TOKEN);
   Uploader uploader(
@@ -1145,8 +1145,9 @@ void uploadTracks(bool httpRequest) {
 
   String sdErrorMessage = ensureSdIsAvailable();
   if (sdErrorMessage != "") {
-    if (httpRequest) {
-      server.send(500, "text/plain", sdErrorMessage);
+    if (res) {
+      res->setStatusCode(500);
+      res->print(sdErrorMessage);
     }
     displayTest->showTextOnGrid(0, 3, "Error:");
     displayTest->showTextOnGrid(0, 4, sdErrorMessage);
@@ -1156,21 +1157,19 @@ void uploadTracks(bool httpRequest) {
   String html = replaceDefault(header, "Upload Tracks");
   html += "<h3>Uploading tracks...</h3>";
   html += "<div>";
-  if (httpRequest) {
-    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
-    server.send(200, "text/html");
-    server.sendContent(html);
+  if (res) {
+    sendHtml(res, html);
   }
   html.clear();
 
   if (portalToken.isEmpty()) {
-    if (httpRequest) {
+    if (res) {
       html += "</div><h3>API Key not set</h3/>";
       html += "See <a href='https://www.openbikesensor.org/benutzer-anleitung/konfiguration.html'>";
       html += "configuration</a>.</div>";
       html += "<input type=button onclick=\"window.location.href='/'\" class='btn' value='OK' />";
       html += footer;
-      server.sendContent(html);
+      res->print(html);
     }
     displayTest->showTextOnGrid(0, 3, "Error:");
     displayTest->showTextOnGrid(0, 4, "API Key not set");
@@ -1194,25 +1193,25 @@ void uploadTracks(bool httpRequest) {
 
       displayTest->showTextOnGrid(0, 4, friendlyFileName);
       displayTest->drawProgressBar(3, currentFileIndex, numberOfFiles);
-      if (httpRequest) {
-        server.sendContent(friendlyFileName);
+      if (res) {
+        res->print(friendlyFileName);
       }
       const boolean uploaded = uploader.upload(file.name());
       file.close();
       if (uploaded) {
         moveToUploaded(fileName);
         html += "<a href='" + ObsUtils::encodeForXmlAttribute(uploader.getLastLocation())
-          + "' title='" + ObsUtils::encodeForXmlAttribute(uploader.getLastStatusMessage())
-          + "' target='_blank'>" + HTML_ENTITY_OK_MARK  + "</a>";
+                + "' title='" + ObsUtils::encodeForXmlAttribute(uploader.getLastStatusMessage())
+                + "' target='_blank'>" + HTML_ENTITY_OK_MARK  + "</a>";
         okCount++;
       } else {
         html += "<a href='#' title='" + ObsUtils::encodeForXmlAttribute(uploader.getLastStatusMessage())
-          + "'>" + HTML_ENTITY_FAILED_CROSS + "</a>";
+                + "'>" + HTML_ENTITY_FAILED_CROSS + "</a>";
         failedCount++;
       }
-      if (httpRequest) {
+      if (res) {
         html += "<br />\n";
-        server.sendContent(html);
+        res->print(html);
       }
       html.clear();
       displayTest->clearProgressBar(5);
@@ -1230,17 +1229,17 @@ void uploadTracks(bool httpRequest) {
   displayTest->showTextOnGrid(1, 5, String(okCount));
   displayTest->showTextOnGrid(2, 5, "Failed:");
   displayTest->showTextOnGrid(3, 5, String(failedCount));
-  if (httpRequest) {
+  if (res) {
     html += "</div><h3>...all files done</h3/>";
     html += keyValue("OK", okCount);
     html += keyValue("Failed", failedCount);
     html += "<input type=button onclick=\"window.location.href='/'\" class='btn' value='OK' />";
     html += footer;
-    server.sendContent(html);
+    res->print(html);
   }
 }
 
-void moveToUploaded(const String &fileName) {
+static void moveToUploaded(const String &fileName) {
   int i = 0;
   while (!SDFileSystem.rename(
     fileName, String("/uploaded") + fileName + (i == 0 ? "" : String(i)))) {
@@ -1251,7 +1250,180 @@ void moveToUploaded(const String &fileName) {
   }
 }
 
-String ensureSdIsAvailable() {
+static void handleUpload(HTTPRequest *, HTTPResponse * res) {
+  uploadTracks(res);
+}
+
+static void handleMakeCurrentLocationPrivate(HTTPRequest *, HTTPResponse *res) {
+  String html = createPage(makeCurrentLocationPrivateIndex);
+  html = replaceDefault(html, "MakeLocationPrivate");
+  sendHtml(res, html);
+
+  bool validGPSData = false;
+  buttonState = digitalRead(PushButton_PIN);
+  while (!validGPSData && (buttonState == LOW)) {
+    log_d("GPSData not valid");
+    buttonState = digitalRead(PushButton_PIN);
+    gps.handle();
+    validGPSData = gps.getCurrentGpsRecord().hasValidFix();
+    if (validGPSData) {
+      log_d("GPSData valid");
+// FIXME: Not used?
+      Gps::newPrivacyArea(gps.getCurrentGpsRecord().getLatitude(),
+                          gps.getCurrentGpsRecord().getLongitude(), 500);
+    }
+    delay(300);
+  }
+
+// #77 - 200 cannot be send twice via HTTP
+//String s = "<meta http-equiv='refresh' content='0; url=/settings/privacy'><a href='/settings/privacy'>Go Back</a>";
+//server->send(200, "text/html", s); //Send web page
+
+}
+
+static void handlePrivacy(HTTPRequest *, HTTPResponse *res) {
+  String privacyPage;
+  for (int idx = 0; idx < theObsConfig->getNumberOfPrivacyAreas(0); ++idx) {
+    auto pa = theObsConfig->getPrivacyArea(0, idx);
+    privacyPage += "<h3>Privacy Area #" + String(idx + 1) + "</h3>";
+    privacyPage += "Latitude <input name=latitude" + String(idx)
+                   + " placeholder='latitude' value='" + String(pa.latitude, 7) + "' disabled />";
+    privacyPage += "Longitude <input name='longitude" + String(idx)
+                   + "' placeholder='longitude' value='" + String(pa.longitude, 7) + "' disabled />";
+    privacyPage += "Radius (m) <input name='radius" + String(idx)
+                   + "' placeholder='radius' value='" + String(pa.radius) + "' disabled />";
+    privacyPage += "<a class='deletePrivacyArea' href='/privacy_delete?erase=" + String(idx) + "'>&#x2716;</a>";
+  }
+
+  privacyPage += "<h3>New Privacy Area  <a href='javascript:window.location.reload()'>&#8635;</a></h3>";
+  gps.handle();
+  bool validGPSData = gps.getCurrentGpsRecord().hasValidFix();
+  if (validGPSData) {
+    privacyPage += "Latitude<input name='newlatitude' value='" + gps.getCurrentGpsRecord().getLatString() + "' />";
+    privacyPage += "Longitude<input name='newlongitude' value='" + gps.getCurrentGpsRecord().getLongString() + "' />";
+  } else {
+    privacyPage += "Latitude<input name='newlatitude' placeholder='48.12345' />";
+    privacyPage += "Longitude<input name='newlongitude' placeholder='9.12345' />";
+  }
+  privacyPage += "Radius (m)<input name='newradius' placeholder='radius' value='500' />";
+
+  String html = createPage(privacyPage, privacyIndexPostfix);
+  html = replaceDefault(html, "Privacy Zones", "/privacy_action");
+  sendHtml(res, html);
+}
+
+static void handlePrivacyDeleteAction(HTTPRequest *req, HTTPResponse *res) {
+  String erase = getParameter(req, "erase");
+  if (erase != "") {
+    theObsConfig->removePrivacyArea(0, atoi(erase.c_str()));
+    theObsConfig->saveConfig();
+  }
+  sendRedirect(res, "/settings/privacy");
+}
+
+static void handleSd(HTTPRequest *req, HTTPResponse *res) {
+  String path = getParameter(req, "path", "/");
+
+  File file = SDFileSystem.open(path);
+
+  if (!file) {
+    handleNotFound(req, res);
+    return;
+  }
+
+  if (file.isDirectory()) {
+    String html = header;
+    html = replaceDefault(html, "SD Card Contents " + String(file.name()));
+    html += "<ul class=\"directory-listing\">";
+    sendHtml(res, html);
+    html.clear();
+    displayTest->showTextOnGrid(0, 3, "Path:");
+    displayTest->showTextOnGrid(1, 3, path);
+
+// Iterate over directories
+    File child = file.openNextFile();
+    uint16_t counter = 0;
+    while (child) {
+      displayTest->drawWaitBar(5, counter++);
+
+      auto fileName = String(child.name());
+      fileName = fileName.substring(int(fileName.lastIndexOf("/") + 1));
+      bool isDirectory = child.isDirectory();
+      html +=
+        ("<li class=\""
+         + String(isDirectory ? "directory" : "file")
+         + "\"><a href=\"/sd?path="
+         + String(child.name())
+         + "\">"
+         + String(isDirectory ? "&#x1F4C1;" : "&#x1F4C4;")
+         + fileName
+         + String(isDirectory ? "/" : "")
+         + "</a></li>");
+
+      child.close();
+      child = file.openNextFile();
+
+      if (html.length() >= (HTTP_UPLOAD_BUFLEN - 80)) {
+        res->print(html);
+        html.clear();
+      }
+    }
+    file.close();
+    html += "</ul>";
+    html += footer;
+    res->print(html);
+    displayTest->clearProgressBar(5);
+    return;
+  }
+
+  String dataType;
+  if (path.endsWith(".htm")) {
+    dataType = "text/html";
+  } else if (path.endsWith(".css")) {
+    dataType = "text/css";
+  } else if (path.endsWith(".js")) {
+    dataType = "application/javascript";
+  } else if (path.endsWith(".png")) {
+    dataType = "image/png";
+  } else if (path.endsWith(".gif")) {
+    dataType = "image/gif";
+  } else if (path.endsWith(".jpg")) {
+    dataType = "image/jpeg";
+  } else if (path.endsWith(".ico")) {
+    dataType = "image/x-icon";
+  } else if (path.endsWith(".xml")) {
+    dataType = "text/xml";
+  } else if (path.endsWith(".pdf")) {
+    dataType = "application/pdf";
+  } else if (path.endsWith(".zip")) {
+    dataType = "application/zip";
+  } else if (path.endsWith(".csv")) {
+    dataType = "text/csv";
+  } else if (path.endsWith(".txt")) {
+    dataType = "text/plain";
+  }
+
+  auto fileName = String(file.name());
+  fileName = fileName.substring((int) (fileName.lastIndexOf("/") + 1));
+  res->setHeader("Content-Disposition", (String("attachment; filename=\"") + fileName + String("\"")).c_str());
+  if (dataType) {
+    res->setHeader("Content-Type", dataType.c_str());
+  }
+  res->setHeader("Content-Length", String((uint32_t) file.size()).c_str());
+
+  uint8_t buffer[HTTP_UPLOAD_BUFLEN];
+  size_t read;
+  while ((read = file.read(buffer, HTTP_UPLOAD_BUFLEN)) > 0) {
+    size_t written = res->write(buffer, read);
+    if (written != read) {
+      log_d("Broken http connection wanted to write %d, but only %d written, abort.", read, written);
+      break;
+    }
+  }
+  file.close();
+}
+
+static String ensureSdIsAvailable() {
   String result = "";
   File root = SDFileSystem.open("/");
   if (!root) {
@@ -1263,7 +1435,7 @@ String ensureSdIsAvailable() {
   return result;
 }
 
-uint16_t countFilesInRoot() {
+static uint16_t countFilesInRoot() {
   uint16_t numberOfFiles = 0;
   File root = SDFileSystem.open("/");
   File file = root.openNextFile("r");
@@ -1280,36 +1452,85 @@ uint16_t countFilesInRoot() {
   return numberOfFiles;
 }
 
+static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<void()> next) {
+  configServerWasConnectedViaHttpFlag = true;
 
-void tryWiFiConnect(const ObsConfig *obsConfig) {
-  if (!WiFiGenericClass::mode(WIFI_MODE_STA)) {
-    log_e("Failed to enable WiFi station mode.");
-  }
-  const char* hostname
-    = obsConfig->getProperty<const char *>(ObsConfig::PROPERTY_OBS_NAME);
-  if (!WiFi.setHostname(hostname)) {
-    log_e("Failed to set hostname to %s.", hostname);
+  log_w("Access Filter!");
+  log_w("HTTP password: %s", req->getBasicAuthPassword().c_str());
+
+  const String incomingPassword(req->getBasicAuthPassword().c_str());
+
+  String httpPin = theObsConfig->getProperty<String>(ObsConfig::PROPERTY_HTTP_PIN);
+
+  if (httpPin.length() < 1) {
+    // Generate a new random PIN
+    char defaultHttpPin[7];
+    snprintf(defaultHttpPin, 7, "%06u", esp_random() % 1000000);
+    httpPin = String(defaultHttpPin);
+
+    // Store the PIN so it does not change
+    theObsConfig->setProperty(0, ObsConfig::PROPERTY_HTTP_PIN, httpPin);
+    theObsConfig->saveConfig();
   }
 
-  const auto startTime = millis();
-  const uint16_t timeout = 10000;
-  // Connect to WiFi network
-  while ((WiFiClass::status() != WL_CONNECTED) && (( millis() - startTime) <= timeout)) {
-    log_d("Trying to connect to %s",
-      theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_SSID));
-    wl_status_t status = WiFi.begin(
-      theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_SSID),
-      theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_PASSWORD));
-    log_d("WiFi status after begin is %d", status);
-    status = static_cast<wl_status_t>(WiFi.waitForConnectResult());
-    log_d("WiFi status after wait is %d", status);
-    if (status >= WL_CONNECT_FAILED) {
-      log_d("WiFi resetting connection for retry.");
-      WiFi.disconnect(true, true);
-    } else if (status == WL_NO_SSID_AVAIL){
-      log_d("WiFi SSID not found - try rescan.");
-      WiFi.scanNetworks(false);
+  if (incomingPassword != httpPin) {
+    res->setStatusCode(401);
+    res->setStatusText("Unauthorized");
+    res->setHeader("Content-Type", "text/plain");
+    res->setHeader("WWW-Authenticate", std::string("Basic realm=\"") + OBS_ID_SHORT.c_str() + "\"");
+    res->println("401: See OBS display");
+
+    displayTest->clearProgressBar(5);
+    displayTest->cleanGridCell(0, 3);
+    displayTest->cleanGridCell(0, 4);
+    displayTest->cleanGridCell(1, 3);
+    displayTest->cleanGridCell(1, 4);
+    displayTest->showTextOnGrid(1,3, httpPin, MEDIUM_FONT);
+    // No call denies access to protected handler function.
+  } else {
+    displayTest->cleanGridCell(1, 3);
+    // Everything else will be allowed, so we call next()
+    next();
+  }
+}
+
+static void handleHttpsRedirect(HTTPRequest *req, HTTPResponse *res) {
+  String html = createPage(httpsRedirect);
+  html = replaceDefault(html, "Https Redirect");
+  String linkHost(req->getHTTPHeaders()->getValue("linkHost").c_str());
+  // this could be more hardened?
+  if (!linkHost || linkHost == "") {
+    linkHost = getIp();
+  }
+  html = replaceHtml(html, "{host}", linkHost);
+  sendHtml(res, html);
+}
+
+void configServerHandle() {
+  server->loop();
+  insecureServer->loop();
+}
+
+std::vector<std::pair<String,String>> extractParameters(HTTPRequest *req) {
+  log_e("Extracting parameters");
+  std::vector<std::pair<String,String>> parameters;
+//  if (String(req->getHeader("Content-Type").c_str()).startsWith("application/x-www-form-urlencoded")) {
+    HTTPURLEncodedBodyParser parser(req);
+    while(parser.nextField()) {
+      std::pair<String,String> data;
+      data.first = String(parser.getFieldName().c_str());
+      data.second = String();
+      while (!parser.endOfField()) {
+        char buf[513];
+        size_t readLength = parser.read((uint8_t *)buf, 512);
+        buf[readLength] = 0;
+        data.second += String(buf);
+      }
+      log_e("Http Parameter %s = %s", data.first.c_str(), data.second.c_str());
+      parameters.push_back(data);
     }
-    delay(250);
-  }
+//  } else {
+//    log_e("Unexpected content type: %s", req->getHeader("Content-Type").c_str());
+//  }
+  return parameters;
 }

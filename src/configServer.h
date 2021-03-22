@@ -29,9 +29,10 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
-#include <WebServer.h>
 #include <ESPmDNS.h>
 #include <Update.h>
+#include <HTTPSServer.hpp>
+#include <HTTPResponse.hpp>
 
 #include "config.h"
 #include "globals.h"
@@ -41,10 +42,9 @@
 //const byte DNS_PORT = 53;
 //DNSServer dnsServer;
 
-extern WebServer server;
 void startServer(ObsConfig *pConfig);
 bool configServerWasConnectedViaHttp();
-void uploadTracks(bool httpRequest = true);
-void createPrivacyPage();
+void uploadTracks(httpsserver::HTTPResponse *res = nullptr);
+void configServerHandle();
 
 #endif

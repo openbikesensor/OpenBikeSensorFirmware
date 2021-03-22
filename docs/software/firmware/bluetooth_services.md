@@ -7,6 +7,9 @@ grand_parent: Software
 
 # Overview
 
+Note: Bluetooth support is currently disabled because of flash size constraints in ESP32. Contributions as way around this are welcome. 
+
+
 | Service     | UUID                                   | Description                                                        |
 | ----------- | -------------------------------------- | ------------------------------------------------------------------ |
 | Device Info | `0000180A-0000-1000-8000-00805F9B34FB` | General information about the bluetooth device                     |
