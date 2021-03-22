@@ -140,6 +140,7 @@ class ObsConfig {
     static const String PROPERTY_PA_LAT_T;
     static const String PROPERTY_PA_LONG_T;
     static const String PROPERTY_PA_RADIUS;
+    static const String PROPERTY_HTTP_PIN;
 
   private:
     static bool loadJson(JsonDocument &jsonDocument, const String &filename);

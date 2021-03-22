@@ -43,8 +43,6 @@ static const char *const HTTP_POST = "POST";
 
 static const size_t HTTP_UPLOAD_BUFLEN = 1024; // TODO: refine
 
-static const String httpPassword = String(esp_random() % 999999);
-
 static ObsConfig *theObsConfig;
 static HTTPSServer * server;
 static HTTPServer * insecureServer;
@@ -1462,7 +1460,20 @@ static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<vo
 
   const String incomingPassword(req->getBasicAuthPassword().c_str());
 
-  if (incomingPassword != httpPassword) {
+  String httpPin = theObsConfig->getProperty<String>(ObsConfig::PROPERTY_HTTP_PIN);
+
+  if (httpPin.length() < 1) {
+    // Generate a new random PIN
+    char defaultHttpPin[7];
+    snprintf(defaultHttpPin, 7, "%06u", esp_random() % 1000000);
+    httpPin = String(defaultHttpPin);
+
+    // Store the PIN so it does not change
+    theObsConfig->setProperty(0, ObsConfig::PROPERTY_HTTP_PIN, httpPin);
+    theObsConfig->saveConfig();
+  }
+
+  if (incomingPassword != httpPin) {
     res->setStatusCode(401);
     res->setStatusText("Unauthorized");
     res->setHeader("Content-Type", "text/plain");
@@ -1474,7 +1485,7 @@ static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<vo
     displayTest->cleanGridCell(0, 4);
     displayTest->cleanGridCell(1, 3);
     displayTest->cleanGridCell(1, 4);
-    displayTest->showTextOnGrid(1,3, httpPassword, MEDIUM_FONT);
+    displayTest->showTextOnGrid(1,3, httpPin, MEDIUM_FONT);
     // No call denies access to protected handler function.
   } else {
     displayTest->cleanGridCell(1, 3);
