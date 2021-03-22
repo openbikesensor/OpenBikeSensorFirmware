@@ -53,6 +53,7 @@ const String ObsConfig::PROPERTY_PA_LONG = String("long");
 const String ObsConfig::PROPERTY_PA_LAT_T = String("latT");
 const String ObsConfig::PROPERTY_PA_LONG_T = String("longT");
 const String ObsConfig::PROPERTY_PA_RADIUS = String("radius");
+const String ObsConfig::PROPERTY_HTTP_PIN = String("httpPin");
 
 // Filenames 8.3 here!
 const String OLD_CONFIG_FILENAME = "/config.txt";
@@ -135,6 +136,7 @@ void ObsConfig::makeSureSystemDefaultsAreSet() {
     data[PROPERTY_WIFI_PASSWORD] = "Freifunk";
   }
   ensureSet(data, PROPERTY_PORTAL_URL, "https://openbikesensor.hlrs.de");
+  ensureSet(data, PROPERTY_HTTP_PIN, ""); // we choose and save a new default when we need it
 
   const String &token = getProperty<const char*>(PROPERTY_PORTAL_TOKEN);
   if (token && token.equals("5e8f2f43e7e3b3668ca13151")) {
