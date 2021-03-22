@@ -1465,7 +1465,7 @@ static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<vo
   if (httpPin.length() < 1) {
     // Generate a new random PIN
     char defaultHttpPin[7];
-    sprintf(defaultHttpPin, "%06d", esp_random() % 1000000);
+    snprintf(defaultHttpPin, 7, "%06d", esp_random() % 1000000);
     httpPin = String(defaultHttpPin);
 
     // Store the PIN so it does not change
