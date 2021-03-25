@@ -212,6 +212,7 @@ class SSD1306DisplayDevice : public DisplayDevice {
       m_display->setColor(BLACK);
       int x_offset = 8 - (x * 2);
       m_display->drawString(x * 32 + x_offset + offset_x_, y * 10 + 1 + offset_y_, gridText[x][y]);
+      gridText[x][y] = "";
       m_display->setColor(WHITE);
     }
 
