@@ -67,3 +67,25 @@ You can find the OpenBikeSensor documentation under:
    or [CLion](https://www.openbikesensor.org/software/firmware/setup.html#clion) (license required), 
    respectively [Arduino IDE](https://www.openbikesensor.org/software/firmware/setup.html#clion) (discouraged).
 4. Happy Coding! :tada: We are open for your pull request.
+
+
+## License
+
+    Copyright (C) 2020-2021 OpenBikeSensor Contributors
+    Contact: https://openbikesensor.org
+
+    This file is part of the OpenBikeSensor firmware.
+
+    The OpenBikeSensor firmware is free software: you can
+    redistribute it and/or modify it under the terms of the GNU Lesser General
+    Public License as published by the Free Software Foundation, either version
+    3 of the License, or (at your option) any later version.
+
+    The OpenBikeSensor Website and Documentation is distributed in the hope
+    that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+    warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with the OpenBikeSensor Website and Documentation. If not, see
+    <http://www.gnu.org/licenses/>.
