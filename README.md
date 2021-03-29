@@ -74,9 +74,9 @@ You can find the OpenBikeSensor documentation under:
     Copyright (C) 2020-2021 OpenBikeSensor Contributors
     Contact: https://openbikesensor.org
 
-    This file is part of the OpenBikeSensor sensor firmware.
+    This file is part of the OpenBikeSensor firmware.
 
-    The OpenBikeSensor sensor firmware is free software: you can
+    The OpenBikeSensor firmware is free software: you can
     redistribute it and/or modify it under the terms of the GNU Lesser General
     Public License as published by the Free Software Foundation, either version
     3 of the License, or (at your option) any later version.
