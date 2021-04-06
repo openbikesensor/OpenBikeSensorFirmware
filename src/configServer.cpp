@@ -32,6 +32,8 @@
 #include <https/cert.h>
 #include <https/private_key.h>
 #include <HTTPURLEncodedBodyParser.hpp>
+#include <esp_ota_ops.h>
+#include <esp_partition.h>
 #include "SPIFFS.h"
 #include "SSLCert.hpp"
 #include "HTTPMultipartBodyParser.hpp"
@@ -687,6 +689,27 @@ static String keyValue(const String& key, const uint64_t value, const String& su
   return keyValue(key, String((unsigned long) value), suffix);
 }
 
+static String appVersion(const esp_partition_t *partition) {
+  esp_app_desc_t app_desc;
+  esp_err_t ret = ESP_ERROR_CHECK_WITHOUT_ABORT(esp_ota_get_partition_description(partition, &app_desc));
+  if (ret == ESP_OK) {
+    char hash_print[17];
+    hash_print[16] = 0;
+    for (int i = 0; i < 8; ++i) {
+      sprintf(&hash_print[i * 2], "%02x", app_desc.app_elf_sha256[i]);
+    }
+
+    char buffer[256];
+    snprintf(buffer, sizeof(buffer),
+             "App '%s', Version: '%s', IDF-Version: '%s', sha-256: %s..., date: '%s', time: '%s'",
+             app_desc.project_name, app_desc.version, app_desc.idf_ver, hash_print, app_desc.date, app_desc.time);
+    return String(buffer);
+  } else {
+    return String("No app (") + String(esp_err_to_name(ret)) + String(")");
+  }
+}
+
+
 static void handleAbout(HTTPRequest *, HTTPResponse * res) {
   res->setHeader("Content-Type", "text/html");
   res->print(replaceDefault(header, "About"));
@@ -720,6 +743,20 @@ static void handleAbout(HTTPRequest *, HTTPResponse * res) {
 #ifdef CORE_DEBUG_LEVEL
   page += keyValue("Core debug level", String(CORE_DEBUG_LEVEL));
 #endif
+
+  const esp_partition_t *running = esp_ota_get_running_partition();
+  page += keyValue("Current Partition", running->label);
+
+  const esp_partition_t *ota0 = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_0,
+                                                         nullptr);
+  page += keyValue("OTA-0 Partition", ota0->label);
+  page += keyValue("OTA-0 Partition Size", ObsUtils::toScaledByteString(ota0->size));
+  page += keyValue("OTA-0 App", appVersion(ota0));
+  const esp_partition_t *ota1 = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_1,
+                                                         nullptr);
+  page += keyValue("OTA-1 Partition", ota1->label);
+  page += keyValue("OTA-1 Partition Size", ObsUtils::toScaledByteString(ota1->size));
+  page += keyValue("OTA-1 App", appVersion(ota1));
 
   res->print(page);
   page.clear();
