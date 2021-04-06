@@ -696,7 +696,7 @@ static String appVersion(const esp_partition_t *partition) {
     char hash_print[17];
     hash_print[16] = 0;
     for (int i = 0; i < 8; ++i) {
-      sprintf(&hash_print[i * 2], "%02x", app_desc.app_elf_sha256[i]);
+      snprintf(&hash_print[i * 2], 2, "%02x", app_desc.app_elf_sha256[i]);
     }
 
     char buffer[256];
