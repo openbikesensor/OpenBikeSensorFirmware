@@ -34,6 +34,7 @@ class ObsUtils {
     static String createTrackUuid();
     static String dateTimeToString(time_t time = 0);
     static String timeToString(time_t theTime =0);
+    static String sha256ToString(byte *sha256);
     /* Strips technical details like extension or '/' from the file name. */
     static String stripCsvFileName(const String &fileName);
     static String encodeForXmlAttribute(const String & text);

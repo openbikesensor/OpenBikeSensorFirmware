@@ -206,3 +206,12 @@ void ObsUtils::logHexDump(const uint8_t *buffer, uint16_t length) {
   log_e("%s", debug.c_str());
 }
 
+String ObsUtils::sha256ToString(byte *sha256) {
+  const int HASH_LEN = 32;
+  char hash_print[HASH_LEN * 2 + 1];
+  hash_print[HASH_LEN * 2] = 0;
+  for (int i = 0; i < HASH_LEN; ++i) {
+    sprintf(&hash_print[i * 2], "%02x", sha256[i]);
+  }
+  return String(hash_print);
+}
