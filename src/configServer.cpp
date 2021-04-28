@@ -1126,57 +1126,6 @@ static void handleConfig(HTTPRequest *, HTTPResponse * res) {
   sendHtml(res, html);
 };
 
-static void handleFirmwareUpdate(HTTPRequest *, HTTPResponse * res) {
-  String html = createPage(uploadIndex, xhrUpload);
-  html = replaceDefault(html, "Update Firmware (legacy)");
-  html = replaceHtml(html, "{method}", "/update");
-  html = replaceHtml(html, "{accept}", ".bin");
-  sendHtml(res, html);
-};
-
-static void handleFirmwareUpdateAction(HTTPRequest * req, HTTPResponse * res) {
-  HTTPMultipartBodyParser parser(req);
-  sensorManager->detachInterrupts();
-  Update.begin();
-  Update.onProgress([](size_t pos, size_t all) {
-    displayTest->drawProgressBar(4, pos, all);
-  });
-  while(parser.nextField()) {
-    if (parser.getFieldName() != "upload") {
-      log_i("Skipping form data %s type %s filename %s", parser.getFieldName().c_str(),
-            parser.getFieldMimeType().c_str(), parser.getFieldFilename().c_str());
-      continue;
-    }
-    log_i("Got form data %s type %s filename %s", parser.getFieldName().c_str(),
-          parser.getFieldMimeType().c_str(), parser.getFieldFilename().c_str());
-
-    while (!parser.endOfField()) {
-      byte buffer[256];
-      size_t len = parser.read(buffer, 256);
-      log_i("Read data %d", len);
-      if (Update.write(buffer, len) != len) {
-        Update.printError(Serial);
-      }
-    }
-    log_i("Done reading");
-    if (Update.end(true)) { //true to set the size to the current progress
-      sendHtml(res, "<h1>Update successful! Device reboots now!</h1>");
-      displayTest->showTextOnGrid(0, 3, "Success rebooting...");
-      delay(250);
-      ESP.restart();
-    } else {
-      String errorMsg = Update.errorString();
-      log_e("Update: %s", errorMsg.c_str());
-      displayTest->showTextOnGrid(0, 3, "Error");
-      displayTest->showTextOnGrid(0, 4, errorMsg);
-      res->setStatusCode(500);
-      res->setStatusText("Invalid data!");
-      res->print(errorMsg);
-    }
-  }
-  sensorManager->attachInterrupts();
-}
-
 #ifdef DEVELOP
 static void handleDevAction(HTTPRequest *req, HTTPResponse *res) {
   auto params = req->getParams();
