@@ -1126,7 +1126,6 @@ static void handleConfig(HTTPRequest *, HTTPResponse * res) {
   sendHtml(res, html);
 };
 
-<<<<<<< HEAD
 static void handleFirmwareUpdate(HTTPRequest *, HTTPResponse * res) {
   String html = createPage(uploadIndex, xhrUpload);
   html = replaceDefault(html, "Update Firmware (legacy)");
