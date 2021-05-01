@@ -193,15 +193,9 @@ static const String navigationIndex =
   "<input type=button onclick=\"window.location.href='/settings/wifi'\" class=btn value='Wifi'>"
   "<input type=button onclick=\"window.location.href='/settings/backup'\" class=btn value='Backup &amp; Restore'>"
   "<h3>Maintenance</h3>"
-<<<<<<< HEAD
   "<input type=button onclick=\"window.location.href='/updatesd'\" class=btn value='Update Firmware'>"
   "<input type=button onclick=\"window.location.href='/updateFlash'\" class=btn value='Update Flash App'>"
   "<input type=button onclick=\"window.location.href='/update'\" class=btn value='Update Firmware (legacy <v0.6)'>"
-=======
-  "<input type=button onclick=\"window.location.href='/updatesd'\" class=btn value='Update Firmware (>v0.5)'>"
-  "<input type=button onclick=\"window.location.href='/update'\" class=btn value='Update Firmware (legacy)'>"
-  "<input type=button onclick=\"window.location.href='/updateFlash'\" class=btn value='Update Flash Tool'>"
->>>>>>> Flash tool still work in progress!
   "<input type=button onclick=\"window.location.href='/sd'\" class=btn value='Show SD Card Contents'>"
   "<input type=button onclick=\"window.location.href='/about'\" class=btn value='About'>"
   "<input type=button onclick=\"window.location.href='/reboot'\" class=btn value='Reboot'>"
@@ -252,17 +246,10 @@ static const String backupIndex =
   "<h3>Restore</h3>";
 
 static const String updateFlashIndex =
-<<<<<<< HEAD
   "<p>Update Flash App</p>"
   "<h3>From Github (preferred)</h3>"
   "<input type='button' onclick=\"window.location.href='/updateFlashAction'\" class=btn value='Update' />"
   "<h3>File Upload</h3>";
-=======
-  "<p>Update Flash Tool</p>"
-  "<h3>From Github (preferred)</h3>"
-  "<input type='button' onclick=\"window.location.href='/updateFlashAction'\" class=btn value='Update' />"
-  "<h3>File Upload (expert only)</h3>";
->>>>>>> Flash tool still work in progress!
 
 static const String updateSdIndex = R""""(
 <p>{description}</p>
@@ -305,11 +292,7 @@ updateFirmwareList();
 </script>
 <input type='hidden' name='downloadUrl' id='downloadUrl' value=''/>
 <input type='submit' name='version' id='version' class=btn value='Update' />
-<<<<<<< HEAD
 <h3>File Upload</h3>
-=======
-<h3>File Upload (expert only)</h3>
->>>>>>> Flash tool still work in progress!
 )"""";
 
 
@@ -436,15 +419,8 @@ static String replacePlain(const String &body, const String &key, const String &
   return str;
 }
 
-<<<<<<< HEAD
 static String replaceHtml(const String &body, const String &key, const String &value) {
   return replacePlain(body, key, ObsUtils::encodeForXmlAttribute(value));
-=======
-static String replacePlain(String &body, const String &key, const String &value) {
-  String str(body);
-  str.replace(key, value);
-  return str;
->>>>>>> Flash tool still work in progress!
 }
 
 static std::vector<std::pair<String,String>> extractParameters(HTTPRequest *req);
@@ -1451,7 +1427,6 @@ static void handlePrivacyDeleteAction(HTTPRequest *req, HTTPResponse *res) {
 
 static void handleFlashUpdate(HTTPRequest *, HTTPResponse * res) {
   String html = createPage(updateSdIndex, xhrUpload);
-<<<<<<< HEAD
   html = replaceDefault(html, "Update Flash App", "/updateFlashUrl");
   String flashAppVersion = Firmware::getFlashAppVersion();
   if (!flashAppVersion.isEmpty()) {
@@ -1461,10 +1436,6 @@ static void handleFlashUpdate(HTTPRequest *, HTTPResponse * res) {
     html = replacePlain(html, "{description}",
                         "Flash App not installed.");
   }
-=======
-  html = replaceDefault(html, "Update Flash", "/updateFlashUrl");
-  html = replaceHtml(html, "{description}", "Update Flash Tool");
->>>>>>> Flash tool still work in progress!
   html = replaceHtml(html, "{method}", "/updateFlash");
   html = replaceHtml(html, "{accept}", ".bin");
   html = replaceHtml(html, "{releaseApiUrl}",
@@ -1479,11 +1450,7 @@ void updateProgress(size_t pos, size_t all) {
 static void handleFlashUpdateUrlAction(HTTPRequest * req, HTTPResponse * res) {
   const auto params = extractParameters(req);
   const auto url = getParameter(params, "downloadUrl");
-<<<<<<< HEAD
   log_i("Flash App Url is '%s'", url.c_str());
-=======
-  log_i("Flash Tool Url is '%s'", url.c_str());
->>>>>>> Flash tool still work in progress!
 
   Firmware f(String("OBS/") + String(OBSVersion));
   sensorManager->detachInterrupts();
@@ -1498,24 +1465,15 @@ static void handleFlashUpdateUrlAction(HTTPRequest * req, HTTPResponse * res) {
   sensorManager->attachInterrupts();
 }
 
-<<<<<<< HEAD
 static void handleFlashFileUpdateAction(HTTPRequest *req, HTTPResponse *res) {
   // TODO: Add some assertions, cleanup with handleFlashUpdateUrlAction
-=======
-static void handleFlashFileUpdateAction(HTTPRequest * req, HTTPResponse * res) {
-  // TODO: Add some assertions!!
->>>>>>> Flash tool still work in progress!
   HTTPMultipartBodyParser parser(req);
   sensorManager->detachInterrupts();
   Update.begin();
   Update.onProgress([](size_t pos, size_t all) {
     displayTest->drawProgressBar(4, pos, all);
   });
-<<<<<<< HEAD
   while (parser.nextField()) {
-=======
-  while(parser.nextField()) {
->>>>>>> Flash tool still work in progress!
     if (parser.getFieldName() != "upload") {
       log_i("Skipping form data %s type %s filename %s", parser.getFieldName().c_str(),
             parser.getFieldMimeType().c_str(), parser.getFieldFilename().c_str());
@@ -1527,42 +1485,24 @@ static void handleFlashFileUpdateAction(HTTPRequest * req, HTTPResponse * res) {
     while (!parser.endOfField()) {
       byte buffer[256];
       size_t len = parser.read(buffer, 256);
-<<<<<<< HEAD
-=======
-      log_d("Read data %d", len);
->>>>>>> Flash tool still work in progress!
       if (Update.write(buffer, len) != len) {
         Update.printError(Serial);
       }
     }
     log_i("Done reading");
-<<<<<<< HEAD
     if (Update.end(true)) {
       sendHtml(res, "Flash App update successful!");
       displayTest->showTextOnGrid(0, 3, "Success...");
       const esp_partition_t *running = esp_ota_get_running_partition();
       esp_ota_set_boot_partition(running);
-=======
-    if (Update.end(true)) { //true to set the size to the current progress
-      sendHtml(res, "Flash Tool update successful!");
-      displayTest->showTextOnGrid(0, 3, "Success...");
-      // TODO... redirect to Firmware Download?
-      // FIXME: We need to suppress a Firmware switch here!
->>>>>>> Flash tool still work in progress!
     } else {
       String errorMsg = Update.errorString();
       log_e("Update: %s", errorMsg.c_str());
       displayTest->showTextOnGrid(0, 3, "Error");
       displayTest->showTextOnGrid(0, 4, errorMsg);
-<<<<<<< HEAD
       res->setStatusCode(500);
       res->setStatusText("Invalid data!");
       res->print(errorMsg);
-=======
-      res->setStatusCode(400);
-      res->setStatusText("Invalid data!");
-      res->print("ERROR");
->>>>>>> Flash tool still work in progress!
     }
   }
   sensorManager->attachInterrupts();
