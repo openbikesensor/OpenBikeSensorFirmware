@@ -1427,8 +1427,15 @@ static void handlePrivacyDeleteAction(HTTPRequest *req, HTTPResponse *res) {
 
 static void handleFlashUpdate(HTTPRequest *, HTTPResponse * res) {
   String html = createPage(updateSdIndex, xhrUpload);
-  html = replaceDefault(html, "Update Flash", "/updateFlashUrl");
-  html = replaceHtml(html, "{description}", "Update Flash App");
+  html = replaceDefault(html, "Update Flash App", "/updateFlashUrl");
+  String flashAppVersion = Firmware::getFlashAppVersion();
+  if (!flashAppVersion.isEmpty()) {
+    html = replaceHtml(html, "{description}",
+                       "Installed Flash App version is " + flashAppVersion + ".");
+  } else {
+    html = replacePlain(html, "{description}",
+                        "Flash App not installed.");
+  }
   html = replaceHtml(html, "{method}", "/updateFlash");
   html = replaceHtml(html, "{accept}", ".bin");
   html = replaceHtml(html, "{releaseApiUrl}",
@@ -1726,7 +1733,7 @@ static void handleFirmwareUpdateSd(HTTPRequest *, HTTPResponse * res) {
                        "Update Firmware, device reboots after download. Flash App " + flashAppVersion + ".");
   } else {
     html = replacePlain(html, "{description}",
-                       "<a href='/updateFlash'>Install Flash App 1st!</a>.");
+                       "<a href='/updateFlash'>Install Flash App 1st!</a>");
   }
   html = replaceHtml(html, "{method}", "/updatesd");
   html = replaceHtml(html, "{accept}", ".bin");

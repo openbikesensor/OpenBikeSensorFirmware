@@ -46,6 +46,23 @@ the resource limitations.
 
 ## Updating
 
+### Step By Step
+
+1. Go to "Update Flash App" and push "Update to vX.Y.ZZZ". Wait 
+   a moment, the data is directly downloaded for GitHub to the OBS.
+   The latest version of the "Flash App" gets then installed, and you are 
+   redirected to the "Update firmware" page - which looks similar.
+   This is a one time action, can be omitted is already done and 
+   there is no new version. you can start with 2. then.
+   
+1. Go to "Update Firmware" and push "Update to vX.Y.ZZZ". The
+   version is downloaded directly to your OBS device from GitHub.
+   After the Download the device reboots and does some housekeeping
+   so be patient within one or two minutes the device boots up
+   with the new version.
+
+### Details
+
 The update mechanism consists of 2 parts. A small firmware called Flash App
 is used to read the new firmware from the SD card and flash it to the obs.
 
