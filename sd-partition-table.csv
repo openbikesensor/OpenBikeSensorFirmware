@@ -1,0 +1,8 @@
+# Using https://github.com/espressif/arduino-esp32/blob/master/tools/partitions/min_spiffs.csv
+# but with minimum ota_1 part size to get larger ota_0
+# Name,   Type, SubType, Offset,  Size, Flags
+nvs,      data, nvs,     0x009000, 0x005000,
+otadata,  data, ota,     0x00e000, 0x002000,
+app,      app,  ota_0,   0x010000, 0x380000,
+flashApp, app,  ota_1,   0x390000, 0x040000,
+spiffs,   data, spiffs,  0x3D0000, 0x030000,

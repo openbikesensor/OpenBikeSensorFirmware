@@ -195,7 +195,6 @@ static const String navigationIndex =
   "<h3>Maintenance</h3>"
   "<input type=button onclick=\"window.location.href='/updatesd'\" class=btn value='Update Firmware'>"
   "<input type=button onclick=\"window.location.href='/updateFlash'\" class=btn value='Update Flash App'>"
-  "<input type=button onclick=\"window.location.href='/update'\" class=btn value='Update Firmware (legacy <v0.6)'>"
   "<input type=button onclick=\"window.location.href='/sd'\" class=btn value='Show SD Card Contents'>"
   "<input type=button onclick=\"window.location.href='/about'\" class=btn value='About'>"
   "<input type=button onclick=\"window.location.href='/reboot'\" class=btn value='Reboot'>"
@@ -254,7 +253,7 @@ static const String updateFlashIndex =
 static const String updateSdIndex = R""""(
 <p>{description}</p>
 <h3>From Github (preferred)</h3>
-Pre-releases<br><input type='checkbox' id='preReleases' onchange='selectFirmware()'>
+List also pre-releases<br><input type='checkbox' id='preReleases' onchange='selectFirmware()'>
 <script>
 let availableReleases;
 async function updateFirmwareList() {
@@ -264,7 +263,7 @@ async function updateFirmwareList() {
     })
 }
 function selectFirmware() {
-   const displayPreReleases = document.getElementById('preReleases').value == "on";
+   const displayPreReleases = (document.getElementById('preReleases').checked == true);
    url = "";
    version = "";
    availableReleases.filter(r => displayPreReleases || !r.prerelease).forEach(release => {
@@ -368,9 +367,6 @@ static const String configIndex =
   "<input name='obsUserID' placeholder='API ID' value='{userId}' >"
   "<h3>Operation</h3>"
   "Enable Bluetooth <input type='checkbox' name='bluetooth' {bluetooth}>"
-#ifndef OBS_BLUETOOTH
-  "<small>Bluetooth is not enabled in this firmware, setting will have no effect.</small>"
-#endif
   "<hr>"
   "SimRa Mode <input type='checkbox' name='simRaMode' {simRaMode}>"
   "<input type=submit class=btn value=Save>";
@@ -436,8 +432,6 @@ static void handleWifi(HTTPRequest * req, HTTPResponse * res);
 static void handleWifiSave(HTTPRequest * req, HTTPResponse * res);
 static void handleConfig(HTTPRequest * req, HTTPResponse * res);
 static void handleConfigSave(HTTPRequest * req, HTTPResponse * res);
-static void handleFirmwareUpdate(HTTPRequest * req, HTTPResponse * res);
-static void handleFirmwareUpdateAction(HTTPRequest * req, HTTPResponse * res);
 static void handleFirmwareUpdateSd(HTTPRequest * req, HTTPResponse * res);
 static void handleFirmwareUpdateSdAction(HTTPRequest * req, HTTPResponse * res);
 static void handleFirmwareUpdateSdUrlAction(HTTPRequest * req, HTTPResponse * res);
@@ -478,8 +472,6 @@ void beginPages() {
   server->registerNode(new ResourceNode("/settings/wifi/action", HTTP_POST, handleWifiSave));
   server->registerNode(new ResourceNode("/settings/general", HTTP_GET,  handleConfig));
   server->registerNode(new ResourceNode("/settings/general/action", HTTP_POST, handleConfigSave));
-  server->registerNode(new ResourceNode("/update", HTTP_GET, handleFirmwareUpdate));
-  server->registerNode(new ResourceNode("/update", HTTP_POST, handleFirmwareUpdateAction));
   server->registerNode(new ResourceNode("/updateFlash", HTTP_GET, handleFlashUpdate));
   server->registerNode(new ResourceNode("/updateFlash", HTTP_POST, handleFlashFileUpdateAction));
   server->registerNode(new ResourceNode("/updateFlashUrl", HTTP_POST, handleFlashUpdateUrlAction));
@@ -1134,6 +1126,7 @@ static void handleConfig(HTTPRequest *, HTTPResponse * res) {
   sendHtml(res, html);
 };
 
+<<<<<<< HEAD
 static void handleFirmwareUpdate(HTTPRequest *, HTTPResponse * res) {
   String html = createPage(uploadIndex, xhrUpload);
   html = replaceDefault(html, "Update Firmware (legacy)");
@@ -1730,7 +1723,8 @@ static void handleFirmwareUpdateSd(HTTPRequest *, HTTPResponse * res) {
   String flashAppVersion = Firmware::getFlashAppVersion();
   if (!flashAppVersion.isEmpty()) {
     html = replaceHtml(html, "{description}",
-                       "Update Firmware, device reboots after upload. Flash App " + flashAppVersion + ".");
+                       "Update Firmware, device reboots after download. "
+                       "Current Flash App version is " + flashAppVersion + ".");
   } else {
     html = replacePlain(html, "{description}",
                        "<a href='/updateFlash'>Install Flash App 1st!</a>");
