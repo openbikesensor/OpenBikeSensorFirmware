@@ -29,7 +29,7 @@
 #include <esp_ota_ops.h>
 
 /* TODO: Introduce cert management. */
-const char *GITHUB_ROOT_CA =
+const char * const GITHUB_ROOT_CA =
   "-----BEGIN CERTIFICATE-----\n"
   "MIIDxTCCAq2gAwIBAgIQAqxcJmoLQJuPC3nyrkYldzANBgkqhkiG9w0BAQUFADBs\n"
   "MQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3\n"
