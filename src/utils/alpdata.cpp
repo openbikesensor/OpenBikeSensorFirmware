@@ -36,9 +36,13 @@ void AlpData::update(SSD1306DisplayDevice *display) {
   if (!f || f.size() < ALP_DATA_MIN_FILE_SIZE ) {
     lastModified = "";
   } else if (f.getLastWrite() > ObsUtils::PAST_TIME &&
-      f.getLastWrite() < (time(nullptr) + 2 * 24  * 60 * 60)) {
+    (f.getLastWrite() + 4 * 24  * 60 * 60) > time(nullptr)) {
     log_d("File still current %s",
           ObsUtils::dateTimeToString(f.getLastWrite()).c_str());
+    log_d("Now: %s",
+          ObsUtils::dateTimeToString(time(nullptr)).c_str());
+    log_d("Next Update: %s",
+          ObsUtils::dateTimeToString(f.getLastWrite() + 4 * 24  * 60 * 60).c_str());
     f.close();
     return;
   }
