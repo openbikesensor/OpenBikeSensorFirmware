@@ -37,6 +37,7 @@
 #include "SPIFFS.h"
 #include "SSLCert.hpp"
 #include "HTTPMultipartBodyParser.hpp"
+#include "Firmware.h"
 
 using namespace httpsserver;
 
@@ -192,7 +193,9 @@ static const String navigationIndex =
   "<input type=button onclick=\"window.location.href='/settings/wifi'\" class=btn value='Wifi'>"
   "<input type=button onclick=\"window.location.href='/settings/backup'\" class=btn value='Backup &amp; Restore'>"
   "<h3>Maintenance</h3>"
-  "<input type=button onclick=\"window.location.href='/update'\" class=btn value='Update Firmware'>"
+  "<input type=button onclick=\"window.location.href='/updatesd'\" class=btn value='Update Firmware'>"
+  "<input type=button onclick=\"window.location.href='/updateFlash'\" class=btn value='Update Flash App'>"
+  "<input type=button onclick=\"window.location.href='/update'\" class=btn value='Update Firmware (legacy <v0.6)'>"
   "<input type=button onclick=\"window.location.href='/sd'\" class=btn value='Show SD Card Contents'>"
   "<input type=button onclick=\"window.location.href='/about'\" class=btn value='About'>"
   "<input type=button onclick=\"window.location.href='/reboot'\" class=btn value='Reboot'>"
@@ -236,15 +239,63 @@ static const String wifiSettingsIndex =
   "<input id=pass name=pass placeholder='password' type='Password' value='{password}' onclick='resetPassword()'>"
   "<input type=submit class=btn value=Save>";
 
-// #########################################
-// Backup and Restore
-// #########################################
-
 static const String backupIndex =
   "<p>This backups and restores the device configuration incl. the Basic Config, Privacy Zones and Wifi Settings.</p>"
   "<h3>Backup</h3>"
   "<input type='button' onclick=\"window.location.href='/settings/backup.json'\" class=btn value='Download' />"
   "<h3>Restore</h3>";
+
+static const String updateFlashIndex =
+  "<p>Update Flash App</p>"
+  "<h3>From Github (preferred)</h3>"
+  "<input type='button' onclick=\"window.location.href='/updateFlashAction'\" class=btn value='Update' />"
+  "<h3>File Upload</h3>";
+
+static const String updateSdIndex = R""""(
+<p>{description}</p>
+<h3>From Github (preferred)</h3>
+Pre-releases<br><input type='checkbox' id='preReleases' onchange='selectFirmware()'>
+<script>
+let availableReleases;
+async function updateFirmwareList() {
+    (await fetch('{releaseApiUrl}')).json().then(res => {
+        availableReleases = res;
+        selectFirmware();
+    })
+}
+function selectFirmware() {
+   const displayPreReleases = document.getElementById('preReleases').value == "on";
+   url = "";
+   version = "";
+   availableReleases.filter(r => displayPreReleases || !r.prerelease).forEach(release => {
+           release.assets.filter(asset => asset.name.endsWith(".bin")).forEach(
+                asset => {
+                  if (!url) {
+                   version = release.name;
+                   url = asset.browser_download_url;
+                  }
+               }
+           )
+        }
+   )
+   if (url) {
+     document.getElementById('version').value = "Update to " + version;
+     document.getElementById('version').disabled = false;
+     document.getElementById('downloadUrl').value = url;
+   } else {
+     document.getElementById('version').value = "No version found";
+     document.getElementById('version').disabled = true;
+     document.getElementById('downloadUrl').value = "";
+   }
+}
+updateFirmwareList();
+</script>
+<input type='hidden' name='downloadUrl' id='downloadUrl' value=''/>
+<input type='submit' name='version' id='version' class=btn value='Update' />
+<h3>File Upload</h3>
+)"""";
+
+
 
 // #########################################
 // Development Index
@@ -362,10 +413,14 @@ static String getParameter(HTTPRequest *req, const String& name, const String&  
   return def;
 }
 
-static String replaceHtml(String &body, const String &key, const String &value) {
+static String replacePlain(const String &body, const String &key, const String &value) {
   String str(body);
-  str.replace(key, ObsUtils::encodeForXmlAttribute(value));
+  str.replace(key, value);
   return str;
+}
+
+static String replaceHtml(const String &body, const String &key, const String &value) {
+  return replacePlain(body, key, ObsUtils::encodeForXmlAttribute(value));
 }
 
 static std::vector<std::pair<String,String>> extractParameters(HTTPRequest *req);
@@ -383,6 +438,12 @@ static void handleConfig(HTTPRequest * req, HTTPResponse * res);
 static void handleConfigSave(HTTPRequest * req, HTTPResponse * res);
 static void handleFirmwareUpdate(HTTPRequest * req, HTTPResponse * res);
 static void handleFirmwareUpdateAction(HTTPRequest * req, HTTPResponse * res);
+static void handleFirmwareUpdateSd(HTTPRequest * req, HTTPResponse * res);
+static void handleFirmwareUpdateSdAction(HTTPRequest * req, HTTPResponse * res);
+static void handleFirmwareUpdateSdUrlAction(HTTPRequest * req, HTTPResponse * res);
+static void handleFlashUpdate(HTTPRequest * req, HTTPResponse * res);
+static void handleFlashFileUpdateAction(HTTPRequest * req, HTTPResponse * res);
+static void handleFlashUpdateUrlAction(HTTPRequest * req, HTTPResponse * res);
 #ifdef DEVELOP
 static void handleDev(HTTPRequest * req, HTTPResponse * res);
 static void handleDevAction(HTTPRequest * req, HTTPResponse * res);
@@ -419,6 +480,12 @@ void beginPages() {
   server->registerNode(new ResourceNode("/settings/general/action", HTTP_POST, handleConfigSave));
   server->registerNode(new ResourceNode("/update", HTTP_GET, handleFirmwareUpdate));
   server->registerNode(new ResourceNode("/update", HTTP_POST, handleFirmwareUpdateAction));
+  server->registerNode(new ResourceNode("/updateFlash", HTTP_GET, handleFlashUpdate));
+  server->registerNode(new ResourceNode("/updateFlash", HTTP_POST, handleFlashFileUpdateAction));
+  server->registerNode(new ResourceNode("/updateFlashUrl", HTTP_POST, handleFlashUpdateUrlAction));
+  server->registerNode(new ResourceNode("/updatesd", HTTP_GET, handleFirmwareUpdateSd));
+  server->registerNode(new ResourceNode("/updatesd", HTTP_POST, handleFirmwareUpdateSdAction));
+  server->registerNode(new ResourceNode("/updateSdUrl", HTTP_POST, handleFirmwareUpdateSdUrlAction));
 #ifdef DEVELOP
   server->registerNode(new ResourceNode("/settings/development/action", HTTP_GET, handleDevAction));
   server->registerNode(new ResourceNode("/settings/development", HTTP_GET, handleDev));
@@ -693,16 +760,12 @@ static String appVersion(const esp_partition_t *partition) {
   esp_app_desc_t app_desc;
   esp_err_t ret = ESP_ERROR_CHECK_WITHOUT_ABORT(esp_ota_get_partition_description(partition, &app_desc));
   if (ret == ESP_OK) {
-    char hash_print[17];
-    hash_print[16] = 0;
-    for (int i = 0; i < 8; ++i) {
-      snprintf(&hash_print[i * 2], 2, "%02x", app_desc.app_elf_sha256[i]);
-    }
-
     char buffer[256];
     snprintf(buffer, sizeof(buffer),
-             "App '%s', Version: '%s', IDF-Version: '%s', sha-256: %s..., date: '%s', time: '%s'",
-             app_desc.project_name, app_desc.version, app_desc.idf_ver, hash_print, app_desc.date, app_desc.time);
+             "App '%s', Version: '%s', IDF-Version: '%s', sha-256: %s, date: '%s', time: '%s'",
+             app_desc.project_name, app_desc.version, app_desc.idf_ver,
+             ObsUtils::sha256ToString(app_desc.app_elf_sha256).c_str(),
+             app_desc.date, app_desc.time);
     return String(buffer);
   } else {
     return String("No app (") + String(esp_err_to_name(ret)) + String(")");
@@ -723,6 +786,7 @@ static void handleAbout(HTTPRequest *, HTTPResponse * res) {
   String chipId = String((uint32_t) ESP.getEfuseMac(), HEX) + String((uint32_t) (ESP.getEfuseMac() >> 32), HEX);
   chipId.toUpperCase();
   page += keyValue("Chip id", chipId);
+  page += keyValue("FlashApp Version", Firmware::getFlashAppVersion());
   page += keyValue("IDF Version", esp_get_idf_version());
 
   res->print(page);
@@ -907,7 +971,7 @@ static void handleBackupRestore(HTTPRequest * req, HTTPResponse * res) {
       res->print("OK");
     } else {
       res->setHeader("Content-Type", "text/plain");
-      res->setStatusCode(400);
+      res->setStatusCode(500);
       res->setStatusText("Invalid data!");
       res->print("ERROR");
     }
@@ -1072,7 +1136,7 @@ static void handleConfig(HTTPRequest *, HTTPResponse * res) {
 
 static void handleFirmwareUpdate(HTTPRequest *, HTTPResponse * res) {
   String html = createPage(uploadIndex, xhrUpload);
-  html = replaceDefault(html, "Update Firmware");
+  html = replaceDefault(html, "Update Firmware (legacy)");
   html = replaceHtml(html, "{method}", "/update");
   html = replaceHtml(html, "{accept}", ".bin");
   sendHtml(res, html);
@@ -1095,8 +1159,8 @@ static void handleFirmwareUpdateAction(HTTPRequest * req, HTTPResponse * res) {
           parser.getFieldMimeType().c_str(), parser.getFieldFilename().c_str());
 
     while (!parser.endOfField()) {
-      byte buffer[512];
-      size_t len = parser.read(buffer, 512);
+      byte buffer[256];
+      size_t len = parser.read(buffer, 256);
       log_i("Read data %d", len);
       if (Update.write(buffer, len) != len) {
         Update.printError(Serial);
@@ -1113,9 +1177,9 @@ static void handleFirmwareUpdateAction(HTTPRequest * req, HTTPResponse * res) {
       log_e("Update: %s", errorMsg.c_str());
       displayTest->showTextOnGrid(0, 3, "Error");
       displayTest->showTextOnGrid(0, 4, errorMsg);
-      res->setStatusCode(400);
+      res->setStatusCode(500);
       res->setStatusText("Invalid data!");
-      res->print("ERROR");
+      res->print(errorMsg);
     }
   }
   sensorManager->attachInterrupts();
@@ -1361,6 +1425,89 @@ static void handlePrivacyDeleteAction(HTTPRequest *req, HTTPResponse *res) {
   sendRedirect(res, "/settings/privacy");
 }
 
+static void handleFlashUpdate(HTTPRequest *, HTTPResponse * res) {
+  String html = createPage(updateSdIndex, xhrUpload);
+  html = replaceDefault(html, "Update Flash App", "/updateFlashUrl");
+  String flashAppVersion = Firmware::getFlashAppVersion();
+  if (!flashAppVersion.isEmpty()) {
+    html = replaceHtml(html, "{description}",
+                       "Installed Flash App version is " + flashAppVersion + ".");
+  } else {
+    html = replacePlain(html, "{description}",
+                        "Flash App not installed.");
+  }
+  html = replaceHtml(html, "{method}", "/updateFlash");
+  html = replaceHtml(html, "{accept}", ".bin");
+  html = replaceHtml(html, "{releaseApiUrl}",
+                     "https://api.github.com/repos/openbikesensor/OpenBikeSensorFlash/releases");
+  sendHtml(res, html);
+};
+
+void updateProgress(size_t pos, size_t all) {
+  displayTest->drawProgressBar(4, pos, all);
+}
+
+static void handleFlashUpdateUrlAction(HTTPRequest * req, HTTPResponse * res) {
+  const auto params = extractParameters(req);
+  const auto url = getParameter(params, "downloadUrl");
+  log_i("Flash App Url is '%s'", url.c_str());
+
+  Firmware f(String("OBS/") + String(OBSVersion));
+  sensorManager->detachInterrupts();
+  if (f.downloadToFlash(url, updateProgress)) {
+    displayTest->showTextOnGrid(0, 3, "Success!");
+    sendRedirect(res, "/updatesd");
+  } else {
+    displayTest->showTextOnGrid(0, 3, "Error");
+    displayTest->showTextOnGrid(0, 4, f.getLastMessage());
+    sendRedirect(res, "/about");
+  }
+  sensorManager->attachInterrupts();
+}
+
+static void handleFlashFileUpdateAction(HTTPRequest *req, HTTPResponse *res) {
+  // TODO: Add some assertions, cleanup with handleFlashUpdateUrlAction
+  HTTPMultipartBodyParser parser(req);
+  sensorManager->detachInterrupts();
+  Update.begin();
+  Update.onProgress([](size_t pos, size_t all) {
+    displayTest->drawProgressBar(4, pos, all);
+  });
+  while (parser.nextField()) {
+    if (parser.getFieldName() != "upload") {
+      log_i("Skipping form data %s type %s filename %s", parser.getFieldName().c_str(),
+            parser.getFieldMimeType().c_str(), parser.getFieldFilename().c_str());
+      continue;
+    }
+    log_i("Got form data %s type %s filename %s", parser.getFieldName().c_str(),
+          parser.getFieldMimeType().c_str(), parser.getFieldFilename().c_str());
+
+    while (!parser.endOfField()) {
+      byte buffer[256];
+      size_t len = parser.read(buffer, 256);
+      if (Update.write(buffer, len) != len) {
+        Update.printError(Serial);
+      }
+    }
+    log_i("Done reading");
+    if (Update.end(true)) {
+      sendHtml(res, "Flash App update successful!");
+      displayTest->showTextOnGrid(0, 3, "Success...");
+      const esp_partition_t *running = esp_ota_get_running_partition();
+      esp_ota_set_boot_partition(running);
+    } else {
+      String errorMsg = Update.errorString();
+      log_e("Update: %s", errorMsg.c_str());
+      displayTest->showTextOnGrid(0, 3, "Error");
+      displayTest->showTextOnGrid(0, 4, errorMsg);
+      res->setStatusCode(500);
+      res->setStatusText("Invalid data!");
+      res->print(errorMsg);
+    }
+  }
+  sensorManager->attachInterrupts();
+}
+
 static void handleSd(HTTPRequest *req, HTTPResponse *res) {
   String path = getParameter(req, "path", "/");
 
@@ -1573,4 +1720,135 @@ std::vector<std::pair<String,String>> extractParameters(HTTPRequest *req) {
 //    log_e("Unexpected content type: %s", req->getHeader("Content-Type").c_str());
 //  }
   return parameters;
+}
+
+static void handleFirmwareUpdateSd(HTTPRequest *, HTTPResponse * res) {
+  String html = createPage(updateSdIndex, xhrUpload);
+  html = replaceDefault(html, "Update Firmware", "/updateSdUrl");
+  html = replaceHtml(html, "{releaseApiUrl}",
+                     "https://api.github.com/repos/openbikesensor/OpenBikeSensorFirmware/releases?per_page=5");
+  String flashAppVersion = Firmware::getFlashAppVersion();
+  if (!flashAppVersion.isEmpty()) {
+    html = replaceHtml(html, "{description}",
+                       "Update Firmware, device reboots after upload. Flash App " + flashAppVersion + ".");
+  } else {
+    html = replacePlain(html, "{description}",
+                       "<a href='/updateFlash'>Install Flash App 1st!</a>");
+  }
+  html = replaceHtml(html, "{method}", "/updatesd");
+  html = replaceHtml(html, "{accept}", ".bin");
+
+  sendHtml(res, html);
+}
+
+static bool mkSdFlashDir() {
+  bool success = true;
+  if (!SD.exists("/sdflash")) {
+    if (SD.mkdir("/sdflash")) {
+      log_i("Created sdflash directory.");
+    } else {
+      success = false;
+      log_e("Error creating sdflash directory.");
+    }
+  }
+  return success;
+}
+
+static void handleFirmwareUpdateSdUrlAction(HTTPRequest * req, HTTPResponse * res) {
+  const auto params = extractParameters(req);
+  const auto url = getParameter(params, "downloadUrl");
+  log_i("OBS Firmware URL is '%s'", url.c_str());
+
+  if (!mkSdFlashDir()) {
+    displayTest->showTextOnGrid(0, 3, "Error");
+    displayTest->showTextOnGrid(0, 4, "mkdir 'sdflash' failed");
+    sendRedirect(res, "/");
+    return;
+  }
+  Firmware f(String("OBS/") + String(OBSVersion));
+  f.downloadToSd(url, "/sdflash/app.bin");
+
+  String firmwareError = Firmware::checkSdFirmware();
+  if (Firmware::getFlashAppVersion().isEmpty()) {
+    firmwareError += "Flash App not installed!";
+  }
+  if (!firmwareError.isEmpty()) {
+    Firmware::switchToFlashApp();
+    displayTest->showTextOnGrid(0, 3, "Success...");
+    sendRedirect(res, "/reboot");
+  } else {
+    log_e("Abort update action %s.", firmwareError.c_str());
+    displayTest->showTextOnGrid(0, 3, "Error");
+    displayTest->showTextOnGrid(0, 4, firmwareError);
+    sendRedirect(res, "/");
+  }
+}
+
+static void handleFirmwareUpdateSdAction(HTTPRequest * req, HTTPResponse * res) {
+  if (!mkSdFlashDir()) {
+    displayTest->showTextOnGrid(0, 3, "Error");
+    displayTest->showTextOnGrid(0, 4, "mkdir 'sdflash' failed!");
+    sendHtml(res, "mkdir 'sdflash' failed!");
+    return;
+  }
+  HTTPMultipartBodyParser parser(req);
+  File newFile = SD.open("/sdflash/app.bin", FILE_WRITE);
+
+  while(parser.nextField()) {
+    if (parser.getFieldName() != "upload") {
+      log_i("Skipping form data %s type %s filename %s", parser.getFieldName().c_str(),
+            parser.getFieldMimeType().c_str(), parser.getFieldFilename().c_str());
+      continue;
+    }
+    log_i("Got form data %s type %s filename %s", parser.getFieldName().c_str(),
+          parser.getFieldMimeType().c_str(), parser.getFieldFilename().c_str());
+
+    int tick = 0;
+    int pos = 0;
+    while (!parser.endOfField()) {
+      byte buffer[256];
+      size_t len = parser.read(buffer, 256);
+      displayTest->drawWaitBar(4, tick++);
+      log_v("Read data %d", len);
+      pos += len;
+      if (newFile.write(buffer, len) != len) {
+        displayTest->showTextOnGrid(0, 3, "Write Error");
+        displayTest->showTextOnGrid(0, 4, (String("Failed @") + String(pos)).c_str());
+        res->setStatusCode(500);
+        res->setStatusText((String("Failed to write @") + String(pos)).c_str());
+        res->print((String("Failed to write @") + String(pos)).c_str());
+        return;
+      }
+    }
+    displayTest->clearProgressBar(4);
+    log_i("Done reading");
+    newFile.close();
+    String firmwareError = Firmware::checkSdFirmware();
+    if (Firmware::getFlashAppVersion().isEmpty()) {
+      firmwareError += "Flash App not installed!";
+    }
+    if (firmwareError.isEmpty()) { //true to set the size to the current progress
+      displayTest->showTextOnGrid(0, 3, "Success...");
+      displayTest->showTextOnGrid(0, 4, "...will reboot");
+      if (Firmware::switchToFlashApp()) {
+        sendHtml(res, "Upload ok, will reboot!");
+        res->finalize();
+        log_e("OK!");
+        delay(1000);
+        ESP.restart();
+      } else {
+        res->setStatusCode(500);
+        res->setStatusText("Failed to switch!");
+        res->print("Failed to switch!");
+      }
+    } else {
+      String errorMsg = firmwareError;
+      log_e("Update: %s", errorMsg.c_str());
+      displayTest->showTextOnGrid(0, 3, "Error");
+      displayTest->showTextOnGrid(0, 4, errorMsg);
+      res->setStatusCode(500);
+      res->setStatusText(firmwareError.c_str());
+      res->print(firmwareError);
+    }
+  }
 }
