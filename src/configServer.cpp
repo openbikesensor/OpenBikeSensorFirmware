@@ -971,7 +971,7 @@ static void handleBackupRestore(HTTPRequest * req, HTTPResponse * res) {
       res->print("OK");
     } else {
       res->setHeader("Content-Type", "text/plain");
-      res->setStatusCode(400);
+      res->setStatusCode(500);
       res->setStatusText("Invalid data!");
       res->print("ERROR");
     }
@@ -1177,9 +1177,9 @@ static void handleFirmwareUpdateAction(HTTPRequest * req, HTTPResponse * res) {
       log_e("Update: %s", errorMsg.c_str());
       displayTest->showTextOnGrid(0, 3, "Error");
       displayTest->showTextOnGrid(0, 4, errorMsg);
-      res->setStatusCode(400);
+      res->setStatusCode(500);
       res->setStatusText("Invalid data!");
-      res->print("ERROR");
+      res->print(errorMsg);
     }
   }
   sensorManager->attachInterrupts();
@@ -1500,9 +1500,9 @@ static void handleFlashFileUpdateAction(HTTPRequest *req, HTTPResponse *res) {
       log_e("Update: %s", errorMsg.c_str());
       displayTest->showTextOnGrid(0, 3, "Error");
       displayTest->showTextOnGrid(0, 4, errorMsg);
-      res->setStatusCode(400);
+      res->setStatusCode(500);
       res->setStatusText("Invalid data!");
-      res->print("ERROR");
+      res->print(errorMsg);
     }
   }
   sensorManager->attachInterrupts();
@@ -1730,7 +1730,7 @@ static void handleFirmwareUpdateSd(HTTPRequest *, HTTPResponse * res) {
   String flashAppVersion = Firmware::getFlashAppVersion();
   if (!flashAppVersion.isEmpty()) {
     html = replaceHtml(html, "{description}",
-                       "Update Firmware, device reboots after download. Flash App " + flashAppVersion + ".");
+                       "Update Firmware, device reboots after upload. Flash App " + flashAppVersion + ".");
   } else {
     html = replacePlain(html, "{description}",
                        "<a href='/updateFlash'>Install Flash App 1st!</a>");
@@ -1741,14 +1741,17 @@ static void handleFirmwareUpdateSd(HTTPRequest *, HTTPResponse * res) {
   sendHtml(res, html);
 }
 
-static void mkSdFlashDir() {
+static bool mkSdFlashDir() {
+  bool success = true;
   if (!SD.exists("/sdflash")) {
     if (SD.mkdir("/sdflash")) {
       log_i("Created sdflash directory.");
     } else {
+      success = false;
       log_e("Error creating sdflash directory.");
     }
   }
+  return success;
 }
 
 static void handleFirmwareUpdateSdUrlAction(HTTPRequest * req, HTTPResponse * res) {
@@ -1756,12 +1759,20 @@ static void handleFirmwareUpdateSdUrlAction(HTTPRequest * req, HTTPResponse * re
   const auto url = getParameter(params, "downloadUrl");
   log_i("OBS Firmware URL is '%s'", url.c_str());
 
-  mkSdFlashDir();
+  if (!mkSdFlashDir()) {
+    displayTest->showTextOnGrid(0, 3, "Error");
+    displayTest->showTextOnGrid(0, 4, "mkdir 'sdflash' failed");
+    sendRedirect(res, "/");
+    return;
+  }
   Firmware f(String("OBS/") + String(OBSVersion));
   f.downloadToSd(url, "/sdflash/app.bin");
 
   String firmwareError = Firmware::checkSdFirmware();
-  if (!Firmware::getFlashAppVersion().isEmpty() && !firmwareError) {
+  if (Firmware::getFlashAppVersion().isEmpty()) {
+    firmwareError += "Flash App not installed!";
+  }
+  if (!firmwareError.isEmpty()) {
     Firmware::switchToFlashApp();
     displayTest->showTextOnGrid(0, 3, "Success...");
     sendRedirect(res, "/reboot");
@@ -1774,7 +1785,12 @@ static void handleFirmwareUpdateSdUrlAction(HTTPRequest * req, HTTPResponse * re
 }
 
 static void handleFirmwareUpdateSdAction(HTTPRequest * req, HTTPResponse * res) {
-  mkSdFlashDir();
+  if (!mkSdFlashDir()) {
+    displayTest->showTextOnGrid(0, 3, "Error");
+    displayTest->showTextOnGrid(0, 4, "mkdir 'sdflash' failed!");
+    sendHtml(res, "mkdir 'sdflash' failed!");
+    return;
+  }
   HTTPMultipartBodyParser parser(req);
   File newFile = SD.open("/sdflash/app.bin", FILE_WRITE);
 
@@ -1788,36 +1804,51 @@ static void handleFirmwareUpdateSdAction(HTTPRequest * req, HTTPResponse * res) 
           parser.getFieldMimeType().c_str(), parser.getFieldFilename().c_str());
 
     int tick = 0;
+    int pos = 0;
     while (!parser.endOfField()) {
       byte buffer[256];
       size_t len = parser.read(buffer, 256);
       displayTest->drawWaitBar(4, tick++);
       log_v("Read data %d", len);
+      pos += len;
       if (newFile.write(buffer, len) != len) {
-        // TODO: Error handling
+        displayTest->showTextOnGrid(0, 3, "Write Error");
+        displayTest->showTextOnGrid(0, 4, (String("Failed @") + String(pos)).c_str());
+        res->setStatusCode(500);
+        res->setStatusText((String("Failed to write @") + String(pos)).c_str());
+        res->print((String("Failed to write @") + String(pos)).c_str());
+        return;
       }
     }
     displayTest->clearProgressBar(4);
     log_i("Done reading");
     newFile.close();
     String firmwareError = Firmware::checkSdFirmware();
-    if (!Firmware::getFlashAppVersion().isEmpty() && firmwareError.isEmpty()) { //true to set the size to the current progress
-      sendHtml(res, "Upload ok, will reboot!");
+    if (Firmware::getFlashAppVersion().isEmpty()) {
+      firmwareError += "Flash App not installed!";
+    }
+    if (firmwareError.isEmpty()) { //true to set the size to the current progress
       displayTest->showTextOnGrid(0, 3, "Success...");
       displayTest->showTextOnGrid(0, 4, "...will reboot");
       if (Firmware::switchToFlashApp()) {
+        sendHtml(res, "Upload ok, will reboot!");
+        res->finalize();
         log_e("OK!");
         delay(1000);
         ESP.restart();
+      } else {
+        res->setStatusCode(500);
+        res->setStatusText("Failed to switch!");
+        res->print("Failed to switch!");
       }
     } else {
       String errorMsg = firmwareError;
       log_e("Update: %s", errorMsg.c_str());
       displayTest->showTextOnGrid(0, 3, "Error");
       displayTest->showTextOnGrid(0, 4, errorMsg);
-      res->setStatusCode(400);
-      res->setStatusText("Invalid data!");
-      res->print("ERROR");
+      res->setStatusCode(500);
+      res->setStatusText(firmwareError.c_str());
+      res->print(firmwareError);
     }
   }
 }
