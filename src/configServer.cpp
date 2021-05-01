@@ -1461,7 +1461,7 @@ static void handleFlashUpdateUrlAction(HTTPRequest * req, HTTPResponse * res) {
 }
 
 static void handleFlashFileUpdateAction(HTTPRequest * req, HTTPResponse * res) {
-  // TODO: Add some assertions!!
+  // TODO: Add some assertions, cleanup with handleFlashUpdateUrlAction
   HTTPMultipartBodyParser parser(req);
   sensorManager->detachInterrupts();
   Update.begin();
@@ -1480,17 +1480,16 @@ static void handleFlashFileUpdateAction(HTTPRequest * req, HTTPResponse * res) {
     while (!parser.endOfField()) {
       byte buffer[256];
       size_t len = parser.read(buffer, 256);
-      log_d("Read data %d", len);
       if (Update.write(buffer, len) != len) {
         Update.printError(Serial);
       }
     }
     log_i("Done reading");
-    if (Update.end(true)) { //true to set the size to the current progress
+    if (Update.end(true)) {
       sendHtml(res, "Flash App update successful!");
       displayTest->showTextOnGrid(0, 3, "Success...");
-      // TODO... redirect to Firmware Download?
-      // FIXME: We need to suppress a Firmware switch here!
+      const esp_partition_t *running = esp_ota_get_running_partition();
+      esp_ota_set_boot_partition(running);
     } else {
       String errorMsg = Update.errorString();
       log_e("Update: %s", errorMsg.c_str());
