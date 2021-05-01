@@ -413,16 +413,14 @@ static String getParameter(HTTPRequest *req, const String& name, const String&  
   return def;
 }
 
-static String replaceHtml(String &body, const String &key, const String &value) {
-  String str(body);
-  str.replace(key, ObsUtils::encodeForXmlAttribute(value));
-  return str;
-}
-
-static String replacePlain(String &body, const String &key, const String &value) {
+static String replacePlain(const String &body, const String &key, const String &value) {
   String str(body);
   str.replace(key, value);
   return str;
+}
+
+static String replaceHtml(const String &body, const String &key, const String &value) {
+  return replacePlain(body, key, ObsUtils::encodeForXmlAttribute(value));
 }
 
 static std::vector<std::pair<String,String>> extractParameters(HTTPRequest *req);
@@ -1161,8 +1159,8 @@ static void handleFirmwareUpdateAction(HTTPRequest * req, HTTPResponse * res) {
           parser.getFieldMimeType().c_str(), parser.getFieldFilename().c_str());
 
     while (!parser.endOfField()) {
-      byte buffer[512];
-      size_t len = parser.read(buffer, 512);
+      byte buffer[256];
+      size_t len = parser.read(buffer, 256);
       log_i("Read data %d", len);
       if (Update.write(buffer, len) != len) {
         Update.printError(Serial);
@@ -1460,7 +1458,7 @@ static void handleFlashUpdateUrlAction(HTTPRequest * req, HTTPResponse * res) {
   sensorManager->attachInterrupts();
 }
 
-static void handleFlashFileUpdateAction(HTTPRequest * req, HTTPResponse * res) {
+static void handleFlashFileUpdateAction(HTTPRequest *req, HTTPResponse *res) {
   // TODO: Add some assertions, cleanup with handleFlashUpdateUrlAction
   HTTPMultipartBodyParser parser(req);
   sensorManager->detachInterrupts();
@@ -1468,7 +1466,7 @@ static void handleFlashFileUpdateAction(HTTPRequest * req, HTTPResponse * res) {
   Update.onProgress([](size_t pos, size_t all) {
     displayTest->drawProgressBar(4, pos, all);
   });
-  while(parser.nextField()) {
+  while (parser.nextField()) {
     if (parser.getFieldName() != "upload") {
       log_i("Skipping form data %s type %s filename %s", parser.getFieldName().c_str(),
             parser.getFieldMimeType().c_str(), parser.getFieldFilename().c_str());
