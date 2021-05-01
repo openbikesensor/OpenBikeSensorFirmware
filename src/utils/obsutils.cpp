@@ -211,7 +211,7 @@ String ObsUtils::sha256ToString(byte *sha256) {
   char hash_print[HASH_LEN * 2 + 1];
   hash_print[HASH_LEN * 2] = 0;
   for (int i = 0; i < HASH_LEN; ++i) {
-    sprintf(&hash_print[i * 2], "%02x", sha256[i]);
+    snprintf(&hash_print[i * 2], 2, "%02x", sha256[i]);
   }
   return String(hash_print);
 }
