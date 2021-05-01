@@ -1772,7 +1772,7 @@ static void handleFirmwareUpdateSdUrlAction(HTTPRequest * req, HTTPResponse * re
   if (Firmware::getFlashAppVersion().isEmpty()) {
     firmwareError += "Flash App not installed!";
   }
-  if (!firmwareError.isEmpty()) {
+  if (firmwareError.isEmpty()) {
     Firmware::switchToFlashApp();
     displayTest->showTextOnGrid(0, 3, "Success...");
     sendRedirect(res, "/reboot");
