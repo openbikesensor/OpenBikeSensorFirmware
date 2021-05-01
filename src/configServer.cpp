@@ -193,9 +193,9 @@ static const String navigationIndex =
   "<input type=button onclick=\"window.location.href='/settings/wifi'\" class=btn value='Wifi'>"
   "<input type=button onclick=\"window.location.href='/settings/backup'\" class=btn value='Backup &amp; Restore'>"
   "<h3>Maintenance</h3>"
-  "<input type=button onclick=\"window.location.href='/updatesd'\" class=btn value='Update Firmware (>v0.5)'>"
-  "<input type=button onclick=\"window.location.href='/update'\" class=btn value='Update Firmware (legacy)'>"
-  "<input type=button onclick=\"window.location.href='/updateFlash'\" class=btn value='Update Flash Tool'>"
+  "<input type=button onclick=\"window.location.href='/updatesd'\" class=btn value='Update Firmware'>"
+  "<input type=button onclick=\"window.location.href='/updateFlash'\" class=btn value='Update Flash App'>"
+  "<input type=button onclick=\"window.location.href='/update'\" class=btn value='Update Firmware (legacy <v0.6)'>"
   "<input type=button onclick=\"window.location.href='/sd'\" class=btn value='Show SD Card Contents'>"
   "<input type=button onclick=\"window.location.href='/about'\" class=btn value='About'>"
   "<input type=button onclick=\"window.location.href='/reboot'\" class=btn value='Reboot'>"
@@ -246,10 +246,10 @@ static const String backupIndex =
   "<h3>Restore</h3>";
 
 static const String updateFlashIndex =
-  "<p>Update Flash Tool</p>"
+  "<p>Update Flash App</p>"
   "<h3>From Github (preferred)</h3>"
   "<input type='button' onclick=\"window.location.href='/updateFlashAction'\" class=btn value='Update' />"
-  "<h3>File Upload (expert only)</h3>";
+  "<h3>File Upload</h3>";
 
 static const String updateSdIndex = R""""(
 <p>{description}</p>
@@ -292,7 +292,7 @@ updateFirmwareList();
 </script>
 <input type='hidden' name='downloadUrl' id='downloadUrl' value=''/>
 <input type='submit' name='version' id='version' class=btn value='Update' />
-<h3>File Upload (expert only)</h3>
+<h3>File Upload</h3>
 )"""";
 
 
@@ -1430,7 +1430,7 @@ static void handlePrivacyDeleteAction(HTTPRequest *req, HTTPResponse *res) {
 static void handleFlashUpdate(HTTPRequest *, HTTPResponse * res) {
   String html = createPage(updateSdIndex, xhrUpload);
   html = replaceDefault(html, "Update Flash", "/updateFlashUrl");
-  html = replaceHtml(html, "{description}", "Update Flash Tool");
+  html = replaceHtml(html, "{description}", "Update Flash App");
   html = replaceHtml(html, "{method}", "/updateFlash");
   html = replaceHtml(html, "{accept}", ".bin");
   html = replaceHtml(html, "{releaseApiUrl}",
@@ -1445,7 +1445,7 @@ void updateProgress(size_t pos, size_t all) {
 static void handleFlashUpdateUrlAction(HTTPRequest * req, HTTPResponse * res) {
   const auto params = extractParameters(req);
   const auto url = getParameter(params, "downloadUrl");
-  log_i("Flash Tool Url is '%s'", url.c_str());
+  log_i("Flash App Url is '%s'", url.c_str());
 
   Firmware f(String("OBS/") + String(OBSVersion));
   sensorManager->detachInterrupts();
@@ -1487,7 +1487,7 @@ static void handleFlashFileUpdateAction(HTTPRequest * req, HTTPResponse * res) {
     }
     log_i("Done reading");
     if (Update.end(true)) { //true to set the size to the current progress
-      sendHtml(res, "Flash Tool update successful!");
+      sendHtml(res, "Flash App update successful!");
       displayTest->showTextOnGrid(0, 3, "Success...");
       // TODO... redirect to Firmware Download?
       // FIXME: We need to suppress a Firmware switch here!
@@ -1722,7 +1722,7 @@ static void handleFirmwareUpdateSd(HTTPRequest *, HTTPResponse * res) {
   String html = createPage(updateSdIndex, xhrUpload);
   html = replaceDefault(html, "Update Firmware", "/updateSdUrl");
   html = replaceHtml(html, "{releaseApiUrl}",
-                     "https://api.github.com/repos/openbikesensor/OpenBikeSensorFirmware/releases");
+                     "https://api.github.com/repos/openbikesensor/OpenBikeSensorFirmware/releases?per_page=5");
   String flashAppVersion = Firmware::getFlashAppVersion();
   if (!flashAppVersion.isEmpty()) {
     html = replaceHtml(html, "{description}",
