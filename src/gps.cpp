@@ -816,7 +816,7 @@ void Gps::parseUbxMessage() {
       if (mLastAckMsgId != 0) {
         log_e("ACK overrun had ack: %d for 0x%04x", mAckReceived, mLastAckMsgId);
       }
-      log_d("ACK-ACK 0x%04x", mGpsBuffer.ack.ubxMsgId);
+      log_v("ACK-ACK 0x%04x", mGpsBuffer.ack.ubxMsgId);
       mAckReceived = true;
       mNakReceived = false;
       mLastAckMsgId = mGpsBuffer.ack.ubxMsgId;
@@ -876,13 +876,13 @@ void Gps::parseUbxMessage() {
     }
       break;
     case (uint16_t) UBX_MSG::MON_HW: {
-      log_d("MON-HW Antenna Status %d, noise level %d", mGpsBuffer.monHw.aStatus,
+      log_v("MON-HW Antenna Status %d, noise level %d", mGpsBuffer.monHw.aStatus,
             mGpsBuffer.monHw.noisePerMs);
       mLastNoiseLevel = mGpsBuffer.monHw.noisePerMs;
     }
       break;
     case (uint16_t) UBX_MSG::NAV_STATUS: {
-      log_d("NAV-STATUS uptime: %d, timeToFix: %d, gpsFix: %02x",
+      log_v("NAV-STATUS uptime: %d, timeToFix: %d, gpsFix: %02x",
             mGpsBuffer.navStatus.msss, mGpsBuffer.navStatus.ttff,
             mGpsBuffer.navStatus.gpsFix);
       mGpsUptime = mGpsBuffer.navStatus.msss;
@@ -895,7 +895,7 @@ void Gps::parseUbxMessage() {
     }
       break;
     case (uint16_t) UBX_MSG::NAV_DOP: {
-      log_d("DOP: iTOW: %u, gDop: %04d, pDop: %04d, tDop: %04d, "
+      log_v("DOP: iTOW: %u, gDop: %04d, pDop: %04d, tDop: %04d, "
             "vDop: %04d, hDop: %04d, nDop: %04d, eDop: %04d",
             mGpsBuffer.navDop.iTow, mGpsBuffer.navDop.gDop, mGpsBuffer.navDop.pDop,
             mGpsBuffer.navDop.tDop, mGpsBuffer.navDop.vDop, mGpsBuffer.navDop.hDop,
@@ -907,7 +907,7 @@ void Gps::parseUbxMessage() {
     }
       break;
     case (uint16_t) UBX_MSG::NAV_SOL: {
-      log_d("SOL: iTOW: %u, gpsFix: %d, flags: %02x, numSV: %d, pDop: %04d.",
+      log_v("SOL: iTOW: %u, gpsFix: %d, flags: %02x, numSV: %d, pDop: %04d.",
             mGpsBuffer.navSol.iTow, mGpsBuffer.navSol.gpsFix, mGpsBuffer.navSol.flags,
             mGpsBuffer.navSol.numSv, mGpsBuffer.navSol.pDop);
       if (prepareGpsData(mGpsBuffer.navSol.iTow)) {
@@ -917,7 +917,7 @@ void Gps::parseUbxMessage() {
     }
       break;
     case (uint16_t) UBX_MSG::NAV_VELNED: {
-      log_d("VELNED: iTOW: %u, speed: %d cm/s, gSpeed: %d cm/s, heading: %d,"
+      log_v("VELNED: iTOW: %u, speed: %d cm/s, gSpeed: %d cm/s, heading: %d,"
             " speedAcc: %d, cAcc: %d",
             mGpsBuffer.navVelned.iTow, mGpsBuffer.navVelned.speed, mGpsBuffer.navVelned.gSpeed,
             mGpsBuffer.navVelned.heading, mGpsBuffer.navVelned.sAcc, mGpsBuffer.navVelned.cAcc);
@@ -928,7 +928,7 @@ void Gps::parseUbxMessage() {
     }
       break;
     case (uint16_t) UBX_MSG::NAV_POSLLH: {
-      log_d("POSLLH: iTOW: %u lon: %d lat: %d height: %d hMsl %d, hAcc %d, vAcc %d delay %dms",
+      log_v("POSLLH: iTOW: %u lon: %d lat: %d height: %d hMsl %d, hAcc %d, vAcc %d delay %dms",
             mGpsBuffer.navPosllh.iTow, mGpsBuffer.navPosllh.lon, mGpsBuffer.navPosllh.lat,
             mGpsBuffer.navPosllh.height, mGpsBuffer.navPosllh.hMsl, mGpsBuffer.navPosllh.hAcc,
             mGpsBuffer.navPosllh.vAcc, delayMs);
