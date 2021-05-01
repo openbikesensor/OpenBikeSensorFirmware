@@ -1734,12 +1734,22 @@ static void handleFirmwareUpdateSd(HTTPRequest *, HTTPResponse * res) {
   sendHtml(res, html);
 }
 
+static void mkSdFlashDir() {
+  if (!SD.exists("/sdflash")) {
+    if (SD.mkdir("/sdflash")) {
+      log_i("Created sdflash directory.");
+    } else {
+      log_e("Error creating sdflash directory.");
+    }
+  }
+}
+
 static void handleFirmwareUpdateSdUrlAction(HTTPRequest * req, HTTPResponse * res) {
   const auto params = extractParameters(req);
   const auto url = getParameter(params, "downloadUrl");
   log_i("OBS Firmware URL is '%s'", url.c_str());
 
-  // TODO: Progress bar display && http!
+  mkSdFlashDir();
   Firmware f(String("OBS/") + String(OBSVersion));
   f.downloadToSd(url, "/sdflash/app.bin");
 
@@ -1757,6 +1767,7 @@ static void handleFirmwareUpdateSdUrlAction(HTTPRequest * req, HTTPResponse * re
 }
 
 static void handleFirmwareUpdateSdAction(HTTPRequest * req, HTTPResponse * res) {
+  mkSdFlashDir();
   HTTPMultipartBodyParser parser(req);
   File newFile = SD.open("/sdflash/app.bin", FILE_WRITE);
 

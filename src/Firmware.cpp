@@ -193,7 +193,7 @@ String Firmware::checkSdFirmware() {
   String error;
   File f = SD.open(FLASH_APP_FILENAME, FILE_READ);
   if (!f) {
-    error = "Failed to find '%s' on sd card.", FLASH_APP_FILENAME.c_str();
+    error = "Failed to find '" + FLASH_APP_FILENAME + "' on sd card.";
     return error;
   }
   const int32_t fileSize = f.size();
