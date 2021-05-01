@@ -46,6 +46,47 @@ the resource limitations.
 
 ## Updating
 
+The update mechanism consists of 2 parts. A small firmware called Flash App
+is used to read the new firmware from the SD card and flash it to the obs.
+
+So as a 1st step you need to make sure that the Flash App part is installed
+on you ESP, you can do so by using "Update Flash App" button and start the 
+update b pressing "Update to vX.Y.ZZZ". The data is directly downloaded from
+GitHub, so the ESP needs to have access to the internet via your WiFi. You
+can also download the `flash.bin` directly from the 
+[GitHub releases](https://github.com/openbikesensor/OpenBikeSensorFlash/releases) 
+page. The direct update from GitHub has currently no progress bar so be
+patient.
+
+Now you need to download the OBS Firmware and place it as `/sdflash/app.bin`
+on the SD Card. This is also fully automated behind the "Update Firmware"
+button, There you can again directly download the latest version and start
+the internal update process with the "Update to vX.Y.ZZZ" button. Make sure 
+it is a version newer v0.6.x. At the time of writing there is no such version 
+released yet. Do not downgrade to a version prior v0.6.x, once the Flash App 
+was installed. A hint on the "Update Firmware" page will show the version of
+the Flash App you have installed or if the Flash App is not installed hint 
+you to install the Flash App 1st. With the "File Upload" option you can 
+also update to locally built versions. Make sure they are pos v0.6 versions!
+The 1st update includes a repartitioning of the ESPs flash where you
+do not see any indication of progress. Be patient all does not take more
+than one or two minutes after the upload was completed.
+
+The About page gives you some insight of the current partitioning a more 
+detailed documentation will come. 
+
+
+
+### from v0.5.x or earlier
+
+With version v0.6 a new update path was introduced. To allow updating, 
+to versions of v0.6 or newer you at least hav to have version v0.6 installed.
+
+The update process is as usual, download the latest v0.6.x from GitHub
+and use the "Update Firmware" functionality in server mode.
+
+### from v0.2.x or earlier
+
 update functionality. For the 1st flashing of the firmware or the update
 from a version prior v0.3.x you have to plug in USB.
 See [flash documentation](https://github.com/openbikesensor/OpenBikeSensorFirmware/blob/master/docs/software/firmware/initial_flash.md)   
