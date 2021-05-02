@@ -195,6 +195,7 @@ static const char* const navigationIndex =
   "<input type=button onclick=\"window.location.href='/updateFlash'\" class=btn value='Update Flash App'>"
   "<input type=button onclick=\"window.location.href='/sd'\" class=btn value='Show SD Card Contents'>"
   "<input type=button onclick=\"window.location.href='/about'\" class=btn value='About'>"
+  "<input type=button onclick=\"window.location.href='/delete'\" class=btn value='Delete'>"
   "<input type=button onclick=\"window.location.href='/reboot'\" class=btn value='Reboot'>"
   "{dev}";
 
@@ -367,9 +368,16 @@ static const char* const privacyIndexPostfix =
   "<input type=submit onclick=\"window.location.href='/'\" class=btn value=Save>"
   "<input type=button onclick=\"window.location.href='/settings/privacy/makeCurrentLocationPrivate'\" class=btn value='Make current location private'>";
 
-
 static const char* const makeCurrentLocationPrivateIndex =
   "<div>Making current location private, waiting for fix. Press device button to cancel.</div>";
+
+static const char* const deleteIndex =
+  "<h3>Delete (beta)</h3>"
+  "Config in flash<input type='checkbox' name='flash'>"
+  "Config in memory<input type='checkbox' name='config'>"
+  "<hr>"
+  "SD Card all content <input type='checkbox' name='sdcard' disabled='true'>"
+  "<input type=submit class=btn value='Delete'>";
 
 // #########################################
 static String getParameter(const std::vector<std::pair<String,String>> &params, const String& name, const String&  def = "") {
@@ -429,6 +437,8 @@ static void handleMakeCurrentLocationPrivate(HTTPRequest * req, HTTPResponse * r
 static void handlePrivacy(HTTPRequest *req, HTTPResponse *res);
 static void handlePrivacyDeleteAction(HTTPRequest *req, HTTPResponse *res);
 static void handleSd(HTTPRequest *req, HTTPResponse *res);
+static void handleDelete(HTTPRequest *req, HTTPResponse *res);
+static void handleDeleteAction(HTTPRequest *req, HTTPResponse *res);
 
 static void handleHttpsRedirect(HTTPRequest *req, HTTPResponse *res);
 
@@ -459,6 +469,8 @@ void beginPages() {
   server->registerNode(new ResourceNode("/updatesd", HTTP_GET, handleFirmwareUpdateSd));
   server->registerNode(new ResourceNode("/updatesd", HTTP_POST, handleFirmwareUpdateSdAction));
   server->registerNode(new ResourceNode("/updateSdUrl", HTTP_POST, handleFirmwareUpdateSdUrlAction));
+  server->registerNode(new ResourceNode("/delete", HTTP_GET, handleDelete));
+  server->registerNode(new ResourceNode("/delete", HTTP_POST, handleDeleteAction));
 #ifdef DEVELOP
   server->registerNode(new ResourceNode("/settings/development/action", HTTP_GET, handleDevAction));
   server->registerNode(new ResourceNode("/settings/development", HTTP_GET, handleDev));
@@ -1775,4 +1787,30 @@ static void handleFirmwareUpdateSdAction(HTTPRequest * req, HTTPResponse * res) 
       res->print(firmwareError);
     }
   }
+}
+
+static void handleDelete(HTTPRequest *, HTTPResponse * res) {
+  String html = createPage(deleteIndex);
+  html = replaceDefault(html, "Danger: Delete", "/delete");
+  html = replaceHtml(html, "{description}",
+                       "Warning there is not safety question!");
+  sendHtml(res, html);
+};
+
+static void handleDeleteAction(HTTPRequest *req, HTTPResponse * res) {
+  const auto params = extractParameters(req);
+  const auto deleteFlash = getParameter(params, "flash");
+  const auto deleteConfig = getParameter(params, "config");
+
+  log_e("FLASH: %s", deleteFlash.c_str());
+  log_e("CONFIG: %s", deleteConfig.c_str());
+
+  if (deleteFlash == "on") {
+    SPIFFS.format();
+  }
+  if (deleteConfig == "on") {
+    theObsConfig->parseJson("{}");
+    theObsConfig->fill(config);
+  }
+  sendRedirect(res, "/");
 }
