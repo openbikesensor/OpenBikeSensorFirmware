@@ -85,12 +85,8 @@ bool ObsConfig::loadConfig() {
 bool ObsConfig::saveConfig() const {
   log_d("Saving config to SPIFFS %s space %luk used space %luk",
         CONFIG_FILENAME.c_str(), SPIFFS.totalBytes() / 1024, SPIFFS.usedBytes() / 1024);
-  if (SPIFFS.exists(CONFIG_OLD_FILENAME)) {
-    SPIFFS.remove(CONFIG_OLD_FILENAME);
-  }
-  if (SPIFFS.exists(CONFIG_FILENAME)) {
-    SPIFFS.rename(CONFIG_FILENAME, CONFIG_OLD_FILENAME);
-  }
+  SPIFFS.remove(CONFIG_OLD_FILENAME);
+  SPIFFS.rename(CONFIG_FILENAME, CONFIG_OLD_FILENAME);
   bool result;
   File file = SPIFFS.open(CONFIG_FILENAME, FILE_WRITE);
   auto size = serializeJson(jsonData, file);
