@@ -98,6 +98,10 @@ static const uint32_t MEASUREMENT_IN_PROGRESS = 0;
  *    close to the needed 148ms
  */
 
+static int isrPort[2];
+static volatile uint32_t * isrStart[2];
+static volatile uint32_t * isrEnd[2];
+
 void HCSR04SensorManager::registerSensor(HCSR04SensorInfo sensorInfo) {
   m_sensors.push_back(sensorInfo);
   pinMode(sensorInfo.triggerPin, OUTPUT);
@@ -107,12 +111,51 @@ void HCSR04SensorManager::registerSensor(HCSR04SensorInfo sensorInfo) {
   if (m_sensors[m_sensors.size() - 1].median == nullptr) {
     m_sensors[m_sensors.size() - 1].median = new Median<uint16_t>(5, MAX_SENSOR_VALUE);
   }
+
+  // Make sure pointers are current todo: replace m_sensors vector with array.
+  for (size_t idx = 0; idx < m_sensors.size(); ++idx) {
+    HCSR04SensorInfo* const sensor = &m_sensors[idx];
+    isrPort[idx] = sensor->echoPin;
+    isrStart[idx] = &sensor->start;
+    isrEnd[idx] = &sensor->end;
+  }
   attachSensorInterrupt(sensorInfo);
 }
 
+static void IRAM_ATTR isr(int pin, volatile uint32_t *start, volatile uint32_t *end) {
+  // since the measurement of start and stop use the same interrupt
+  // mechanism we should see a similar delay.
+  if (*end == MEASUREMENT_IN_PROGRESS) {
+    const uint32_t now = micros();
+    if (HIGH == digitalRead(pin)) {
+      *start = now;
+    } else { // LOW
+      *end = now;
+    }
+  }
+}
+
+static void IRAM_ATTR isr0() {
+  isr(isrPort[0], isrStart[0], isrEnd[0]);
+}
+
+static void IRAM_ATTR isr1() {
+  isr(isrPort[1], isrStart[1], isrEnd[1]);
+}
+
 void HCSR04SensorManager::attachSensorInterrupt(HCSR04SensorInfo &sensorInfo) {
-  // only one interrupt per pin, can not split RISING/FALLING here
-  attachInterrupt(sensorInfo.echoPin, std::bind(&HCSR04SensorManager::isr, this, m_sensors.size() - 1), CHANGE);
+  // bad bad bad ....
+  if (sensorInfo.echoPin == isrPort[0]) {
+    attachInterrupt(sensorInfo.echoPin, isr0, CHANGE);
+  } else {
+    attachInterrupt(sensorInfo.echoPin, isr1, CHANGE);
+  }
+
+  // a solution like below leads to crashes with:
+  // Guru Meditation Error: Core  1 panic'ed (Cache disabled but cached memory region accessed)
+  // Core 1 was running in ISR context:
+  //   attachInterrupt(sensorInfo.echoPin,
+  //                  std::bind(&isr, sensorInfo.echoPin, &sensorInfo.start, &sensorInfo.end), CHANGE);
 }
 
 void HCSR04SensorManager::detachInterrupts() {
@@ -488,18 +531,4 @@ uint16_t HCSR04SensorManager::median(uint16_t a, uint16_t b, uint16_t c) {
     }
   }
   return c;
-}
-
-void IRAM_ATTR HCSR04SensorManager::isr(int idx) {
-  // since the measurement of start and stop use the same interrupt
-  // mechanism we should see a similar delay.
-  HCSR04SensorInfo* const sensor = &m_sensors[idx];
-  if (sensor->end == MEASUREMENT_IN_PROGRESS) {
-    const uint32_t now = micros();
-    if (HIGH == digitalRead(sensor->echoPin)) {
-      sensor->start = now;
-    } else { // LOW
-      sensor->end = now;
-    }
-  }
 }

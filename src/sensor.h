@@ -122,7 +122,6 @@ class HCSR04SensorManager {
     void collectSensorResults();
     void sendTriggerToReadySensor();
     void attachSensorInterrupt(HCSR04SensorInfo &sensorInfo);
-    void IRAM_ATTR isr(int idx);
     uint32_t getFixedStart(size_t idx, const HCSR04SensorInfo *sensor);
     static uint16_t medianMeasure(HCSR04SensorInfo* const sensor, uint16_t value);
     static uint16_t median(uint16_t a, uint16_t b, uint16_t c);
