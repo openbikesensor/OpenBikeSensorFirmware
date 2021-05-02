@@ -83,9 +83,14 @@ bool ObsConfig::loadConfig() {
 }
 
 bool ObsConfig::saveConfig() const {
-  log_d("Saving config to SPIFFS %s free space %luk", CONFIG_FILENAME.c_str(), SPIFFS.usedBytes() / 1024);
-  SPIFFS.remove(CONFIG_OLD_FILENAME);
-  SPIFFS.rename(CONFIG_FILENAME, CONFIG_OLD_FILENAME);
+  log_d("Saving config to SPIFFS %s space %luk used space %luk",
+        CONFIG_FILENAME.c_str(), SPIFFS.totalBytes() / 1024, SPIFFS.usedBytes() / 1024);
+  if (SPIFFS.exists(CONFIG_OLD_FILENAME)) {
+    SPIFFS.remove(CONFIG_OLD_FILENAME);
+  }
+  if (SPIFFS.exists(CONFIG_FILENAME)) {
+    SPIFFS.rename(CONFIG_FILENAME, CONFIG_OLD_FILENAME);
+  }
   bool result;
   File file = SPIFFS.open(CONFIG_FILENAME, FILE_WRITE);
   auto size = serializeJson(jsonData, file);
@@ -97,7 +102,7 @@ bool ObsConfig::saveConfig() const {
     result = true;
   }
   printConfig();
-  log_d("Configuration saved %ld bytes - remaining %luk.",
+  log_d("Configuration saved %ld bytes - used %luk.",
         size, SPIFFS.usedBytes() / 1024);
   // delete old config format file if result == true
   // TODO: Activate once released
@@ -297,9 +302,12 @@ bool ObsConfig::loadConfig(File &file) {
 }
 
 bool ObsConfig::loadJson(JsonDocument &jsonDocument, const String &filename) {
-  File file = SPIFFS.open(filename);
-  bool success = loadJson(jsonDocument, file);
-  file.close();
+  bool success = SPIFFS.exists(filename);
+  if (success) {
+    File file = SPIFFS.open(filename);
+    success = loadJson(jsonDocument, file);
+    file.close();
+  }
   return success;
 }
 
