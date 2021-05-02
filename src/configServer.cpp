@@ -60,40 +60,37 @@ static SSLCert obsCert = SSLCert(
   obs_key_DER, obs_key_DER_len
 );
 
-/* Style */
 // TODO
 //  - Fix CSS Style for mobile && desktop
 //  - a vs. button
 //  - back navigation after save
-static const String style =
-  "<style>"
-  "#file-input,input, button {width:100%;height:44px;border-radius:4px;margin:10px auto;font-size:15px;}"
-  "input, button, a.back {background:#f1f1f1;border:0;padding:0;text-align:center;}"
-  "body {background:#3498db;font-family:sans-serif;font-size:12px;color:#777}"
-  "#file-input {padding:0 5px;border:1px solid #ddd;line-height:44px;text-align:left;display:block;cursor:pointer}"
-  "#bar,#prgbar {background-color:#f1f1f1;border-radius:10px}"
-  "#bar {background-color:#3498db;width:0%;height:10px}"
-  "form {background:#fff;max-width:258px;margin:75px auto;padding:30px;border-radius:5px;text-align:center}"
-  ".btn {background:#3498db;color:#fff;cursor:pointer}"
-  "h1,h2, h3 {padding:0;margin:0;}"
-  "h3 {padding:10px 0;margin-top:10px;margin-bottom:10px;border-top:3px solid #3498db;border-bottom:3px solid #3498db;}"
-  "h1 a {color:#777}"
-  "h2 {margin-top:5px}"
-  "hr { border-top:1px solid #CCC;margin-left:10px;margin-right:10px;}"
-  ".deletePrivacyArea, a.back {color: black; text-decoration: none; font-size: x-large;}"
-  ".deletePrivacyArea:hover {color: red;}"
-  "a.previous {text-decoration: none; display: inline-block; padding: 8px 16px;background-color: #f1f1f1; color: black;border-radius: 50%; font-family: Verdana, sans-serif; font-size: 18px}"
-  "a.previous:hover {background-color: #ddd; color: black;}"
-  "ul.directory-listing {list-style: none; text-align: left; padding: 0; margin: 0; line-height: 1.5;}"
-  "li.directory a {text-decoration: none; font-weight: bold;}"
-  "li.file a {text-decoration: none;}"
-  "</style>";
-
-static const String previous = "<a href=\"javascript:history.back()\" class='previous'>&#8249;</a>";
-
-static const String header =
+static const char* const header =
   "<!DOCTYPE html>\n"
-  "<html lang='en'><head><meta charset='utf-8'/><title>{title}</title>" + style +
+  "<html lang='en'><head><meta charset='utf-8'/><title>{title}</title>"
+// STYLE
+    "<style>"
+    "#file-input,input, button {width:100%;height:44px;border-radius:4px;margin:10px auto;font-size:15px;}"
+    "input, button, a.back {background:#f1f1f1;border:0;padding:0;text-align:center;}"
+    "body {background:#3498db;font-family:sans-serif;font-size:12px;color:#777}"
+    "#file-input {padding:0 5px;border:1px solid #ddd;line-height:44px;text-align:left;display:block;cursor:pointer}"
+    "#bar,#prgbar {background-color:#f1f1f1;border-radius:10px}"
+    "#bar {background-color:#3498db;width:0%;height:10px}"
+    "form {background:#fff;max-width:258px;margin:75px auto;padding:30px;border-radius:5px;text-align:center}"
+    ".btn {background:#3498db;color:#fff;cursor:pointer}"
+    "h1,h2, h3 {padding:0;margin:0;}"
+    "h3 {padding:10px 0;margin-top:10px;margin-bottom:10px;border-top:3px solid #3498db;border-bottom:3px solid #3498db;}"
+    "h1 a {color:#777}"
+    "h2 {margin-top:5px}"
+    "hr { border-top:1px solid #CCC;margin-left:10px;margin-right:10px;}"
+    ".deletePrivacyArea, a.back {color: black; text-decoration: none; font-size: x-large;}"
+    ".deletePrivacyArea:hover {color: red;}"
+    "a.previous {text-decoration: none; display: inline-block; padding: 8px 16px;background-color: #f1f1f1; color: black;border-radius: 50%; font-family: Verdana, sans-serif; font-size: 18px}"
+    "a.previous:hover {background-color: #ddd; color: black;}"
+    "ul.directory-listing {list-style: none; text-align: left; padding: 0; margin: 0; line-height: 1.5;}"
+    "li.directory a {text-decoration: none; font-weight: bold;}"
+    "li.file a {text-decoration: none;}"
+    "</style>"
+
   "<link rel='icon' href='data:;base64,iVBORw0KGgo=' />"
   "<script>"
   "window.onload = function() {"
@@ -109,7 +106,7 @@ static const String header =
   "<h1><a href='/'>OpenBikeSensor</a></h1>"
   "<h2>{subtitle}</h2>"
   "<p>Firmware version: {version}</p>"
-  + previous;
+  "<a href=\"javascript:history.back()\" class='previous'>&#8249;</a>";
 
 static const String footer = "</form></body></html>";
 
@@ -117,7 +114,8 @@ static const String footer = "</form></body></html>";
 // Upload form
 // #########################################
 
-static const String xhrUpload =   "<input type='file' name='upload' id='file' accept='{accept}'>"
+static const char* const xhrUpload =
+  "<input type='file' name='upload' id='file' accept='{accept}'>"
   "<label id='file-input' for='file'>Choose file...</label>"
   "<input id='btn' type='submit' class=btn value='Upload'>"
   "<br><br>"
@@ -185,7 +183,7 @@ static const String xhrUpload =   "<input type='file' name='upload' id='file' ac
 // Navigation
 // #########################################
 
-static const String navigationIndex =
+static const char* const navigationIndex =
   "<input type=button onclick=\"window.location.href='/upload'\" class=btn value='Upload Tracks'>"
   "<h3>Settings</h3>"
   "<input type=button onclick=\"window.location.href='/settings/general'\" class=btn value='General'>"
@@ -200,7 +198,7 @@ static const String navigationIndex =
   "<input type=button onclick=\"window.location.href='/reboot'\" class=btn value='Reboot'>"
   "{dev}";
 
-static const String httpsRedirect =
+static const char* const httpsRedirect =
   "<h3>HTTPS</h3>"
   "You need to access the obs via secure https. If not done already, you also need to "
   "accept the self signed cert from the OBS after pressing 'Goto https'. Login is 'obs' "
@@ -212,7 +210,7 @@ static const String httpsRedirect =
 // Development
 // #########################################
 
-static const String development =
+static const char* const development =
   "<h3>Development</h3>"
   "<input type=button onclick=\"window.location.href='/settings/development'\" class=btn value='Development'>";
 
@@ -220,14 +218,14 @@ static const String development =
 // Reboot
 // #########################################
 
-static const String rebootIndex =
+static const char* const rebootIndex =
   "<h3>Device reboots now.</h3>";
 
 // #########################################
 // Wifi
 // #########################################
 
-static const String wifiSettingsIndex =
+static const char* const wifiSettingsIndex =
   "<script>"
   "function resetPassword() { document.getElementById('pass').value = ''; }"
   "</script>"
@@ -238,19 +236,13 @@ static const String wifiSettingsIndex =
   "<input id=pass name=pass placeholder='password' type='Password' value='{password}' onclick='resetPassword()'>"
   "<input type=submit class=btn value=Save>";
 
-static const String backupIndex =
+static const char* const backupIndex =
   "<p>This backups and restores the device configuration incl. the Basic Config, Privacy Zones and Wifi Settings.</p>"
   "<h3>Backup</h3>"
   "<input type='button' onclick=\"window.location.href='/settings/backup.json'\" class=btn value='Download' />"
   "<h3>Restore</h3>";
 
-static const String updateFlashIndex =
-  "<p>Update Flash App</p>"
-  "<h3>From Github (preferred)</h3>"
-  "<input type='button' onclick=\"window.location.href='/updateFlashAction'\" class=btn value='Update' />"
-  "<h3>File Upload</h3>";
-
-static const String updateSdIndex = R""""(
+static const char* const updateSdIndex = R""""(
 <p>{description}</p>
 <h3>From Github (preferred)</h3>
 List also pre-releases<br><input type='checkbox' id='preReleases' onchange='selectFirmware()'>
@@ -300,7 +292,7 @@ updateFirmwareList();
 // Development Index
 // #########################################
 
-static const String devIndex =
+static const char* const devIndex =
   "<h3>Display</h3>"
   "Show Grid<br><input type='checkbox' name='showGrid' {showGrid}>"
   "Print WLAN password to serial<br><input type='checkbox' name='printWifiPassword' {printWifiPassword}>"
@@ -311,7 +303,7 @@ static const String devIndex =
 // Config
 // #########################################
 
-static const String configIndex =
+static const char* const configIndex =
   "<h3>Sensor</h3>"
   "Offset Sensor Left<input name='offsetS1' placeholder='Offset Sensor Left' value='{offset1}'>"
   "<hr>"
@@ -371,23 +363,12 @@ static const String configIndex =
   "SimRa Mode <input type='checkbox' name='simRaMode' {simRaMode}>"
   "<input type=submit class=btn value=Save>";
 
-// #########################################
-// Upload
-// #########################################
-
-/* Server Index Page */
-static const String uploadIndex = "<h3>Update</h3>";
-
-// #########################################
-// Privacy
-// #########################################
-
-static const String privacyIndexPostfix =
+static const char* const privacyIndexPostfix =
   "<input type=submit onclick=\"window.location.href='/'\" class=btn value=Save>"
   "<input type=button onclick=\"window.location.href='/settings/privacy/makeCurrentLocationPrivate'\" class=btn value='Make current location private'>";
 
 
-static const String makeCurrentLocationPrivateIndex =
+static const char* const makeCurrentLocationPrivateIndex =
   "<div>Making current location private, waiting for fix. Press device button to cancel.</div>";
 
 // #########################################
