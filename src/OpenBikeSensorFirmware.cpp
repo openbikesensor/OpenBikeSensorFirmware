@@ -134,14 +134,12 @@ static void setupBluetooth(const ObsConfig &cfg, const String &trackUniqueIdenti
   if (cfg.getProperty<bool>(ObsConfig::PROPERTY_BLUETOOTH)) {
     displayTest->showTextOnGrid(2, displayTest->newLine(), "Bluetooth ..");
     bluetoothManager = new BluetoothManager;
-    displayTest->showTextOnGrid(2, displayTest->newLine(), "Bluetooth .1");
     bluetoothManager->init(
       cfg.getProperty<String>(ObsConfig::PROPERTY_OBS_NAME),
       config.sensorOffsets[LEFT_SENSOR_ID],
       config.sensorOffsets[RIGHT_SENSOR_ID],
       batteryPercentage,
       trackUniqueIdentifier);
-    displayTest->showTextOnGrid(2, displayTest->newLine(), "Bluetooth .2");
     bluetoothManager->activateBluetooth();
     displayTest->showTextOnGrid(2, displayTest->currentLine(), "Bluetooth up");
   } else {
