@@ -8,10 +8,8 @@
 ; -- macOS --
 ; upload_port = /dev/cu.SLAB_USBtoUART
 
-; -- Upload via network / OTA --
-; upload_port = 192.168.0.1
-; upload_protocol = espota
-; upload_flags = -p 3232
+; -- Windows --
+; upload_port = COM3
 
 ; === build_flags ===
 ; build with development option

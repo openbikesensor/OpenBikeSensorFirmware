@@ -35,7 +35,6 @@
 #include "gps.h"
 #include "sensor.h"
 #include "writer.h"
-#include "battery.h"
 
 #include <Adafruit_BMP280.h>
 #include <VL53L0X.h>

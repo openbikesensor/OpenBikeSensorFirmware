@@ -29,7 +29,9 @@
 
 class VoltageMeter {
   public:
-    VoltageMeter(uint8_t batteryPin = 34, adc1_channel_t channel = ADC1_GPIO34_CHANNEL);
+    explicit VoltageMeter(
+      uint8_t batteryPin = 34,
+      adc1_channel_t channel = ADC1_GPIO34_CHANNEL);
     /* Returns the (smoothed) value in Volts. */
     double read();
     uint8_t readPercentage();

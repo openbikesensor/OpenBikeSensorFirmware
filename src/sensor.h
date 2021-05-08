@@ -124,7 +124,6 @@ class HCSR04SensorManager {
     bool collectSensorResults();
     void sendTriggerToReadySensor();
     void attachSensorInterrupt(HCSR04SensorInfo &sensorInfo);
-    void IRAM_ATTR isr(int idx);
     uint32_t getFixedStart(size_t idx, const HCSR04SensorInfo *sensor);
     boolean isReadyForStart(uint8_t sensorId);
     void registerReadings();

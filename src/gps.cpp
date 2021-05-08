@@ -26,12 +26,6 @@
 
 /* Most input from u-blox6_ReceiverDescrProtSpec_(GPS.G6-SW-10018)_Public.pdf */
 
-/**
- * TODO:
- *  - PERSIST_GPS_CONFIG after next release (0.5?)
- */
-
-
 const String Gps::INF_SEVERITY_STRING[] = {
   String("ERR"), String("WRN"), String("NTC"),
   String("TST"), String("DBG")
@@ -169,8 +163,6 @@ void Gps::configureGpsModule() {
   // Used to store GPS AID data every 3 minutes+
   setMessageInterval(UBX_MSG::AID_INI, 185);
 
-// FIXME before release 0.5
-#ifdef PERSIST_GPS_CONFIG
   // Persist configuration
   const uint8_t UBX_CFG_CFG_SAVE[] = {
     0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00,
@@ -178,7 +170,7 @@ void Gps::configureGpsModule() {
   };
   sendAndWaitForAck(UBX_MSG::CFG_CFG, UBX_CFG_CFG_SAVE, sizeof(UBX_CFG_CFG_SAVE));
   handle(20);
-#endif
+  addStatisticsMessage("OBS: Did update GPS settings.");
   log_i("Config GPS done!");
 }
 

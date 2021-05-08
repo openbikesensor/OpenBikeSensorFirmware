@@ -57,7 +57,7 @@ void ObsService::setup(BLEServer *pServer) {
 }
 
 bool ObsService::shouldAdvertise() {
-  return true;
+  return false;
 }
 
 BLEService* ObsService::getService() {
