@@ -37,10 +37,72 @@ Starting with version v0.3 the firmware also exposes the measured data via
 [BLE bluetooth](https://github.com/openbikesensor/OpenBikeSensorFirmware/blob/master/docs/software/firmware/bluetooth_services.md).
 You can use this to feed data to the
 [SimRa](https://www.mcc.tu-berlin.de/menue/forschung/projekte/simra/) App or
-any other app collecting heart-rate BLE data.
+any other app collecting heart-rate BLE data. 
+
+Unfortunately we had to temporarily remove the bluetooth code in v0.5.x because
+of resource limitations. Plan is to enable this again as soon as we manage
+the resource limitations.
 
 
 ## Updating
+
+### Step By Step
+
+1. Go to "Update Flash App" and push "Update to vX.Y.ZZZ". Wait 
+   a moment, the data is directly downloaded for GitHub to the OBS.
+   The latest version of the "Flash App" gets then installed, and you are 
+   redirected to the "Update firmware" page - which looks similar.
+   This is a one time action, can be omitted is already done and 
+   there is no new version. you can start with 2. then.
+   
+1. Go to "Update Firmware" and push "Update to vX.Y.ZZZ". The
+   version is downloaded directly to your OBS device from GitHub.
+   After the Download the device reboots and does some housekeeping
+   so be patient within one or two minutes the device boots up
+   with the new version.
+
+### Details
+
+The update mechanism consists of 2 parts. A small firmware called Flash App
+is used to read the new firmware from the SD card and flash it to the obs.
+
+So as a 1st step you need to make sure that the Flash App part is installed
+on you ESP, you can do so by using "Update Flash App" button and start the 
+update b pressing "Update to vX.Y.ZZZ". The data is directly downloaded from
+GitHub, so the ESP needs to have access to the internet via your WiFi. You
+can also download the `flash.bin` directly from the 
+[GitHub releases](https://github.com/openbikesensor/OpenBikeSensorFlash/releases) 
+page. The direct update from GitHub has currently no progress bar so be
+patient.
+
+Now you need to download the OBS Firmware and place it as `/sdflash/app.bin`
+on the SD Card. This is also fully automated behind the "Update Firmware"
+button, There you can again directly download the latest version and start
+the internal update process with the "Update to vX.Y.ZZZ" button. Make sure 
+it is a version newer v0.6.x. At the time of writing there is no such version 
+released yet. Do not downgrade to a version prior v0.6.x, once the Flash App 
+was installed. A hint on the "Update Firmware" page will show the version of
+the Flash App you have installed or if the Flash App is not installed hint 
+you to install the Flash App 1st. With the "File Upload" option you can 
+also update to locally built versions. Make sure they are pos v0.6 versions!
+The 1st update includes a repartitioning of the ESPs flash where you
+do not see any indication of progress. Be patient all does not take more
+than one or two minutes after the upload was completed.
+
+The About page gives you some insight of the current partitioning a more 
+detailed documentation will come. 
+
+
+
+### from v0.5.x or earlier
+
+With version v0.6 a new update path was introduced. To allow updating, 
+to versions of v0.6 or newer you at least hav to have version v0.6 installed.
+
+The update process is as usual, download the latest v0.6.x from GitHub
+and use the "Update Firmware" functionality in server mode.
+
+### from v0.2.x or earlier
 
 update functionality. For the 1st flashing of the firmware or the update
 from a version prior v0.3.x you have to plug in USB.
@@ -63,3 +125,25 @@ You can find the OpenBikeSensor documentation under:
    or [CLion](https://www.openbikesensor.org/software/firmware/setup.html#clion) (license required), 
    respectively [Arduino IDE](https://www.openbikesensor.org/software/firmware/setup.html#clion) (discouraged).
 4. Happy Coding! :tada: We are open for your pull request.
+
+
+## License
+
+    Copyright (C) 2020-2021 OpenBikeSensor Contributors
+    Contact: https://openbikesensor.org
+
+    This file is part of the OpenBikeSensor firmware.
+
+    The OpenBikeSensor firmware is free software: you can
+    redistribute it and/or modify it under the terms of the GNU Lesser General
+    Public License as published by the Free Software Foundation, either version
+    3 of the License, or (at your option) any later version.
+
+    The OpenBikeSensor Website and Documentation is distributed in the hope
+    that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+    warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with the OpenBikeSensor Website and Documentation. If not, see
+    <http://www.gnu.org/licenses/>.

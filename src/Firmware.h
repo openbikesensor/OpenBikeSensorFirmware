@@ -20,25 +20,28 @@
  * License along with the OpenBikeSensor firmware.  If not,
  * see <http://www.gnu.org/licenses/>.
  */
+#ifndef OPENBIKESENSORFIRMWARE_FIRMWARE_H
+#define OPENBIKESENSORFIRMWARE_FIRMWARE_H
 
-#ifndef OBS_OPENBIKESENSORFIRMWARE_H
-#define OBS_OPENBIKESENSORFIRMWARE_H
 
-#include <Arduino.h>
-#define CIRCULAR_BUFFER_INT_SAFE
-#include <CircularBuffer.h>
+#include <functional>
 
-#include "config.h"
-#include "configServer.h"
-#include "displays.h"
-#include "globals.h"
-#include "gps.h"
-#include "sensor.h"
-#include "writer.h"
+class Firmware {
+  public:
+    explicit Firmware(String userAgent) : mUserAgent(userAgent) {};
+    void downloadToSd(String url, String filename);
+    bool downloadToFlash(String url, std::function<void(uint32_t, uint32_t)> progress);
+    String getLastMessage();
 
-#include <Adafruit_BMP280.h>
-#include <VL53L0X.h>
+    static String getFlashAppVersion();
+    static String checkSdFirmware();
+    static bool switchToFlashApp();
 
-#include "bluetooth/BluetoothManager.h"
+  private:
+    String mLastMessage;
+    String mUserAgent;
+    static const esp_partition_t *findEspFlashAppPartition();
+};
 
-#endif
+
+#endif //OPENBIKESENSORFIRMWARE_FIRMWARE_H

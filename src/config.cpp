@@ -1,22 +1,25 @@
 /*
-  Copyright (C) 2019 Zweirat
-  Contact: https://openbikesensor.org
-
-  This file is part of the OpenBikeSensor project.
-
-  The OpenBikeSensor sensor firmware is free software: you can redistribute
-  it and/or modify it under the terms of the GNU General Public License as
-  published by the Free Software Foundation, either version 3 of the License,
-  or (at your option) any later version.
-
-  The OpenBikeSensor sensor firmware is distributed in the hope that it will
-  be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
-  Public License for more details.
-
-  You should have received a copy of the GNU General Public License along with
-  the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ * Copyright (C) 2019-2021 OpenBikeSensor Contributors
+ * Contact: https://openbikesensor.org
+ *
+ * This file is part of the OpenBikeSensor firmware.
+ *
+ * The OpenBikeSensor firmware is free software: you can
+ * redistribute it and/or modify it under the terms of the GNU
+ * Lesser General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option)
+ * any later version.
+ *
+ * OpenBikeSensor firmware is distributed in the hope that
+ * it will be useful, but WITHOUT ANY WARRANTY; without even the
+ * implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE.  See the GNU Lesser General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with the OpenBikeSensor firmware.  If not,
+ * see <http://www.gnu.org/licenses/>.
+ */
 
 #include <langinfo.h>
 #include "config.h"
@@ -53,6 +56,7 @@ const String ObsConfig::PROPERTY_PA_LONG = String("long");
 const String ObsConfig::PROPERTY_PA_LAT_T = String("latT");
 const String ObsConfig::PROPERTY_PA_LONG_T = String("longT");
 const String ObsConfig::PROPERTY_PA_RADIUS = String("radius");
+const String ObsConfig::PROPERTY_HTTP_PIN = String("httpPin");
 
 // Filenames 8.3 here!
 const String OLD_CONFIG_FILENAME = "/config.txt";
@@ -79,9 +83,14 @@ bool ObsConfig::loadConfig() {
 }
 
 bool ObsConfig::saveConfig() const {
-  log_d("Saving config to SPIFFS %s free space %luk", CONFIG_FILENAME.c_str(), SPIFFS.usedBytes() / 1024);
-  SPIFFS.remove(CONFIG_OLD_FILENAME);
-  SPIFFS.rename(CONFIG_FILENAME, CONFIG_OLD_FILENAME);
+  log_d("Saving config to SPIFFS %s space %luk used space %luk",
+        CONFIG_FILENAME.c_str(), SPIFFS.totalBytes() / 1024, SPIFFS.usedBytes() / 1024);
+  if (SPIFFS.exists(CONFIG_OLD_FILENAME)) {
+    SPIFFS.remove(CONFIG_OLD_FILENAME);
+  }
+  if (SPIFFS.exists(CONFIG_FILENAME)) {
+    SPIFFS.rename(CONFIG_FILENAME, CONFIG_OLD_FILENAME);
+  }
   bool result;
   File file = SPIFFS.open(CONFIG_FILENAME, FILE_WRITE);
   auto size = serializeJson(jsonData, file);
@@ -93,7 +102,7 @@ bool ObsConfig::saveConfig() const {
     result = true;
   }
   printConfig();
-  log_d("Configuration saved %ld bytes - remaining %luk.",
+  log_d("Configuration saved %ld bytes - used %luk.",
         size, SPIFFS.usedBytes() / 1024);
   // delete old config format file if result == true
   // TODO: Activate once released
@@ -135,6 +144,7 @@ void ObsConfig::makeSureSystemDefaultsAreSet() {
     data[PROPERTY_WIFI_PASSWORD] = "Freifunk";
   }
   ensureSet(data, PROPERTY_PORTAL_URL, "https://openbikesensor.hlrs.de");
+  ensureSet(data, PROPERTY_HTTP_PIN, ""); // we choose and save a new default when we need it
 
   const String &token = getProperty<const char*>(PROPERTY_PORTAL_TOKEN);
   if (token && token.equals("5e8f2f43e7e3b3668ca13151")) {
@@ -197,6 +207,12 @@ bool ObsConfig::setProperty(int profile, String const &key, T const &value) {
 }
 
 bool ObsConfig::setProperty(int profile, String const &key, String const &value) {
+  auto oldValue = jsonData["obs"][profile][key];
+  jsonData["obs"][profile][key] = value;
+  return value == oldValue;
+}
+
+bool ObsConfig::setProperty(int profile, String const &key, std::string const &value) {
   auto oldValue = jsonData["obs"][profile][key];
   jsonData["obs"][profile][key] = value;
   return value == oldValue;
@@ -286,9 +302,12 @@ bool ObsConfig::loadConfig(File &file) {
 }
 
 bool ObsConfig::loadJson(JsonDocument &jsonDocument, const String &filename) {
-  File file = SPIFFS.open(filename);
-  bool success = loadJson(jsonDocument, file);
-  file.close();
+  bool success = SPIFFS.exists(filename);
+  if (success) {
+    File file = SPIFFS.open(filename);
+    success = loadJson(jsonDocument, file);
+    file.close();
+  }
   return success;
 }
 
@@ -302,13 +321,12 @@ bool ObsConfig::loadJson(JsonDocument &jsonDocument, File &file) {
   } else {
     success = true;
   }
-  file.close();
-
 #ifdef DEVELOP
   log_d("Config found in file '%s':", file.name());
   serializeJsonPretty(jsonDocument, Serial);
   log_d("------------------------------------------");
 #endif
+  file.close();
   return success;
 }
 

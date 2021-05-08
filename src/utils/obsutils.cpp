@@ -1,22 +1,26 @@
 /*
-  Copyright (C) 2019 Zweirat
-  Contact: https://openbikesensor.org
+ * Copyright (C) 2019-2021 OpenBikeSensor Contributors
+ * Contact: https://openbikesensor.org
+ *
+ * This file is part of the OpenBikeSensor firmware.
+ *
+ * The OpenBikeSensor firmware is free software: you can
+ * redistribute it and/or modify it under the terms of the GNU
+ * Lesser General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option)
+ * any later version.
+ *
+ * OpenBikeSensor firmware is distributed in the hope that
+ * it will be useful, but WITHOUT ANY WARRANTY; without even the
+ * implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE.  See the GNU Lesser General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with the OpenBikeSensor firmware.  If not,
+ * see <http://www.gnu.org/licenses/>.
+ */
 
-  This file is part of the OpenBikeSensor project.
-
-  The OpenBikeSensor sensor firmware is free software: you can redistribute
-  it and/or modify it under the terms of the GNU General Public License as
-  published by the Free Software Foundation, either version 3 of the License,
-  or (at your option) any later version.
-
-  The OpenBikeSensor sensor firmware is distributed in the hope that it will
-  be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
-  Public License for more details.
-
-  You should have received a copy of the GNU General Public License along with
-  the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
-*/
 #include "obsutils.h"
 #include <esp_wifi.h>
 #include "writer.h"
@@ -164,6 +168,18 @@ String ObsUtils::encodeForCsvField(const String &field) {
   return result;
 }
 
+// Poor man....
+String ObsUtils::encodeForUrl(const String &url) {
+  String result(url);
+  result.replace("%", "%25");
+  result.replace("+", "%2B");
+  result.replace(" ", "+");
+  result.replace("\"", "%22");
+  result.replace("\'", "%27");
+  result.replace("=", "%3D");
+  return result;
+}
+
 String ObsUtils::toScaledByteString(uint32_t size) {
   String result;
   if (size <= BYTES_PER_KB * 10) {
@@ -190,3 +206,12 @@ void ObsUtils::logHexDump(const uint8_t *buffer, uint16_t length) {
   log_e("%s", debug.c_str());
 }
 
+String ObsUtils::sha256ToString(byte *sha256) {
+  const int HASH_LEN = 32;
+  char hash_print[HASH_LEN * 2 + 1];
+  hash_print[HASH_LEN * 2] = 0;
+  for (int i = 0; i < HASH_LEN; ++i) {
+    snprintf(&hash_print[i * 2], 2, "%02x", sha256[i]);
+  }
+  return String(hash_print);
+}

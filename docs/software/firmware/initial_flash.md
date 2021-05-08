@@ -119,7 +119,7 @@ below.
 
 ### Flush
 
-In the directory where you have extracted the zip, execute thr following 
+In the directory where you have extracted the zip, execute the following 
 command:
 
 ```bash
@@ -139,8 +139,47 @@ python3 esptool.py \
     0x10000 0x10000.bin
 ```
 
+## macOs
+
+### Preparation
+
+Download the latest release archive from
+[OpenBikeSensorFirmware at GITHub](https://github.com/openbikesensor/OpenBikeSensorFirmware/releases).
+You need the larger ZIP file named `obs-v9.9.9999-initial-flash.zip`.
+Extract the files in a temporary folder, they are named like
+0x??????.bin. The numbers are the base address where the data should
+be flashed.
+
+Install `esptool`, if it is not installed already. With Homebrew you can easily install it using `brew install esptool`.  
+
+Make sure you know the device name for the USB device. The assigned tty device is typically `/dev/tty.usbserial-0001` which is also assumed in the sample below. On macOs you list your current USB devices, using `ioreg -p IOUSB -w0 -l`. In doubt lookout for a `USB to UART` USB device.
+
+### Flush
+
+In the directory where you have extracted the zip, execute the following 
+command:
+
+```bash
+esptool.py \
+    --chip esp32 \
+    --port /dev/tty.usbserial-0001 \
+    --baud 921600 \
+    --before default_reset \
+    --after hard_reset \
+    write_flash -z \
+    --flash_mode dio \
+    --flash_freq 40m \
+    --flash_size detect \
+    0x1000 0x01000.bin \
+    0x8000 0x08000.bin \
+    0xe000 0x0e000.bin \
+    0x10000 0x10000.bin
+```
+
 ## Licenses
 
 https://docs.espressif.com/projects/esp-idf/en/latest/esp32/COPYRIGHT.html
 
 Please see the root folder of the licence files of used components. 
+
+

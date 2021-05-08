@@ -1,22 +1,26 @@
 /*
-  Copyright (C) 2019 Zweirat
-  Contact: https://openbikesensor.org
+ * Copyright (C) 2019-2021 OpenBikeSensor Contributors
+ * Contact: https://openbikesensor.org
+ *
+ * This file is part of the OpenBikeSensor firmware.
+ *
+ * The OpenBikeSensor firmware is free software: you can
+ * redistribute it and/or modify it under the terms of the GNU
+ * Lesser General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option)
+ * any later version.
+ *
+ * OpenBikeSensor firmware is distributed in the hope that
+ * it will be useful, but WITHOUT ANY WARRANTY; without even the
+ * implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE.  See the GNU Lesser General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with the OpenBikeSensor firmware.  If not,
+ * see <http://www.gnu.org/licenses/>.
+ */
 
-  This file is part of the OpenBikeSensor project.
-
-  The OpenBikeSensor sensor firmware is free software: you can redistribute
-  it and/or modify it under the terms of the GNU General Public License as
-  published by the Free Software Foundation, either version 3 of the License,
-  or (at your option) any later version.
-
-  The OpenBikeSensor sensor firmware is distributed in the hope that it will
-  be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
-  Public License for more details.
-
-  You should have received a copy of the GNU General Public License along with
-  the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
-*/
 #include <utils/obsutils.h>
 #include "OpenBikeSensorFirmware.h"
 
@@ -29,7 +33,7 @@
 
 // --- Global variables ---
 // Version only change the "vN.M" part if needed.
-const char *OBSVersion = "v0.4" BUILD_NUMBER;
+const char *OBSVersion = "v0.6" BUILD_NUMBER;
 
 const uint8_t LEFT_SENSOR_ID = 1;
 const uint8_t RIGHT_SENSOR_ID = 0;
@@ -53,19 +57,21 @@ Config config;
 
 SSD1306DisplayDevice* displayTest;
 HCSR04SensorManager* sensorManager;
+#ifdef OBS_BLUETOOTH
 BluetoothManager* bluetoothManager;
+#endif
 
 Gps gps;
 
+#ifdef OBS_BLUETOOTH
 const uint32_t BLUETOOTH_INTERVAL_MILLIS = 250;
 uint32_t lastBluetoothInterval = 0;
+#endif
 
 float TemperatureValue = -1;
 
 
 VoltageMeter* voltageMeter;
-
-String esp_chipid;
 
 Adafruit_BMP280 bmp280(&Wire);
 bool BMP280_active = false;
@@ -112,7 +118,7 @@ void switch_wire_speed_to_SSD1306(){
 void setup() {
   Serial.begin(115200);
 
-  // Serial.println("setup()");
+  log_i("setup()");
 
   //##############################################################
   // Configure button pin as INPUT
@@ -255,6 +261,7 @@ void setup() {
   //##############################################################
   // Bluetooth
   //##############################################################
+#ifdef OBS_BLUETOOTH
   if (cfg.getProperty<bool>(ObsConfig::PROPERTY_BLUETOOTH)) {
     displayTest->showTextOnGrid(2, displayTest->newLine(), "Bluetooth ..");
     bluetoothManager = new BluetoothManager;
@@ -271,6 +278,7 @@ void setup() {
     ESP_ERROR_CHECK_WITHOUT_ABORT(
       esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
   }
+#endif
 
   displayTest->showTextOnGrid(2, displayTest->newLine(), "Wait for GPS");
   displayTest->newLine();
@@ -281,11 +289,13 @@ void setup() {
   while (!gps.hasState(gpsWaitFor, displayTest)) {
     currentTimeMillis = millis();
     gps.handle();
+#ifdef OBS_BLUETOOTH
     if (bluetoothManager && bluetoothManager->hasConnectedClients()
         && lastBluetoothInterval != (currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS)) {
       lastBluetoothInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
       bluetoothManager->newSensorValues(currentTimeMillis, MAX_SENSOR_VALUE, MAX_SENSOR_VALUE);
     }
+#endif
     gps.showWaitStatus(displayTest);
     buttonState = digitalRead(PushButton_PIN);
     if (buttonState == HIGH
@@ -306,10 +316,9 @@ void setup() {
   displayTest->clear();
 }
 
-
 void serverLoop() {
   gps.handle();
-  server.handleClient();
+  configServerHandle();
   sensorManager->getDistancesNoWait();
   handleButtonInServerMode();
 }
@@ -331,7 +340,7 @@ void handleButtonInServerMode() {
     const uint32_t buttonPressedMs = now - buttonStateChanged;
     displayTest->drawProgressBar(5, buttonPressedMs, LONG_BUTTON_PRESS_TIME_MS);
     if (buttonPressedMs > LONG_BUTTON_PRESS_TIME_MS) {
-      uploadTracks(false);
+      uploadTracks();
     }
   }
 }
@@ -386,6 +395,7 @@ void loop() {
     );
 
 
+#ifdef OBS_BLUETOOTH
     if (bluetoothManager && bluetoothManager->hasConnectedClients()
         && lastBluetoothInterval != (currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS)) {
       log_d("Reporting BT: %d/%d Button: %d\n",
@@ -398,7 +408,7 @@ void loop() {
         sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
         sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median());
     }
-
+#endif
     buttonState = digitalRead(PushButton_PIN);
     // detect state change
     if (buttonState != lastButtonState) {
@@ -538,6 +548,7 @@ void loop() {
 }
 
 void bluetoothConfirmed(const DataSet *dataSet, uint16_t measureIndex) {
+#ifdef OBS_BLUETOOTH
   if (bluetoothManager && bluetoothManager->hasConnectedClients()) {
     uint16_t left = dataSet->readDurationsLeftInMicroseconds[measureIndex];
     if (left >= MAX_DURATION_MICRO_SEC && measureIndex > 0) {
@@ -562,6 +573,7 @@ void bluetoothConfirmed(const DataSet *dataSet, uint16_t measureIndex) {
       dataSet->millis + (uint32_t) dataSet->startOffsetMilliseconds[measureIndex],
       left, right);
   }
+#endif
 }
 
 uint8_t batteryPercentage() {

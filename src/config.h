@@ -1,22 +1,25 @@
 /*
-  Copyright (C) 2019 Zweirat
-  Contact: https://openbikesensor.org
-
-  This file is part of the OpenBikeSensor project.
-
-  The OpenBikeSensor sensor firmware is free software: you can redistribute
-  it and/or modify it under the terms of the GNU General Public License as
-  published by the Free Software Foundation, either version 3 of the License,
-  or (at your option) any later version.
-
-  The OpenBikeSensor sensor firmware is distributed in the hope that it will
-  be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
-  Public License for more details.
-
-  You should have received a copy of the GNU General Public License along with
-  the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ * Copyright (C) 2019-2021 OpenBikeSensor Contributors
+ * Contact: https://openbikesensor.org
+ *
+ * This file is part of the OpenBikeSensor firmware.
+ *
+ * The OpenBikeSensor firmware is free software: you can
+ * redistribute it and/or modify it under the terms of the GNU
+ * Lesser General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option)
+ * any later version.
+ *
+ * OpenBikeSensor firmware is distributed in the hope that
+ * it will be useful, but WITHOUT ANY WARRANTY; without even the
+ * implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE.  See the GNU Lesser General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with the OpenBikeSensor firmware.  If not,
+ * see <http://www.gnu.org/licenses/>.
+ */
 
 #ifndef OBS_CONFIG_H
 #define OBS_CONFIG_H
@@ -95,6 +98,7 @@ class ObsConfig {
     bool setBitMaskProperty(int profile, const String &key, uint value, bool state);
     uint getBitMaskProperty(int profile, const String &key, uint mask) const;
 
+    bool setProperty(int profile, const String &key, std::string const &value);
     bool setProperty(int profile, const String &key, String const &value);
     template<typename T> bool setProperty(int profile, const String &key, T const &value);
     bool setOffsets(int profile, std::vector<int> const &value);
@@ -139,6 +143,7 @@ class ObsConfig {
     static const String PROPERTY_PA_LAT_T;
     static const String PROPERTY_PA_LONG_T;
     static const String PROPERTY_PA_RADIUS;
+    static const String PROPERTY_HTTP_PIN;
 
   private:
     static bool loadJson(JsonDocument &jsonDocument, const String &filename);
