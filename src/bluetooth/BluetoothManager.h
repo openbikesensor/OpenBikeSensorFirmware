@@ -84,8 +84,8 @@ class BluetoothManager: public BLEServerCallbacks  {
   private:
     BLEServer *pServer;
     std::list<IBluetoothService*> services;
-    void onDisconnect(BLEServer *pServer);
-    void onConnect(BLEServer *pServer);
+    void onDisconnect(BLEServer *pServer) override;
+    void onConnect(BLEServer *pServer) override;
     bool deviceConnected;
     bool oldDeviceConnected;
 
