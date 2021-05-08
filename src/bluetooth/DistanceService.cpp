@@ -29,7 +29,7 @@ void DistanceService::setup(BLEServer *pServer) {
 }
 
 bool DistanceService::shouldAdvertise() {
-  return true;
+  return false;
 }
 
 BLEService* DistanceService::getService() {

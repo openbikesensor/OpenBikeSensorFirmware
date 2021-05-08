@@ -35,7 +35,7 @@
 #include "BatteryService.h"
 #include "ObsService.h"
 
-class BluetoothManager {
+class BluetoothManager: public BLEServerCallbacks  {
   public:
     /**
      * Initializes all defined services and starts the bluetooth server.
@@ -84,6 +84,11 @@ class BluetoothManager {
   private:
     BLEServer *pServer;
     std::list<IBluetoothService*> services;
+    void onDisconnect(BLEServer *pServer) override;
+    void onConnect(BLEServer *pServer) override;
+    bool deviceConnected;
+    bool oldDeviceConnected;
+
 };
 
 #endif

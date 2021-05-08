@@ -268,7 +268,7 @@ void HCSR04SensorManager::getDistancesParallel() {
 }
 
 uint16_t HCSR04SensorManager::getCurrentMeasureIndex() {
-  return lastReadingCount;
+  return lastReadingCount - 1;
 }
 
 /* Wait till the primary sensor is ready, this also defines the frequency of
