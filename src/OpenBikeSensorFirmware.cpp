@@ -57,12 +57,12 @@ Config config;
 
 SSD1306DisplayDevice* displayTest;
 HCSR04SensorManager* sensorManager;
-BluetoothManager* bluetoothManager;
+static BluetoothManager* bluetoothManager;
 
 Gps gps;
 
-const uint32_t BLUETOOTH_INTERVAL_MILLIS = 250;
-uint32_t lastBluetoothInterval = 0;
+static const uint32_t BLUETOOTH_INTERVAL_MILLIS = 100;
+static uint32_t lastBluetoothInterval = 0;
 
 float BatteryValue = -1;
 float TemperatureValue = -1;
@@ -97,7 +97,6 @@ const uint8_t displayAddress = 0x3c;
 
 int lastMeasurements = 0 ;
 
-void bluetoothConfirmed(const DataSet *dataSet, uint16_t measureIndex);
 uint8_t batteryPercentage();
 void serverLoop();
 void handleButtonInServerMode();
@@ -131,7 +130,7 @@ void setupSensors() {
   sensorManager->setPrimarySensor(LEFT_SENSOR_ID);
 }
 
-void setupBluetooth(const ObsConfig &cfg, const String &trackUniqueIdentifier) {
+static void setupBluetooth(const ObsConfig &cfg, const String &trackUniqueIdentifier) {
   if (cfg.getProperty<bool>(ObsConfig::PROPERTY_BLUETOOTH)) {
     displayTest->showTextOnGrid(2, displayTest->newLine(), "Bluetooth ..");
     bluetoothManager = new BluetoothManager;
@@ -149,6 +148,48 @@ void setupBluetooth(const ObsConfig &cfg, const String &trackUniqueIdentifier) {
     bluetoothManager = nullptr;
     ESP_ERROR_CHECK_WITHOUT_ABORT(
       esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
+  }
+}
+
+static void reportBluetooth() {
+  if (bluetoothManager
+      && lastBluetoothInterval != (currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS)) {
+    log_d("Reporting BT: %d/%d Button: %d\n",
+          sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
+          sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median(),
+          buttonState);
+    lastBluetoothInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
+    bluetoothManager->newSensorValues(
+      currentTimeMillis,
+      sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
+      sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median());
+  }
+}
+
+static void buttonBluetooth(const DataSet *dataSet, uint16_t measureIndex) {
+  if (bluetoothManager && bluetoothManager->hasConnectedClients()) {
+    uint16_t left = dataSet->readDurationsLeftInMicroseconds[measureIndex];
+    if (left >= MAX_DURATION_MICRO_SEC && measureIndex > 0) {
+      measureIndex--;
+      left = dataSet->readDurationsLeftInMicroseconds[measureIndex];
+    }
+    uint16_t right = dataSet->readDurationsRightInMicroseconds[measureIndex];
+    if (right >= MAX_DURATION_MICRO_SEC && measureIndex > 0) {
+      right = dataSet->readDurationsLeftInMicroseconds[measureIndex - 1];
+    }
+    if (left > MAX_DURATION_MICRO_SEC || left == 0) {
+      left = MAX_SENSOR_VALUE;
+    } else {
+      left /= MICRO_SEC_TO_CM_DIVIDER;
+    }
+    if (right > MAX_DURATION_MICRO_SEC || right == 0) {
+      right = MAX_SENSOR_VALUE;
+    } else {
+      right /= MICRO_SEC_TO_CM_DIVIDER;
+    }
+    bluetoothManager->newPassEvent(
+      dataSet->millis + (uint32_t) dataSet->startOffsetMilliseconds[measureIndex],
+      left, right);
   }
 }
 
@@ -291,11 +332,8 @@ void setup() {
   while (!gps.hasState(gpsWaitFor, displayTest)) {
     currentTimeMillis = millis();
     gps.handle();
-    if (bluetoothManager && bluetoothManager->hasConnectedClients()
-        && lastBluetoothInterval != (currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS)) {
-      lastBluetoothInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
-      bluetoothManager->newSensorValues(currentTimeMillis, MAX_SENSOR_VALUE, MAX_SENSOR_VALUE);
-    }
+    sensorManager->getDistances();
+    reportBluetooth();
     gps.showWaitStatus(displayTest);
     buttonState = digitalRead(PushButton_PIN);
     if (buttonState == HIGH
@@ -394,18 +432,7 @@ void loop() {
       gps.getValidSatellites()
     );
 
-    if (bluetoothManager && bluetoothManager->hasConnectedClients()
-        && lastBluetoothInterval != (currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS)) {
-      log_d("Reporting BT: %d/%d Button: %d\n",
-                    sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
-                    sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median(),
-                    buttonState);
-      lastBluetoothInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
-      bluetoothManager->newSensorValues(
-        currentTimeMillis,
-        sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
-        sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median());
-    }
+    reportBluetooth();
     buttonState = digitalRead(PushButton_PIN);
     // detect state change
     if (buttonState != lastButtonState) {
@@ -423,13 +450,13 @@ void loop() {
         if (datasetToConfirm != nullptr) {
           datasetToConfirm->confirmedDistances.push_back(minDistanceToConfirm);
           datasetToConfirm->confirmedDistancesTimeOffset.push_back(minDistanceToConfirmIndex);
-          bluetoothConfirmed(datasetToConfirm, minDistanceToConfirmIndex);
+          buttonBluetooth(datasetToConfirm, minDistanceToConfirmIndex);
           datasetToConfirm = nullptr;
         } else { // confirming a overtake without left measure
           currentSet->confirmedDistances.push_back(MAX_SENSOR_VALUE);
           currentSet->confirmedDistancesTimeOffset.push_back(
             sensorManager->getCurrentMeasureIndex());
-          bluetoothConfirmed(currentSet, sensorManager->getCurrentMeasureIndex());
+          buttonBluetooth(currentSet, sensorManager->getCurrentMeasureIndex());
         }
         minDistanceToConfirm = MAX_SENSOR_VALUE; // ready for next confirmation
       }
@@ -443,7 +470,8 @@ void loop() {
       minDistanceToConfirmIndex = sensorManager->getCurrentMeasureIndex();
       // if there was no measurement of this sensor for this index, it is the
       // one before. This happens with fast confirmations.
-      if (sensorManager->m_sensors[confirmationSensorID].echoDurationMicroseconds[minDistanceToConfirm - 1] <= 0) {
+      if (minDistanceToConfirm > 0
+         && sensorManager->m_sensors[confirmationSensorID].echoDurationMicroseconds[minDistanceToConfirm - 1] <= 0) {
         minDistanceToConfirmIndex--;
       }
       datasetToConfirm = currentSet;
@@ -556,33 +584,6 @@ void loop() {
   Serial.printf("Time elapsed %lu milliseconds\n", currentTimeMillis - startTimeMillis);
   // synchronize to full measureIntervals
   startTimeMillis = (currentTimeMillis / measureInterval) * measureInterval;
-}
-
-void bluetoothConfirmed(const DataSet *dataSet, uint16_t measureIndex) {
-  if (bluetoothManager && bluetoothManager->hasConnectedClients()) {
-    uint16_t left = dataSet->readDurationsLeftInMicroseconds[measureIndex];
-    if (left >= MAX_DURATION_MICRO_SEC && measureIndex > 0) {
-      measureIndex--;
-      left = dataSet->readDurationsLeftInMicroseconds[measureIndex];
-    }
-    uint16_t right = dataSet->readDurationsRightInMicroseconds[measureIndex];
-    if (right >= MAX_DURATION_MICRO_SEC && measureIndex > 0) {
-      right = dataSet->readDurationsLeftInMicroseconds[measureIndex - 1];
-    }
-    if (left > MAX_DURATION_MICRO_SEC || left <= 0) {
-      left = MAX_SENSOR_VALUE;
-    } else {
-      left /= MICRO_SEC_TO_CM_DIVIDER;
-    }
-    if (right > MAX_DURATION_MICRO_SEC || right <= 0) {
-      right = MAX_SENSOR_VALUE;
-    } else {
-      right /= MICRO_SEC_TO_CM_DIVIDER;
-    }
-    bluetoothManager->newPassEvent(
-      dataSet->millis + (uint32_t) dataSet->startOffsetMilliseconds[measureIndex],
-      left, right);
-  }
 }
 
 uint8_t batteryPercentage() {

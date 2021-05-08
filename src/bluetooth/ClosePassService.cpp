@@ -29,7 +29,7 @@ void ClosePassService::setup(BLEServer *pServer) {
 }
 
 bool ClosePassService::shouldAdvertise() {
-  return true;
+  return false;
 }
 
 BLEService* ClosePassService::getService() {
