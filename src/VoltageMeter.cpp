@@ -37,9 +37,7 @@
  */
 VoltageMeter::VoltageMeter(uint8_t batteryPin, adc1_channel_t channel) :
   mBatteryPin(batteryPin), mBatteryAdcChannel(channel) {
-#ifdef DEVELOP
-  Serial.print("Initializing VoltageMeter.\n");
-#endif
+  log_i("Initializing VoltageMeter.");
   pinMode(mBatteryPin, INPUT);
   ESP_ERROR_CHECK_WITHOUT_ABORT(
     adc1_config_width(ADC_WIDTH_BIT_12));
@@ -50,35 +48,31 @@ VoltageMeter::VoltageMeter(uint8_t batteryPin, adc1_channel_t channel) :
   __unused const esp_adc_cal_value_t val_type = esp_adc_cal_characterize(
       ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12,
       REF_VOLTAGE_MILLI_VOLT, &adc_chars);
-#ifdef DEVELOP
   if (val_type == ESP_ADC_CAL_VAL_EFUSE_TP) {
-    Serial.printf("Characterized using Two Point Value\n");
+    log_i("Characterized using Two Point Value");
   } else if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
-    Serial.printf("Characterized using eFuse Vref\n");
+    log_i("Characterized using eFuse Vref");
   } else {
-    Serial.printf("Characterized using Default Vref\n");
+    log_i("Characterized using Default Vref");
   }
   //Check if TP is burned into eFuse
   if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_TP) == ESP_OK) {
-    Serial.printf("eFuse Two Point: Supported\n");
+    log_i("eFuse Two Point: Supported");
   } else {
-    Serial.printf("eFuse Two Point: NOT supported\n");
+    log_i("eFuse Two Point: NOT supported");
   }
   //Check Vref is burned into eFuse
   if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_VREF) == ESP_OK) {
-    Serial.printf("eFuse Vref: Supported\n");
+    log_i("eFuse Vref: Supported");
   } else {
-    Serial.printf("eFuse Vref: NOT supported\n");
+    log_i("eFuse Vref: NOT supported");
   }
-#endif
   lastSmoothedReading = readRaw();
   for (int i = 0; i < MINIMUM_SAMPLES; i++) {
     readSmoothed();
     yield();
   }
-#ifdef DEVELOP
-  Serial.printf("VoltageMeter initialized got %03.2fV.\n", read());
-#endif
+  log_i("VoltageMeter initialized got %03.2fV.", read());
 }
 
 bool VoltageMeter::isWarningLevel() {
@@ -95,15 +89,23 @@ double VoltageMeter::read() {
 }
 
 uint8_t VoltageMeter::readPercentage() {
-  // TODO: Better formula from Benjamin!
-  // 4.22 == 100% / 3.47 = 0%
-  int16_t result = 10 + ((read() - 3.47) / 0.0075);
-  if (result < 0) {
-    result = 10;
-  } else if (result > 100) {
-    result = 100;
+  if (!hasReadings()) {
+    return -1;
   }
-  return (uint8_t) result;
+  auto voltage = read();
+  uint8_t percentage;
+  if (voltage > 4.13) {
+    percentage = 100;
+  } else if (voltage > 3.67) { // 100% - 50%
+    percentage = 108.696 * voltage - 348.914;
+  } else if (voltage > 3.49) { //  50% - 25%
+    percentage = 138.889 * voltage - 459.723;
+  } else if (voltage > 3.12) { //  25% -  0%
+    percentage = 67.568 * voltage - 210.812;
+  } else {
+    percentage = 0;
+  }
+  return percentage;
 }
 
 int VoltageMeter::readSmoothed() {
@@ -115,4 +117,3 @@ int VoltageMeter::readSmoothed() {
 int VoltageMeter::readRaw() const {
   return adc1_get_raw(mBatteryAdcChannel);
 }
-
