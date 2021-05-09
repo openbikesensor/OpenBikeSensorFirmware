@@ -34,7 +34,7 @@ class VoltageMeter {
       adc1_channel_t channel = ADC1_GPIO34_CHANNEL);
     /* Returns the (smoothed) value in Volts. */
     double read();
-    uint8_t readPercentage();
+    int8_t readPercentage();
     bool hasReadings();
     bool isWarningLevel();
 

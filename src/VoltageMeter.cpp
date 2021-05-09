@@ -88,12 +88,12 @@ double VoltageMeter::read() {
     * 3.0 / 2000.0; // voltage divider @ OSB PCB
 }
 
-uint8_t VoltageMeter::readPercentage() {
+int8_t VoltageMeter::readPercentage() {
   if (!hasReadings()) {
     return -1;
   }
   auto voltage = read();
-  uint8_t percentage;
+  int8_t percentage;
   if (voltage > 4.13) {
     percentage = 100;
   } else if (voltage > 3.67) { // 100% - 50%
@@ -105,6 +105,7 @@ uint8_t VoltageMeter::readPercentage() {
   } else {
     percentage = 0;
   }
+  log_d("Voltage: %.2f  Percentage: %d", voltage, percentage);
   return percentage;
 }
 

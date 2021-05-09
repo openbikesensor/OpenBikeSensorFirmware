@@ -46,16 +46,16 @@ the resource limitations.
 
 ## Updating
 
-### Step By Step
+### Step By Step version v0.7.x ff
 
-1. Go to "Update Flash App" and push "Update to vX.Y.ZZZ". Wait 
-   a moment, the data is directly downloaded for GitHub to the OBS.
-   The latest version of the "Flash App" gets then installed, and you are 
-   redirected to the "Update firmware" page - which looks similar.
-   This is a one time action, can be omitted is already done and 
-   there is no new version. you can start with 2. then.
+1. Check if the Flash App is already installed. Go to _Update Flash App_ 
+   if no, or an outdated version is installed, push _Update to vX.Y.ZZZ_. 
+   The latest version of the "Flash App" gets then installed directly 
+   from GitHub, and you are redirected to the _Update firmware_ page. 
+   You might need to look twice - the _Update firmware_ page looks 
+   similar to the _Update Flash App_ page.
    
-1. Go to "Update Firmware" and push "Update to vX.Y.ZZZ". The
+1. On _Update Firmware_ push "Update to vX.Y.ZZZ". The
    version is downloaded directly to your OBS device from GitHub.
    After the Download the device reboots and does some housekeeping
    so be patient within one or two minutes the device boots up
@@ -92,15 +92,42 @@ than one or two minutes after the upload was completed.
 The About page gives you some insight of the current partitioning a more 
 detailed documentation will come. 
 
+### from v0.6.x, changing the partition schema
+
+The version v0.6.x is the version that introduced the new partitioning 
+schema. This version is small enough to run in the old schema but also 
+brings the needed logic to migrate to the new schema. 
+
+To trigger the migration do the following steps. 
+
+1. make sure you have a recent v0.6.x, currently v0.6.556
+1. make sure you have the recent Flash App (v0.1.22) installed. You can
+   install this version directly in the OBS UI "Update Flash App" -> 
+   "Update to v0.1.x".
+1. to trigger the repartitioning, install the v0.6.x again, 
+   via OBS UI "Update Firmware", either via "Update to v0.6.x"
+   or if no v0.6.x is offered via "File Upload". Make sure to use 
+   a v.0.6.x version. Older versions will not be able to handle 
+   the new update mechanism and newer versions do not fit
+   in the old partitioning. This will take a bit longer than
+   a usual reboot, one or two minutes.
+1. with the reboot now the partitioning is changed, and you can
+   start installing v0.7.x ff. You can also observe this
+   by looking at the about page. Check _OTA-0 Partition Size:_ 
+   this should be around 3.5mb it holds the OBS firmware, and
+   _OTA-1 Partition Size:_ which is only 256kb and holds the 
+   small Flash App thai is now responsible for the update of 
+   the OBS firmware from data stored on the SD Card.
 
 
 ### from v0.5.x or earlier
 
 With version v0.6 a new update path was introduced. To allow updating, 
-to versions of v0.6 or newer you at least hav to have version v0.6 installed.
+to versions of v0.6 or newer you at least have to have version v0.6 installed.
 
 The update process is as usual, download the latest v0.6.x from GitHub
-and use the "Update Firmware" functionality in server mode.
+and use the "Update Firmware" functionality in server mode. See above 
+for the next steps. 
 
 ### from v0.2.x or earlier
 
