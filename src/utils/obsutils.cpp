@@ -45,8 +45,8 @@ String ObsUtils::dateTimeToString(time_t theTime) {
   tm timeStruct;
   localtime_r(&theTime, &timeStruct);
   snprintf(date, sizeof(date),
-           "%02d.%02d.%04dT%02d:%02d:%02dZ",
-           timeStruct.tm_mday, timeStruct.tm_mon + 1, timeStruct.tm_year + 1900,
+           "%04d-%02d-%02dT%02d:%02d:%02dZ",
+           timeStruct.tm_year + 1900, timeStruct.tm_mon + 1, timeStruct.tm_mday,
            timeStruct.tm_hour, timeStruct.tm_min, timeStruct.tm_sec);
   return String(date);
 }

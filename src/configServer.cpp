@@ -43,7 +43,7 @@ using namespace httpsserver;
 
 static const char *const HTML_ENTITY_FAILED_CROSS = "&#x274C;";
 static const char *const HTML_ENTITY_OK_MARK = "&#x2705;";
-
+static const char *const HTML_ENTITY_WASTEBASKED = "&#x1f5d1;";
 static const char *const HTTP_GET = "GET";
 static const char *const HTTP_POST = "POST";
 
@@ -70,6 +70,7 @@ static const char* const header =
 // STYLE
     "<style>"
     "#file-input,input, button {width:100%;height:44px;border-radius:4px;margin:10px auto;font-size:15px;}"
+    ".small {height:12px;width:12px;margin:2px}"
     "input, button, a.back {background:#f1f1f1;border:0;padding:0;text-align:center;}"
     "body {background:#3498db;font-family:sans-serif;font-size:12px;color:#777}"
     "#file-input {padding:0 5px;border:1px solid #ddd;line-height:44px;text-align:left;display:block;cursor:pointer}"
@@ -437,6 +438,7 @@ static void handleMakeCurrentLocationPrivate(HTTPRequest * req, HTTPResponse * r
 static void handlePrivacy(HTTPRequest *req, HTTPResponse *res);
 static void handlePrivacyDeleteAction(HTTPRequest *req, HTTPResponse *res);
 static void handleSd(HTTPRequest *req, HTTPResponse *res);
+static void handleDeleteFiles(HTTPRequest *req, HTTPResponse *res);
 static void handleDelete(HTTPRequest *req, HTTPResponse *res);
 static void handleDeleteAction(HTTPRequest *req, HTTPResponse *res);
 
@@ -481,6 +483,7 @@ void beginPages() {
   server->registerNode(new ResourceNode("/settings/privacy", HTTP_GET, handlePrivacy));
   server->registerNode(new ResourceNode("/privacy_delete", HTTP_GET, handlePrivacyDeleteAction));
   server->registerNode(new ResourceNode("/sd", HTTP_GET, handleSd));
+  server->registerNode(new ResourceNode("/deleteFiles", HTTP_POST, handleDeleteFiles));
 
   server->addMiddleware(&accessFilter);
   server->setDefaultHeader("Server", std::string("OBS/") + OBSVersion);
@@ -491,8 +494,8 @@ void beginPages() {
 
 
 void createHttpServer() {
-  server = new HTTPSServer(&obsCert);
-  insecureServer = new HTTPServer();
+  server = new HTTPSServer(&obsCert, 443, 2);
+  insecureServer = new HTTPServer(80, 1);
 
   log_i("About to create pages.");
   beginPages();
@@ -1442,6 +1445,57 @@ static void handleFlashFileUpdateAction(HTTPRequest *req, HTTPResponse *res) {
   sensorManager->attachInterrupts();
 }
 
+static void handleDeleteFiles(HTTPRequest *req, HTTPResponse * res) {
+  const auto params = extractParameters(req);
+  String path = getParameter(params, "path");
+  if (path != "trash") {
+    SD.mkdir("/trash");
+  }
+
+  String html = replaceDefault(header, "Delete Files");
+  html += "<h3>Deleting files</h3>";
+  html += "<div>In: " + ObsUtils::encodeForXmlText(path);
+  html += "</div><br /><div>";
+  sendHtml(res, html);
+  html.clear();
+
+  for (auto param : params) {
+    if (param.first == "delete") {
+      String file = param.second;
+
+      String fullName = path + (path.length() > 1 ? "/" : "") + file;
+
+      html += ObsUtils::encodeForXmlText(file) + " &#10140; ";
+      if (path != "trash") {
+        if (SD.rename(fullName, "/trash/" + file)) {
+          log_i("Moved '%s'.", fullName.c_str());
+          html += HTML_ENTITY_WASTEBASKED;
+        } else {
+          log_w("Failed to move '%s'.", fullName.c_str());
+          html += HTML_ENTITY_FAILED_CROSS;
+        }
+      } else {
+        if (SD.remove(fullName)) {
+          log_i("Deleted '%s'.", fullName.c_str());
+          html += HTML_ENTITY_WASTEBASKED;
+        } else {
+          log_w("Failed to delete '%s'.", fullName.c_str());
+          html += HTML_ENTITY_FAILED_CROSS;
+        }
+      }
+      html += "<br />\n";
+      res->print(html);
+      html.clear();
+    }
+  }
+  html += "</div>";
+  html += "<input type=button onclick=\"window.location.href='/sd?path="
+    + ObsUtils::encodeForUrl(path) + "'\" class='btn' value='Back' />";
+  html += footer;
+  res->print(html);
+}
+
+
 static void handleSd(HTTPRequest *req, HTTPResponse *res) {
   String path = getParameter(req, "path", "/");
 
@@ -1454,7 +1508,9 @@ static void handleSd(HTTPRequest *req, HTTPResponse *res) {
 
   if (file.isDirectory()) {
     String html = header;
-    html = replaceDefault(html, "SD Card Contents " + String(file.name()));
+    html = replaceDefault(html, "SD Card Contents " + String(file.name()), "/deleteFiles");
+
+    html += "<input type='hidden' name='path' value='" + ObsUtils::encodeForXmlAttribute(path) + "'/>";
     html += "<ul class=\"directory-listing\">";
     sendHtml(res, html);
     html.clear();
@@ -1468,12 +1524,20 @@ static void handleSd(HTTPRequest *req, HTTPResponse *res) {
       displayTest->drawWaitBar(5, counter++);
 
       auto fileName = String(child.name());
+      auto fileTip = ObsUtils::encodeForXmlAttribute(
+        ObsUtils::dateTimeToString(child.getLastWrite())
+        + " - " + ObsUtils::toScaledByteString(child.size()));
+
       fileName = fileName.substring(int(fileName.lastIndexOf("/") + 1));
+      fileName = ObsUtils::encodeForXmlAttribute(fileName);
       bool isDirectory = child.isDirectory();
       html +=
         ("<li class=\""
          + String(isDirectory ? "directory" : "file")
-         + "\"><a href=\"/sd?path="
+         + "\" title='" + fileTip + "'>"
+         + "<input class='small' type='checkbox' value='" + fileName + "' name='delete'"
+         + String(isDirectory ? "disabled" : "")
+         + "><a href=\"/sd?path="
          + String(child.name())
          + "\">"
          + String(isDirectory ? "&#x1F4C1;" : "&#x1F4C4;")
@@ -1491,6 +1555,26 @@ static void handleSd(HTTPRequest *req, HTTPResponse *res) {
     }
     file.close();
     html += "</ul>";
+
+    if (path != "/") {
+      String back = path.substring(0, path.lastIndexOf('/'));
+      if (back.isEmpty()) {
+        back = "/";
+      }
+      html += "<input type=button onclick=\"window.location.href='/sd?path="
+              + ObsUtils::encodeForUrl(back) + "'\" class='btn' value='Up' />";
+    } else {
+      html += "<input type=button onclick=\"window.location.href='/'\" "
+              "class='btn' value='Menu' />";
+    }
+
+    if (counter > 0) {
+      if (path == "/trash") {
+        html += "<hr /><input type='submit' class='btn' value='Delete Selected' />";
+      } else {
+        html += "<hr /><input type='submit' class='btn' value='Move to Trash' />";
+      }
+    }
     html += footer;
     res->print(html);
     displayTest->clearProgressBar(5);
