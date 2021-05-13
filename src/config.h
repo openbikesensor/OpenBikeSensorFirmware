@@ -92,6 +92,7 @@ class ObsConfig {
     bool loadConfig(File &file);
     bool saveConfig() const;
     void printConfig() const;
+    bool removeConfig();
 
     std::vector<int> getIntegersProperty(String const &name) const;
     template<typename T> T getProperty(const String &key) const;

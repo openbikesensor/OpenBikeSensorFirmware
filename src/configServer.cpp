@@ -29,13 +29,11 @@
 #include <configServer.h>
 #include <OpenBikeSensorFirmware.h>
 #include <uploader.h>
-#include <https/cert.h>
-#include <https/private_key.h>
 #include <HTTPURLEncodedBodyParser.hpp>
 #include <esp_ota_ops.h>
 #include <esp_partition.h>
+#include <utils/Https.h>
 #include "SPIFFS.h"
-#include "SSLCert.hpp"
 #include "HTTPMultipartBodyParser.hpp"
 #include "Firmware.h"
 
@@ -54,11 +52,6 @@ static HTTPSServer * server;
 static HTTPServer * insecureServer;
 static String OBS_ID;
 static String OBS_ID_SHORT;
-
-static SSLCert obsCert = SSLCert(
-  obs_crt_DER, obs_crt_DER_len,
-  obs_key_DER, obs_key_DER_len
-);
 
 // TODO
 //  - Fix CSS Style for mobile && desktop
@@ -373,11 +366,21 @@ static const char* const makeCurrentLocationPrivateIndex =
   "<div>Making current location private, waiting for fix. Press device button to cancel.</div>";
 
 static const char* const deleteIndex =
-  "<h3>Delete (beta)</h3>"
-  "Config in flash<input type='checkbox' name='flash'>"
-  "Config in memory<input type='checkbox' name='config'>"
-  "<hr>"
-  "SD Card all content <input type='checkbox' name='sdcard' disabled='true'>"
+  "<h3>Flash</h3>"
+  "<p>Flash stores ssl certificate and configuration.</p>"
+  "<label for='flash'>format flash</label>"
+  "<input type='checkbox' id='flash' name='flash' "
+  "onchange=\"document.getElementById('flashCert').checked = document.getElementById('flashConfig').checked = document.getElementById('flash').checked;\">"
+  "<label for='flashCert'>delete ssl certificate, a new one will be created at the next start</label>"
+  "<input type='checkbox' id='flashCert' name='flashCert'>"
+  "<label for='flashConfig'>delete configuration, default settings will be used at the next start</label>"
+  "<input type='checkbox' id='flashConfig' name='flashConfig'>"
+  "<h3>Memory</h3>"
+  "<label for='config'>Clear current configuration, wifi connection will stay.</label>"
+  "<input type='checkbox' id='config' name='config'>"
+  "<h3>SD Card</h3>"
+  "<label for='sdcard'>delete OBS related content (ald_ini.ubx, tracknummer.txt, current_14d.*, *.obsdata.csv, sdflash/*, trash/*, uploaded/*)</label>"
+  "<input type='checkbox' id='sdcard' name='sdcard' disabled='true'>"
   "<input type=submit class=btn value='Delete'>";
 
 // #########################################
@@ -494,7 +497,7 @@ void beginPages() {
 
 
 void createHttpServer() {
-  server = new HTTPSServer(&obsCert, 443, 2);
+  server = new HTTPSServer(Https::getCertificate(), 443, 2);
   insecureServer = new HTTPServer(80, 1);
 
   log_i("About to create pages.");
@@ -1660,9 +1663,6 @@ static uint16_t countFilesInRoot() {
 static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<void()> next) {
   configServerWasConnectedViaHttpFlag = true;
 
-  log_w("Access Filter!");
-  log_w("HTTP password: %s", req->getBasicAuthPassword().c_str());
-
   const String incomingPassword(req->getBasicAuthPassword().c_str());
 
   String httpPin = theObsConfig->getProperty<String>(ObsConfig::PROPERTY_HTTP_PIN);
@@ -1679,6 +1679,7 @@ static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<vo
   }
 
   if (incomingPassword != httpPin) {
+    log_i("HTTP password: %s", httpPin.c_str());
     res->setStatusCode(401);
     res->setStatusText("Unauthorized");
     res->setHeader("Content-Type", "text/plain");
@@ -1882,17 +1883,20 @@ static void handleDelete(HTTPRequest *, HTTPResponse * res) {
 };
 
 static void handleDeleteAction(HTTPRequest *req, HTTPResponse * res) {
+  // TODO: Result page with status!
   const auto params = extractParameters(req);
-  const auto deleteFlash = getParameter(params, "flash");
-  const auto deleteConfig = getParameter(params, "config");
 
-  log_e("FLASH: %s", deleteFlash.c_str());
-  log_e("CONFIG: %s", deleteConfig.c_str());
-
-  if (deleteFlash == "on") {
+  if (getParameter(params, "flash") == "on") {
     SPIFFS.format();
+  } else {
+    if (getParameter(params, "flashConfig") == "on") {
+      theObsConfig->removeConfig();
+    }
+    if (getParameter(params, "flashCert") == "on") {
+      Https::removeCertificate();
+    }
   }
-  if (deleteConfig == "on") {
+  if (getParameter(params, "config") == "on") {
     theObsConfig->parseJson("{}");
     theObsConfig->fill(config);
   }
