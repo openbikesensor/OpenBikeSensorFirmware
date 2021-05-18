@@ -50,6 +50,7 @@ static const size_t HTTP_UPLOAD_BUFLEN = 1024; // TODO: refine
 static ObsConfig *theObsConfig;
 static HTTPSServer * server;
 static HTTPServer * insecureServer;
+static SSLCert * serverSslCert;
 static String OBS_ID;
 static String OBS_ID_SHORT;
 
@@ -199,7 +200,8 @@ static const char* const httpsRedirect =
   "accept the self signed cert from the OBS after pressing 'Goto https'. Login is 'obs' "
   "and the up to 6 digit pin displayed "
   "on the OBS."
-  "<input type=button onclick=\"window.location.href='https://{host}'\" class=btn value='Goto https'>";
+  "<input type=button onclick=\"window.location.href='https://{host}'\" class=btn value='Goto https'>"
+  "<input type=button onclick=\"window.location.href='/cert'\" class=btn value='Download Cert'>";
 
 // #########################################
 // Development
@@ -446,6 +448,7 @@ static void handleSd(HTTPRequest *req, HTTPResponse *res);
 static void handleDeleteFiles(HTTPRequest *req, HTTPResponse *res);
 static void handleDelete(HTTPRequest *req, HTTPResponse *res);
 static void handleDeleteAction(HTTPRequest *req, HTTPResponse *res);
+static void handleDownloadCert(HTTPRequest *req, HTTPResponse * res);
 
 static void handleHttpsRedirect(HTTPRequest *req, HTTPResponse *res);
 
@@ -489,10 +492,12 @@ void beginPages() {
   server->registerNode(new ResourceNode("/privacy_delete", HTTP_GET, handlePrivacyDeleteAction));
   server->registerNode(new ResourceNode("/sd", HTTP_GET, handleSd));
   server->registerNode(new ResourceNode("/deleteFiles", HTTP_POST, handleDeleteFiles));
+  server->registerNode(new ResourceNode("/cert", HTTP_GET, handleDownloadCert));
 
   server->addMiddleware(&accessFilter);
   server->setDefaultHeader("Server", std::string("OBS/") + OBSVersion);
 
+  insecureServer->registerNode(new ResourceNode("/cert", HTTP_GET, handleDownloadCert));
   insecureServer->setDefaultNode(new ResourceNode("", HTTP_GET,  handleHttpsRedirect));
   insecureServer->setDefaultHeader("Server", std::string("OBS/") + OBSVersion);
 }
@@ -507,7 +512,8 @@ void createHttpServer() {
     displayTest->showTextOnGrid(0, 3, "Creating ssl cert!");
 
   }
-  server = new HTTPSServer(Https::getCertificate(progressTick), 443, 2);
+  serverSslCert = Https::getCertificate(progressTick);
+  server = new HTTPSServer(serverSslCert, 443, 2);
   displayTest->clearProgressBar(4);
   displayTest->showTextOnGrid(0, 3, "");
   insecureServer = new HTTPServer(80, 1);
@@ -1883,6 +1889,41 @@ static void handleFirmwareUpdateSdAction(HTTPRequest * req, HTTPResponse * res) 
       res->print(firmwareError);
     }
   }
+}
+
+static void handleDownloadCert(HTTPRequest *req, HTTPResponse * res) {
+  if (serverSslCert == nullptr) {
+    handleNotFound(req, res);
+    return;
+  }
+  uint8_t out[4096];
+  size_t outLen;
+  int err = mbedtls_base64_encode(
+    out, sizeof(out), &outLen, serverSslCert->getCertData(), serverSslCert->getCertLength());
+
+  if (err != 0) {
+    log_e("Base64 encode returned 0x%02X.", err);
+    res->setHeader("Content-Type", "text/plain");
+    res->setStatusCode(500);
+    res->setStatusText("Failed to convert cert.");
+    res->print("ERROR");
+  }
+  res->setHeader("Content-Type", "application/octet-stream");
+  res->setHeader("Content-Disposition", "attachment; filename=\"obs.crt\"");
+  res->setStatusCode(200);
+  res->setStatusText("OK");
+
+  res->print("-----BEGIN CERTIFICATE-----\n");
+  for (int i = 0; i < outLen; i += 64) {
+    int ll = 64;
+    if (i + ll > outLen) {
+      ll = outLen - i;
+    }
+    res->write(&out[i], ll);
+    res->print("\n");
+  }
+  res->print("-----END CERTIFICATE-----\n");
+  res->finalize();
 }
 
 static void handleDelete(HTTPRequest *, HTTPResponse * res) {

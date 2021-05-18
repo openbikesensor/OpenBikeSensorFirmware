@@ -21,7 +21,7 @@
  * see <http://www.gnu.org/licenses/>.
  */
 
-#include "Https.h"
+#include "https.h"
 #include <SPIFFS.h>
 #include <FS.h>
 #include "esp_task_wdt.h"
