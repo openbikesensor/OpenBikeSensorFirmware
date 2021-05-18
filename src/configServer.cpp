@@ -781,7 +781,7 @@ static String appVersion(const esp_partition_t *partition) {
 }
 
 
-static void handleAbout(HTTPRequest *, HTTPResponse * res) {
+static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
   res->setHeader("Content-Type", "text/html");
   res->print(replaceDefault(header, "About"));
   String page;
@@ -812,21 +812,6 @@ static void handleAbout(HTTPRequest *, HTTPResponse * res) {
 #ifdef CORE_DEBUG_LEVEL
   page += keyValue("Core debug level", String(CORE_DEBUG_LEVEL));
 #endif
-
-  const esp_partition_t *running = esp_ota_get_running_partition();
-  page += keyValue("Current Partition", running->label);
-
-  const esp_partition_t *ota0 = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_0,
-                                                         nullptr);
-  page += keyValue("OTA-0 Partition", ota0->label);
-  page += keyValue("OTA-0 Partition Size", ObsUtils::toScaledByteString(ota0->size));
-  page += keyValue("OTA-0 App", appVersion(ota0));
-  const esp_partition_t *ota1 = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_1,
-                                                         nullptr);
-  page += keyValue("OTA-1 Partition", ota1->label);
-  page += keyValue("OTA-1 Partition Size", ObsUtils::toScaledByteString(ota1->size));
-  page += keyValue("OTA-1 App", appVersion(ota1));
-
   res->print(page);
   page.clear();
 
@@ -859,11 +844,27 @@ static void handleAbout(HTTPRequest *, HTTPResponse * res) {
   if (voltageMeter) {
     page += keyValue("Battery voltage", String(voltageMeter->read(), 2), "V");
   }
-
   res->print(page);
   page.clear();
-  page += "<h3>SD Card</h3>";
 
+  page += "<h3>App Partitions</h3>";
+  const esp_partition_t *running = esp_ota_get_running_partition();
+  page += keyValue("Current Partition", running->label);
+
+  const esp_partition_t *ota0 = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_0,
+                                                         nullptr);
+  page += keyValue("OTA-0 Partition", ota0->label);
+  page += keyValue("OTA-0 Partition Size", ObsUtils::toScaledByteString(ota0->size));
+  page += keyValue("OTA-0 App", appVersion(ota0));
+  const esp_partition_t *ota1 = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_1,
+                                                         nullptr);
+  page += keyValue("OTA-1 Partition", ota1->label);
+  page += keyValue("OTA-1 Partition Size", ObsUtils::toScaledByteString(ota1->size));
+  page += keyValue("OTA-1 App", appVersion(ota1));
+  res->print(page);
+  page.clear();
+
+  page += "<h3>SD Card</h3>";
   page += keyValue("SD card size", ObsUtils::toScaledByteString(SD.cardSize()));
 
   String sdCardType;
@@ -909,6 +910,19 @@ static void handleAbout(HTTPRequest *, HTTPResponse * res) {
   page += keyValue("Display i2c last error", Wire.lastError());
   page += keyValue("Display i2c speed", Wire.getClock() / 1000, "KHz");
   page += keyValue("Display i2c timeout", Wire.getTimeOut(), "ms");
+
+  page += "<h3>WiFi</h3>";
+  page += keyValue("Local IP", WiFi.localIP().toString());
+  page += keyValue("AP IP", WiFi.softAPIP().toString());
+  page += keyValue("Gateway IP", WiFi.gatewayIP().toString());
+  page += keyValue("Hostname", WiFi.getHostname());
+  page += keyValue("SSID", WiFi.SSID());
+
+  page += "<h3>HTTP</h3>";
+  page += keyValue("User Agent", req->getHeader("user-agent").c_str());
+  page += keyValue("Request Host", req->getHeader("host").c_str());
+  page += keyValue("Client IP", req->getClientIP().toString());
+  page += keyValue("Language", req->getHeader("Accept-Language").c_str());
 
   res->print(page);
   res->print(footer);
