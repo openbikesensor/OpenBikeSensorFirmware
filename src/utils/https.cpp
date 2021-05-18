@@ -28,7 +28,7 @@
 
 using namespace httpsserver;
 
-static volatile bool isCertReady = 0;
+static volatile bool isCertReady = false;
 
 // "20190101000000"
 static std::string toCertDate(time_t theTime) {
@@ -78,11 +78,9 @@ static void createCert(void *param) {
                                  createDn(),
                                  fromDate,
                                  toDate);
-  log_i("PK Length %d, Key Length %d", newCert.getPKLength(), newCert.getCertLength());
-
   if (res != 0) {
     // Certificate generation failed. Inform the user.
-    log_e("An error occured during certificate generation.");
+    log_e("An error occurred during certificate generation.");
     log_e("Error code is 0x%04x", res);
     log_e("You may have a look at SSLCert.h to find the reason for this error.");
   } else {
@@ -91,15 +89,9 @@ static void createCert(void *param) {
     cert->setPK(newCert.getPKData(), newCert.getPKLength());
     log_i("Created new cert.");
   };
-
   // Can this be done more elegant?
-  isCertReady = 1;
+  isCertReady = true;
   vTaskDelete(nullptr);
-}
-
-/* Just ensure there is a cert! */
-void Https::ensureCertificate() {
-  delete getCertificate();
 }
 
 bool Https::existsCertificate() {
@@ -117,61 +109,42 @@ SSLCert *Https::getCertificate(std::function<void()> progress) {
 
   // If now, create them
   if (!keyFile || !certFile || keyFile.size()==0 || certFile.size()==0) {
-    log_i("No certificate found in SPIFFS, generating a new one for you.");
-    log_i("If you face a Guru Meditation, give the script another try (or two...).");
+    log_i("No certificate found in SPIFFS, generating a new one.");
     log_i("This may take up to a minute, so please stand by :)");
 
     SSLCert * newCert = new SSLCert();
-
-    TaskHandle_t xHandle;
     xTaskCreate(reinterpret_cast<TaskFunction_t>(createCert), "createCert",
-                16 * 1024, newCert, 1, &xHandle);
+                16 * 1024, newCert, 1, nullptr);
 
     while (!isCertReady) {
       if (progress) {
         progress();
       }
       delay(100);
-      yield();
       esp_task_wdt_reset();
     }
 
-    log_i("PK Length %d, Key Length %d", newCert->getPKLength(), newCert->getCertLength());
-    int res = 0;
-    if (res == 0) {
-      // We now have a certificate. We store it on the SPIFFS to restore it on next boot.
-
-      bool failure = false;
-      // Private key
-      keyFile = SPIFFS.open("/key.der", FILE_WRITE);
-      if (!keyFile || !keyFile.write(newCert->getPKData(), newCert->getPKLength())) {
-        log_e("Could not write /key.der");
-        failure = true;
-      }
-      if (keyFile) keyFile.close();
-
-      // Certificate
-      certFile = SPIFFS.open("/cert.der", FILE_WRITE);
-      if (!certFile || !certFile.write(newCert->getCertData(), newCert->getCertLength())) {
-        log_e("Could not write /cert.der");
-        failure = true;
-      }
-      if (certFile) certFile.close();
-
-      if (failure) {
-        log_e("Certificate could not be stored permanently, generating new certificate on reboot...");
-      }
-
-      return newCert;
-
-    } else {
-      // Certificate generation failed. Inform the user.
-      log_e("An error occured during certificate generation.");
-      log_e("Error code is 0x%04x", res);
-      log_e("You may have a look at SSLCert.h to find the reason for this error.");
-      return nullptr;
+    bool failure = false;
+    // Private key
+    keyFile = SPIFFS.open("/key.der", FILE_WRITE);
+    if (!keyFile || !keyFile.write(newCert->getPKData(), newCert->getPKLength())) {
+      log_e("Could not write /key.der");
+      failure = true;
     }
+    if (keyFile) keyFile.close();
 
+    // Certificate
+    certFile = SPIFFS.open("/cert.der", FILE_WRITE);
+    if (!certFile || !certFile.write(newCert->getCertData(), newCert->getCertLength())) {
+      log_e("Could not write /cert.der");
+      failure = true;
+    }
+    if (certFile) certFile.close();
+
+    if (failure) {
+      log_e("Certificate could not be stored permanently, generating new certificate on reboot...");
+    }
+    return newCert;
   } else {
     log_i("Reading certificate from SPIFFS.");
 
@@ -193,7 +166,6 @@ SSLCert *Https::getCertificate(std::function<void()> progress) {
     keyFile.read(keyBuffer, keySize);
     certFile.read(certBuffer, certSize);
 
-    // Close the files
     keyFile.close();
     certFile.close();
     log_i("Read %u bytes of certificate and %u bytes of key from SPIFFS", certSize, keySize);

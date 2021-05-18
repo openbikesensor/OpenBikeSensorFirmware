@@ -27,18 +27,11 @@
 #include <SSLCert.hpp>
 #include <functional>
 
-using namespace httpsserver;
-
 class Https {
   public:
-    static SSLCert * getCertificate(std::function<void()> progress = nullptr);
+    static httpsserver::SSLCert * getCertificate(std::function<void()> progress = nullptr);
     static bool removeCertificate();
-    static void ensureCertificate();
     static bool existsCertificate();
-
-  private:
-    static SSLCert *getCertificateInternal();
 };
-
 
 #endif //OPENBIKESENSORFIRMWARE_HTTPS_H
