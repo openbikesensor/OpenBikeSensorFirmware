@@ -923,6 +923,9 @@ static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
   page += keyValue("Request Host", req->getHeader("host").c_str());
   page += keyValue("Client IP", req->getClientIP().toString());
   page += keyValue("Language", req->getHeader("Accept-Language").c_str());
+#ifdef HTTPS_LOGLEVEL
+  page += keyValue("Https log level", String(HTTPS_LOGLEVEL));
+#endif
 
   res->print(page);
   res->print(footer);
