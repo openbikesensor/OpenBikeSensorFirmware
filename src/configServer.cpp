@@ -772,7 +772,7 @@ static String appVersion(const esp_partition_t *partition) {
     snprintf(buffer, sizeof(buffer),
              "App '%s', Version: '%s', IDF-Version: '%s', sha-256: %s, date: '%s', time: '%s'",
              app_desc.project_name, app_desc.version, app_desc.idf_ver,
-             ObsUtils::sha256ToString(app_desc.app_elf_sha256).c_str(),
+             ObsUtils::sha256ToString(app_desc.app_elf_sha256).substring(0, 24).c_str(),
              app_desc.date, app_desc.time);
     return String(buffer);
   } else {
@@ -788,20 +788,17 @@ static void handleAbout(HTTPRequest *, HTTPResponse * res) {
   gps.pollStatistics(); // takes ~100ms!
 
   res->print("<h3>ESP32</h3>"); // SPDIFF
-  page += keyValue("Heap size", ObsUtils::toScaledByteString(ESP.getHeapSize()));
-  page += keyValue("Free heap", ObsUtils::toScaledByteString(ESP.getFreeHeap()));
-  page += keyValue("Min. free heap", ObsUtils::toScaledByteString(ESP.getMinFreeHeap()));
+  res->print(keyValue("Heap size", ObsUtils::toScaledByteString(ESP.getHeapSize())));
+  res->print(keyValue("Free heap", ObsUtils::toScaledByteString(ESP.getFreeHeap())));
+  res->print(keyValue("Min. free heap", ObsUtils::toScaledByteString(ESP.getMinFreeHeap())));
   String chipId = String((uint32_t) ESP.getEfuseMac(), HEX) + String((uint32_t) (ESP.getEfuseMac() >> 32), HEX);
   chipId.toUpperCase();
-  page += keyValue("Chip id", chipId);
-  page += keyValue("FlashApp Version", Firmware::getFlashAppVersion());
-  page += keyValue("IDF Version", esp_get_idf_version());
-
-  res->print(page);
-  page.clear();
+  res->print(keyValue("Chip id", chipId));
+  res->print(keyValue("FlashApp Version", Firmware::getFlashAppVersion()));
+  res->print(keyValue("IDF Version", esp_get_idf_version()));
 
   res->print(keyValue("App size", ObsUtils::toScaledByteString(ESP.getSketchSize())));
-  page += keyValue("App space", ObsUtils::toScaledByteString(ESP.getFreeSketchSpace()));
+  res->print(keyValue("App space", ObsUtils::toScaledByteString(ESP.getFreeSketchSpace())));
   page += keyValue("App 'DEVELOP'",
 #ifdef DEVELOP
     "true"
