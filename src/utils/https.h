@@ -25,13 +25,19 @@
 #define OPENBIKESENSORFIRMWARE_HTTPS_H
 
 #include <SSLCert.hpp>
+#include <functional>
 
 using namespace httpsserver;
 
 class Https {
   public:
-    static SSLCert * getCertificate();
+    static SSLCert * getCertificate(std::function<void()> progress = nullptr);
     static bool removeCertificate();
+    static void ensureCertificate();
+    static bool existsCertificate();
+
+  private:
+    static SSLCert *getCertificateInternal();
 };
 
 

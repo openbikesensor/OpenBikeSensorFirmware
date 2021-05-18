@@ -24,8 +24,11 @@
 #include "Https.h"
 #include <SPIFFS.h>
 #include <FS.h>
+#include "esp_task_wdt.h"
 
 using namespace httpsserver;
+
+static volatile bool isCertReady = 0;
 
 // "20190101000000"
 static std::string toCertDate(time_t theTime) {
@@ -39,12 +42,75 @@ static std::string toCertDate(time_t theTime) {
   return std::string(date);
 }
 
+static std::string createDn() {
+  char dn[128];
+  const uint64_t chipid_num = ESP.getEfuseMac();
+  // Placed the date in here - firefox does complain about duplicate cert
+  // otherwise (we can not increase the serial number from here).
+  snprintf(dn, sizeof(dn),
+           "CN=obs.local,O=openbikesensor.org,OU=%04x%08x,L=%s,C=DE",
+            (uint16_t)(chipid_num >> 32),
+            (uint32_t)(chipid_num),
+           toCertDate(time(nullptr)).c_str());
+  return std::string(dn);
+}
 
+static void createCert(void *param) {
+  std::string fromDate;
+  std::string toDate;
+  time_t now = time(nullptr);
+  if (now > (2020 - 1970) * 365 * 24 * 60 * 60) {
+    fromDate = toCertDate(now);
+    // Suggestion for hardware devices is to set the validity of the
+    // cert to a high value. But Apple limits this value to 825
+    // days in https://support.apple.com/HT210176
+    toDate = toCertDate(now + 824 * 24 * 60 * 60);
+  } else {
+    fromDate = "20210513090700";
+    toDate = "20301232235959";
+  }
+
+  log_i("DN will be %s", createDn().c_str());
+
+  SSLCert newCert;
+  int res = createSelfSignedCert(newCert,
+                                 KEYSIZE_2048,
+                                 createDn(),
+                                 fromDate,
+                                 toDate);
+  log_i("PK Length %d, Key Length %d", newCert.getPKLength(), newCert.getCertLength());
+
+  if (res != 0) {
+    // Certificate generation failed. Inform the user.
+    log_e("An error occured during certificate generation.");
+    log_e("Error code is 0x%04x", res);
+    log_e("You may have a look at SSLCert.h to find the reason for this error.");
+  } else {
+    SSLCert *cert = static_cast<SSLCert *>(param);
+    cert->setCert(newCert.getCertData(), newCert.getCertLength());
+    cert->setPK(newCert.getPKData(), newCert.getPKLength());
+    log_i("Created new cert.");
+  };
+
+  // Can this be done more elegant?
+  isCertReady = 1;
+  vTaskDelete(nullptr);
+}
+
+/* Just ensure there is a cert! */
+void Https::ensureCertificate() {
+  delete getCertificate();
+}
+
+bool Https::existsCertificate() {
+  return SPIFFS.exists("/key.der") && SPIFFS.exists("/cert.der");
+}
 
 /* Load or create cert.
  * Based on https://github.com/fhessel/esp32_https_server/blob/de1876cf6fe717cf236ad6603a97e88f22e38d62/examples/REST-API/REST-API.ino#L219
+ * https://github.com/fhessel/esp32_https_server/issues/48
  */
-SSLCert *Https::getCertificate() {
+SSLCert *Https::getCertificate(std::function<void()> progress) {
   // Try to open key and cert file to see if they exist
   File keyFile = SPIFFS.open("/key.der");
   File certFile = SPIFFS.open("/cert.der");
@@ -56,27 +122,22 @@ SSLCert *Https::getCertificate() {
     log_i("This may take up to a minute, so please stand by :)");
 
     SSLCert * newCert = new SSLCert();
-    // The part after the CN= is the domain that this certificate will match, in this
-    // case, it's esp32.local.
-    // However, as the certificate is self-signed, your browser won't trust the server
-    // anyway.
 
-    std::string fromDate;
-    std::string toDate;
-    time_t now = time(nullptr);
-    if (now > (2020 - 1970) * 365 * 24 * 60 * 60) {
-      fromDate = toCertDate(now);
-      toDate = toCertDate(now + 365 * 24 * 60 * 60);
-    } else {
-      fromDate = "20210513090700";
-      toDate = "20301232235959";
+    TaskHandle_t xHandle;
+    xTaskCreate(reinterpret_cast<TaskFunction_t>(createCert), "createCert",
+                16 * 1024, newCert, 1, &xHandle);
+
+    while (!isCertReady) {
+      if (progress) {
+        progress();
+      }
+      delay(100);
+      yield();
+      esp_task_wdt_reset();
     }
 
-    int res = createSelfSignedCert(*newCert,
-                                   KEYSIZE_1024,
-                                   "CN=obs.local,O=openbikesensor.org,C=DE",
-                                   fromDate,
-                                   toDate);
+    log_i("PK Length %d, Key Length %d", newCert->getPKLength(), newCert->getCertLength());
+    int res = 0;
     if (res == 0) {
       // We now have a certificate. We store it on the SPIFFS to restore it on next boot.
 

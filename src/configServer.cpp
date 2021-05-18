@@ -32,7 +32,7 @@
 #include <HTTPURLEncodedBodyParser.hpp>
 #include <esp_ota_ops.h>
 #include <esp_partition.h>
-#include <utils/Https.h>
+#include <utils/https.h>
 #include "SPIFFS.h"
 #include "HTTPMultipartBodyParser.hpp"
 #include "Firmware.h"
@@ -368,10 +368,12 @@ static const char* const makeCurrentLocationPrivateIndex =
 static const char* const deleteIndex =
   "<h3>Flash</h3>"
   "<p>Flash stores ssl certificate and configuration.</p>"
-  "<label for='flash'>format flash</label>"
+  "<label for='flash'>Format flash</label>"
   "<input type='checkbox' id='flash' name='flash' "
   "onchange=\"document.getElementById('flashCert').checked = document.getElementById('flashConfig').checked = document.getElementById('flash').checked;\">"
-  "<label for='flashCert'>delete ssl certificate, a new one will be created at the next start</label>"
+  "<label for='flashCert'>Delete ssl certificate, a new one will be created at the next start. "
+  " You need to remove the old certificate from your browsers exception store too.</label>"
+  // Link https://support.mozilla.org/en-US/kb/Certificate-contains-the-same-serial-number-as-another-certificate ?
   "<input type='checkbox' id='flashCert' name='flashCert'>"
   "<label for='flashConfig'>delete configuration, default settings will be used at the next start</label>"
   "<input type='checkbox' id='flashConfig' name='flashConfig'>"
@@ -495,15 +497,24 @@ void beginPages() {
   insecureServer->setDefaultHeader("Server", std::string("OBS/") + OBSVersion);
 }
 
+static int ticks;
+static void progressTick() {
+  displayTest->drawWaitBar(4, ticks++);
+}
 
 void createHttpServer() {
-  server = new HTTPSServer(Https::getCertificate(), 443, 2);
+  if (!Https::existsCertificate()) {
+    displayTest->showTextOnGrid(0, 3, "Creating ssl cert!");
+
+  }
+  server = new HTTPSServer(Https::getCertificate(progressTick), 443, 2);
+  displayTest->clearProgressBar(4);
+  displayTest->showTextOnGrid(0, 3, "");
   insecureServer = new HTTPServer(80, 1);
 
-  log_i("About to create pages.");
   beginPages();
 
-  log_i("About to start.");
+  log_i("Starting http(s) servers.");
   server->start();
   insecureServer->start();
 }

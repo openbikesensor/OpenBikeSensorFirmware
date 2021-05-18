@@ -254,7 +254,7 @@ void setup() {
   }
 
   if (SD.begin()) {
-    displayTest->showTextOnGrid(2, displayTest->currentLine(), "SD... ok");
+    displayTest->showTextOnGrid(2, displayTest->currentLine(), "SD... OK");
   }
   delay(333); // Added for user experience
 
@@ -302,7 +302,7 @@ void setup() {
     writer = new CSVFileWriter;
     writer->setFileName();
     writer->writeHeader(trackUniqueIdentifier);
-    displayTest->showTextOnGrid(2, displayTest->currentLine(), "CSV file... ok");
+    displayTest->showTextOnGrid(2, displayTest->currentLine(), "CSV file... OK");
   } else {
     displayTest->showTextOnGrid(2, displayTest->currentLine(), "CSV. skipped");
   }
