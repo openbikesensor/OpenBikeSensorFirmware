@@ -373,17 +373,17 @@ static const char* const deleteIndex =
   "<label for='flash'>Format flash</label>"
   "<input type='checkbox' id='flash' name='flash' "
   "onchange=\"document.getElementById('flashCert').checked = document.getElementById('flashConfig').checked = document.getElementById('flash').checked;\">"
-  "<label for='flashCert'>Delete ssl certificate, a new one will be created at the next start. "
-  " You need to remove the old certificate from your browsers exception store too.</label>"
+  "<label for='flashCert'>Delete ssl certificate, a new one will be created at the next start.</label>"
   // Link https://support.mozilla.org/en-US/kb/Certificate-contains-the-same-serial-number-as-another-certificate ?
   "<input type='checkbox' id='flashCert' name='flashCert'>"
-  "<label for='flashConfig'>delete configuration, default settings will be used at the next start</label>"
+  "<label for='flashConfig'>Delete configuration, default settings will be used at the next start,"
+  " consider storing a <a href='/settings/backup.json'>Backup</a> 1st.</label>"
   "<input type='checkbox' id='flashConfig' name='flashConfig'>"
   "<h3>Memory</h3>"
   "<label for='config'>Clear current configuration, wifi connection will stay.</label>"
   "<input type='checkbox' id='config' name='config'>"
   "<h3>SD Card</h3>"
-  "<label for='sdcard'>delete OBS related content (ald_ini.ubx, tracknummer.txt, current_14d.*, *.obsdata.csv, sdflash/*, trash/*, uploaded/*)</label>"
+  "<label for='sdcard'>Delete OBS related content (ald_ini.ubx, tracknummer.txt, current_14d.*, *.obsdata.csv, sdflash/*, trash/*, uploaded/*)</label>"
   "<input type='checkbox' id='sdcard' name='sdcard' disabled='true'>"
   "<input type=submit class=btn value='Delete'>";
 
@@ -567,6 +567,22 @@ String replaceDefault(String html, const String& subTitle, const String& action 
   return html;
 }
 
+static void sendHtml(HTTPResponse * res, const String& data) {
+  res->setHeader("Content-Type", "text/html");
+  res->print(data);
+}
+
+static void sendHtml(HTTPResponse * res, const char * data) {
+  res->setHeader("Content-Type", "text/html");
+  res->print(data);
+}
+
+static void sendRedirect(HTTPResponse * res, const String& location) {
+  res->setHeader("Location", location.c_str());
+  res->setStatusCode(302);
+  res->finalize();
+}
+
 static void handleNotFound(HTTPRequest * req, HTTPResponse * res) {
   // Discard request body, if we received any
   // We do this, as this is the default node and may also server POST/PUT requests
@@ -576,31 +592,10 @@ static void handleNotFound(HTTPRequest * req, HTTPResponse * res) {
   res->setStatusCode(404);
   res->setStatusText("Not Found");
 
-  // Set content type of the response
-  res->setHeader("Content-Type", "text/html");
-
-  // Write a tiny HTTP page
-  res->println("<!DOCTYPE html>");
-  res->println("<html>");
-  res->println("<head><title>Not Found</title></head>");
-  res->println("<body><h1>404 Not Found</h1><p>The requested resource was not found on this server.</p></body>");
-  res->println("</html>");
-}
-
-void sendHtml(HTTPResponse * res, String& data) {
-  res->setHeader("Content-Type", "text/html");
-  res->print(data);
-}
-
-void sendHtml(HTTPResponse * res, const char * data) {
-  res->setHeader("Content-Type", "text/html");
-  res->print(data);
-}
-
-void sendRedirect(HTTPResponse * res, String location) {
-  res->setHeader("Location", location.c_str());
-  res->setStatusCode(302);
-  res->finalize();
+  sendHtml(res, replaceDefault(header, "Not Found"));
+  res->println("<h3>404 Not Found</h3><p>The requested resource was not found on this server.</p>");
+  res->println("<input type=button onclick=\"window.location.href='/'\" class='btn' value='Home' />");
+  res->print(footer);
 }
 
 String getIp() {
@@ -1599,7 +1594,7 @@ static void handleSd(HTTPRequest *req, HTTPResponse *res) {
               + ObsUtils::encodeForUrl(back) + "'\" class='btn' value='Up' />";
     } else {
       html += "<input type=button onclick=\"window.location.href='/'\" "
-              "class='btn' value='Menu' />";
+              "class='btn' value='Home' />";
     }
 
     if (counter > 0) {
