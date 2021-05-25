@@ -193,7 +193,7 @@ static void buttonBluetooth(const DataSet *dataSet, uint16_t measureIndex) {
 void setup() {
   Serial.begin(115200);
 
-  log_i("setup()");
+  log_i("openbikesensor.org - OBS/%s", OBSVersion);
 
   //##############################################################
   // Configure button pin as INPUT

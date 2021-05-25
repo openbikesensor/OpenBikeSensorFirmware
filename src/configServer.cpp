@@ -185,6 +185,7 @@ static const char* const navigationIndex =
   "<input type=button onclick=\"window.location.href='/settings/privacy'\" class=btn value='Privacy Zones'>"
   "<input type=button onclick=\"window.location.href='/settings/wifi'\" class=btn value='Wifi'>"
   "<input type=button onclick=\"window.location.href='/settings/backup'\" class=btn value='Backup &amp; Restore'>"
+  "<input type=button onclick=\"window.location.href='/settings/security'\" class=btn value='Security'>"
   "<h3>Maintenance</h3>"
   "<input type=button onclick=\"window.location.href='/updatesd'\" class=btn value='Update Firmware'>"
   "<input type=button onclick=\"window.location.href='/updateFlash'\" class=btn value='Update Flash App'>"
@@ -387,6 +388,28 @@ static const char* const deleteIndex =
   "<input type='checkbox' id='sdcard' name='sdcard' disabled='true'>"
   "<input type=submit class=btn value='Delete'>";
 
+static const char* const settingsSecurityIndex =
+  "<h3>Http</h3>"
+  "<label for='pin'>Wish pin for http access, the pin will still be displayed on"
+  "the OBS display.</label>"
+  "<input name='Pin' type='number' value='{pin}'>"
+  "<label for='httpAccess'>Allow full access via http. Do this only in networks you"
+  " have control over. All data send or retrieved from the OBS can be intercepted"
+  " from within your network as well as everybody in this network has full access to"
+  " your OBS. The setting wil be reset if you change the WiFi settings.</label>"
+  "<input type='checkbox' id='httpAccess' name='httpAccess' />"
+  "<input type=submit class=btn value='Save'>"
+  "<h3>OBS SSL Cert</h3>"
+  "<label for='flashCert'>Delete ssl certificate, a new one will be created at the next start.</label>"
+  "<input type=button onclick=\"window.location.href='/settings/deleteSslCert'\" class=btn value='Renew SSL Cert'>"
+  "<h3>CA Cert Management</h3>"
+  "For outgoing https connections the OBS has to trust different authorities (CA). "
+  "The OBS can not hold all well known authorities like your browser does "
+  "here you can add or remove the CAs your OBS trusts, usually you do not need "
+  "to modify this. You can not remove CAs trusted by the OBS by default, but "
+  "you can add additional CAs to trust here."
+  "{caList}";
+
 // #########################################
 static String getParameter(const std::vector<std::pair<String,String>> &params, const String& name, const String&  def = "") {
   for (auto param : params) {
@@ -449,6 +472,7 @@ static void handleDeleteFiles(HTTPRequest *req, HTTPResponse *res);
 static void handleDelete(HTTPRequest *req, HTTPResponse *res);
 static void handleDeleteAction(HTTPRequest *req, HTTPResponse *res);
 static void handleDownloadCert(HTTPRequest *req, HTTPResponse * res);
+static void handleSettingSecurity(HTTPRequest *, HTTPResponse * res);
 
 static void handleHttpsRedirect(HTTPRequest *req, HTTPResponse *res);
 
@@ -493,6 +517,7 @@ void beginPages() {
   server->registerNode(new ResourceNode("/sd", HTTP_GET, handleSd));
   server->registerNode(new ResourceNode("/deleteFiles", HTTP_POST, handleDeleteFiles));
   server->registerNode(new ResourceNode("/cert", HTTP_GET, handleDownloadCert));
+  server->registerNode(new ResourceNode("/settings/security", HTTP_GET, handleSettingSecurity));
 
   server->addMiddleware(&accessFilter);
   server->setDefaultHeader("Server", std::string("OBS/") + OBSVersion);
@@ -513,7 +538,7 @@ void createHttpServer() {
 
   }
   serverSslCert = Https::getCertificate(progressTick);
-  server = new HTTPSServer(serverSslCert, 443, 2);
+  server = new HTTPSServer(serverSslCert, 443, 1);
   displayTest->clearProgressBar(4);
   displayTest->showTextOnGrid(0, 3, "");
   insecureServer = new HTTPServer(80, 1);
@@ -1963,3 +1988,11 @@ static void handleDeleteAction(HTTPRequest *req, HTTPResponse * res) {
   }
   sendRedirect(res, "/");
 }
+
+static void handleSettingSecurity(HTTPRequest *, HTTPResponse * res) {
+  String html = createPage(settingsSecurityIndex);
+  html = replaceDefault(html, "Settings Security");
+  html = replaceHtml(html, "{pin}",
+      theObsConfig->getProperty<String>(ObsConfig::PROPERTY_HTTP_PIN));
+  sendHtml(res, html);
+};
