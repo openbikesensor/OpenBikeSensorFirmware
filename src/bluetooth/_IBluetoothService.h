@@ -1,9 +1,31 @@
+/*
+ * Copyright (C) 2019-2021 OpenBikeSensor Contributors
+ * Contact: https://openbikesensor.org
+ *
+ * This file is part of the OpenBikeSensor firmware.
+ *
+ * The OpenBikeSensor firmware is free software: you can
+ * redistribute it and/or modify it under the terms of the GNU
+ * Lesser General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option)
+ * any later version.
+ *
+ * OpenBikeSensor firmware is distributed in the hope that
+ * it will be useful, but WITHOUT ANY WARRANTY; without even the
+ * implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE.  See the GNU Lesser General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with the OpenBikeSensor firmware.  If not,
+ * see <http://www.gnu.org/licenses/>.
+ */
+
 #ifndef OBS_BLUETOOTH_IBLUETOOTHSERVICE_H
 #define OBS_BLUETOOTH_IBLUETOOTHSERVICE_H
 
 #include <Arduino.h>
 #include <BLEDevice.h>
-#include <BLEUtils.h>
 #include <BLEServer.h>
 #include <BLE2902.h>
 #include <list>
@@ -53,26 +75,12 @@ class IBluetoothService {
     }
 
   protected:
-    /**
-     * Joins a list of integers by placing the `glue` string between the members.
-     */
-    static String joinList(const std::list<uint16_t>& list, const String& glue) {
-      String s;
-
-      boolean firstValue = true;
-      for (auto value : list) {
-        if (!firstValue) {
-          s += glue;
-        }
-        s += String(value);
-        firstValue = false;
-      }
-
-      return s;
-    }
-
     static String valueAsString(uint16_t value) {
-      return String(value);
+      if (value == MAX_SENSOR_VALUE || value == 0) {
+        return String("");
+      } else{
+        return String(value);
+      }
     }
 };
 

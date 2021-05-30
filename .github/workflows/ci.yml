@@ -1,3 +1,23 @@
+#
+#  Copyright (C) 2019-2021 OpenBikeSensor Contributors
+#  Contact: https://openbikesensor.org
+#
+#  This file is part of the OpenBikeSensor firmware.
+#
+#  The OpenBikeSensor firmware is free software: you can redistribute it
+#  and/or modify it under the terms of the GNU Lesser General Public License as
+#  published by the Free Software Foundation, either version 3 of the License,
+#  or (at your option) any later version.
+#
+#  OpenBikeSensor firmware is distributed in the hope that it will be
+#  useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser
+#  General Public License for more details.
+#
+#  You should have received a copy of the GNU Lesser General Public License
+#  along with the OpenBikeSensor firmware.  If not, see
+#  <http://www.gnu.org/licenses/>.
+#
 name: OpenBikeSensor - CI
 on:
   # Trigger when pushing in master or pull requests, and when creating
@@ -40,9 +60,10 @@ jobs:
         echo "OBS_VERSION=${VERSION}" >> $GITHUB_ENV
         echo "OBS_MAJOR_VERSION=${MAJOR}" >> $GITHUB_ENV
         echo $VERSION > VERSION
+        echo $VERSION > version.txt
         echo Building OBS Version: $VERSION
         sed -i 's|-DBUILD_NUMBER=\\"-dev\\"|-DBUILD_NUMBER=\\"'${SEPARATOR}${PATCH}'\\"|' platformio.ini
-        echo "SONAR_SCANNER_VERSION=4.5.0.2216" >> $GITHUB_ENV
+        echo "SONAR_SCANNER_VERSION=4.6.0.2311" >> $GITHUB_ENV
 
     - name: Cache SonarCloud packages
       id: cache-sonar
@@ -51,8 +72,8 @@ jobs:
         path: |
           ~/.sonar/cache
           sonarqube
-        key: ${{ runner.os }}-sonar-${{ env.SONAR_SCANNER_VERSION }}-ng
-        restore-keys: ${{ runner.os }}-sonar-${{ env.SONAR_SCANNER_VERSION }}-ng
+        key: ${{ runner.os }}-sonar-${{ env.SONAR_SCANNER_VERSION }}-ng3
+        restore-keys: ${{ runner.os }}-sonar-${{ env.SONAR_SCANNER_VERSION }}-ng3
 
     - name: Install SonarQube dependencies
       if: steps.cache-sonar.outputs.cache-hit != 'true'
@@ -104,15 +125,17 @@ jobs:
       run: |
         # Hack - point sonarqube to the real sources not the copy of it
         # See also https://community.sonarsource.com/t/scanning-platformio-c-embeded-projects/35141/2
-        sed -i 's|OpenBikeSensorFirmware/bin|OpenBikeSensorFirmware|' \
+        sed -i 's|OpenBikeSensorFirmware/bin|OpenBikeSensorFirmware|g' \
             sonarqube-out/build-wrapper-dump.json
-        sed -i 's|.pio/build|bin/.pio/build|' \
+        sed -i 's|\.pio/|bin/.pio/|g' \
+            sonarqube-out/build-wrapper-dump.json
+        # replace gcc with our script that reports the fake arch "le32-unknown-nacl"
+        sed -i "s|/github/home/.platformio/packages/toolchain-xtensa32/bin/xtensa-esp32-elf-g..|`pwd`/.github/fake-cc|g" \
             sonarqube-out/build-wrapper-dump.json
         ./sonarqube/sonar-scanner-${{ env.SONAR_SCANNER_VERSION }}-linux/bin/sonar-scanner \
           -Dsonar.host.url=https://sonarcloud.io \
-          -Dsonar.host.url=https://sonarcloud.io \
-          -Dsonar.organization=friends-of-openbikesensor \
-          -Dsonar.projectKey=Friends-of-OpenBikeSensor_OpenBikeSensorFirmware \
+          -Dsonar.organization=openbikesensor \
+          -Dsonar.projectKey=openbikesensor_OpenBikeSensorFirmware \
           -Dsonar.coverage.exclusions=**/* \
           -Dsonar.sources=src \
           -Dsonar.sourceEncoding=UTF-8 \
@@ -160,6 +183,8 @@ jobs:
         tag_name: ${{ env.OBS_VERSION }}
         release_name: ${{ env.OBS_VERSION }}
         body: |
+          ![GitHub downloads](https://img.shields.io/github/downloads-pre/openbikesensor/OpenBikeSensorFirmware/${{ env.OBS_VERSION }}/total) ![GitHub commits since release](https://img.shields.io/github/commits-since/openbikesensor/OpenBikeSensorFirmware/${{ github.sha }}?label=commits%20since%20${{ env.OBS_VERSION }})
+
           Version ${{ env.OBS_VERSION }} based on ${{ github.ref }} ${{ github.sha }}
 
           ${{ steps.changelog.outputs.changelog }}
@@ -201,3 +226,15 @@ jobs:
         asset_path: ./obs-${{ env.OBS_VERSION }}-initial-flash.zip
         asset_name: obs-${{ env.OBS_VERSION }}-initial-flash.zip
         asset_content_type: application/zip
+
+    - name: Upload Release Asset app bin
+      id: upload-release-asset-app-bin
+      if: ${{ env.OBS_PREPARE_RELEASE == 'true' }}
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./bin/.pio/build/esp32dev/firmware.bin
+        asset_name: firmware.bin
+        asset_content_type: application/x-esp32

@@ -1,0 +1,7 @@
+<component name="CopyrightManager">
+  <settings default="openbikesensor lgpl">
+    <module2copyright>
+      <element module="All" copyright="openbikesensor lgpl" />
+    </module2copyright>
+  </settings>
+</component>

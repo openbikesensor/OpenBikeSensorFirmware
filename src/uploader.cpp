@@ -1,22 +1,25 @@
 /*
-  Copyright (C) 2020 HLRS, Uni-Stuttgart
-  Contact: https://openbikesensor.org
-
-  This file is part of the OpenBikeSensor project.
-
-  The OpenBikeSensor sensor firmware is free software: you can redistribute
-  it and/or modify it under the terms of the GNU General Public License as
-  published by the Free Software Foundation, either version 3 of the License,
-  or (at your option) any later version.
-
-  The OpenBikeSensor sensor firmware is distributed in the hope that it will
-  be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
-  Public License for more details.
-
-  You should have received a copy of the GNU General Public License along with
-  the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ * Copyright (C) 2019-2021 OpenBikeSensor Contributors
+ * Contact: https://openbikesensor.org
+ *
+ * This file is part of the OpenBikeSensor firmware.
+ *
+ * The OpenBikeSensor firmware is free software: you can
+ * redistribute it and/or modify it under the terms of the GNU
+ * Lesser General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option)
+ * any later version.
+ *
+ * OpenBikeSensor firmware is distributed in the hope that
+ * it will be useful, but WITHOUT ANY WARRANTY; without even the
+ * implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE.  See the GNU Lesser General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with the OpenBikeSensor firmware.  If not,
+ * see <http://www.gnu.org/licenses/>.
+ */
 
 #include "uploader.h"
 
@@ -93,9 +96,10 @@ bool Uploader::uploadFile(File &file) {
     https.addHeader("Authorization", "OBSUserId " + mPortalUserToken);
     https.addHeader("Content-Type", "application/json");
 
-    String fileName = ObsUtils::stripCsvFileName(file.name());
+    String displayFileName = ObsUtils::stripCsvFileName(file.name());
+    String fileName = String(file.name()).substring(1);
     MultipartStream mp(&https);
-    MultipartDataString title("title", "AutoUpload " + fileName);
+    MultipartDataString title("title", "AutoUpload " + displayFileName);
     mp.add(title);
     MultipartDataString description("description", "Uploaded with OpenBikeSensor " + String(OBSVersion));
     mp.add(description);

@@ -100,7 +100,7 @@ Headline    | Format | Range | Sample | Description |
 `Marked`    | char[]  | | "OVERTAKING" | Measurement was marked (not possible yet) with the given tag use <code>&#124;</code> to separate multiple tags is needed. 
 `Invalid`   | int16  | 0-1 | 1 | Measurement was marked as invalid reading (not possible yet)
 `InsidePrivacyArea`| int16 | 0-1 | 1 | 
-`Factor`    | double | 58 | The factor used to calculate the time given in micro seconds (us) into centimeters (cm). Currently fix, might get adjusted by temperature some time later. |
+`Factor`    | double |   | 58 | The factor used to calculate the time given in micro seconds (us) into centimeters (cm). Currently fix, might get adjusted by temperature some time later. |
 `Measurements` | int16  | 0-999 | 18 | Number of measurements entries in this line |
 _comment_   | | | | Now follows a series of #`Measurements` repetitions of #`DatasPerMeasurement` entries, `<n>` is always increased starting from 1 for the 1st measurement. Order is always the same, additional data might be added to the end, `DatasPerMeasurement` will be increased then.  |
 `Tms<n>`    | int16   | 0-1999 | 234 | Millisecond (ms) offset of measurement in this series (line) of measurements |

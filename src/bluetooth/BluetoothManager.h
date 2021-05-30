@@ -1,22 +1,41 @@
+/*
+ * Copyright (C) 2019-2021 OpenBikeSensor Contributors
+ * Contact: https://openbikesensor.org
+ *
+ * This file is part of the OpenBikeSensor firmware.
+ *
+ * The OpenBikeSensor firmware is free software: you can
+ * redistribute it and/or modify it under the terms of the GNU
+ * Lesser General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option)
+ * any later version.
+ *
+ * OpenBikeSensor firmware is distributed in the hope that
+ * it will be useful, but WITHOUT ANY WARRANTY; without even the
+ * implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE.  See the GNU Lesser General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with the OpenBikeSensor firmware.  If not,
+ * see <http://www.gnu.org/licenses/>.
+ */
+
 #ifndef OBS_BLUETOOTH_BLUETOOTHMANAGER_H
 #define OBS_BLUETOOTH_BLUETOOTHMANAGER_H
 
 #include <Arduino.h>
-#include <BLEDevice.h>
-#include <BLEServer.h>
-#include <BLEDescriptor.h>
 #include <list>
 
 #include "_IBluetoothService.h"
 #include "ClosePassService.h"
-#include "ConnectionService.h"
 #include "DeviceInfoService.h"
 #include "DistanceService.h"
 #include "HeartRateService.h"
 #include "BatteryService.h"
 #include "ObsService.h"
 
-class BluetoothManager {
+class BluetoothManager: public BLEServerCallbacks  {
   public:
     /**
      * Initializes all defined services and starts the bluetooth server.
@@ -59,10 +78,17 @@ class BluetoothManager {
      */
     void newPassEvent(uint32_t millis, uint16_t leftValue, uint16_t rightValue);
 
+    /* True if any client is currently connected. */
+    bool hasConnectedClients();
+
   private:
     BLEServer *pServer;
     std::list<IBluetoothService*> services;
-    unsigned long lastValueTimestamp = millis();
+    void onDisconnect(BLEServer *pServer) override;
+    void onConnect(BLEServer *pServer) override;
+    bool deviceConnected;
+    bool oldDeviceConnected;
+
 };
 
 #endif

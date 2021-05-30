@@ -52,7 +52,7 @@ relevant put the order of the array content.
             ],
           // Token used to authenticate and authorize at the portal.
             "portalToken": "thisIsAlsoSecret",
-          // URL of the portal to be used (currently it is hardcoded, the value is not used)
+          // URL of the portal to be used
             "portalUrl": "https://openbikesensor.hlrs.de",
           // Array with privacy areas to be considered
             "privacyArea": [

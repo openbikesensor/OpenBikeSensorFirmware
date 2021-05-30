@@ -1,22 +1,25 @@
 /*
-  Copyright (C) 2019 Zweirat
-  Contact: https://openbikesensor.org
-
-  This file is part of the OpenBikeSensor project.
-
-  The OpenBikeSensor sensor firmware is free software: you can redistribute
-  it and/or modify it under the terms of the GNU General Public License as
-  published by the Free Software Foundation, either version 3 of the License,
-  or (at your option) any later version.
-
-  The OpenBikeSensor sensor firmware is distributed in the hope that it will
-  be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
-  Public License for more details.
-
-  You should have received a copy of the GNU General Public License along with
-  the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ * Copyright (C) 2019-2021 OpenBikeSensor Contributors
+ * Contact: https://openbikesensor.org
+ *
+ * This file is part of the OpenBikeSensor firmware.
+ *
+ * The OpenBikeSensor firmware is free software: you can
+ * redistribute it and/or modify it under the terms of the GNU
+ * Lesser General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option)
+ * any later version.
+ *
+ * OpenBikeSensor firmware is distributed in the hope that
+ * it will be useful, but WITHOUT ANY WARRANTY; without even the
+ * implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE.  See the GNU Lesser General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with the OpenBikeSensor firmware.  If not,
+ * see <http://www.gnu.org/licenses/>.
+ */
 
 #include "writer.h"
 #include "utils/file.h"
@@ -198,46 +201,51 @@ bool CSVFileWriter::append(DataSet &set) {
   csv += date;
   csv += set.comment;
 
-#ifdef DEVELOP
+// FIXME #ifdef DEVELOP
   if (time.tm_sec == 0) {
-    csv += "DEVELOP:  GPSMessages: " + String(gps.passedChecksum())
-           + " GPS crc errors: " + String(gps.failedChecksum());
+    csv += "DEV: GPSMessages: " + String(gps.getValidMessageCount())
+           + " GPS crc errors: " + String(gps.getMessagesWithFailedCrcCount());
   } else if (time.tm_sec == 1) {
-    csv += "DEVELOP: Mem: "
+    csv += "DEV: Mem: "
            + String(ESP.getFreeHeap() / 1024) + "k Buffer: "
            + String(getBufferLength() / 1024) + "k last write time: "
            + String(getWriteTimeMillis());
   } else if (time.tm_sec == 2) {
-    csv += "DEVELOP: Mem min free: "
+    csv += "DEV: Mem min free: "
            + String(ESP.getMinFreeHeap() / 1024) + "k";
+  } else if (time.tm_sec == 3) {
+    csv += "DEV: GPS lastNoiseLevel: ";
+    csv += gps.getLastNoiseLevel();
+  } else if (time.tm_sec == 4) {
+    csv += "DEV: GPS baud: ";
+    csv += gps.getBaudRate();
+  } else if (time.tm_sec == 5) {
+    csv += "DEV: GPS alp bytes: ";
+    csv += gps.getNumberOfAlpBytesSent();
+  } else if (time.tm_sec >= 6 && time.tm_sec < 26) {
+    String msg = gps.getMessage(time.tm_sec - 6);
+    if (!msg.isEmpty()) {
+      csv += "DEV: GPS: ";
+      csv += ObsUtils::encodeForCsvField(msg);
+    }
   }
-#endif
+// #endif
   csv += ";";
 
-  if ((!set.location.isValid()) ||
-        set.hdop.value() == 9999 ||
-        set.validSatellites == 0 ||
+  if ((!set.gpsRecord.hasValidFix()) ||
       ((config.privacyConfig & NoPosition) && set.isInsidePrivacyArea
     && !((config.privacyConfig & OverridePrivacy) && set.confirmed))) {
     csv += ";;;;;";
   } else {
-    csv += String(set.location.lat(), 6) + ";";
-    csv += String(set.location.lng(), 6) + ";";
-    csv += String(set.altitude.meters(), 1) + ";";
-    if (set.course.isValid()) {
-      csv += String(set.course.deg(), 2);
-    }
-    csv += ";";
-    if (set.speed.isValid()) {
-      csv += String(set.speed.kmph(), 2);
-    }
-    csv += ";";
+    csv += set.gpsRecord.getLatString() + ";";
+    csv += set.gpsRecord.getLongString() + ";";
+    csv += set.gpsRecord.getAltitudeMetersString() + ";";
+    csv += set.gpsRecord.getCourseString() + ";";
+    csv += set.gpsRecord.getSpeedKmHString() + ";";
   }
-  if (set.hdop.isValid()) {
-    csv += String(set.hdop.hdop(), 2);
-  }
-  csv += ";";
-  csv += String(set.validSatellites) + ";";
+  csv += set.gpsRecord.getHdopString() + ";";
+
+  csv += String(set.gpsRecord.getSatellitesUsed()) + ";";
   csv += String(set.batteryLevel, 2) + ";";
   if (set.sensorValues[LEFT_SENSOR_ID] < MAX_SENSOR_VALUE) {
     csv += String(set.sensorValues[LEFT_SENSOR_ID]);

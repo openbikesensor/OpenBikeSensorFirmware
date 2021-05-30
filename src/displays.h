@@ -1,22 +1,25 @@
 /*
-  Copyright (C) 2019 Zweirat
-  Contact: https://openbikesensor.org
-
-  This file is part of the OpenBikeSensor project.
-
-  The OpenBikeSensor sensor firmware is free software: you can redistribute
-  it and/or modify it under the terms of the GNU General Public License as
-  published by the Free Software Foundation, either version 3 of the License,
-  or (at your option) any later version.
-
-  The OpenBikeSensor sensor firmware is distributed in the hope that it will
-  be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
-  Public License for more details.
-
-  You should have received a copy of the GNU General Public License along with
-  the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ * Copyright (C) 2019-2021 OpenBikeSensor Contributors
+ * Contact: https://openbikesensor.org
+ *
+ * This file is part of the OpenBikeSensor firmware.
+ *
+ * The OpenBikeSensor firmware is free software: you can
+ * redistribute it and/or modify it under the terms of the GNU
+ * Lesser General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option)
+ * any later version.
+ *
+ * OpenBikeSensor firmware is distributed in the hope that
+ * it will be useful, but WITHOUT ANY WARRANTY; without even the
+ * implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE.  See the GNU Lesser General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with the OpenBikeSensor firmware.  If not,
+ * see <http://www.gnu.org/licenses/>.
+ */
 
 #ifndef OBS_DISPLAYS_H
 #define OBS_DISPLAYS_H
@@ -27,7 +30,6 @@
 #include <functional>
 
 #include "config.h"
-#include "font.h"
 #include "globals.h"
 #include "gps.h"
 #include "logo.h"
@@ -196,7 +198,7 @@ class DisplayItem {
     uint8_t posY;
     DisplayContentGetter* contentGetter;
     const DisplayItemType* type; // Font / Iconset / Bar
-    DisplayItemTextStyle &style; // optional parameter for the type
+    DisplayItemTextStyle style = DisplayItemTextStyle::RIGHT_ALIGNED; // optional parameter for the type
 };
 
 class DisplayLayout {
@@ -204,9 +206,23 @@ class DisplayLayout {
     std::vector<DisplayItem> items;
 };
 
+extern const uint8_t Ubuntu_Regular_Plain_8[];
+extern const uint8_t ArialMT_Plain_10[]; // :(
+extern const uint8_t Ubuntu_Regular_Plain_10[];
+extern const uint8_t Ubuntu_Regular_Plain_22[];
+extern const uint8_t Ubuntu_Regular_Plain_34[];
+extern const uint8_t Ubuntu_Regular_Plain_54[];
+extern const uint8_t BatterieLogo1[];
+extern const uint8_t TempLogo[];
 
-
-#define DEFAULT_FONT ArialMT_Plain_10
+#define TINY_FONT Ubuntu_Regular_Plain_8
+// this font is part of OLEDDisplay::OLEDDisplay :/
+// #define SMALL_FONT ArialMT_Plain_10
+#define DEFAULT_FONT Ubuntu_Regular_Plain_10
+#define SMALL_FONT Ubuntu_Regular_Plain_10
+#define MEDIUM_FONT Ubuntu_Regular_Plain_22
+#define LARGE_FONT Ubuntu_Regular_Plain_34
+#define HUGE_FONT Ubuntu_Regular_Plain_54
 
 // Forward declare classes to build (because there is a cyclic dependency between sensor.h and displays.h)
 class HCSR04SensorInfo;
@@ -237,6 +253,7 @@ class SSD1306DisplayDevice : public DisplayDevice {
     uint32_t mLastHandle;
     /* 25 display refreshes per second. */
     static const uint32_t MIN_MILLIS_BETWEEN_DISPLAY_UPDATE = 1000 / 25;
+    uint8_t mCurrentLine = 0;
 
   public:
     // TODO: private
@@ -254,6 +271,11 @@ class SSD1306DisplayDevice : public DisplayDevice {
     ~SSD1306DisplayDevice() {
       delete m_display;
     }
+
+    uint8_t currentLine() const;
+    uint8_t newLine();
+    uint8_t scrollUp();
+    uint8_t startLine();
 
     //##############################################################
     // Basic display configuration
@@ -326,14 +348,14 @@ class SSD1306DisplayDevice : public DisplayDevice {
     // | (0,5) | (1,5) | (2,5) | (3,5) |
     // ---------------------------------
 
-    void showTextOnGrid(int16_t x, int16_t y, String text, const uint8_t* font = DEFAULT_FONT, int8_t offset_x_ = 0, int8_t offset_y_ = 0) {
+    void showTextOnGrid(int16_t x, int16_t y, String text, const uint8_t* font = SMALL_FONT, int8_t offset_x_ = 0, int8_t offset_y_ = 0) {
       if (prepareTextOnGrid(x, y, text, font,offset_x_,offset_y_)) {
         m_display->display();
       }
     }
 
     bool prepareTextOnGrid(
-      int16_t x, int16_t y, String text, const uint8_t* font = DEFAULT_FONT ,int8_t offset_x_ = 0, int8_t offset_y_ = 0) {
+      int16_t x, int16_t y, String text, const uint8_t* font = SMALL_FONT , int8_t offset_x_ = 0, int8_t offset_y_ = 0) {
       bool changed = false;
       if (!text.equals(gridText[x][y])) {
         m_display->setFont(font);
@@ -373,10 +395,11 @@ class SSD1306DisplayDevice : public DisplayDevice {
       m_display->setColor(BLACK);
       int x_offset = 8 - (x * 2);
       m_display->drawString(x * 32 + x_offset + offset_x_, y * 10 + 1 + offset_y_, gridText[x][y]);
+      gridText[x][y] = "";
       m_display->setColor(WHITE);
     }
 
-    void cleanBatterie(int16_t x, int16_t y){
+    void cleanBattery(int16_t x, int16_t y){
       m_display->setColor(BLACK);
       m_display->drawXbm(x, y, 8, 9, BatterieLogo1);
       m_display->setColor(WHITE);
@@ -399,6 +422,7 @@ class SSD1306DisplayDevice : public DisplayDevice {
     }
 
     void drawProgressBar(uint8_t y, uint8_t progress) {
+      clearTextLine(y);
       uint16_t rowOffset = y * 10 + 3;
 
       if (mLastProgress != progress) {
@@ -424,6 +448,7 @@ class SSD1306DisplayDevice : public DisplayDevice {
     }
 
     void clearProgressBar(uint8_t y) {
+      clearTextLine(y);
       uint16_t rowOffset = y * 10 + 3;
       m_display->setColor(BLACK);
       m_display->fillRect(12, rowOffset, 104, 8);
@@ -432,15 +457,27 @@ class SSD1306DisplayDevice : public DisplayDevice {
       mLastProgress = UINT8_MAX;
     }
 
+    void clearTextLine(uint8_t y) {
+      for(int i = 0; i < 4; i++) {
+        if (!gridText[i][y].isEmpty()) {
+          prepareTextOnGrid(i, y, "");
+        }
+      }
+    }
+
+    String get_gridTextofCell(uint8_t x, uint8_t y){
+      return gridText[x][y];
+    }
+
     //##############################################################
     // Other
     //##############################################################
 
     // TODO: Move to the logic, since this is only the basic "display" class
 
-    void showGPS();
+    void showGPS(uint8_t sats);
 
-    void showVelocity(double velocity);
+    void showSpeed(double velocity);
 
     void showBatterieValue(int16_t input_val);
 
@@ -452,7 +489,8 @@ class SSD1306DisplayDevice : public DisplayDevice {
 
     void showValues(
       HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2,
-      uint16_t minDistanceToConfirm,int16_t BatterieVolt, int16_t TemperaturValue, int lastMeasurements, boolean insidePrivacyArea);
+      uint16_t minDistanceToConfirm, int16_t batteryPercentage, int16_t TemperaturValue,
+      int lastMeasurements, boolean insidePrivacyArea, double speed, uint8_t satellites);
 
     void handle();
     void prepareItem(DisplayItem &displayItem);

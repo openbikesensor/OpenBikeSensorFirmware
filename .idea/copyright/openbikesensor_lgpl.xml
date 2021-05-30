@@ -1,0 +1,7 @@
+<component name="CopyrightManager">
+  <copyright>
+    <option name="allowReplaceRegexp" value="2019" />
+    <option name="notice" value=" Copyright (C) 2019-&amp;#36;today.year OpenBikeSensor Contributors&#10; Contact: https://openbikesensor.org&#10; &#10; This file is part of the OpenBikeSensor sensor firmware.&#10; &#10; The OpenBikeSensor sensor firmware is free software: you can redistribute it &#10; and/or modify it under the terms of the GNU Lesser General Public License as &#10; published by the Free Software Foundation, either version 3 of the License, &#10; or (at your option) any later version.&#10; &#10; OpenBikeSensor sensor firmware is distributed in the hope that it will be &#10; useful, but WITHOUT ANY WARRANTY; without even the implied warranty of &#10; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser &#10; General Public License for more details.&#10; &#10; You should have received a copy of the GNU Lesser General Public License &#10; along with the OpenBikeSensor sensor firmware.  If not, see &#10; &lt;http://www.gnu.org/licenses/&gt;." />
+    <option name="myName" value="openbikesensor lgpl" />
+  </copyright>
+</component>

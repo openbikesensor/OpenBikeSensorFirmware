@@ -1,18 +1,35 @@
+/*
+ * Copyright (C) 2019-2021 OpenBikeSensor Contributors
+ * Contact: https://openbikesensor.org
+ *
+ * This file is part of the OpenBikeSensor firmware.
+ *
+ * The OpenBikeSensor firmware is free software: you can
+ * redistribute it and/or modify it under the terms of the GNU
+ * Lesser General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option)
+ * any later version.
+ *
+ * OpenBikeSensor firmware is distributed in the hope that
+ * it will be useful, but WITHOUT ANY WARRANTY; without even the
+ * implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE.  See the GNU Lesser General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with the OpenBikeSensor firmware.  If not,
+ * see <http://www.gnu.org/licenses/>.
+ */
+
 #include "HeartRateService.h"
 
-const unsigned long measurementInterval = 1000;
+const unsigned long measurementInterval = 500;
 
 const BLEUUID HeartRateService::SERVICE_UUID = BLEUUID((uint16_t)ESP_GATT_UUID_HEART_RATE_SVC);
-const char * HeartRateService::DESCRIPTION_TEXT =
-  "Minimum left sensor distance during the last second in cm. "
-  "Range 0cm to 999cm. 999 means infinity.";
 
 void HeartRateService::setup(BLEServer *pServer) {
-  mService = pServer->createService(SERVICE_UUID, 5);
+  mService = pServer->createService(SERVICE_UUID); // Keep the defaults!!, 5);
   mService->addCharacteristic(&mHeartRateMeasurementCharacteristics);
-  mHeartRateDescriptor.setValue(DESCRIPTION_TEXT);
-  mHeartRateDescriptor.setAccessPermissions(ESP_GATT_PERM_READ);
-  mHeartRateMeasurementCharacteristics.addDescriptor(&mHeartRateDescriptor);
   mHeartRateMeasurementCharacteristics.addDescriptor(new BLE2902());
   mValue[0] = mValue[1] = mValue[2] = 0;
   mHeartRateMeasurementCharacteristics.setValue(mValue, 2);
@@ -48,4 +65,3 @@ void HeartRateService::newSensorValues(
   mMinimumDistance = MAX_SENSOR_VALUE;
   mCollectionStartTime = millis;
 }
-

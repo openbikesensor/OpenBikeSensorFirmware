@@ -1,22 +1,25 @@
 /*
-  Copyright (C) 2019 Zweirat
-  Contact: https://openbikesensor.org
-
-  This file is part of the OpenBikeSensor project.
-
-  The OpenBikeSensor sensor firmware is free software: you can redistribute
-  it and/or modify it under the terms of the GNU General Public License as
-  published by the Free Software Foundation, either version 3 of the License,
-  or (at your option) any later version.
-
-  The OpenBikeSensor sensor firmware is distributed in the hope that it will
-  be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
-  Public License for more details.
-
-  You should have received a copy of the GNU General Public License along with
-  the OpenBikeSensor sensor firmware.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ * Copyright (C) 2019-2021 OpenBikeSensor Contributors
+ * Contact: https://openbikesensor.org
+ *
+ * This file is part of the OpenBikeSensor firmware.
+ *
+ * The OpenBikeSensor firmware is free software: you can
+ * redistribute it and/or modify it under the terms of the GNU
+ * Lesser General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option)
+ * any later version.
+ *
+ * OpenBikeSensor firmware is distributed in the hope that
+ * it will be useful, but WITHOUT ANY WARRANTY; without even the
+ * implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE.  See the GNU Lesser General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with the OpenBikeSensor firmware.  If not,
+ * see <http://www.gnu.org/licenses/>.
+ */
 
 #include <vector>
 #include <utils/obsutils.h>
@@ -31,12 +34,12 @@
 
 // --- Global variables ---
 // Version only change the "vN.M" part if needed.
-const char *OBSVersion = "v0.4" BUILD_NUMBER;
+const char *OBSVersion = "v0.7" BUILD_NUMBER;
 
 const uint8_t LEFT_SENSOR_ID = 1;
 const uint8_t RIGHT_SENSOR_ID = 0;
 
-const uint32_t BUTTON_PRESS_TIME_FOR_AUTO_UPLOAD_MS = 5000;
+const uint32_t LONG_BUTTON_PRESS_TIME_MS = 2000;
 
 
 // PINs
@@ -55,17 +58,17 @@ Config config;
 
 SSD1306DisplayDevice* displayTest;
 HCSR04SensorManager* sensorManager;
-BluetoothManager* bluetoothManager;
-const long BLUETOOTH_INTERVAL_MILLIS = 200;
-long lastBluetoothInterval = 0;
+static BluetoothManager* bluetoothManager;
 
-float BatteryValue = -1;
+Gps gps;
+
+static const uint32_t BLUETOOTH_INTERVAL_MILLIS = 100;
+static uint32_t lastBluetoothInterval = 0;
+
 float TemperatureValue = -1;
 
 
 VoltageMeter* voltageMeter;
-
-String esp_chipid;
 
 Adafruit_BMP280 bmp280(&Wire);
 bool BMP280_active = false;
@@ -76,7 +79,6 @@ unsigned long timeOfMinimum = esp_timer_get_time(); //  millis();
 unsigned long startTimeMillis = 0;
 unsigned long currentTimeMillis = millis();
 
-String text = "";
 uint16_t minDistanceToConfirm = MAX_SENSOR_VALUE;
 uint16_t minDistanceToConfirmIndex = 0;
 bool transmitConfirmedData = false;
@@ -95,10 +97,10 @@ const uint8_t displayAddress = 0x3c;
 
 int lastMeasurements = 0 ;
 
-void bluetoothConfirmed(const DataSet *dataSet, uint16_t measureIndex);
 uint8_t batteryPercentage();
 void serverLoop();
 void handleButtonInServerMode();
+void loadConfig(ObsConfig &cfg);
 
 void registerDisplayableValues(SSD1306DisplayDevice &display);
 
@@ -110,10 +112,91 @@ void switch_wire_speed_to_SSD1306(){
 	Wire.setClock(500000);
 }
 
+void setupSensors() {
+  sensorManager = new HCSR04SensorManager;
+
+  HCSR04SensorInfo sensorManaged1;
+  sensorManaged1.triggerPin = (config.displayConfig & DisplaySwapSensors) ? 25 : 15;
+  sensorManaged1.echoPin = (config.displayConfig & DisplaySwapSensors) ? 26 : 4;
+  sensorManaged1.sensorLocation = (char*) "Right"; // TODO
+  sensorManager->registerSensor(sensorManaged1);
+
+  HCSR04SensorInfo sensorManaged2;
+  sensorManaged2.triggerPin = (config.displayConfig & DisplaySwapSensors) ? 15 : 25;
+  sensorManaged2.echoPin = (config.displayConfig & DisplaySwapSensors) ? 4 : 26;
+  sensorManaged2.sensorLocation = (char*) "Left"; // TODO
+  sensorManager->registerSensor(sensorManaged2);
+
+  sensorManager->setOffsets(config.sensorOffsets);
+
+  sensorManager->setPrimarySensor(LEFT_SENSOR_ID);
+}
+
+static void setupBluetooth(const ObsConfig &cfg, const String &trackUniqueIdentifier) {
+  if (cfg.getProperty<bool>(ObsConfig::PROPERTY_BLUETOOTH)) {
+    displayTest->showTextOnGrid(2, displayTest->newLine(), "Bluetooth ..");
+    bluetoothManager = new BluetoothManager;
+    bluetoothManager->init(
+      cfg.getProperty<String>(ObsConfig::PROPERTY_OBS_NAME),
+      config.sensorOffsets[LEFT_SENSOR_ID],
+      config.sensorOffsets[RIGHT_SENSOR_ID],
+      batteryPercentage,
+      trackUniqueIdentifier);
+    bluetoothManager->activateBluetooth();
+    displayTest->showTextOnGrid(2, displayTest->currentLine(), "Bluetooth up");
+  } else {
+    bluetoothManager = nullptr;
+    ESP_ERROR_CHECK_WITHOUT_ABORT(
+      esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
+  }
+}
+
+static void reportBluetooth() {
+  if (bluetoothManager
+      && lastBluetoothInterval != (currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS)) {
+    log_d("Reporting BT: %d/%d Button: %d\n",
+          sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
+          sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median(),
+          buttonState);
+    lastBluetoothInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
+    bluetoothManager->newSensorValues(
+      currentTimeMillis,
+      sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
+      sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median());
+  }
+}
+
+static void buttonBluetooth(const DataSet *dataSet, uint16_t measureIndex) {
+  if (bluetoothManager && bluetoothManager->hasConnectedClients()) {
+    uint16_t left = dataSet->readDurationsLeftInMicroseconds[measureIndex];
+    if (left >= MAX_DURATION_MICRO_SEC && measureIndex > 0) {
+      measureIndex--;
+      left = dataSet->readDurationsLeftInMicroseconds[measureIndex];
+    }
+    uint16_t right = dataSet->readDurationsRightInMicroseconds[measureIndex];
+    if (right >= MAX_DURATION_MICRO_SEC && measureIndex > 0) {
+      right = dataSet->readDurationsLeftInMicroseconds[measureIndex - 1];
+    }
+    if (left > MAX_DURATION_MICRO_SEC || left == 0) {
+      left = MAX_SENSOR_VALUE;
+    } else {
+      left /= MICRO_SEC_TO_CM_DIVIDER;
+    }
+    if (right > MAX_DURATION_MICRO_SEC || right == 0) {
+      right = MAX_SENSOR_VALUE;
+    } else {
+      right /= MICRO_SEC_TO_CM_DIVIDER;
+    }
+    bluetoothManager->newPassEvent(
+      dataSet->millis + (uint32_t) dataSet->startOffsetMilliseconds[measureIndex],
+      left, right);
+  }
+}
+
 void setup() {
   Serial.begin(115200);
 
-  // Serial.println("setup()");
+  log_i("setup()");
 
   //##############################################################
   // Configure button pin as INPUT
@@ -134,111 +217,55 @@ void setup() {
     Serial.println("Display not found");
   }
   displayTest = new SSD1306DisplayDevice;
-  
+
   switch_wire_speed_to_SSD1306();
-  
+
   displayTest->showLogo(true);
-  displayTest->showTextOnGrid(2, 0, OBSVersion,DEFAULT_FONT);
+  displayTest->showTextOnGrid(2, displayTest->startLine(), OBSVersion);
+
+  voltageMeter = new VoltageMeter; // takes a moment, so do it here
+  if (voltageMeter->hasReadings()) {
+    displayTest->showTextOnGrid(2, displayTest->newLine(),
+                                "Battery: " + String(voltageMeter->read(), 1) + "V");
+    delay(333); // Added for user experience
+  }
+  if (voltageMeter->isWarningLevel()) {
+    displayTest->showTextOnGrid(2, displayTest->newLine(), "LOW BAT");
+    displayTest->showTextOnGrid(2, displayTest->newLine(), "WARNING!");
+    delay(5000);
+  }
 
   //##############################################################
   // Load, print and save config
   //##############################################################
-
-  displayTest->showTextOnGrid(2, 1, "Config... ",DEFAULT_FONT);
-
-  if (!SPIFFS.begin(true)) {
-    Serial.println("An Error has occurred while mounting SPIFFS");
-    displayTest->showTextOnGrid(2, 1, "Config... error ",DEFAULT_FONT);
-    return;
-  }
-
-  Serial.println(F("Load config"));
   ObsConfig cfg; // this one is valid in setup!
-  if (!cfg.loadConfig()) {
-    displayTest->showTextOnGrid(2, 1, "Config...RESET",DEFAULT_FONT);
-    delay(1000); // resetting config once, wait a moment
-  }
-
-  // Dump config file
-  log_d("Print config file...");
-  cfg.printConfig();
-
-  // TODO: Select Profile missing here or below!
-  // Copy data to static view on config!
-  cfg.fill(config);
-
-  if(config.devConfig & ShowGrid) {
-    displayTest->showGrid(true);
-  }
-  if (config.displayConfig & DisplayInvert) {
-    displayTest->invert();
-  } else {
-    displayTest->normalDisplay();
-  }
-
-  if (config.displayConfig & DisplayFlip) {
-    displayTest->flipScreen();
-  }
-
-  delay(333); // Added for user experience
-  char buffer[32];
-  snprintf(buffer, sizeof(buffer), "<%02d| |%02d>",
-    config.sensorOffsets[LEFT_SENSOR_ID],
-    config.sensorOffsets[RIGHT_SENSOR_ID]);
-  displayTest->showTextOnGrid(2, 1, buffer,DEFAULT_FONT);
-
-
-  //##############################################################
-  // GPS
-  //##############################################################
-  SerialGPS.begin(9600, SERIAL_8N1, 16, 17);
+  loadConfig(cfg);
 
   //##############################################################
   // Handle SD
   //##############################################################
-  // Counter, how often the SD card will be read before writing an error on the display
-  int8_t sdCount = 5;
-
-  displayTest->showTextOnGrid(2, 2, "SD...",DEFAULT_FONT);
+  int8_t sdCount = 0;
+  displayTest->showTextOnGrid(2, displayTest->newLine(), "SD...");
   while (!SD.begin()) {
-    if(sdCount > 0) {
-      sdCount--;
-    } else {
-      displayTest->showTextOnGrid(2, 2, "SD... error",DEFAULT_FONT);
-      if (config.simRaMode || digitalRead(PushButton_PIN) == HIGH) {
-        break;
-      }  // FIXME: Stop trying!!?
+    sdCount++;
+    displayTest->showTextOnGrid(2,
+      displayTest->currentLine(), "SD... error " + String(sdCount));
+    if (config.simRaMode || digitalRead(PushButton_PIN) == HIGH || sdCount > 10) {
+      break;
     }
-    Serial.println("Card Mount Failed");
-    //delay(100);
+    delay(200);
+  }
+
+  if (SD.begin()) {
+    displayTest->showTextOnGrid(2, displayTest->currentLine(), "SD... ok");
   }
   delay(333); // Added for user experience
-  if (SD.begin()) {
-    Serial.println("Card Mount Succeeded");
-    displayTest->showTextOnGrid(2, 2, "SD... ok",DEFAULT_FONT);
-  }
 
   //##############################################################
   // Init HCSR04
   //##############################################################
 
-  sensorManager = new HCSR04SensorManager;
-
-  HCSR04SensorInfo sensorManaged1;
-  sensorManaged1.triggerPin = (config.displayConfig & DisplaySwapSensors) ? 25 : 15;
-  sensorManaged1.echoPin = (config.displayConfig & DisplaySwapSensors) ? 26 : 4;
-  sensorManaged1.sensorLocation = (char*) "Right"; // TODO
-  sensorManager->registerSensor(sensorManaged1);
-
-  HCSR04SensorInfo sensorManaged2;
-  sensorManaged2.triggerPin = (config.displayConfig & DisplaySwapSensors) ? 15 : 25;
-  sensorManaged2.echoPin = (config.displayConfig & DisplaySwapSensors) ? 4 : 26;
-  sensorManaged2.sensorLocation = (char*) "Left"; // TODO
-  sensorManager->registerSensor(sensorManaged2);
-
-  sensorManager->setOffsets(config.sensorOffsets);
-
-  sensorManager->setPrimarySensor(LEFT_SENSOR_ID);
+  setupSensors();
 
   //##############################################################
   // Check, if the button is pressed
@@ -247,7 +274,7 @@ void setup() {
 
   buttonState = digitalRead(PushButton_PIN);
   if (buttonState == HIGH || (!config.simRaMode && displayError != 0)) {
-    displayTest->showTextOnGrid(2, 2, "Start Server",DEFAULT_FONT);
+    displayTest->showTextOnGrid(2, displayTest->newLine(), "Start Server");
     ESP_ERROR_CHECK_WITHOUT_ABORT(
       esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
 
@@ -255,7 +282,8 @@ void setup() {
     lastButtonState = buttonState;
     delay(200);
     startServer(&cfg);
-    OtaInit(esp_chipid);
+    gps.begin();
+    gps.setStatisticsIntervalInSeconds(2); // ??
     while (true) {
       yield();
       serverLoop();
@@ -263,133 +291,66 @@ void setup() {
   }
   SPIFFS.end();
   WiFiGenericClass::mode(WIFI_OFF);
+  gps.begin();
 
   //##############################################################
   // Prepare CSV file
   //##############################################################
 
-  displayTest->showTextOnGrid(2, 3, "CSV file...",DEFAULT_FONT);
-
+  displayTest->showTextOnGrid(2, displayTest->newLine(), "CSV file...");
   const String trackUniqueIdentifier = ObsUtils::createTrackUuid();
+
 
   if (SD.begin()) {
     writer = new CSVFileWriter;
     writer->setFileName();
     writer->writeHeader(trackUniqueIdentifier);
-    displayTest->showTextOnGrid(2, 3, "CSV file... ok",DEFAULT_FONT);
-    Serial.println("File initialised");
+    displayTest->showTextOnGrid(2, displayTest->currentLine(), "CSV file... ok");
   } else {
-    displayTest->showTextOnGrid(2, 3, "CSV. skipped",DEFAULT_FONT);
+    displayTest->showTextOnGrid(2, displayTest->currentLine(), "CSV. skipped");
   }
 
+  gps.handle();
   //##############################################################
-  // GPS
-  //##############################################################
-
-  displayTest->showTextOnGrid(2, 4, "Wait for GPS",DEFAULT_FONT);
-  Serial.println("Waiting for GPS fix...");
-  bool validGPSData = false;
-  readGPSData();
-  voltageMeter = new VoltageMeter; // takes a moment, so do it here
-  readGPSData();
-
-  //##############################################################
-  // Temperatur Sensor BMP280
+  // Temperature Sensor BMP280
   //##############################################################
 
   BMP280_active = TemperatureValue = bmp280.begin(BMP280_ADDRESS_ALT,BMP280_CHIPID);
   if(BMP280_active == true) TemperatureValue = bmp280.readTemperature();
 
 
-  //##############################################################
-  // Bluetooth
-  //##############################################################
-  if (cfg.getProperty<bool>(ObsConfig::PROPERTY_BLUETOOTH)) {
-    bluetoothManager = new BluetoothManager;
-    bluetoothManager->init(
-      cfg.getProperty<String>(ObsConfig::PROPERTY_OBS_NAME),
-      config.sensorOffsets[LEFT_SENSOR_ID],
-      config.sensorOffsets[RIGHT_SENSOR_ID],
-      batteryPercentage,
-      trackUniqueIdentifier);
-    bluetoothManager->activateBluetooth();
-  } else {
-    bluetoothManager = nullptr;
-    ESP_ERROR_CHECK_WITHOUT_ABORT(
-      esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
-  }
-  readGPSData();
+  gps.handle();
+
+  setupBluetooth(cfg, trackUniqueIdentifier);
+
+  displayTest->showTextOnGrid(2, displayTest->newLine(), "Wait for GPS");
+  displayTest->newLine();
+  gps.handle();
+  gps.setStatisticsIntervalInSeconds(1); // get regular updates.
+
   int gpsWaitFor = cfg.getProperty<int>(ObsConfig::PROPERTY_GPS_FIX);
-  while (!validGPSData) {
-    readGPSData();
-
-    switch (gpsWaitFor) {
-      case GPS::FIX_POS:
-        validGPSData = gps.sentencesWithFix() > 0;
-        if (validGPSData) {
-          Serial.println("Got location...");
-          displayTest->showTextOnGrid(2, 4, "Got location",DEFAULT_FONT);
-          }
-        break;
-      case GPS::FIX_TIME:
-        validGPSData = gps.time.isValid()
-          && !(gps.time.second() == 00 && gps.time.minute() == 00 && gps.time.hour() == 00);
-        if (validGPSData) {
-          Serial.println("Got time...");
-displayTest->showTextOnGrid(2, 4, "Got time",DEFAULT_FONT);
-         }
-        break;
-      case GPS::FIX_NO_WAIT:
-        validGPSData = true;
-        if (validGPSData) {
-          Serial.println("GPS, no wait");
-displayTest->showTextOnGrid(2, 4, "GPS, no wait",DEFAULT_FONT);
-          }
-        break;
-      default:
-        validGPSData = gps.satellites.value() >= gpsWaitFor;
-        if (validGPSData) {
-          Serial.println("Got required number of satellites...");
-        }
-        break;
-    }
-
+  while (!gps.hasState(gpsWaitFor, displayTest)) {
     currentTimeMillis = millis();
-    if (bluetoothManager
-        && lastBluetoothInterval != (currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS)) {
-      lastBluetoothInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
-      bluetoothManager->newSensorValues(currentTimeMillis, MAX_SENSOR_VALUE, MAX_SENSOR_VALUE);
-    }
-
-    delay(50);
-
-    String satellitesString;
-    if (gps.passedChecksum() == 0) { // could not get any valid char from GPS module
-      satellitesString = "OFF?";
-    } else if (!gps.time.isValid()
-        || (gps.time.second() == 00 && gps.time.minute() == 00 && gps.time.hour() == 00)) {
-      satellitesString = "no time";
-    } else {
-      char timeStr[32];
-      snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d %dsa",
-               gps.time.hour(), gps.time.minute(), gps.time.second(), gps.satellites.value());
-      satellitesString = String(timeStr);
-    }
-    displayTest->showTextOnGrid(2, 5, satellitesString,DEFAULT_FONT);
-
+    gps.handle();
+    sensorManager->getDistances();
+    reportBluetooth();
+    gps.showWaitStatus(displayTest);
     buttonState = digitalRead(PushButton_PIN);
     if (buttonState == HIGH
-      || (config.simRaMode && gps.passedChecksum() == 0) // no module && simRaMode
-    ) {
-      Serial.println("Skipped get GPS...");
-      displayTest->showTextOnGrid(2, 5, "...skipped",DEFAULT_FONT);
+        || (config.simRaMode && !gps.moduleIsAlive()) // no module && simRaMode
+      ) {
+      log_d("Skipped get GPS...");
+      displayTest->showTextOnGrid(2, displayTest->currentLine(), "...skipped");
       break;
     }
   }
 
-  delay(1000); // Added for user experience
+  // now we have a fix only rate updates, could be set to 0?
+  gps.setStatisticsIntervalInSeconds(0);
 
-  // Clear the display once!
+  gps.handle(1000); // Added for user experience
+  gps.pollStatistics();
+  gps.enableSbas();
   displayTest->clear();
   registerDisplayableValues(*displayTest);
 //  displayTest->selectComplexLayout();
@@ -425,9 +386,9 @@ void registerDisplayableValues(SSD1306DisplayDevice &display) {
   display.addDisplayableInt("measurement.loops",
                             []() { return lastMeasurements; });
   display.addDisplayableInt("gps.sats.visible",
-                            []() { return gps.satellites.value(); });
-  display.addDisplayableInt("gps.speed",
-                            []() { return gps.speed.value(); }); // TODO: only if valid!
+                            []() { return gps.getCurrentGpsRecord().getSatellitesUsed(); });
+  display.addDisplayableString("gps.speed",
+                            []() { return gps.getCurrentGpsRecord().getSpeedKmHString(); }); // TODO: only if valid!
   display.addDisplayableDouble("battery.voltage",
                                []() { return voltageMeter->read(); });
   display.addDisplayableInt("battery.percentage",
@@ -438,61 +399,51 @@ void registerDisplayableValues(SSD1306DisplayDevice &display) {
 }
 
 void serverLoop() {
-  readGPSData();
-  server.handleClient();
-  ArduinoOTA.handle();
+  gps.handle();
+  configServerHandle();
   sensorManager->getDistancesNoWait();
   handleButtonInServerMode();
 }
 
 void handleButtonInServerMode() {
   buttonState = digitalRead(PushButton_PIN);
-  if (!configServerWasConnectedViaHttp()) {
-    displayTest->showTextOnGrid(0,3, "Keep button pressed");
-    displayTest->showTextOnGrid(0,4, "for automatic track upload.");
-  }
   const uint32_t now = millis();
   if (buttonState != lastButtonState) {
     if (buttonState == LOW && !configServerWasConnectedViaHttp()) {
-        displayTest->clearProgressBar(5);
+      displayTest->clearProgressBar(5);
+      displayTest->showTextOnGrid(0, 3, "Press the button for");
+      displayTest->showTextOnGrid(0, 4, "automatic track upload.");
     }
     lastButtonState = buttonState;
     buttonStateChanged = now;
   }
   if (!configServerWasConnectedViaHttp() &&
-    buttonState == HIGH && buttonStateChanged != 0) {
+      buttonState == HIGH && buttonStateChanged != 0) {
     const uint32_t buttonPressedMs = now - buttonStateChanged;
-    displayTest->drawProgressBar(5, buttonPressedMs, BUTTON_PRESS_TIME_FOR_AUTO_UPLOAD_MS);
-    if (buttonPressedMs > BUTTON_PRESS_TIME_FOR_AUTO_UPLOAD_MS) {
-      uploadTracks(false);
+    displayTest->drawProgressBar(5, buttonPressedMs, LONG_BUTTON_PRESS_TIME_MS);
+    if (buttonPressedMs > LONG_BUTTON_PRESS_TIME_MS) {
+      uploadTracks();
     }
   }
 }
 
-
 void loop() {
-
-  Serial.println("loop()");
+  log_i("loop()");
 
   auto* currentSet = new DataSet;
   //specify which sensors value can be confirmed by pressing the button, should be configurable
   const uint8_t confirmationSensorID = LEFT_SENSOR_ID;
-  readGPSData(); // needs <=1ms
+  gps.handle(); // needs <=1ms
 
   currentTimeMillis = millis();
   if (startTimeMillis == 0) {
     startTimeMillis = (currentTimeMillis / measureInterval) * measureInterval;
   }
-  currentSet->time = currentTime();
+  currentSet->time = Gps::currentTime();
   currentSet->millis = currentTimeMillis;
-  currentSet->location = gps.location;
-  currentSet->altitude = gps.altitude;
-  currentSet->course = gps.course;
-  currentSet->speed = gps.speed;
-  currentSet->hdop = gps.hdop;
-  currentSet->validSatellites = gps.satellites.isValid() ? (uint8_t) gps.satellites.value() : 0;
   currentSet->batteryLevel = voltageMeter->read();
-  currentSet->isInsidePrivacyArea = isInsidePrivacyArea(currentSet->location);
+  currentSet->isInsidePrivacyArea = gps.isInsidePrivacyArea();
+  currentSet->gpsRecord = gps.getCurrentGpsRecord();
 
   sensorManager->reset();
 
@@ -511,7 +462,7 @@ void loop() {
 
     currentTimeMillis = millis();
     sensorManager->getDistances();
-    readGPSData();
+    gps.handle();
 
     displayTest->handle();
     /*
@@ -519,26 +470,15 @@ void loop() {
       sensorManager->m_sensors[LEFT_SENSOR_ID],
       sensorManager->m_sensors[RIGHT_SENSOR_ID],
       minDistanceToConfirm,
-      BatteryValue,
+      voltageMeter->readPercentage(),
       (int16_t) TemperatureValue,
       lastMeasurements,
-      currentSet->isInsidePrivacyArea
+      currentSet->isInsidePrivacyArea,
+      gps.getSpeed(),
+      gps.getValidSatellites()
     );
 */
-
-    if (bluetoothManager
-        && lastBluetoothInterval != (currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS)) {
-      log_d("Reporting BT: %d/%d Button: %d\n",
-                    sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
-                    sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median(),
-                    buttonState);
-      lastBluetoothInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
-      bluetoothManager->newSensorValues(
-        currentTimeMillis,
-        sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
-        sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median());
-    }
-
+    reportBluetooth();
     buttonState = digitalRead(PushButton_PIN);
     // detect state change
     if (buttonState != lastButtonState) {
@@ -556,13 +496,13 @@ void loop() {
         if (datasetToConfirm != nullptr) {
           datasetToConfirm->confirmedDistances.push_back(minDistanceToConfirm);
           datasetToConfirm->confirmedDistancesTimeOffset.push_back(minDistanceToConfirmIndex);
-          bluetoothConfirmed(datasetToConfirm, minDistanceToConfirmIndex);
+          buttonBluetooth(datasetToConfirm, minDistanceToConfirmIndex);
           datasetToConfirm = nullptr;
         } else { // confirming a overtake without left measure
           currentSet->confirmedDistances.push_back(MAX_SENSOR_VALUE);
           currentSet->confirmedDistancesTimeOffset.push_back(
             sensorManager->getCurrentMeasureIndex());
-          bluetoothConfirmed(currentSet, sensorManager->getCurrentMeasureIndex());
+          buttonBluetooth(currentSet, sensorManager->getCurrentMeasureIndex());
         }
         minDistanceToConfirm = MAX_SENSOR_VALUE; // ready for next confirmation
       }
@@ -576,27 +516,14 @@ void loop() {
       minDistanceToConfirmIndex = sensorManager->getCurrentMeasureIndex();
       // if there was no measurement of this sensor for this index, it is the
       // one before. This happens with fast confirmations.
-      if (sensorManager->m_sensors[confirmationSensorID].echoDurationMicroseconds[minDistanceToConfirm - 1] <= 0) {
+      if (minDistanceToConfirm > 0
+         && sensorManager->m_sensors[confirmationSensorID].echoDurationMicroseconds[minDistanceToConfirm - 1] <= 0) {
         minDistanceToConfirmIndex--;
       }
       datasetToConfirm = currentSet;
       timeOfMinimum = currentTimeMillis;
     }
     measurements++;
-
-      // #######################################################
-      // Batterievoltage
-      // #######################################################
-
-      if (voltageBuffer.available() == 0)
-      {
-        BatteryValue = (float) movingaverage(&voltageBuffer,&BatterieVoltage_movav,batterie_voltage_read(BatterieVoltage_PIN));
-        BatteryValue = (float)get_batterie_percent((uint16_t)BatteryValue);
-        currentSet->batteryLevel = BatteryValue;
-        }else{
-        (float) movingaverage(&voltageBuffer,&BatterieVoltage_movav,batterie_voltage_read(BatterieVoltage_PIN));
-        BatteryValue = -1;
-      }
 
        if(BMP280_active == true)  TemperatureValue = bmp280.readTemperature();
   } // end measureInterval while
@@ -613,6 +540,14 @@ void loop() {
   memcpy(&(currentSet->startOffsetMilliseconds),
     &(sensorManager->startOffsetMilliseconds), currentSet->measurements * sizeof(uint16_t));
 
+#ifdef DEVELOP
+  Serial.write("min. distance: ");
+  Serial.print(currentSet->sensorValues[confirmationSensorID]) ;
+  Serial.write(" cm,");
+  Serial.print(measurements);
+  Serial.write(" measurements  \n");
+#endif
+
   // if nothing was detected, write the dataset to file, otherwise write it to the buffer for confirmation
   if (!transmitConfirmedData
     && currentSet->sensorValues[confirmationSensorID] == MAX_SENSOR_VALUE
@@ -626,13 +561,6 @@ void loop() {
     dataBuffer.push(currentSet);
   }
 
-#ifdef DEVELOP
-  Serial.write("min. distance: ");
-  Serial.print(currentSet->sensorValues[confirmationSensorID]) ;
-  Serial.write(" cm,");
-  Serial.print(measurements);
-  Serial.write(" measurements  \n");
-#endif
 
   lastMeasurements = measurements;
 
@@ -690,37 +618,73 @@ void loop() {
   startTimeMillis = (currentTimeMillis / measureInterval) * measureInterval;
 }
 
-void bluetoothConfirmed(const DataSet *dataSet, uint16_t measureIndex) {
-  if (bluetoothManager) {
-    uint16_t left = dataSet->readDurationsLeftInMicroseconds[measureIndex];
-    if (left >= MAX_DURATION_MICRO_SEC && measureIndex > 0) {
-      measureIndex--;
-      left = dataSet->readDurationsLeftInMicroseconds[measureIndex];
-    }
-    uint16_t right = dataSet->readDurationsRightInMicroseconds[measureIndex];
-    if (right >= MAX_DURATION_MICRO_SEC && measureIndex > 0) {
-      right = dataSet->readDurationsLeftInMicroseconds[measureIndex - 1];
-    }
-    if (left > MAX_DURATION_MICRO_SEC || left <= 0) {
-      left = MAX_SENSOR_VALUE;
-    } else {
-      left /= MICRO_SEC_TO_CM_DIVIDER;
-    }
-    if (right > MAX_DURATION_MICRO_SEC || right <= 0) {
-      right = MAX_SENSOR_VALUE;
-    } else {
-      right /= MICRO_SEC_TO_CM_DIVIDER;
-    }
-    bluetoothManager->newPassEvent(
-      dataSet->millis + (uint32_t) dataSet->startOffsetMilliseconds[measureIndex],
-      left, right);
-  }
-}
-
 uint8_t batteryPercentage() {
   uint8_t result = 0;
   if (voltageMeter) {
     result = voltageMeter->readPercentage();
   }
   return result;
+}
+
+void loadConfig(ObsConfig &cfg) {
+  displayTest->showTextOnGrid(2, displayTest->newLine(), "Config... ");
+
+  if (!SPIFFS.begin(true)) {
+    log_e("An Error has occurred while mounting SPIFFS");
+    displayTest->showTextOnGrid(2, displayTest->currentLine(), "Config... error ");
+    displayTest->showTextOnGrid(2, displayTest->newLine(), "Please reboot!");
+    while (true) {
+      delay(1000);
+    }
+  }
+
+  if (SD.begin() && SD.exists("/obs.json")) {
+    displayTest->showTextOnGrid(2, displayTest->currentLine(), "Init from SD.");
+    log_i("Configuration init from SD.");
+    delay(1000);
+    File f = SD.open("/obs.json");
+    if (cfg.loadConfig(f)) {
+      cfg.saveConfig();
+      displayTest->showTextOnGrid(2, displayTest->newLine(), "done.");
+    } else {
+      displayTest->showTextOnGrid(2, displayTest->newLine(), "format error.");
+    }
+    f.close();
+    SD.remove("/obs.json");
+    delay(5000);
+  } else {
+    log_d("No configuration init from SD. SD: %d File: %d", SD.begin(), (SD.begin() && SD.exists("/obs.json")));
+  }
+
+  log_i("Load cfg");
+  if (!cfg.loadConfig()) {
+    displayTest->showTextOnGrid(2, displayTest->currentLine(), "Config...RESET");
+    delay(5000); // resetting cfg once, wait a moment
+  }
+
+  cfg.printConfig();
+
+  // TODO: Select Profile missing here or below!
+  // Copy data to static view on cfg!
+  cfg.fill(config);
+
+  // Setup display, this is not the right place ;)
+  if(config.devConfig & ShowGrid) {
+    displayTest->showGrid(true);
+  }
+  if (config.displayConfig & DisplayInvert) {
+    displayTest->invert();
+  } else {
+    displayTest->normalDisplay();
+  }
+  if (config.displayConfig & DisplayFlip) {
+    displayTest->flipScreen();
+  }
+
+  delay(333); // Added for user experience
+  char buffer[32];
+  snprintf(buffer, sizeof(buffer), "<%02d| - |%02d>",
+           config.sensorOffsets[LEFT_SENSOR_ID],
+           config.sensorOffsets[RIGHT_SENSOR_ID]);
+  displayTest->showTextOnGrid(2, displayTest->currentLine(), buffer);
 }

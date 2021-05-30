@@ -3,21 +3,19 @@
 You can always use an IDE setup to flash the ESP but if you simply 
 want to start using the OBS this way might be more straight forward. 
 
-As of today, this thing is foe Windows only.
-
 Other than for the next updates that you can do over the air using 
 the small release package, you need the "initial flash" zip file, and 
-the _Flash Download Tools_ from
-[ESPRESSIF](https://www.espressif.com/en/support/download/other-tools?keys=&field_type_tid%5B%5D=13)
+a flash tool.
 
-## Preparation
+## Windows 
+### Preparation
 
 Download the latest release archive from 
 [OpenBikeSensorFirmware at GITHub](https://github.com/openbikesensor/OpenBikeSensorFirmware/releases). 
 You need the larger ZIP file named `obs-v9.9.9999-initial-flash.zip`.
 Extract the files in a temporary folder, they are named like 
 0x??????.bin. The numbers are the base address where the data should 
-be flashed. Don`t worry this will make sense in the next steps.
+be flashed. Don't worry this will make sense in the next steps.
 
 Please download _Flash Download Tools (ESP8266 & ESP32 & ESP32-S2)_ from
 [ESPRESSIF](https://www.espressif.com/en/support/download/other-tools?keys=&field_type_tid%5B%5D=13)
@@ -28,10 +26,24 @@ Remove USB devices from your computer, that you do not need right now.
 They can be confused during the selection of the right device to be
 flashed.
 
-## Steps
+### Steps
 
-Connect ESP via USB (checkme - driver needed?). Windows should
-confirm that a new device was detected. 
+You likely need to install a so called USB 2 UART (serial) driver 
+for so that your Windows can communicate with the chip on the 
+ESP development board. Since it is a generic driver, you might 
+already have one installed from other projects?
+If in doubt please download and install the driver 1st from the 
+manufacturers page, Silicon Labs. It might also be worth to update 
+to the latest version. The driver is in the package for the 
+CP210x chips. As the time of writen the download is at 
+https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers  
+and called "CP210x Universal Windows Driver". Follow the 
+instructions given there. If the link does not work use Google 
+to get a updated version but as usual pay attention that you end
+on a trustworthy page.
+
+Now connect ESP via USB. Windows should confirm that a new
+device was detected. 
 
 Start `flash_download_tool_3.X.X.exe`, in the folder of the _Flash 
 Download Tool_. Give it some time to start. It will open a console 
@@ -87,8 +99,87 @@ but this will change.
 Now you can continue at the user documentation at 
 [OBS - User Guide - Configuration](https://www.openbikesensor.org/user-guide/configuration.html).
 
+## Linux
+
+### Preparation
+
+Download the latest release archive from
+[OpenBikeSensorFirmware at GITHub](https://github.com/openbikesensor/OpenBikeSensorFirmware/releases).
+You need the larger ZIP file named `obs-v9.9.9999-initial-flash.zip`.
+Extract the files in a temporary folder, they are named like
+0x??????.bin. The numbers are the base address where the data should
+be flashed.
+
+Install `esptool`, if it is not installed already. It is available with
+most distributions. For Ubuntu this is `apt install esptool`.  
+
+Make sure you know the device name for the USB device.
+This is typically `/dev/ttyUSB0` which is also assumed in the sample 
+below. 
+
+### Flush
+
+In the directory where you have extracted the zip, execute the following 
+command:
+
+```bash
+python3 esptool.py \
+    --chip esp32 \
+    --port /dev/ttyUSB0 \
+    --baud 921600 \
+    --before default_reset \
+    --after hard_reset \
+    write_flash -z \
+    --flash_mode dio \
+    --flash_freq 40m \
+    --flash_size detect \
+    0x1000 0x01000.bin \
+    0x8000 0x08000.bin \
+    0xe000 0x0e000.bin \
+    0x10000 0x10000.bin
+```
+
+## macOs
+
+### Preparation
+
+Download the latest release archive from
+[OpenBikeSensorFirmware at GITHub](https://github.com/openbikesensor/OpenBikeSensorFirmware/releases).
+You need the larger ZIP file named `obs-v9.9.9999-initial-flash.zip`.
+Extract the files in a temporary folder, they are named like
+0x??????.bin. The numbers are the base address where the data should
+be flashed.
+
+Install `esptool`, if it is not installed already. With Homebrew you can easily install it using `brew install esptool`.  
+
+Make sure you know the device name for the USB device. The assigned tty device is typically `/dev/tty.usbserial-0001` which is also assumed in the sample below. On macOs you list your current USB devices, using `ioreg -p IOUSB -w0 -l`. In doubt lookout for a `USB to UART` USB device.
+
+### Flush
+
+In the directory where you have extracted the zip, execute the following 
+command:
+
+```bash
+esptool.py \
+    --chip esp32 \
+    --port /dev/tty.usbserial-0001 \
+    --baud 921600 \
+    --before default_reset \
+    --after hard_reset \
+    write_flash -z \
+    --flash_mode dio \
+    --flash_freq 40m \
+    --flash_size detect \
+    0x1000 0x01000.bin \
+    0x8000 0x08000.bin \
+    0xe000 0x0e000.bin \
+    0x10000 0x10000.bin
+```
+
 ## Licenses
 
 https://docs.espressif.com/projects/esp-idf/en/latest/esp32/COPYRIGHT.html
 
-TODO
+Please see the root folder of the licence files of used components. 
+
+
