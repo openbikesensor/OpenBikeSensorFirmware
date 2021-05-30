@@ -103,7 +103,7 @@ static const char* const header =
   "<p>Firmware version: {version}</p>"
   "<a href=\"javascript:history.back()\" class='previous'>&#8249;</a>";
 
-static const char* footer = "</form></body></html>";
+static const char* const footer = "</form></body></html>";
 
 // #########################################
 // Upload form
