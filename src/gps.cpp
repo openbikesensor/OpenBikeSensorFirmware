@@ -942,13 +942,13 @@ void Gps::parseUbxMessage() {
       break;
 #endif
     case (uint16_t) UBX_MSG::NAV_TIMEUTC: {
-      log_i("TIMEUTC: iTOW: %u acc: %u nano: %d %04u-%02u-%02uT%02u:%02u:%02u valid 0x%02x delay %dms",
+      log_i("TIMEUTC: iTOW: %u acc: %uns nano: %d %04u-%02u-%02uT%02u:%02u:%02u valid 0x%02x delay %dms",
             mGpsBuffer.navTimeUtc.iTow, mGpsBuffer.navTimeUtc.tAcc, mGpsBuffer.navTimeUtc.nano,
             mGpsBuffer.navTimeUtc.year, mGpsBuffer.navTimeUtc.month, mGpsBuffer.navTimeUtc.day,
             mGpsBuffer.navTimeUtc.hour, mGpsBuffer.navTimeUtc.minute, mGpsBuffer.navTimeUtc.sec,
             mGpsBuffer.navTimeUtc.valid, delayMs);
-      if ((mGpsBuffer.navTimeUtc.valid & 0x07) == 0x07 // all valid, UTC comes last
-          && delayMs < 50
+      if ((mGpsBuffer.navTimeUtc.valid & 0x04) == 0x04 // UTC valid, it is the last one
+          && delayMs < 150
           && mGpsBuffer.navTimeUtc.tAcc < (50 * 1000 * 1000 /* 50ms */)
           && (mLastTimeTimeSet == 0
               || (mLastTimeTimeSet + (2 * 60 * 1000 /* 2 minutes */)) < millis())) {
@@ -961,8 +961,12 @@ void Gps::parseUbxMessage() {
         t.tm_sec = mGpsBuffer.navTimeUtc.sec;
         const time_t gpsTime = mktime(&t);
         const struct timeval now = {.tv_sec = gpsTime};
+        String oldTime = ObsUtils::dateTimeToString();
         settimeofday(&now, nullptr);
-        log_i("Time set %ld: %s.\n", gpsTime, ObsUtils::dateTimeToString(gpsTime).c_str());
+        String newTime = ObsUtils::dateTimeToString();
+        log_i("Time set %ld: %s. %s -> %s\n",
+              gpsTime, ObsUtils::dateTimeToString(gpsTime).c_str(),
+              oldTime.c_str(), newTime.c_str());
         if (mLastTimeTimeSet == 0) {
           mLastTimeTimeSet = millis();
           // This triggers another NAV-TIMEUTC message!
