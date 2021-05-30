@@ -470,3 +470,13 @@ std::vector<int> ObsConfig::getIntegersProperty(const String &key) const {
 void ObsConfig::releaseJson() {
   jsonData.clear(); // should we just shrink?
 }
+
+bool ObsConfig::removeConfig() {
+  SPIFFS.remove(OLD_CONFIG_FILENAME);
+  SPIFFS.remove(CONFIG_OLD_FILENAME);
+  SPIFFS.remove(CONFIG_FILENAME);
+
+  return !SPIFFS.exists(OLD_CONFIG_FILENAME)
+    && !SPIFFS.exists(CONFIG_OLD_FILENAME)
+    && !SPIFFS.exists(CONFIG_FILENAME);
+}
