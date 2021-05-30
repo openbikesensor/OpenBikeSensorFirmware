@@ -391,24 +391,25 @@ static const char* const deleteIndex =
 static const char* const settingsSecurityIndex =
   "<h3>Http</h3>"
   "<label for='pin'>Wish pin for http access, the pin will still be displayed on"
-  "the OBS display.</label>"
-  "<input name='Pin' type='number' value='{pin}'>"
-  "<label for='httpAccess'>Allow full access via http. Do this only in networks you"
-  " have control over. All data send or retrieved from the OBS can be intercepted"
-  " from within your network as well as everybody in this network has full access to"
-  " your OBS. The setting wil be reset if you change the WiFi settings.</label>"
-  "<input type='checkbox' id='httpAccess' name='httpAccess' />"
+  " the OBS display. Pin must consist out of 3-8 numeric digits.</label>"
+  "<input name='pin' type='number' value='{pin}' maxlength='8'>"
+//  "<label for='httpAccess'>Allow full access via http. Do this only in networks you"
+//  " have control over. All data send or retrieved from the OBS can be intercepted"
+//  " from within your network as well as everybody in this network has full access to"
+//  " your OBS. The setting wil be reset if you change the WiFi settings.</label>"
+//  "<input type='checkbox' id='httpAccess' name='httpAccess' />"
   "<input type=submit class=btn value='Save'>"
-  "<h3>OBS SSL Cert</h3>"
-  "<label for='flashCert'>Delete ssl certificate, a new one will be created at the next start.</label>"
-  "<input type=button onclick=\"window.location.href='/settings/deleteSslCert'\" class=btn value='Renew SSL Cert'>"
-  "<h3>CA Cert Management</h3>"
-  "For outgoing https connections the OBS has to trust different authorities (CA). "
-  "The OBS can not hold all well known authorities like your browser does "
-  "here you can add or remove the CAs your OBS trusts, usually you do not need "
-  "to modify this. You can not remove CAs trusted by the OBS by default, but "
-  "you can add additional CAs to trust here."
-  "{caList}";
+//  "<h3>OBS SSL Cert</h3>"
+//  "<label for='flashCert'>Delete ssl certificate, a new one will be created at the next start.</label>"
+//  "<input type=button onclick=\"window.location.href='/settings/deleteSslCert'\" class=btn value='Renew SSL Cert'>"
+//  "<h3>CA Cert Management</h3>"
+//  "For outgoing https connections the OBS has to trust different authorities (CA). "
+//  "The OBS can not hold all well known authorities like your browser does "
+//  "here you can add or remove the CAs your OBS trusts, usually you do not need "
+//  "to modify this. You can not remove CAs trusted by the OBS by default, but "
+//  "you can add additional CAs to trust here."
+//  "{caList}";
+;
 
 // #########################################
 static String getParameter(const std::vector<std::pair<String,String>> &params, const String& name, const String&  def = "") {
@@ -473,6 +474,7 @@ static void handleDelete(HTTPRequest *req, HTTPResponse *res);
 static void handleDeleteAction(HTTPRequest *req, HTTPResponse *res);
 static void handleDownloadCert(HTTPRequest *req, HTTPResponse * res);
 static void handleSettingSecurity(HTTPRequest *, HTTPResponse * res);
+static void handleSettingSecurityAction(HTTPRequest * req, HTTPResponse * res);
 
 static void handleHttpsRedirect(HTTPRequest *req, HTTPResponse *res);
 
@@ -518,6 +520,7 @@ void beginPages() {
   server->registerNode(new ResourceNode("/deleteFiles", HTTP_POST, handleDeleteFiles));
   server->registerNode(new ResourceNode("/cert", HTTP_GET, handleDownloadCert));
   server->registerNode(new ResourceNode("/settings/security", HTTP_GET, handleSettingSecurity));
+  server->registerNode(new ResourceNode("/settings/security", HTTP_POST, handleSettingSecurityAction));
 
   server->addMiddleware(&accessFilter);
   server->setDefaultHeader("Server", std::string("OBS/") + OBSVersion);
@@ -1991,8 +1994,18 @@ static void handleDeleteAction(HTTPRequest *req, HTTPResponse * res) {
 
 static void handleSettingSecurity(HTTPRequest *, HTTPResponse * res) {
   String html = createPage(settingsSecurityIndex);
-  html = replaceDefault(html, "Settings Security");
+  html = replaceDefault(html, "Settings Security", "/settings/security");
   html = replaceHtml(html, "{pin}",
       theObsConfig->getProperty<String>(ObsConfig::PROPERTY_HTTP_PIN));
   sendHtml(res, html);
-};
+}
+
+static void handleSettingSecurityAction(HTTPRequest * req, HTTPResponse * res) {
+  const auto params = extractParameters(req);
+  const auto pin = getParameter(params, "pin");
+  if (pin && pin.length() > 3) {
+    theObsConfig->setProperty(0, ObsConfig::PROPERTY_HTTP_PIN, pin);
+  }
+  sendRedirect(res, "/settings/security");
+}
+
