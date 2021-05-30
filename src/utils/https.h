@@ -29,7 +29,7 @@
 
 class Https {
   public:
-    static httpsserver::SSLCert * getCertificate(std::function<void()> progress = nullptr);
+    static httpsserver::SSLCert * getCertificate(const std::function<void()>& progress = nullptr);
     static bool removeCertificate();
     static bool existsCertificate();
 };

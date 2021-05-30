@@ -41,7 +41,7 @@ using namespace httpsserver;
 
 static const char *const HTML_ENTITY_FAILED_CROSS = "&#x274C;";
 static const char *const HTML_ENTITY_OK_MARK = "&#x2705;";
-static const char *const HTML_ENTITY_WASTEBASKED = "&#x1f5d1;";
+static const char *const HTML_ENTITY_WASTEBASKET = "&#x1f5d1;";
 static const char *const HTTP_GET = "GET";
 static const char *const HTTP_POST = "POST";
 
@@ -103,7 +103,7 @@ static const char* const header =
   "<p>Firmware version: {version}</p>"
   "<a href=\"javascript:history.back()\" class='previous'>&#8249;</a>";
 
-static const String footer = "</form></body></html>";
+static const char* footer = "</form></body></html>";
 
 // #########################################
 // Upload form
@@ -384,7 +384,7 @@ static const char* const deleteIndex =
   "<label for='config'>Clear current configuration, wifi connection will stay.</label>"
   "<input type='checkbox' id='config' name='config'>"
   "<h3>SD Card</h3>"
-  "<label for='sdcard'>Delete OBS related content (ald_ini.ubx, tracknummer.txt, current_14d.*, *.obsdata.csv, sdflash/*, trash/*, uploaded/*)</label>"
+  "<label for='sdcard'>Delete OBS related content (ald_ini.ubx, tracknumber.txt, current_14d.*, *.obsdata.csv, sdflash/*, trash/*, uploaded/*)</label>"
   "<input type='checkbox' id='sdcard' name='sdcard' disabled='true'>"
   "<input type=submit class=btn value='Delete'>";
 
@@ -413,7 +413,7 @@ static const char* const settingsSecurityIndex =
 
 // #########################################
 static String getParameter(const std::vector<std::pair<String,String>> &params, const String& name, const String&  def = "") {
-  for (auto param : params) {
+  for (const auto& param : params) {
     if (param.first == name) {
       return param.second;
     }
@@ -961,7 +961,7 @@ static void handleReboot(HTTPRequest *, HTTPResponse * res) {
   res->finalize();
   delay(1000);
   ESP.restart();
-};
+}
 
 
 static void handleBackup(HTTPRequest *, HTTPResponse * res) {
@@ -970,7 +970,7 @@ static void handleBackup(HTTPRequest *, HTTPResponse * res) {
   html = replaceHtml(html, "{method}", "/settings/restore");
   html = replaceHtml(html, "{accept}", ".json");
   sendHtml(res, html);
-};
+}
 
 static void handleBackupDownload(HTTPRequest *, HTTPResponse * res) {
   const String fileName
@@ -1022,7 +1022,7 @@ static void handleBackupRestore(HTTPRequest * req, HTTPResponse * res) {
     }
   }
   sensorManager->attachInterrupts();
-};
+}
 
 
 static void handleWifi(HTTPRequest *, HTTPResponse * res) {
@@ -1037,7 +1037,7 @@ static void handleWifi(HTTPRequest *, HTTPResponse * res) {
     html = replaceHtml(html, "{password}", "");
   }
   sendHtml(res, html);
-};
+}
 
 static void handleWifiSave(HTTPRequest * req, HTTPResponse * res) {
   const auto params = extractParameters(req);
@@ -1177,7 +1177,7 @@ static void handleConfig(HTTPRequest *, HTTPResponse * res) {
   html = replaceHtml(html, "{overridePrivacy}", overridePrivacy ? "checked" : "");
 
   sendHtml(res, html);
-};
+}
 
 #ifdef DEVELOP
 static void handleDevAction(HTTPRequest *req, HTTPResponse *res) {
@@ -1435,7 +1435,7 @@ static void handleFlashUpdate(HTTPRequest *, HTTPResponse * res) {
   html = replaceHtml(html, "{releaseApiUrl}",
                      "https://api.github.com/repos/openbikesensor/OpenBikeSensorFlash/releases");
   sendHtml(res, html);
-};
+}
 
 void updateProgress(size_t pos, size_t all) {
   displayTest->drawProgressBar(4, pos, all);
@@ -1516,7 +1516,7 @@ static void handleDeleteFiles(HTTPRequest *req, HTTPResponse * res) {
   sendHtml(res, html);
   html.clear();
 
-  for (auto param : params) {
+  for (const auto& param : params) {
     if (param.first == "delete") {
       String file = param.second;
 
@@ -1526,7 +1526,7 @@ static void handleDeleteFiles(HTTPRequest *req, HTTPResponse * res) {
       if (path != "trash") {
         if (SD.rename(fullName, "/trash/" + file)) {
           log_i("Moved '%s'.", fullName.c_str());
-          html += HTML_ENTITY_WASTEBASKED;
+          html += HTML_ENTITY_WASTEBASKET;
         } else {
           log_w("Failed to move '%s'.", fullName.c_str());
           html += HTML_ENTITY_FAILED_CROSS;
@@ -1534,7 +1534,7 @@ static void handleDeleteFiles(HTTPRequest *req, HTTPResponse * res) {
       } else {
         if (SD.remove(fullName)) {
           log_i("Deleted '%s'.", fullName.c_str());
-          html += HTML_ENTITY_WASTEBASKED;
+          html += HTML_ENTITY_WASTEBASKET;
         } else {
           log_w("Failed to delete '%s'.", fullName.c_str());
           html += HTML_ENTITY_FAILED_CROSS;
@@ -1879,7 +1879,7 @@ static void handleFirmwareUpdateSdAction(HTTPRequest * req, HTTPResponse * res) 
           parser.getFieldMimeType().c_str(), parser.getFieldFilename().c_str());
 
     int tick = 0;
-    int pos = 0;
+    size_t pos = 0;
     while (!parser.endOfField()) {
       byte buffer[256];
       size_t len = parser.read(buffer, 256);
@@ -1917,10 +1917,9 @@ static void handleFirmwareUpdateSdAction(HTTPRequest * req, HTTPResponse * res) 
         res->print("Failed to switch!");
       }
     } else {
-      String errorMsg = firmwareError;
-      log_e("Update: %s", errorMsg.c_str());
+      log_e("Update: %s", firmwareError.c_str());
       displayTest->showTextOnGrid(0, 3, "Error");
-      displayTest->showTextOnGrid(0, 4, errorMsg);
+      displayTest->showTextOnGrid(0, 4, firmwareError);
       res->setStatusCode(500);
       res->setStatusText(firmwareError.c_str());
       res->print(firmwareError);
@@ -1952,7 +1951,7 @@ static void handleDownloadCert(HTTPRequest *req, HTTPResponse * res) {
 
   res->print("-----BEGIN CERTIFICATE-----\n");
   for (int i = 0; i < outLen; i += 64) {
-    int ll = 64;
+    size_t ll = 64;
     if (i + ll > outLen) {
       ll = outLen - i;
     }

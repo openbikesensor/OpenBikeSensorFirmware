@@ -84,11 +84,11 @@ static void createCert(void *param) {
     log_e("Error code is 0x%04x", res);
     log_e("You may have a look at SSLCert.h to find the reason for this error.");
   } else {
-    SSLCert *cert = static_cast<SSLCert *>(param);
+    auto cert = static_cast<SSLCert *>(param);
     cert->setCert(newCert.getCertData(), newCert.getCertLength());
     cert->setPK(newCert.getPKData(), newCert.getPKLength());
     log_i("Created new cert.");
-  };
+  }
   // Can this be done more elegant?
   isCertReady = true;
   vTaskDelete(nullptr);
@@ -102,7 +102,7 @@ bool Https::existsCertificate() {
  * Based on https://github.com/fhessel/esp32_https_server/blob/de1876cf6fe717cf236ad6603a97e88f22e38d62/examples/REST-API/REST-API.ino#L219
  * https://github.com/fhessel/esp32_https_server/issues/48
  */
-SSLCert *Https::getCertificate(std::function<void()> progress) {
+SSLCert *Https::getCertificate(const std::function<void()>& progress) {
   // Try to open key and cert file to see if they exist
   File keyFile = SPIFFS.open("/key.der");
   File certFile = SPIFFS.open("/cert.der");
@@ -112,7 +112,7 @@ SSLCert *Https::getCertificate(std::function<void()> progress) {
     log_i("No certificate found in SPIFFS, generating a new one.");
     log_i("This may take up to a minute, so please stand by :)");
 
-    SSLCert * newCert = new SSLCert();
+    auto newCert = new SSLCert();
     xTaskCreate(reinterpret_cast<TaskFunction_t>(createCert), "createCert",
                 16 * 1024, newCert, 1, nullptr);
 
@@ -152,12 +152,12 @@ SSLCert *Https::getCertificate(std::function<void()> progress) {
     size_t keySize = keyFile.size();
     size_t certSize = certFile.size();
 
-    uint8_t * keyBuffer = new uint8_t[keySize];
+    auto keyBuffer = new uint8_t[keySize];
     if (keyBuffer == nullptr) {
       log_e("Not enough memory to load privat key");
       return nullptr;
     }
-    uint8_t * certBuffer = new uint8_t[certSize];
+    auto certBuffer = new uint8_t[certSize];
     if (certBuffer == nullptr) {
       delete[] keyBuffer;
       log_e("Not enough memory to load certificate");
