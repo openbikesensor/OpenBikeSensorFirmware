@@ -44,7 +44,7 @@ class ObsUtils {
     static void setClockByNtp(const char *ntpServer = nullptr);
     static void setClockByNtpAndWait(const char *ntpServer = nullptr);
     static bool systemTimeIsSet();
-    static String toScaledByteString(uint32_t size);
+    static String toScaledByteString(uint64_t size);
     static String dateTimeToHttpHeaderString(time_t theTime);
     static void logHexDump(const uint8_t *buffer, uint16_t length);
     static const time_t PAST_TIME;

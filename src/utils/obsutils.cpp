@@ -26,8 +26,9 @@
 #include "writer.h"
 #include "BLEServer.h"
 
-static const int BYTES_PER_KB = 1024;
-static const int BYTES_PER_MB = 1024 * 1024;
+static const uint32_t BYTES_PER_KIB = 1 << 10;
+static const uint32_t BYTES_PER_MIB = 1 << 20;
+static const uint32_t BYTES_PER_GIB = 1 << 30;
 
 const time_t ObsUtils::PAST_TIME = 30 * 365 * 24 * 60 * 60;
 
@@ -180,14 +181,16 @@ String ObsUtils::encodeForUrl(const String &url) {
   return result;
 }
 
-String ObsUtils::toScaledByteString(uint32_t size) {
+String ObsUtils::toScaledByteString(uint64_t size) {
   String result;
-  if (size <= BYTES_PER_KB * 10) {
-    result = String(size) + "b";
-  } else if (size <= BYTES_PER_MB * 10) {
-    result = String(size / BYTES_PER_KB) + "kb";
+  if (size <= BYTES_PER_KIB * 10) {
+    result = String((uint32_t) size) + "B";
+  } else if (size <= BYTES_PER_MIB * 10) {
+    result = String((uint32_t) (size >> 10)) + "KiB";
+  } else if (size <= BYTES_PER_GIB * 10) {
+    result = String((uint32_t) (size >> 20)) + "MiB";
   } else {
-    result = String(size / BYTES_PER_MB) + "mb";
+    result = String((uint32_t) (size >> 30)) + "GiB";
   }
   return result;
 }
