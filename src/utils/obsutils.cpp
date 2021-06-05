@@ -163,7 +163,7 @@ String ObsUtils::encodeForXmlText(const String &text) {
 
 String ObsUtils::encodeForCsvField(const String &field) {
   String result(field);
-  result.replace('&', '_');
+  result.replace(';', '_');
   result.replace('\n', ' ');
   result.replace('\r', ' ');
   return result;
