@@ -446,12 +446,12 @@ void loop() {
         numButtonReleased++;
         if (datasetToConfirm != nullptr) {
           datasetToConfirm->confirmedDistances.push_back(minDistanceToConfirm);
-          datasetToConfirm->confirmedDistancesTimeOffset.push_back(minDistanceToConfirmIndex);
+          datasetToConfirm->confirmedDistancesIndex.push_back(minDistanceToConfirmIndex);
           buttonBluetooth(datasetToConfirm, minDistanceToConfirmIndex);
           datasetToConfirm = nullptr;
         } else { // confirming a overtake without left measure
           currentSet->confirmedDistances.push_back(MAX_SENSOR_VALUE);
-          currentSet->confirmedDistancesTimeOffset.push_back(
+          currentSet->confirmedDistancesIndex.push_back(
             sensorManager->getCurrentMeasureIndex());
           buttonBluetooth(currentSet, sensorManager->getCurrentMeasureIndex());
         }
@@ -461,14 +461,14 @@ void loop() {
     }
 
     // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
-    if (sensorManager->sensorValues[confirmationSensorID] > 0
-      && sensorManager->sensorValues[confirmationSensorID] < minDistanceToConfirm) {
-      minDistanceToConfirm = sensorManager->sensorValues[confirmationSensorID];
+    const uint16_t reading = sensorManager->sensorValues[confirmationSensorID];
+    if (reading > 0 && reading < minDistanceToConfirm) {
+      minDistanceToConfirm = reading;
       minDistanceToConfirmIndex = sensorManager->getCurrentMeasureIndex();
       // if there was no measurement of this sensor for this index, it is the
       // one before. This happens with fast confirmations.
-      if (minDistanceToConfirm > 0
-         && sensorManager->m_sensors[confirmationSensorID].echoDurationMicroseconds[minDistanceToConfirm - 1] <= 0) {
+      while (minDistanceToConfirmIndex > 0
+         && sensorManager->m_sensors[confirmationSensorID].echoDurationMicroseconds[minDistanceToConfirmIndex] <= 0) {
         minDistanceToConfirmIndex--;
       }
       datasetToConfirm = currentSet;
@@ -528,7 +528,7 @@ void loop() {
       for (int i = 0; i < dataset->confirmedDistances.size(); i++) {
         // make sure the distance reported is the one that was confirmed
         dataset->sensorValues[confirmationSensorID] = dataset->confirmedDistances[i];
-        dataset->confirmed = dataset->confirmedDistancesTimeOffset[i];
+        dataset->confirmed = dataset->confirmedDistancesIndex[i];
         confirmedMeasurements++;
         if (writer) {
           writer->append(*dataset);
