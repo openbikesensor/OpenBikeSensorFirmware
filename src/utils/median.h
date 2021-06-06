@@ -39,7 +39,7 @@ template<typename T> class Median {
       }
     };
     ~Median() {
-      Serial.printf("Will free Median(%d/%d) -> 0x%lx\n", size, mid, data);
+      log_i("Will free Median(%d/%d) -> 0x%lx", size, mid, data);
       delete[] data;
       delete[] temp;
     };

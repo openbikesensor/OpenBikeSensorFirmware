@@ -554,7 +554,7 @@ void loop() {
     }
   }
 
-  log_i("Time elapsed in loop: %lu milliseconds\n", currentTimeMillis - startTimeMillis);
+  log_i("Time elapsed in loop: %lu milliseconds", currentTimeMillis - startTimeMillis);
   // synchronize to full measureIntervals
   startTimeMillis = (currentTimeMillis / measureInterval) * measureInterval;
 }
