@@ -1,6 +1,7 @@
 .idea/serialmonitor_settings.xml
 .idea/deployment.xml
 .idea/modules.xml
+.idea/compilerexplorer.settings.xml
 *esp32.bin
 .pio
 .vscode/.browse.c_cpp.db*
