@@ -532,18 +532,19 @@ void beginPages() {
 
 static int ticks;
 static void progressTick() {
-  displayTest->drawWaitBar(4, ticks++);
+  displayTest->drawWaitBar(5, ticks++);
 }
 
 void createHttpServer() {
   if (!Https::existsCertificate()) {
-    displayTest->showTextOnGrid(0, 3, "Creating ssl cert!");
-
+    displayTest->showTextOnGrid(1, 4, "");
+    displayTest->showTextOnGrid(0, 5, "");
+    displayTest->showTextOnGrid(0, 4, "Creating ssl cert!");
   }
   serverSslCert = Https::getCertificate(progressTick);
   server = new HTTPSServer(serverSslCert, 443, 1);
-  displayTest->clearProgressBar(4);
-  displayTest->showTextOnGrid(0, 3, "");
+  displayTest->clearProgressBar(5);
+  displayTest->showTextOnGrid(0, 4, "");
   insecureServer = new HTTPServer(80, 1);
 
   beginPages();
