@@ -67,7 +67,7 @@ static void createCert(void *param) {
     toDate = toCertDate(now + 824 * 24 * 60 * 60);
   } else {
     fromDate = "20210513090700";
-    toDate = "20301232235959";
+    toDate = "20301231235959";
   }
 
   log_i("DN will be %s", createDn().c_str());
