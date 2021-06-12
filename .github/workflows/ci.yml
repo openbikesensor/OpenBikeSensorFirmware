@@ -63,7 +63,7 @@ jobs:
         echo $VERSION > version.txt
         echo Building OBS Version: $VERSION
         sed -i 's|-DBUILD_NUMBER=\\"-dev\\"|-DBUILD_NUMBER=\\"'${SEPARATOR}${PATCH}'\\"|' platformio.ini
-        echo "SONAR_SCANNER_VERSION=4.6.0.2311" >> $GITHUB_ENV
+        echo "SONAR_SCANNER_VERSION=4.6.2.2472" >> $GITHUB_ENV
 
     - name: Cache SonarCloud packages
       id: cache-sonar
@@ -72,8 +72,8 @@ jobs:
         path: |
           ~/.sonar/cache
           sonarqube
-        key: ${{ runner.os }}-sonar-${{ env.SONAR_SCANNER_VERSION }}-ng3
-        restore-keys: ${{ runner.os }}-sonar-${{ env.SONAR_SCANNER_VERSION }}-ng3
+        key: ${{ runner.os }}-sonar-${{ env.SONAR_SCANNER_VERSION }}-ng4
+        restore-keys: ${{ runner.os }}-sonar-${{ env.SONAR_SCANNER_VERSION }}-ng4
 
     - name: Install SonarQube dependencies
       if: steps.cache-sonar.outputs.cache-hit != 'true'
@@ -105,6 +105,7 @@ jobs:
         cp bin/.pio/build/esp32dev/partitions.bin 0x08000.bin
         cp /github/home/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin 0x0e000.bin
         cp bin/.pio/build/esp32dev/firmware.bin 0x10000.bin
+        cp bin/.pio/build/esp32dev/firmware.bin firmware.bin
         wget --no-verbose -O COPYRIGHT-ESP.html https://docs.espressif.com/projects/esp-idf/en/latest/esp32/COPYRIGHT.html
         wget --no-verbose -O LICENSE-ARDUINO-ESP32.md https://github.com/espressif/arduino-esp32/raw/master/LICENSE.md
         zip --junk-paths obs-${{ env.OBS_VERSION }}-initial-flash.zip \
@@ -113,7 +114,7 @@ jobs:
           LICENSE-ARDUINO-ESP32.md \
           LICENSE
         zip --junk-paths obs-${{ env.OBS_VERSION }}.zip \
-          bin/.pio/build/esp32dev/firmware.bin \
+          firmware.bin \
           COPYRIGHT-ESP.html \
           LICENSE-ARDUINO-ESP32.md \
           LICENSE
@@ -149,7 +150,7 @@ jobs:
       with:
         name: obs-${{ env.OBS_VERSION }}
         path: |
-          bin/.pio/build/esp32dev/firmware.bin
+          firmware.bin
           COPYRIGHT-ESP.html
           LICENSE-ARDUINO-ESP32.md
           LICENSE

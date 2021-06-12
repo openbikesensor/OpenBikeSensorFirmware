@@ -196,7 +196,7 @@ static void buttonBluetooth(const DataSet *dataSet, uint16_t measureIndex) {
 void setup() {
   Serial.begin(115200);
 
-  log_i("setup()");
+  log_i("openbikesensor.org - OBS/%s", OBSVersion);
 
   //##############################################################
   // Configure button pin as INPUT
@@ -257,7 +257,7 @@ void setup() {
   }
 
   if (SD.begin()) {
-    displayTest->showTextOnGrid(2, displayTest->currentLine(), "SD... ok");
+    displayTest->showTextOnGrid(2, displayTest->currentLine(), "SD... OK");
   }
   delay(333); // Added for user experience
 
@@ -305,7 +305,7 @@ void setup() {
     writer = new CSVFileWriter;
     writer->setFileName();
     writer->writeHeader(trackUniqueIdentifier);
-    displayTest->showTextOnGrid(2, displayTest->currentLine(), "CSV file... ok");
+    displayTest->showTextOnGrid(2, displayTest->currentLine(), "CSV file... OK");
   } else {
     displayTest->showTextOnGrid(2, displayTest->currentLine(), "CSV. skipped");
   }
@@ -383,6 +383,24 @@ void handleButtonInServerMode() {
   }
 }
 
+void writeDataset(const uint8_t confirmationSensorID, DataSet *dataset) {
+  if (dataset->confirmedDistances.empty()) {
+    if (writer) {
+      writer->append(*dataset);
+    }
+  }
+  // write record as many times as we have confirmed values
+  for (int i = 0; i < dataset->confirmedDistances.size(); i++) {
+    // make sure the distance reported is the one that was confirmed
+    dataset->sensorValues[confirmationSensorID] = dataset->confirmedDistances[i];
+    dataset->confirmed = 1 + dataset->confirmedDistancesIndex[i];
+    confirmedMeasurements++;
+    if (writer) {
+      writer->append(*dataset);
+    }
+  }
+}
+
 void loop() {
   log_i("loop()");
 
@@ -406,9 +424,9 @@ void loop() {
 
   // if the detected minimum was measured more than 5s ago, it is discarded and cannot be confirmed
   int timeDelta = (int) (currentTimeMillis - timeOfMinimum);
-  if ((timeDelta ) > (config.confirmationTimeWindow * 1000)) {
-    Serial.println(">>> CTW reached - reset() <<<");
-    // TODO: Setting to zero might cause a flicker if there is already a new value!
+  if (datasetToConfirm != nullptr &&
+      timeDelta > (config.confirmationTimeWindow * 1000)) {
+    log_i("minimum %dcm unconfirmed - resetting", minDistanceToConfirm);
     minDistanceToConfirm = MAX_SENSOR_VALUE;
     datasetToConfirm = nullptr;
   }
@@ -468,12 +486,12 @@ void loop() {
         numButtonReleased++;
         if (datasetToConfirm != nullptr) {
           datasetToConfirm->confirmedDistances.push_back(minDistanceToConfirm);
-          datasetToConfirm->confirmedDistancesTimeOffset.push_back(minDistanceToConfirmIndex);
+          datasetToConfirm->confirmedDistancesIndex.push_back(minDistanceToConfirmIndex);
           buttonBluetooth(datasetToConfirm, minDistanceToConfirmIndex);
           datasetToConfirm = nullptr;
         } else { // confirming a overtake without left measure
           currentSet->confirmedDistances.push_back(MAX_SENSOR_VALUE);
-          currentSet->confirmedDistancesTimeOffset.push_back(
+          currentSet->confirmedDistancesIndex.push_back(
             sensorManager->getCurrentMeasureIndex());
           buttonBluetooth(currentSet, sensorManager->getCurrentMeasureIndex());
         }
@@ -483,14 +501,14 @@ void loop() {
     }
 
     // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
-    if (sensorManager->sensorValues[confirmationSensorID] > 0
-      && sensorManager->sensorValues[confirmationSensorID] < minDistanceToConfirm) {
-      minDistanceToConfirm = sensorManager->sensorValues[confirmationSensorID];
+    const uint16_t reading = sensorManager->sensorValues[confirmationSensorID];
+    if (reading > 0 && reading < minDistanceToConfirm) {
+      minDistanceToConfirm = reading;
       minDistanceToConfirmIndex = sensorManager->getCurrentMeasureIndex();
       // if there was no measurement of this sensor for this index, it is the
       // one before. This happens with fast confirmations.
-      if (minDistanceToConfirm > 0
-         && sensorManager->m_sensors[confirmationSensorID].echoDurationMicroseconds[minDistanceToConfirm - 1] <= 0) {
+      while (minDistanceToConfirmIndex > 0
+         && sensorManager->m_sensors[confirmationSensorID].echoDurationMicroseconds[minDistanceToConfirmIndex] <= 0) {
         minDistanceToConfirmIndex--;
       }
       datasetToConfirm = currentSet;
@@ -520,45 +538,33 @@ void loop() {
         loops);
 #endif
 
-  // if nothing was detected, write the dataset to file, otherwise write it to the buffer for confirmation
-  if (!transmitConfirmedData
-    && currentSet->sensorValues[confirmationSensorID] == MAX_SENSOR_VALUE
-    && dataBuffer.isEmpty()) {
-    Serial.write("Empty Buffer, writing directly ");
-    if (writer) {
-      writer->append(*currentSet);
+  dataBuffer.push(currentSet);
+  // convert all data that does not wait for confirmation.
+  while ((!dataBuffer.isEmpty() && dataBuffer.first() != datasetToConfirm) || dataBuffer.isFull()) {
+    DataSet* dataset = dataBuffer.shift();
+    writeDataset(confirmationSensorID, dataset);
+    // if we are about to delete the to be confirmed dataset, take care for this.
+    if (datasetToConfirm == dataset) {
+      datasetToConfirm = nullptr;
+      minDistanceToConfirm = MAX_SENSOR_VALUE;
     }
-    delete currentSet;
-  } else {
-    dataBuffer.push(currentSet);
+    delete dataset;
   }
 
   if (transmitConfirmedData) {
-    // Empty buffer by writing it, after confirmation it will be written to SD card directly so no confirmed sets will be lost
-    while (!dataBuffer.isEmpty() && dataBuffer.first() != datasetToConfirm) {
-      DataSet* dataset = dataBuffer.shift();
-      if (dataset->confirmedDistances.empty()) {
-        if (writer) {
-          writer->append(*dataset);
-        }
-      }
-      // write record as many times as we have confirmed values
-      for (int i = 0; i < dataset->confirmedDistances.size(); i++) {
-        // make sure the distance reported is the one that was confirmed
-        dataset->sensorValues[confirmationSensorID] = dataset->confirmedDistances[i];
-        dataset->confirmed = dataset->confirmedDistancesTimeOffset[i];
-        confirmedMeasurements++;
-        if (writer) {
-          writer->append(*dataset);
-        }
-      }
-      delete dataset;
-    }
-    if (writer) {  // "flush"
+    // After confirmation make sure it will be written to SD card directly
+    // so no confirmed sets might be lost
+    if (writer) {
       writer->flush();
     }
-    Serial.printf(">>> flush - reset <<<");
-    transmitConfirmedData = false;
+    // there might be a confirmed value in the current set and also already a
+    // new value to be confirmed flagged in the current set.
+    // In this case the dataset is kept until we know if there are further
+    // confirmed values in the set to be written.
+    if (dataBuffer.isEmpty() || dataBuffer.first()->confirmedDistancesIndex.empty()) {
+      log_i("Confirmed data flushed to sd.");
+      transmitConfirmedData = false;
+    }
     // back to normal display mode
     if (config.displayConfig & DisplayInvert) {
       displayTest->invert();
@@ -567,22 +573,7 @@ void loop() {
     }
   }
 
-  // If the circular buffer is full, write just one set to the writers buffer,
-  if (dataBuffer.isFull()) { // TODO: Same code as above
-    DataSet* dataset = dataBuffer.shift();
-    Serial.printf("data buffer full, writing set to file buffer\n");
-    if (writer) {
-      writer->append(*dataset);
-    }
-    // we are about to delete the to be confirmed dataset, so take care for this.
-    if (datasetToConfirm == dataset) {
-      datasetToConfirm = nullptr;
-      minDistanceToConfirm = MAX_SENSOR_VALUE;
-    }
-    delete dataset;
-  }
-
-  Serial.printf("Time elapsed %lu milliseconds\n", currentTimeMillis - startTimeMillis);
+  log_i("Time elapsed in loop: %lu milliseconds", currentTimeMillis - startTimeMillis);
   // synchronize to full measureIntervals
   startTimeMillis = (currentTimeMillis / measureInterval) * measureInterval;
 }

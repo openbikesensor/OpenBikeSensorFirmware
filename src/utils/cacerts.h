@@ -21,22 +21,10 @@
  * see <http://www.gnu.org/licenses/>.
  */
 
-#include "file.h"
+#ifndef OPENBIKESENSORFIRMWARE_CACERTS_H
+#define OPENBIKESENSORFIRMWARE_CACERTS_H
 
-bool FileUtil::appendFile(fs::FS &fs, const char * path, const char * message) {
-  bool result = false;
-  log_i("Appending to file: %s", path);
+extern const char *const trustedRootCACertificates;
 
-  File file = fs.open(path, FILE_APPEND);
-  if (!file) {
-    log_e("Failed to open file for appending");
-    return false;
-  }
-  if (file.print(message)) {
-    result = true;
-  } else {
-    log_e("Append failed");
-  }
-  file.close();
-  return result;
-}
+
+#endif //OPENBIKESENSORFIRMWARE_CACERTS_H

@@ -879,7 +879,7 @@ void Gps::parseUbxMessage() {
             mGpsBuffer.navStatus.gpsFix);
       mGpsUptime = mGpsBuffer.navStatus.msss;
       if (mGpsBuffer.navStatus.ttff != 0) {
-        addStatisticsMessage("TimeToFix " + String(mGpsBuffer.navStatus.ttff) + "ms");
+        addStatisticsMessage("TimeToFix: " + String(mGpsBuffer.navStatus.ttff) + "ms");
       } else if (!mAidIniSent) {
         mAidIniSent = true;
         aidIni();

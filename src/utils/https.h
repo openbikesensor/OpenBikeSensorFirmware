@@ -21,22 +21,17 @@
  * see <http://www.gnu.org/licenses/>.
  */
 
-#include "file.h"
+#ifndef OPENBIKESENSORFIRMWARE_HTTPS_H
+#define OPENBIKESENSORFIRMWARE_HTTPS_H
 
-bool FileUtil::appendFile(fs::FS &fs, const char * path, const char * message) {
-  bool result = false;
-  log_i("Appending to file: %s", path);
+#include <SSLCert.hpp>
+#include <functional>
 
-  File file = fs.open(path, FILE_APPEND);
-  if (!file) {
-    log_e("Failed to open file for appending");
-    return false;
-  }
-  if (file.print(message)) {
-    result = true;
-  } else {
-    log_e("Append failed");
-  }
-  file.close();
-  return result;
-}
+class Https {
+  public:
+    static httpsserver::SSLCert * getCertificate(const std::function<void()>& progress = nullptr);
+    static bool removeCertificate();
+    static bool existsCertificate();
+};
+
+#endif //OPENBIKESENSORFIRMWARE_HTTPS_H

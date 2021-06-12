@@ -39,10 +39,6 @@ You can use this to feed data to the
 [SimRa](https://www.mcc.tu-berlin.de/menue/forschung/projekte/simra/) App or
 any other app collecting heart-rate BLE data. 
 
-Unfortunately we had to temporarily remove the bluetooth code in v0.5.x because
-of resource limitations. Plan is to enable this again as soon as we manage
-the resource limitations.
-
 
 ## Updating
 

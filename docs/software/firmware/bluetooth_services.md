@@ -7,9 +7,6 @@ grand_parent: Software
 
 # Overview
 
-Note: Bluetooth support is currently disabled because of flash size constraints in ESP32. Contributions as way around this are welcome. 
-
-
 | Service     | UUID                                   | Description                                                        |
 | ----------- | -------------------------------------- | ------------------------------------------------------------------ |
 | Device Info | `0000180A-0000-1000-8000-00805F9B34FB` | General information about the bluetooth device                     |
@@ -87,7 +84,7 @@ Might get removed soon, prefer the "OBS Service".
 | Distance 50 ms | `1FE7FAF9-CE63-4236-0001-000000000001` | `READ`, `NOTIFY` | Current distance of all sensors with a timestamp |
 
 The format of the transmitted string is `"timestamp;[leftSensor1, leftSensor2, ...];[rightSensor1, rightSensor2, ...]"`, e.g. `"43567893;100,30;400"` or `"43567893;100;"`.
-The list of sensor values for one side might be empty but the entire transmitted string can be safely split on `";"` and each sensor value list safely on `","`.
+The list of sensor values for one side might be empty, but the entire transmitted string can be safely split on `";"` and each sensor value list safely on `","`.
 
 
 ## Close Pass Service
