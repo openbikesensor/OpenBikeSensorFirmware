@@ -63,7 +63,7 @@ jobs:
         echo $VERSION > version.txt
         echo Building OBS Version: $VERSION
         sed -i 's|-DBUILD_NUMBER=\\"-dev\\"|-DBUILD_NUMBER=\\"'${SEPARATOR}${PATCH}'\\"|' platformio.ini
-        echo "SONAR_SCANNER_VERSION=4.6.0.2311" >> $GITHUB_ENV
+        echo "SONAR_SCANNER_VERSION=4.6.2.2472" >> $GITHUB_ENV
 
     - name: Cache SonarCloud packages
       id: cache-sonar
@@ -72,8 +72,8 @@ jobs:
         path: |
           ~/.sonar/cache
           sonarqube
-        key: ${{ runner.os }}-sonar-${{ env.SONAR_SCANNER_VERSION }}-ng3
-        restore-keys: ${{ runner.os }}-sonar-${{ env.SONAR_SCANNER_VERSION }}-ng3
+        key: ${{ runner.os }}-sonar-${{ env.SONAR_SCANNER_VERSION }}-ng4
+        restore-keys: ${{ runner.os }}-sonar-${{ env.SONAR_SCANNER_VERSION }}-ng4
 
     - name: Install SonarQube dependencies
       if: steps.cache-sonar.outputs.cache-hit != 'true'
