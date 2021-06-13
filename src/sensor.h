@@ -98,7 +98,7 @@ class HCSR04SensorManager {
      * given sensor.
      */
     uint16_t getRawMedianDistance(uint8_t sensorId);
-    /* Index for CSV - starts with 1. */
+    /* Index for CSV. */
     uint16_t getCurrentMeasureIndex();
     uint32_t getMaxDurationUs(uint8_t sensorId);
     uint32_t getMinDurationUs(uint8_t sensorId);
