@@ -309,14 +309,6 @@ static const char* const configIndex =
   "<hr>"
   "Swap Sensors (Left &#8660; Right)<input type='checkbox' name='displaySwapSensors' {displaySwapSensors}>"
   ""
-  "<h3>GPS</h3>"
-  "<label for='gpsFix'>GPS to wait for</label> "
-  "<select id='gpsFix' name='gpsFix'>"
-  "<option value='-2' {fixPos}>position</option>"
-  "<option value='-1' {fixTime}>time only</option>"
-  "<option value='0' {fixNoWait}>no wait</option>"
-  "</select>"
-  ""
   "<h3>Generic Display</h3>"
   "Invert<br>(black &#8660; white)<input type='checkbox' name='displayInvert' {displayInvert}>"
   "<hr>"
@@ -1094,9 +1086,6 @@ static void handleConfigSave(HTTPRequest * req, HTTPResponse * res) {
   offsets.push_back(atoi(getParameter(params, "offsetS1").c_str()));
   theObsConfig->setOffsets(0, offsets);
 
-  theObsConfig->setProperty(0, ObsConfig::PROPERTY_GPS_FIX,
-                            atoi(getParameter(params, "gpsFix").c_str()));
-
   // TODO: cleanup
   const String privacyOptions = getParameter(params, "privacyOptions");
   const String overridePrivacy = getParameter(params, "overridePrivacy");
@@ -1159,11 +1148,6 @@ static void handleConfig(HTTPRequest *, HTTPResponse * res) {
                theObsConfig->getProperty<bool>(ObsConfig::PROPERTY_BLUETOOTH) ? "checked" : "");
   html = replaceHtml(html, "{simRaMode}",
                theObsConfig->getProperty<bool>(ObsConfig::PROPERTY_SIM_RA) ? "checked" : "");
-
-  int gpsFix = theObsConfig->getProperty<int>(ObsConfig::PROPERTY_GPS_FIX);
-  html = replaceHtml(html, "{fixPos}", gpsFix == (int) Gps::WaitFor::FIX_POS || gpsFix > 0 ? "selected" : "");
-  html = replaceHtml(html, "{fixTime}", gpsFix == (int) Gps::WaitFor::FIX_TIME ? "selected" : "");
-  html = replaceHtml(html, "{fixNoWait}", gpsFix == (int) Gps::WaitFor::FIX_NO_WAIT ? "selected" : "");
 
   const uint privacyConfig = (uint) theObsConfig->getProperty<int>(
     ObsConfig::PROPERTY_PRIVACY_CONFIG);

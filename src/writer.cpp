@@ -191,7 +191,7 @@ bool CSVFileWriter::append(DataSet &set) {
   }
 
   tm time;
-  localtime_r(&set.time, &time);
+  localtime_r(&(set.time), &time);
   char date[32];
   snprintf(date, sizeof(date),
     "%02d.%02d.%04d;%02d:%02d:%02d;%u;",

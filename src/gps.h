@@ -47,10 +47,7 @@ class Gps {
     /* read and process data from serial, true if there was valid data. */
     bool handle();
 
-    /* Returns the current time - GPS time if available, system time otherwise. */
-    static time_t currentTime();
-
-    bool hasState(int state, SSD1306DisplayDevice *display) const;
+    bool hasFix(SSD1306DisplayDevice *display) const;
 
     /* Returns true if valid communication with the gps module was possible. */
     bool moduleIsAlive() const;
@@ -510,9 +507,9 @@ class Gps {
 
     void checkGpsDataState();
 
-    static uint32_t timeToTimeOfWeek(time_t t);
+    static uint32_t utcTimeToTimeOfWeek(time_t t);
 
-    static uint16_t timeToWeekNumber(time_t t);
+    static uint16_t utcTimeToWeekNumber(time_t t);
 
     void softResetGps();
 
