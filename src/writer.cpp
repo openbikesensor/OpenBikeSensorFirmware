@@ -162,6 +162,7 @@ bool CSVFileWriter::writeHeader(String trackId) {
   header += "MaximumValidFlightTimeMicroseconds=" + String(MAX_DURATION_MICRO_SEC) + "&";
   header += "BluetoothEnabled=" + String(config.bluetooth) + "&";
   header += "PresetId=default&";
+  header += "TimeZone=GPS&";
   header += "DistanceSensorsUsed=HC-SR04/JSN-SR04T\n";
 
   header += "Date;Time;Millis;Comment;Latitude;Longitude;Altitude;"
