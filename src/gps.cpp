@@ -42,6 +42,8 @@ void Gps::begin() {
   if (mLastTimeTimeSet == 0) {
     setMessageInterval(UBX_MSG::NAV_TIMEGPS, 1);
   }
+  setMessageInterval(UBX_MSG::NMEA_RMC, 1);
+  setMessageInterval(UBX_MSG::NAV_TIMEUTC, 1);
 }
 
 void Gps::sendUbx(UBX_MSG ubxMsgId, const uint8_t payload[], uint16_t length) {
@@ -173,8 +175,8 @@ void Gps::configureGpsModule() {
 void Gps::softResetGps() {
   log_i("Soft-RESET GPS!");
   handle();
-  const uint8_t UBX_CFG_RST[] = {0x00, 0x00, 0x02, 0x00}; // WARM START
-//  const uint8_t UBX_CFG_RST[] = {0xFF, 0xFF, 0x02, 0x00}; // Cold START
+//  const uint8_t UBX_CFG_RST[] = {0x00, 0x00, 0x02, 0x00}; // WARM START
+  const uint8_t UBX_CFG_RST[] = {0xFF, 0xFF, 0x02, 0x00}; // Cold START
   sendAndWaitForAck(UBX_MSG::CFG_RST, UBX_CFG_RST, 4);
   handle(200);
 }
@@ -711,6 +713,8 @@ bool Gps::encode(uint8_t data) {
         mValidMessagesReceived++;
         mReceiverState = NMEA_CR;
         result = true;
+        // terminate string
+        mGpsBuffer.u1Data[mGpsBufferBytePos] = 0;
         parseNmeaMessage();
       } else {
         // ERROR!
@@ -947,7 +951,7 @@ void Gps::parseUbxMessage() {
     }
       break;
     case (uint16_t) UBX_MSG::NAV_TIMEUTC: {
-      log_d("TIMEUTC: iTOW: %u acc: %uns nano: %d %04u-%02u-%02uT%02u:%02u:%02u valid 0x%02x delay %dms",
+      log_i("TIMEUTC: iTOW: %u acc: %uns nano: %d %04u-%02u-%02uT%02u:%02u:%02u valid 0x%02x delay %dms",
             mGpsBuffer.navTimeUtc.iTow, mGpsBuffer.navTimeUtc.tAcc, mGpsBuffer.navTimeUtc.nano,
             mGpsBuffer.navTimeUtc.year, mGpsBuffer.navTimeUtc.month, mGpsBuffer.navTimeUtc.day,
             mGpsBuffer.navTimeUtc.hour, mGpsBuffer.navTimeUtc.minute, mGpsBuffer.navTimeUtc.sec,
@@ -1081,8 +1085,9 @@ uint8_t Gps::hexCharToInt(uint8_t data) {
 }
 
 void Gps::parseNmeaMessage() const {
-  log_w("Unparsed NMEA %c%c%c%c%c", mGpsBuffer.u1Data[1], mGpsBuffer.u1Data[2],
-        mGpsBuffer.u1Data[3], mGpsBuffer.u1Data[4], mGpsBuffer.u1Data[5]);
+  log_w("Unparsed NMEA %c%c%c%c%c: %s", mGpsBuffer.u1Data[1], mGpsBuffer.u1Data[2],
+        mGpsBuffer.u1Data[3], mGpsBuffer.u1Data[4], mGpsBuffer.u1Data[5],
+        mGpsBuffer.charData);
 }
 
 static const uint32_t SECONDS_PER_WEEK = 60L * 60 * 24 * 7;

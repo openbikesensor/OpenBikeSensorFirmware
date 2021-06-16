@@ -87,8 +87,8 @@ Headline    | Format | Range | Sample | Description |
 `Time`      | HH:MM:SS | | 12:00:00 | GPS time, see also above, GPS time is as of today 18 seconds ahead of UTC
 `Millis`    | int32  | 0-2^31 | 1234567 | Millisecond counter will continuously increase throughout the file, for time difference calculation
 `Comment`   | char[] |  |  | Space to leave a short text comment 
-`Latitude`  | double | -90.0-90.0 | 9.123456 | Latitude as degrees
-`Longitude` | double | -180.0-180.0 | 42.123456 | Longitude in degrees
+`Latitude`  | double | -90.0-90.0 | 42.123456 | Latitude as degrees
+`Longitude` | double | -180.0-180.0 | 9.123456 | Longitude in degrees
 `Altitude`  | double | -9999.9-17999.9 | 480.12 | meters above mean sea level (GPGGA)
 `Course`    | double | 0-359.9 | 42 | Course over ground in degrees (GPRMC)
 `Speed`     | double | 0-359.9 | 42.0 | Speed over ground in km/h
