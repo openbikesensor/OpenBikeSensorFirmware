@@ -119,13 +119,13 @@ void setupSensors() {
   sensorManaged1.triggerPin = (config.displayConfig & DisplaySwapSensors) ? 25 : 15;
   sensorManaged1.echoPin = (config.displayConfig & DisplaySwapSensors) ? 26 : 4;
   sensorManaged1.sensorLocation = (char*) "Right"; // TODO
-  sensorManager->registerSensor(sensorManaged1);
+  sensorManager->registerSensor(sensorManaged1, 0);
 
   HCSR04SensorInfo sensorManaged2;
   sensorManaged2.triggerPin = (config.displayConfig & DisplaySwapSensors) ? 15 : 25;
   sensorManaged2.echoPin = (config.displayConfig & DisplaySwapSensors) ? 4 : 26;
   sensorManaged2.sensorLocation = (char*) "Left"; // TODO
-  sensorManager->registerSensor(sensorManaged2);
+  sensorManager->registerSensor(sensorManaged2, 1);
 
   sensorManager->setOffsets(config.sensorOffsets);
 

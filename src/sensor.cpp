@@ -98,57 +98,51 @@ static const uint32_t MEASUREMENT_IN_PROGRESS = 0;
  *    close to the needed 148ms
  */
 
-static int isrPort[2];
-static volatile uint32_t * isrStart[2];
-static volatile uint32_t * isrEnd[2];
+// Hack to get the pointers to the isr
+static HCSR04SensorInfo * TOF_SENSOR[NUMBER_OF_TOF_SENSORS];
 
-void HCSR04SensorManager::registerSensor(HCSR04SensorInfo sensorInfo) {
-  m_sensors.push_back(sensorInfo);
+void HCSR04SensorManager::registerSensor(const HCSR04SensorInfo& sensorInfo, uint8_t idx) {
+  if (idx >= NUMBER_OF_TOF_SENSORS) {
+    log_e("Can not register sensor for index %d, only %d tof sensors supported", idx, NUMBER_OF_TOF_SENSORS);
+    return;
+  }
+  m_sensors[idx] = sensorInfo;
   pinMode(sensorInfo.triggerPin, OUTPUT);
   pinMode(sensorInfo.echoPin, INPUT_PULLUP); // hint from https://youtu.be/xwsT-e1D9OY?t=354
-  sensorValues.push_back(0); //make sure sensorValues has same size as m_sensors
-  assert(sensorValues.size() == m_sensors.size());
-  if (m_sensors[m_sensors.size() - 1].median == nullptr) {
-    m_sensors[m_sensors.size() - 1].median = new Median<uint16_t>(5, MAX_SENSOR_VALUE);
-  }
+  sensorValues[idx] = MAX_SENSOR_VALUE;
+  m_sensors[idx].median = new Median<uint16_t>(5, MAX_SENSOR_VALUE);
 
-  // Make sure pointers are current todo: replace m_sensors vector with array.
-  for (size_t idx = 0; idx < m_sensors.size(); ++idx) {
-    HCSR04SensorInfo* const sensor = &m_sensors[idx];
-    isrPort[idx] = sensor->echoPin;
-    isrStart[idx] = &sensor->start;
-    isrEnd[idx] = &sensor->end;
-  }
-  attachSensorInterrupt(sensorInfo);
+  TOF_SENSOR[idx] = &m_sensors[idx];
+  attachSensorInterrupt(idx);
 }
 
-static void IRAM_ATTR isr(int pin, volatile uint32_t *start, volatile uint32_t *end) {
+static void IRAM_ATTR isr(HCSR04SensorInfo* const sensor) {
   // since the measurement of start and stop use the same interrupt
   // mechanism we should see a similar delay.
-  if (*end == MEASUREMENT_IN_PROGRESS) {
+  if (sensor->end == MEASUREMENT_IN_PROGRESS) {
     const uint32_t now = micros();
-    if (HIGH == digitalRead(pin)) {
-      *start = now;
+    if (HIGH == digitalRead(sensor->echoPin)) {
+      sensor->start = now;
     } else { // LOW
-      *end = now;
+      sensor->end = now;
     }
   }
 }
 
 static void IRAM_ATTR isr0() {
-  isr(isrPort[0], isrStart[0], isrEnd[0]);
+  isr(TOF_SENSOR[0]);
 }
 
 static void IRAM_ATTR isr1() {
-  isr(isrPort[1], isrStart[1], isrEnd[1]);
+  isr(TOF_SENSOR[1]);
 }
 
-void HCSR04SensorManager::attachSensorInterrupt(HCSR04SensorInfo &sensorInfo) {
+void HCSR04SensorManager::attachSensorInterrupt(uint8_t idx) {
   // bad bad bad ....
-  if (sensorInfo.echoPin == isrPort[0]) {
-    attachInterrupt(sensorInfo.echoPin, isr0, CHANGE);
+  if (idx == 0) {
+    attachInterrupt(TOF_SENSOR[idx]->echoPin, isr0, CHANGE);
   } else {
-    attachInterrupt(sensorInfo.echoPin, isr1, CHANGE);
+    attachInterrupt(TOF_SENSOR[idx]->echoPin, isr1, CHANGE);
   }
 
   // a solution like below leads to crashes with:
@@ -159,19 +153,19 @@ void HCSR04SensorManager::attachSensorInterrupt(HCSR04SensorInfo &sensorInfo) {
 }
 
 void HCSR04SensorManager::detachInterrupts() {
-  for (size_t idx = 0; idx < m_sensors.size(); ++idx) {
+  for (size_t idx = 0; idx < NUMBER_OF_TOF_SENSORS; ++idx) {
     detachInterrupt(m_sensors[idx].echoPin);
   }
 }
 
 void HCSR04SensorManager::attachInterrupts() {
-  for (size_t idx = 0; idx < m_sensors.size(); ++idx) {
-    attachSensorInterrupt(m_sensors[idx]);
+  for (size_t idx = 0; idx < NUMBER_OF_TOF_SENSORS; ++idx) {
+    attachSensorInterrupt(idx);
   }
 }
 
 void HCSR04SensorManager::reset() {
-  for (size_t idx = 0; idx < m_sensors.size(); ++idx) {
+  for (size_t idx = 0; idx < NUMBER_OF_TOF_SENSORS; ++idx) {
     m_sensors[idx].minDistance = MAX_SENSOR_VALUE;
     memset(&(m_sensors[idx].echoDurationMicroseconds), 0, sizeof(m_sensors[idx].echoDurationMicroseconds));
     m_sensors[idx].numberOfTriggers = 0;
@@ -183,7 +177,7 @@ void HCSR04SensorManager::reset() {
 }
 
 void HCSR04SensorManager::setOffsets(std::vector<uint16_t> offsets) {
-  for (size_t idx = 0; idx < m_sensors.size(); ++idx) {
+  for (size_t idx = 0; idx < NUMBER_OF_TOF_SENSORS; ++idx) {
     if (idx < offsets.size()) {
       m_sensors[idx].offset = offsets[idx];
     } else {
@@ -220,7 +214,7 @@ void HCSR04SensorManager::getDistances() {
   waitForEchosOrTimeout(activeSensor);
   collectSensorResult(activeSensor);
   activeSensor++;
-  if (activeSensor >= m_sensors.size()) {
+  if (activeSensor >= NUMBER_OF_TOF_SENSORS) {
     activeSensor = 0;
   }
   setNoMeasureDate(activeSensor);
@@ -233,7 +227,7 @@ void HCSR04SensorManager::getDistances() {
  */
 void HCSR04SensorManager::getDistancesNoWait() {
   // only start if both are ready:
-  for (size_t idx = 0; idx < m_sensors.size(); ++idx) {
+  for (size_t idx = 0; idx < NUMBER_OF_TOF_SENSORS; ++idx) {
     HCSR04SensorInfo* const sensor = &m_sensors[idx];
     if(!isReadyForStart(sensor)) {
       return;
@@ -318,7 +312,7 @@ void HCSR04SensorManager::waitTillSensorIsReady(uint8_t sensorId) {
  * if there is no ready sensor at all.
  */
 void HCSR04SensorManager::sendTriggerToReadySensor() {
-  for (size_t idx = 0; idx < m_sensors.size(); ++idx) {
+  for (size_t idx = 0; idx < NUMBER_OF_TOF_SENSORS; ++idx) {
     HCSR04SensorInfo* const sensor = &m_sensors[idx];
     if (idx == primarySensor || isReadyForStart(sensor)) {
       sendTriggerToSensor(idx);
@@ -366,7 +360,7 @@ boolean HCSR04SensorManager::isReadyForStart(HCSR04SensorInfo* sensor) {
 
 bool HCSR04SensorManager::collectSensorResults() {
   bool validReading = false;
-  for (size_t idx = 0; idx < m_sensors.size(); ++idx) {
+  for (size_t idx = 0; idx < NUMBER_OF_TOF_SENSORS; ++idx) {
     if (collectSensorResult(idx)) {
       validReading = true;
     }
@@ -463,7 +457,7 @@ uint32_t HCSR04SensorManager::getFixedStart(
   // the error appears if both sensors trigger the interrupt at the exact same
   // time, if this happens, trigger time == start time
   if (sensor->trigger == sensor->start) {
-    for (size_t idx2 = 0; idx2 < m_sensors.size(); ++idx2) {
+    for (size_t idx2 = 0; idx2 < NUMBER_OF_TOF_SENSORS; ++idx2) {
       if (idx2 != idx) {
         // it should be save to use the start value from the other sensor.
         const uint32_t alternativeStart = m_sensors[idx2].start;
@@ -489,13 +483,13 @@ uint16_t HCSR04SensorManager::correctSensorOffset(uint16_t dist, uint16_t offset
 }
 
 void HCSR04SensorManager::setSensorTriggersToLow() {
-  for (size_t idx = 0; idx < m_sensors.size(); ++idx) {
+  for (size_t idx = 0; idx < NUMBER_OF_TOF_SENSORS; ++idx) {
     digitalWrite(m_sensors[idx].triggerPin, LOW);
   }
 }
 
 void HCSR04SensorManager::waitForEchosOrTimeout() {
-  for (size_t idx = 0; idx < m_sensors.size(); ++idx) {
+  for (size_t idx = 0; idx < NUMBER_OF_TOF_SENSORS; ++idx) {
     waitForEchosOrTimeout(idx);
   }
 }

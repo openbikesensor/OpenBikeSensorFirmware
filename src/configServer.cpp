@@ -33,6 +33,7 @@
 #include <esp_ota_ops.h>
 #include <esp_partition.h>
 #include <utils/https.h>
+#include <DNSServer.h>
 #include "SPIFFS.h"
 #include "HTTPMultipartBodyParser.hpp"
 #include "Firmware.h"
@@ -53,6 +54,7 @@ static HTTPServer * insecureServer;
 static SSLCert * serverSslCert;
 static String OBS_ID;
 static String OBS_ID_SHORT;
+static DNSServer *dnsServer;
 
 // TODO
 //  - Fix CSS Style for mobile && desktop
@@ -535,7 +537,7 @@ static void progressTick() {
   displayTest->drawWaitBar(5, ticks++);
 }
 
-void createHttpServer() {
+static void createHttpServer() {
   if (!Https::existsCertificate()) {
     displayTest->showTextOnGrid(1, 4, "");
     displayTest->showTextOnGrid(0, 5, "");
@@ -636,12 +638,12 @@ String getIp() {
 }
 
 bool CreateWifiSoftAP() {
-  bool SoftAccOK;
+  bool softAccOK;
   WiFi.disconnect();
   Serial.print(F("Initalize SoftAP "));
-  String APName = OBS_ID;
+  String apName = OBS_ID;
   String APPassword = "12345678";
-  SoftAccOK  =  WiFi.softAP(APName.c_str(), APPassword.c_str()); // Passwortlänge mindestens 8 Zeichen !
+  softAccOK  =  WiFi.softAP(apName.c_str(), APPassword.c_str(), 1, 0, 1); // Passwortlänge mindestens 8 Zeichen !
   delay(2000); // Without delay I've seen the IP address blank
   /* Soft AP network parameters */
   IPAddress apIP(172, 20, 0, 1);
@@ -649,16 +651,17 @@ bool CreateWifiSoftAP() {
 
   displayTest->showTextOnGrid(0, 1, "AP:");
   displayTest->showTextOnGrid(1, 1, "");
-  displayTest->showTextOnGrid(0, 2, APName.c_str());
+  displayTest->showTextOnGrid(0, 2, apName.c_str());
 
 
   WiFi.softAPConfig(apIP, apIP, netMsk);
-  if (SoftAccOK) {
-    /* Setup the DNS server redirecting all the domains to the apIP */
-    //dnsserver->setErrorReplyCode(DNSReplyCode::NoError);
-    //dnsserver->start(DNS_PORT, "*", apIP);
+  if (softAccOK) {
+    dnsServer = new DNSServer();
+    // with "*" we get a lot of requests from all sort of apps,
+    // use obs.local here
+    dnsServer->start(53, "obs.local", apIP);
 
-    Serial.println(F("AP successful."));
+    log_i("AP successful IP: %s", apIP.toString().c_str());
 
     displayTest->showTextOnGrid(0, 3, "Pass:");
     displayTest->showTextOnGrid(1, 3, APPassword);
@@ -666,11 +669,9 @@ bool CreateWifiSoftAP() {
     displayTest->showTextOnGrid(0, 4, "IP:");
     displayTest->showTextOnGrid(1, 4, WiFi.softAPIP().toString());
   } else {
-    Serial.println(F("Soft AP Error."));
-    Serial.println(APName.c_str());
-    Serial.println(APPassword.c_str());
+    log_e("Soft AP Error. Name: %s Pass: %s", apName.c_str(), APPassword.c_str());
   }
-  return SoftAccOK;
+  return softAccOK;
 }
 
 void startServer(ObsConfig *obsConfig) {
@@ -1758,18 +1759,20 @@ static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<vo
 static void handleHttpsRedirect(HTTPRequest *req, HTTPResponse *res) {
   String html = createPage(httpsRedirect);
   html = replaceDefault(html, "Https Redirect");
-  String linkHost(req->getHTTPHeaders()->getValue("linkHost").c_str());
-  // this could be more hardened?
-  if (!linkHost || linkHost == "") {
-    linkHost = getIp();
+  String host(req->getHeader("host").c_str());
+  if (!host || host == "") {
+    host = getIp();
   }
-  html = replaceHtml(html, "{host}", linkHost);
+  html = replaceHtml(html, "{host}", host);
   sendHtml(res, html);
 }
 
 void configServerHandle() {
   server->loop();
   insecureServer->loop();
+  if (dnsServer) {
+    dnsServer->processNextRequest();
+  }
 }
 
 std::vector<std::pair<String,String>> extractParameters(HTTPRequest *req) {

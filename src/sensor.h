@@ -56,6 +56,8 @@ const uint16_t MEDIAN_DISTANCE_MEASURES = 3;
 const uint16_t MAX_NUMBER_MEASUREMENTS_PER_INTERVAL = 30; //  60;
 extern const uint16_t MAX_SENSOR_VALUE;
 
+const uint8_t NUMBER_OF_TOF_SENSORS = 2;
+
 struct HCSR04SensorInfo {
   uint8_t triggerPin = 15;
   uint8_t echoPin = 4;
@@ -89,7 +91,7 @@ class HCSR04SensorManager {
     void getDistancesParallel();
     void getDistancesNoWait();
     void reset();
-    void registerSensor(HCSR04SensorInfo);
+    void registerSensor(const HCSR04SensorInfo &, uint8_t idx);
     void setOffsets(std::vector<uint16_t>);
     void setPrimarySensor(uint8_t idx);
     void detachInterrupts();
@@ -104,8 +106,8 @@ class HCSR04SensorManager {
     uint32_t getMinDurationUs(uint8_t sensorId);
     uint32_t getLastDelayTillStartUs(uint8_t sensorId);
 
-    std::vector<HCSR04SensorInfo> m_sensors;
-    std::vector<uint16_t> sensorValues;
+    HCSR04SensorInfo m_sensors[NUMBER_OF_TOF_SENSORS];
+    uint16_t sensorValues[NUMBER_OF_TOF_SENSORS];
     uint16_t lastReadingCount = 0;
     uint16_t startOffsetMilliseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
     bool pollDistancesParallel();
@@ -123,7 +125,7 @@ class HCSR04SensorManager {
     void setSensorTriggersToLow();
     bool collectSensorResults();
     void sendTriggerToReadySensor();
-    void attachSensorInterrupt(HCSR04SensorInfo &sensorInfo);
+    void attachSensorInterrupt(uint8_t idx);
     uint32_t getFixedStart(size_t idx, const HCSR04SensorInfo *sensor);
     boolean isReadyForStart(uint8_t sensorId);
     void registerReadings();
