@@ -136,7 +136,7 @@ class HCSR04SensorManager {
     static uint32_t microsBetween(uint32_t a, uint32_t b);
     static uint32_t microsSince(uint32_t a);
     static uint16_t millisSince(uint16_t milliseconds);
-    void updateStatistics(HCSR04SensorInfo *sensor);
+    static void updateStatistics(HCSR04SensorInfo *sensor);
     uint16_t startReadingMilliseconds = 0;
     /* The currently used sensor for alternating use. */
     uint32_t activeSensor = 0;

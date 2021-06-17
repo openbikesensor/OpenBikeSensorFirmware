@@ -153,8 +153,8 @@ void HCSR04SensorManager::attachSensorInterrupt(uint8_t idx) {
 }
 
 void HCSR04SensorManager::detachInterrupts() {
-  for (size_t idx = 0; idx < NUMBER_OF_TOF_SENSORS; ++idx) {
-    detachInterrupt(m_sensors[idx].echoPin);
+  for (auto & sensor : m_sensors) {
+    detachInterrupt(sensor.echoPin);
   }
 }
 
@@ -165,10 +165,10 @@ void HCSR04SensorManager::attachInterrupts() {
 }
 
 void HCSR04SensorManager::reset() {
-  for (size_t idx = 0; idx < NUMBER_OF_TOF_SENSORS; ++idx) {
-    m_sensors[idx].minDistance = MAX_SENSOR_VALUE;
-    memset(&(m_sensors[idx].echoDurationMicroseconds), 0, sizeof(m_sensors[idx].echoDurationMicroseconds));
-    m_sensors[idx].numberOfTriggers = 0;
+  for (auto & sensor : m_sensors) {
+    sensor.minDistance = MAX_SENSOR_VALUE;
+    memset(&(sensor.echoDurationMicroseconds), 0, sizeof(sensor.echoDurationMicroseconds));
+    sensor.numberOfTriggers = 0;
   }
   startReadingMilliseconds = 0; // cheat a bit, we start the clock just with the 1st measurement
   lastReadingCount = 0;
@@ -227,9 +227,8 @@ void HCSR04SensorManager::getDistances() {
  */
 void HCSR04SensorManager::getDistancesNoWait() {
   // only start if both are ready:
-  for (size_t idx = 0; idx < NUMBER_OF_TOF_SENSORS; ++idx) {
-    HCSR04SensorInfo* const sensor = &m_sensors[idx];
-    if(!isReadyForStart(sensor)) {
+  for (auto sensor : m_sensors) {
+    if(!isReadyForStart(&sensor)) {
       return;
     }
   }
@@ -551,7 +550,8 @@ uint16_t HCSR04SensorManager::millisSince(uint16_t milliseconds) {
 }
 
 uint16_t HCSR04SensorManager::medianMeasure(HCSR04SensorInfo *const sensor, uint16_t value) {
-  sensor->distances[sensor->nextMedianDistance++] = value;
+  sensor->distances[sensor->nextMedianDistance] = value;
+  sensor->nextMedianDistance++;
   if (sensor->nextMedianDistance >= MEDIAN_DISTANCE_MEASURES) {
     sensor->nextMedianDistance = 0;
   }
