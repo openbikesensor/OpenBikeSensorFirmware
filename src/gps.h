@@ -86,6 +86,8 @@ class Gps {
     void handle(uint32_t milliSeconds);
 
     static PrivacyArea newPrivacyArea(double latitude, double longitude, int radius);
+    static int16_t getLeapSecondsGps(time_t gps);
+    static int16_t getLeapSecondsUtc(time_t gps);
 
     void enableSbas();
 
@@ -160,6 +162,7 @@ class Gps {
 
         // AID 0x0B
         AID_INI = 0x010B,
+        AID_HUI = 0x020B,
         AID_ALPSRV = 0x320B,
         AID_ALP = 0x500B,
 
@@ -403,6 +406,32 @@ class Gps {
           PREV_TM = 1 << 7,
         } flags;
       } aidIni;
+      struct __attribute__((__packed__)) AID_HUI {
+        UBX_HEADER ubxHeader;
+        uint32_t health;
+        double utcA0;
+        double utcA1;
+        int32_t utcTOW;
+        int16_t utcWNT;
+        int16_t utcLS;
+        int16_t utcWNF;
+        int16_t utcDN;
+        int16_t utcLSF;
+        int16_t utcSpare;
+        float klobA0;
+        float klobA1;
+        float klobA2;
+        float klobA3;
+        float klobB0;
+        float klobB1;
+        float klobB2;
+        float klobB3;
+        enum class FLAGS : uint32_t {
+          health = 1,
+          utc = 1 << 1,
+          klob = 1 << 2,
+        } flags;
+      } aidHui;
       struct __attribute__((__packed__)) {
         UBX_HEADER ubxHeader;
         uint8_t idSize;
@@ -496,6 +525,8 @@ class Gps {
     static double haversine(double lat1, double lon1, double lat2, double lon2);
 
     static void randomOffset(PrivacyArea &p);
+
+    static time_t gpsDayToTime(uint16_t week, uint16_t dayOfWeek);
 
     static time_t toTime(uint16_t week, uint32_t weekTime);
 

@@ -39,7 +39,7 @@ understand.
 | `PresetId` | `Wade` | Id to identify the selected preset. A owner might define multiple presets |
 | `BluetoothEnabled` | `1` | 1 if bluetooth is enabled, 0 otherwise
 | `TrackId` | `38605ba-76...` | A uuid that can be used to uniquely identify the track.
-| `TimeZone` | `GPS` | The time zone used to write Date and Time data. Typically this is GPS which is some leap seconds ahead of UTC (as of today 18)
+| `TimeZone` | `GPS` | The time zone used to write Date and Time data. Typically this is GPS which is some leap seconds ahead of UTC (as of today 18). UTC is also a allowed value and the default if not TimeZone is given.
 
 ## CSV
 
@@ -83,8 +83,8 @@ Based on http://dataprotocols.org/csv-dialect/ the definition is:
 
 Headline    | Format | Range | Sample | Description |
 ---         | --- | --- | --- | --- |
-`Date`      | TT.MM.YYYY | | 24.11.2020 | See `TimeZone` above. GPS, typically as received by the GPS module in that second. If there is no GPS module present, system time is used. If there was no reception of a time signal yet, this might be unix time (starting 1.1.1970) which can be used as offset between the csv lines. Expect none linearity when time is set.    
-`Time`      | HH:MM:SS | | 12:00:00 | GPS time, see also above, GPS time is as of today 18 seconds ahead of UTC
+`Date`      | TT.MM.YYYY | | 24.11.2020 | Time, typically as received by the GPS module. If there was no reception of a time signal yet, this might be unix time (starting 1.1.1970) which can be used as offset between the csv lines. Expect none linearity when time is set.    
+`Time`      | HH:MM:SS | | 12:00:00 | TimeZone is GPS or UTC according to the TimeZone metadata.
 `Millis`    | int32  | 0-2^31 | 1234567 | Millisecond counter will continuously increase throughout the file, for time difference calculation
 `Comment`   | char[] |  |  | Space to leave a short text comment 
 `Latitude`  | double | -90.0-90.0 | 42.123456 | Latitude as degrees
