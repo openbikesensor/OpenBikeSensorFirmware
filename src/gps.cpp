@@ -268,7 +268,9 @@ bool Gps::setMessageInterval(UBX_MSG msgId, uint8_t seconds, bool waitForAck) {
 bool Gps::setBaud() {
   mSerial.end();
   mSerial.begin(115200, SERIAL_8N1);
-  mSerial.setRxBufferSize(512); // FIXME only while supporting UBX && NMEA
+  mSerial.setRxBufferSize(512);
+  while(mSerial.read() >= 0) ;
+
   if (checkCommunication()) {
     log_i("GPS startup already 115200");
     return true;
@@ -370,9 +372,9 @@ bool Gps::handle() {
 
   boolean gotGpsData = false;
   int bytesProcessed = 0;
-  while (mSerial.available() > 0) {
+  int data;
+  while ((data = mSerial.read()) >= 0) {
     bytesProcessed++;
-    int data = mSerial.read();
     if (encode(data)) {
       gotGpsData = true;
       if (bytesProcessed > 1024) {
