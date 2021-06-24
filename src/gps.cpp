@@ -537,22 +537,17 @@ void Gps::showWaitStatus(SSD1306DisplayDevice *display) const {
   if (mValidMessagesReceived == 0) { // could not get any valid char from GPS module
     satellitesString[0] = "OFF?";
   } else if (mLastTimeTimeSet == 0) {
-    satellitesString[0] = "no time " + String(mLastNoiseLevel);
+    satellitesString[0] = String(mCurrentGpsRecord.mSatellitesUsed) + "sats SN:" + String(mLastNoiseLevel);
   } else {
-    satellitesString[0] = ObsUtils::timeToString();
+    satellitesString[0] = "GPS " + ObsUtils::timeToString();
     satellitesString[1] = String(mCurrentGpsRecord.mSatellitesUsed) + "sats SN:" + String(mLastNoiseLevel);
   }
 
-  if (mValidMessagesReceived != 0    //only do this if a communication is there and a valid time is there
-      && mLastTimeTimeSet != 0) {
-    // This is a hack :) if still the "Wait for GPS" version is displayed original line
-    if (displayTest->get_gridTextofCell(2, 4).startsWith("Wait")) {
-      display->newLine();
-    }
+  if (satellitesString[1].isEmpty()) {
+    displayTest->showTextOnGrid(2, display->currentLine(), satellitesString[0]);
+  } else {
     displayTest->showTextOnGrid(2, display->currentLine() - 1, satellitesString[0]);
     displayTest->showTextOnGrid(2, display->currentLine(), satellitesString[1]);
-  } else { //if no gps comm or no time is there, just write in the last row
-    displayTest->showTextOnGrid(2, display->currentLine(), satellitesString[0]);
   }
 }
 
