@@ -32,10 +32,11 @@
 #include <HTTPURLEncodedBodyParser.hpp>
 #include <esp_ota_ops.h>
 #include <esp_partition.h>
-#include <utils/https.h>
 #include "SPIFFS.h"
 #include "HTTPMultipartBodyParser.hpp"
 #include "Firmware.h"
+#include "utils/https.h"
+#include "utils/timeutils.h"
 
 using namespace httpsserver;
 
@@ -702,7 +703,7 @@ void startServer(ObsConfig *obsConfig) {
 
   MDNS.begin("obs");
 
-  ObsUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
+  TimeUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
   if (!voltageMeter) {
     voltageMeter = new VoltageMeter();
   }
@@ -848,13 +849,13 @@ static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
     files += " ";
     files += ObsUtils::toScaledByteString(file.size());
     files += " ";
-    files += ObsUtils::dateTimeToString(file.getLastWrite());
+    files += TimeUtils::dateTimeToString(file.getLastWrite());
     file.close();
     file = dir.openNextFile();
   }
   dir.close();
   page += keyValue("SPIFFS files", files);
-  page += keyValue("System date time", ObsUtils::dateTimeToString(file.getLastWrite()));
+  page += keyValue("System date time", TimeUtils::dateTimeToString(file.getLastWrite()));
   page += keyValue("System millis", String(millis()));
 
   if (voltageMeter) {
@@ -1567,7 +1568,7 @@ static void handleSd(HTTPRequest *req, HTTPResponse *res) {
 
       auto fileName = String(child.name());
       auto fileTip = ObsUtils::encodeForXmlAttribute(
-        ObsUtils::dateTimeToString(child.getLastWrite())
+        TimeUtils::dateTimeToString(child.getLastWrite())
         + " - " + ObsUtils::toScaledByteString(child.size()));
 
       fileName = fileName.substring(int(fileName.lastIndexOf("/") + 1));

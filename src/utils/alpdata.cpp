@@ -25,6 +25,7 @@
 #include <HTTPUpdate.h>
 #include "globals.h"
 #include "alpdata.h"
+#include "timeutils.h"
 
 /* Download http://alp.u-blox.com/current_14d.alp (ssl?) if there is a new one
  * Takes 5 seconds to update the data.
@@ -35,19 +36,19 @@ void AlpData::update(SSD1306DisplayDevice *display) {
   File f = SD.open(ALP_DATA_FILE_NAME, FILE_READ);
   if (!f || f.size() < ALP_DATA_MIN_FILE_SIZE ) {
     lastModified = "";
-  } else if (f.getLastWrite() > ObsUtils::PAST_TIME &&
+  } else if (f.getLastWrite() > TimeUtils::PAST_TIME &&
     (f.getLastWrite() + 4 * 24  * 60 * 60) > time(nullptr)) {
     log_d("File still current %s",
-          ObsUtils::dateTimeToString(f.getLastWrite()).c_str());
+          TimeUtils::dateTimeToString(f.getLastWrite()).c_str());
     log_d("Now: %s",
-          ObsUtils::dateTimeToString(time(nullptr)).c_str());
+          TimeUtils::dateTimeToString(time(nullptr)).c_str());
     log_d("Next Update: %s",
-          ObsUtils::dateTimeToString(f.getLastWrite() + 4 * 24  * 60 * 60).c_str());
+          TimeUtils::dateTimeToString(f.getLastWrite() + 4 * 24 * 60 * 60).c_str());
     f.close();
     return;
   }
   f.close();
-  log_d("Existing file last write %s", ObsUtils::dateTimeToString(f.getLastWrite()).c_str());
+  log_d("Existing file last write %s", TimeUtils::dateTimeToString(f.getLastWrite()).c_str());
   log_d("Existing file is from %s", lastModified.c_str());
   display->showTextOnGrid(0, 5, "ALP data ...");
 

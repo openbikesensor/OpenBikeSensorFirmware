@@ -86,8 +86,6 @@ class Gps {
     void handle(uint32_t milliSeconds);
 
     static PrivacyArea newPrivacyArea(double latitude, double longitude, int radius);
-    static int16_t getLeapSecondsGps(time_t gps);
-    static int16_t getLeapSecondsUtc(time_t gps);
 
     void enableSbas();
 
@@ -526,10 +524,6 @@ class Gps {
 
     static void randomOffset(PrivacyArea &p);
 
-    static time_t gpsDayToTime(uint16_t week, uint16_t dayOfWeek);
-
-    static time_t toTime(uint16_t week, uint32_t weekTime);
-
     static bool validNmeaMessageChar(uint8_t chr);
 
     bool setMessageInterval(UBX_MSG msgId, uint8_t seconds, bool waitForAck = true);
@@ -537,10 +531,6 @@ class Gps {
     bool prepareGpsData(uint32_t tow);
 
     void checkGpsDataState();
-
-    static uint32_t utcTimeToTimeOfWeek(time_t t);
-
-    static uint16_t utcTimeToWeekNumber(time_t t);
 
     void softResetGps();
 

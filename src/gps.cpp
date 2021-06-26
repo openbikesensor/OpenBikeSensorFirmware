@@ -22,7 +22,7 @@
  */
 
 #include "gps.h"
-#include <sys/time.h>
+#include "utils/timeutils.h"
 
 /* Most input from u-blox6_ReceiverDescrProtSpec_(GPS.G6-SW-10018)_Public.pdf */
 
@@ -367,7 +367,7 @@ bool Gps::handle() {
   if (mSerial.available() > 250) {
     addStatisticsMessage(String("readGPSData(av: ") + String(mSerial.available())
                          + " bytes in buffer, lastCall " + String(millis() - mMessageStarted)
-                         + "ms ago, at " + ObsUtils::dateTimeToString() + ")");
+                         + "ms ago, at " + TimeUtils::dateTimeToString() + ")");
   }
 
   boolean gotGpsData = false;
@@ -539,7 +539,7 @@ void Gps::showWaitStatus(SSD1306DisplayDevice *display) const {
   } else if (mLastTimeTimeSet == 0) {
     satellitesString[0] = String(mCurrentGpsRecord.mSatellitesUsed) + "sats SN:" + String(mLastNoiseLevel);
   } else {
-    satellitesString[0] = "GPS " + ObsUtils::timeToString();
+    satellitesString[0] = "GPS " + TimeUtils::timeToString();
     satellitesString[1] = String(mCurrentGpsRecord.mSatellitesUsed) + "sats SN:" + String(mLastNoiseLevel);
   }
 
@@ -914,23 +914,13 @@ void Gps::parseUbxMessage() {
           && mGpsBuffer.navTimeGps.tAcc < (80 * 1000 * 1000 /* 80ms */)
           && (mLastTimeTimeSet == 0
               || (mLastTimeTimeSet + (2 * 60 * 1000 /* 2 minutes */)) < receivedMs)) {
-        const time_t gpsTime = toTime(mGpsBuffer.navTimeGps.week, mGpsBuffer.navTimeGps.iTow / 1000);
-        const int32_t gpsTimeUsec = ((mGpsBuffer.navTimeGps.iTow % 1000) * 1000) +
-                                    (mGpsBuffer.navTimeGps.fTow / 1000);
-        const struct timeval now = {
-          .tv_sec = gpsTime,
-          .tv_usec = gpsTimeUsec
-        };
-        String oldTime = ObsUtils::dateTimeToString();
-        settimeofday(&now, nullptr);
-        String newTime = ObsUtils::dateTimeToString();
-        log_i("TIMEGPS set %ld: %s. %s -> %s\n",
-              gpsTime, ObsUtils::dateTimeToString(gpsTime).c_str(),
-              oldTime.c_str(), newTime.c_str());
+        String oldTime = TimeUtils::dateTimeToString();
+        TimeUtils::setClockByGps(mGpsBuffer.navTimeGps.iTow, mGpsBuffer.navTimeGps.fTow, mGpsBuffer.navTimeGps.week);
+        String newTime = TimeUtils::dateTimeToString();
         if (oldTime != newTime) {
+          log_i("TIMEGPS set: %s -> %s", oldTime.c_str(), newTime.c_str());
           addStatisticsMessage(String("TIMEGPS set: ")
-                               + oldTime + " -> " + newTime + "-" + gpsTimeUsec
-                               + "us delay: " + String(delayMs) + "ms.");
+                               + oldTime + " -> " + newTime + " " + String(delayMs) + "ms.");
         }
         if (mLastTimeTimeSet == 0) {
           mLastTimeTimeSet = receivedMs;
@@ -975,8 +965,8 @@ void Gps::parseUbxMessage() {
         log_i("AID_HUI received Flags: %04x, Current Leap Seconds %d"
               " Event: %s, Leap Seconds after Event: %d",
               mGpsBuffer.aidHui.flags,  mGpsBuffer.aidHui.utcLS,
-              ObsUtils::dateTimeToString(
-                gpsDayToTime(mGpsBuffer.aidHui.utcWNF, mGpsBuffer.aidHui.utcDN)).c_str(),
+              TimeUtils::dateTimeToString(
+                TimeUtils::gpsDayToTime(mGpsBuffer.aidHui.utcWNF, mGpsBuffer.aidHui.utcDN)).c_str(),
               mGpsBuffer.aidHui.utcLSF);
       }
     }
@@ -1030,18 +1020,18 @@ void Gps::parseUbxMessage() {
       log_d("AID-ALP status data age %d duration %d valid from %s to %s",
             mGpsBuffer.aidAlpStatus.age,
             mGpsBuffer.aidAlpStatus.predDur,
-            ObsUtils::dateTimeToString(
-              toTime(mGpsBuffer.aidAlpStatus.predWno, mGpsBuffer.aidAlpStatus.predTow)).c_str(),
-            ObsUtils::dateTimeToString(
-              toTime(mGpsBuffer.aidAlpStatus.predWno,
+            TimeUtils::dateTimeToString(
+              TimeUtils::toTime(mGpsBuffer.aidAlpStatus.predWno, mGpsBuffer.aidAlpStatus.predTow)).c_str(),
+            TimeUtils::dateTimeToString(
+              TimeUtils::toTime(mGpsBuffer.aidAlpStatus.predWno,
                      mGpsBuffer.aidAlpStatus.predDur + mGpsBuffer.aidAlpStatus.predTow)).c_str());
       if (mGpsBuffer.aidAlpStatus.predWno != 0) {
         addStatisticsMessage(String("ALP Data valid from: ") +
-                             ObsUtils::dateTimeToString(
-                               toTime(mGpsBuffer.aidAlpStatus.predWno, mGpsBuffer.aidAlpStatus.predTow)));
+                               TimeUtils::dateTimeToString(
+                                 TimeUtils::toTime(mGpsBuffer.aidAlpStatus.predWno, mGpsBuffer.aidAlpStatus.predTow)));
         addStatisticsMessage(String("ALP Data valid to: ") +
-                             ObsUtils::dateTimeToString(
-                               toTime(mGpsBuffer.aidAlpStatus.predWno,
+                               TimeUtils::dateTimeToString(
+                               TimeUtils::toTime(mGpsBuffer.aidAlpStatus.predWno,
                                       mGpsBuffer.aidAlpStatus.predDur + mGpsBuffer.aidAlpStatus.predTow)).c_str());
       }
     }
@@ -1093,45 +1083,6 @@ void Gps::parseNmeaMessage() const {
         mGpsBuffer.charData);
 }
 
-static const uint32_t SECONDS_PER_DAY = 60L * 60 * 24;
-static const uint32_t SECONDS_PER_WEEK = SECONDS_PER_DAY * 7;
-  // use difftime() ?
-/* GPS Start time is 1980-01-06T00:00:00Z  */
-static const uint32_t GPS_EPOCH_OFFSET = 315964800L;
-
-/* Determine the number of leap seconds to be considered at the given GPS
- * time.
- * TODO: Make this more fancy leverage AID_HUI info that can be stored on
- *    SD or hardcode dates if announced at
- *    https://www.ietf.org/timezones/data/leap-seconds.list
- */
-int16_t Gps::getLeapSecondsGps(time_t gps) {
-  return 18;
-}
-
-/* Determine the number of leap seconds to be considered at the given UTC
- * time.
- */
-int16_t Gps::getLeapSecondsUtc(time_t utc) {
-  return 18;
-}
-
-time_t Gps::gpsDayToTime(uint16_t week, uint16_t dayOfWeek) {
-  return (time_t) GPS_EPOCH_OFFSET + (SECONDS_PER_WEEK * week) + (SECONDS_PER_DAY * dayOfWeek);
-}
-
-time_t Gps::toTime(uint16_t week, uint32_t weekTime) {
-  return (time_t) GPS_EPOCH_OFFSET + (SECONDS_PER_WEEK * week) + weekTime;
-}
-
-uint32_t Gps::utcTimeToTimeOfWeek(time_t t) {
-  return (t - GPS_EPOCH_OFFSET - getLeapSecondsGps(t)) % SECONDS_PER_WEEK;
-}
-
-uint16_t Gps::utcTimeToWeekNumber(time_t t) {
-  return (t - GPS_EPOCH_OFFSET - getLeapSecondsGps(t)) / SECONDS_PER_WEEK;
-}
-
 void Gps::aidIni() {
   if (AlpData::loadMessage(mGpsBuffer.u1Data, 48 + 8) > 48) {
     log_i("Will send AID_INI");
@@ -1139,12 +1090,12 @@ void Gps::aidIni() {
     mGpsBuffer.aidIni.tAccMs = 3 * 24 * 60 * 60 * 1000; // 3 days!?
     mGpsBuffer.aidIni.flags = (GpsBuffer::AID_INI::FLAGS) 0x03;
     time_t t = time(nullptr);
-    if (t > ObsUtils::PAST_TIME) {
+    if (t > TimeUtils::PAST_TIME) {
       mGpsBuffer.aidIni.tAccMs = 1000; // 1 sec
       mGpsBuffer.aidIni.tAccNs = 0;
       mGpsBuffer.aidIni.towNs = 0;
-      mGpsBuffer.aidIni.tow = utcTimeToTimeOfWeek(t);
-      mGpsBuffer.aidIni.wn = utcTimeToWeekNumber(t);
+      mGpsBuffer.aidIni.tow = TimeUtils::utcTimeToTimeOfWeek(t);
+      mGpsBuffer.aidIni.wn = TimeUtils::utcTimeToWeekNumber(t);
     }
     sendUbxDirect();
     handle(5);
