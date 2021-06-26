@@ -404,7 +404,7 @@ class Gps {
           PREV_TM = 1 << 7,
         } flags;
       } aidIni;
-      struct __attribute__((__packed__)) AID_HUI {
+      struct __attribute__((__packed__)) AidHui {
         UBX_HEADER ubxHeader;
         uint32_t health;
         double utcA0;
@@ -424,7 +424,7 @@ class Gps {
         float klobB1;
         float klobB2;
         float klobB3;
-        enum class FLAGS : uint32_t {
+        enum class Flags : uint32_t {
           health = 1,
           utc = 1 << 1,
           klob = 1 << 2,
@@ -536,6 +536,7 @@ class Gps {
 
     void handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps & message, const uint32_t receivedMs, const uint32_t delayMs);
     void handleUbxAidIni(const GpsBuffer::AidIni &message) const;
+    void handleUbxAidHui(const GpsBuffer::AidHui &massage) const;
 };
 
 #endif

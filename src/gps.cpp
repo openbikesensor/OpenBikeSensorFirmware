@@ -928,16 +928,8 @@ void Gps::parseUbxMessage() {
     case (uint16_t) UBX_MSG::AID_INI:
       handleUbxAidIni(mGpsBuffer.aidIni);
       break;
-    case (uint16_t) UBX_MSG::AID_HUI: {
-      if ((uint32_t) mGpsBuffer.aidHui.flags & (uint32_t) GpsBuffer::AID_HUI::FLAGS::utc) {
-        log_i("AID_HUI received Flags: %04x, Current Leap Seconds %d"
-              " Event: %s, Leap Seconds after Event: %d",
-              mGpsBuffer.aidHui.flags,  mGpsBuffer.aidHui.utcLS,
-              TimeUtils::dateTimeToString(
-                TimeUtils::gpsDayToTime(mGpsBuffer.aidHui.utcWNF, mGpsBuffer.aidHui.utcDN)).c_str(),
-              mGpsBuffer.aidHui.utcLSF);
-      }
-    }
+    case (uint16_t) UBX_MSG::AID_HUI:
+      handleUbxAidHui(mGpsBuffer.aidHui);
       break;
     case (uint16_t) UBX_MSG::AID_ALPSRV: {
       uint16_t startOffset
@@ -1028,16 +1020,6 @@ void Gps::parseUbxMessage() {
   }
 }
 
-void Gps::handleUbxAidIni(const GpsBuffer::AidIni &message) const {
-  log_i("AidIni received Status: %04x, Location valid: %d.", message.flags,
-        (message.flags & GpsBuffer::AidIni::POS));
-  if ((message.flags & GpsBuffer::AidIni::POS)
-      && message.posAcc < 50000) {
-    AlpData::saveMessage(mGpsBuffer.u1Data, mGpsPayloadLength + 6);
-    log_i("Stored new AidIni data.");
-  }
-}
-
 void Gps::handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps &message, const uint32_t receivedMs, const uint32_t delayMs) {
   log_i("TIMEGPS: iTOW: %u, fTOW: %d, week %d, leapS: %d, valid: 0x%02x, tAcc %dns, delay %dms",
         message.iTow, message.fTow, message.week, message.leapS, message.valid, message.tAcc, delayMs);
@@ -1061,6 +1043,27 @@ void Gps::handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps &message, const uin
     } else {
       mLastTimeTimeSet = receivedMs;
     }
+  }
+}
+
+void Gps::handleUbxAidIni(const GpsBuffer::AidIni &message) const {
+  log_i("AidIni received Status: %04x, Location valid: %d.", message.flags,
+        (message.flags & GpsBuffer::AidIni::POS));
+  if ((message.flags & GpsBuffer::AidIni::POS)
+      && message.posAcc < 50000) {
+    AlpData::saveMessage(mGpsBuffer.u1Data, mGpsPayloadLength + 6);
+    log_i("Stored new AidIni data.");
+  }
+}
+
+void Gps::handleUbxAidHui(const GpsBuffer::AidHui &massage) const {
+  if ((uint32_t) massage.flags & (uint32_t) GpsBuffer::AidHui::Flags::utc) {
+    log_i("AID_HUI received Flags: %04x, Current Leap Seconds %d"
+          " Event: %s, Leap Seconds after Event: %d",
+          massage.flags, massage.utcLS,
+          TimeUtils::dateTimeToString(
+            TimeUtils::gpsDayToTime(massage.utcWNF, massage.utcDN)).c_str(),
+          massage.utcLSF);
   }
 }
 
