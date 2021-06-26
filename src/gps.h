@@ -47,10 +47,7 @@ class Gps {
     /* read and process data from serial, true if there was valid data. */
     bool handle();
 
-    /* Returns the current time - GPS time if available, system time otherwise. */
-    static time_t currentTime();
-
-    bool hasState(int state, SSD1306DisplayDevice *display) const;
+    bool hasFix(SSD1306DisplayDevice *display) const;
 
     /* Returns true if valid communication with the gps module was possible. */
     bool moduleIsAlive() const;
@@ -59,7 +56,7 @@ class Gps {
 
     uint8_t getValidSatellites() const;
 
-    void showWaitStatus(SSD1306DisplayDevice *display) const;
+    void showWaitStatus(const SSD1306DisplayDevice *display) const;
 
     /* Returns current speed, negative value means unknown speed. */
     double getSpeed() const;
@@ -163,6 +160,7 @@ class Gps {
 
         // AID 0x0B
         AID_INI = 0x010B,
+        AID_HUI = 0x020B,
         AID_ALPSRV = 0x320B,
         AID_ALP = 0x500B,
 
@@ -337,7 +335,7 @@ class Gps {
         uint32_t sAcc;
         uint32_t cAcc;
       } navVelned;
-      struct __attribute__((__packed__)) {
+      struct __attribute__((__packed__)) UbxNavTimeGps {
         UBX_HEADER ubxHeader;
         uint32_t iTow;
         int32_t fTow;
@@ -381,7 +379,7 @@ class Gps {
         uint32_t reserved2;
         uint32_t reserved3;
       } navAopStatus;
-      struct __attribute__((__packed__)) AID_INI {
+      struct __attribute__((__packed__)) AidIni {
         UBX_HEADER ubxHeader;
         int32_t ecefXorLat;
         int32_t ecefYorLon;
@@ -406,6 +404,32 @@ class Gps {
           PREV_TM = 1 << 7,
         } flags;
       } aidIni;
+      struct __attribute__((__packed__)) AidHui {
+        UBX_HEADER ubxHeader;
+        uint32_t health;
+        double utcA0;
+        double utcA1;
+        int32_t utcTOW;
+        int16_t utcWNT;
+        int16_t utcLS;
+        int16_t utcWNF;
+        int16_t utcDN;
+        int16_t utcLSF;
+        int16_t utcSpare;
+        float klobA0;
+        float klobA1;
+        float klobA2;
+        float klobA3;
+        float klobB0;
+        float klobB1;
+        float klobB2;
+        float klobB3;
+        enum class Flags : uint32_t {
+          health = 1,
+          utc = 1 << 1,
+          klob = 1 << 2,
+        } flags;
+      } aidHui;
       struct __attribute__((__packed__)) {
         UBX_HEADER ubxHeader;
         uint8_t idSize;
@@ -500,8 +524,6 @@ class Gps {
 
     static void randomOffset(PrivacyArea &p);
 
-    static time_t toTime(uint16_t week, uint32_t weekTime);
-
     static bool validNmeaMessageChar(uint8_t chr);
 
     bool setMessageInterval(UBX_MSG msgId, uint8_t seconds, bool waitForAck = true);
@@ -510,12 +532,11 @@ class Gps {
 
     void checkGpsDataState();
 
-    static uint32_t timeToTimeOfWeek(time_t t);
-
-    static uint16_t timeToWeekNumber(time_t t);
-
     void softResetGps();
 
+    void handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps & message, const uint32_t receivedMs, const uint32_t delayMs);
+    void handleUbxAidIni(const GpsBuffer::AidIni &message) const;
+    void handleUbxAidHui(const GpsBuffer::AidHui &massage) const;
 };
 
 #endif

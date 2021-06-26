@@ -32,11 +32,12 @@
 #include <HTTPURLEncodedBodyParser.hpp>
 #include <esp_ota_ops.h>
 #include <esp_partition.h>
-#include <utils/https.h>
 #include <DNSServer.h>
 #include "SPIFFS.h"
 #include "HTTPMultipartBodyParser.hpp"
 #include "Firmware.h"
+#include "utils/https.h"
+#include "utils/timeutils.h"
 
 using namespace httpsserver;
 
@@ -310,14 +311,6 @@ static const char* const configIndex =
   "Offset Sensor Right<input name='offsetS2' placeholder='Offset Sensor Right' value='{offset2}'>"
   "<hr>"
   "Swap Sensors (Left &#8660; Right)<input type='checkbox' name='displaySwapSensors' {displaySwapSensors}>"
-  ""
-  "<h3>GPS</h3>"
-  "<label for='gpsFix'>GPS to wait for</label> "
-  "<select id='gpsFix' name='gpsFix'>"
-  "<option value='-2' {fixPos}>position</option>"
-  "<option value='-1' {fixTime}>time only</option>"
-  "<option value='0' {fixNoWait}>no wait</option>"
-  "</select>"
   ""
   "<h3>Generic Display</h3>"
   "Invert<br>(black &#8660; white)<input type='checkbox' name='displayInvert' {displayInvert}>"
@@ -711,7 +704,7 @@ void startServer(ObsConfig *obsConfig) {
 
   MDNS.begin("obs");
 
-  ObsUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
+  TimeUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
   if (!voltageMeter) {
     voltageMeter = new VoltageMeter();
   }
@@ -857,13 +850,13 @@ static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
     files += " ";
     files += ObsUtils::toScaledByteString(file.size());
     files += " ";
-    files += ObsUtils::dateTimeToString(file.getLastWrite());
+    files += TimeUtils::dateTimeToString(file.getLastWrite());
     file.close();
     file = dir.openNextFile();
   }
   dir.close();
   page += keyValue("SPIFFS files", files);
-  page += keyValue("System date time", ObsUtils::dateTimeToString(file.getLastWrite()));
+  page += keyValue("System date time", TimeUtils::dateTimeToString(file.getLastWrite()));
   page += keyValue("System millis", String(millis()));
 
   if (voltageMeter) {
@@ -1095,9 +1088,6 @@ static void handleConfigSave(HTTPRequest * req, HTTPResponse * res) {
   offsets.push_back(atoi(getParameter(params, "offsetS1").c_str()));
   theObsConfig->setOffsets(0, offsets);
 
-  theObsConfig->setProperty(0, ObsConfig::PROPERTY_GPS_FIX,
-                            atoi(getParameter(params, "gpsFix").c_str()));
-
   // TODO: cleanup
   const String privacyOptions = getParameter(params, "privacyOptions");
   const String overridePrivacy = getParameter(params, "overridePrivacy");
@@ -1160,11 +1150,6 @@ static void handleConfig(HTTPRequest *, HTTPResponse * res) {
                theObsConfig->getProperty<bool>(ObsConfig::PROPERTY_BLUETOOTH) ? "checked" : "");
   html = replaceHtml(html, "{simRaMode}",
                theObsConfig->getProperty<bool>(ObsConfig::PROPERTY_SIM_RA) ? "checked" : "");
-
-  int gpsFix = theObsConfig->getProperty<int>(ObsConfig::PROPERTY_GPS_FIX);
-  html = replaceHtml(html, "{fixPos}", gpsFix == (int) Gps::WaitFor::FIX_POS || gpsFix > 0 ? "selected" : "");
-  html = replaceHtml(html, "{fixTime}", gpsFix == (int) Gps::WaitFor::FIX_TIME ? "selected" : "");
-  html = replaceHtml(html, "{fixNoWait}", gpsFix == (int) Gps::WaitFor::FIX_NO_WAIT ? "selected" : "");
 
   const uint privacyConfig = (uint) theObsConfig->getProperty<int>(
     ObsConfig::PROPERTY_PRIVACY_CONFIG);
@@ -1584,7 +1569,7 @@ static void handleSd(HTTPRequest *req, HTTPResponse *res) {
 
       auto fileName = String(child.name());
       auto fileTip = ObsUtils::encodeForXmlAttribute(
-        ObsUtils::dateTimeToString(child.getLastWrite())
+        TimeUtils::dateTimeToString(child.getLastWrite())
         + " - " + ObsUtils::toScaledByteString(child.size()));
 
       fileName = fileName.substring(int(fileName.lastIndexOf("/") + 1));

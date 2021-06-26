@@ -37,7 +37,6 @@ struct DataSet {
   uint32_t  millis;
   String comment;
   GpsRecord gpsRecord;
-  float BatterieVoltage;
   double batteryLevel;
   std::vector<uint16_t> sensorValues;
   std::vector<uint16_t> confirmedDistances;
