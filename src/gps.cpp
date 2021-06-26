@@ -122,7 +122,7 @@ void Gps::configureGpsModule() {
   setStatisticsIntervalInSeconds(0);
   setMessageInterval(UBX_MSG::AID_ALPSRV, 0);
   enableSbas();
-  setMessageInterval(UBX_MSG::NAV_SBAS, 20);
+  setMessageInterval(UBX_MSG::NAV_SBAS, 59);
 
   setMessageInterval(UBX_MSG::NAV_POSLLH, 1);
   setMessageInterval(UBX_MSG::NAV_DOP, 1);
