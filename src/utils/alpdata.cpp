@@ -144,7 +144,7 @@ uint16_t AlpData::fill(uint8_t *data, size_t ofs, uint16_t dataSize) {
   return read;
 }
 
-/* Used to save AID_INI data. */
+/* Used to save AidIni data. */
 void AlpData::saveMessage(const uint8_t *data, size_t size) {
   File f = SD.open(AID_INI_DATA_FILE_NAME, FILE_WRITE);
   if (f) {
@@ -158,7 +158,7 @@ void AlpData::saveMessage(const uint8_t *data, size_t size) {
   }
 }
 
-/* Used to save AID_INI data. */
+/* Used to save AidIni data. */
 size_t AlpData::loadMessage(uint8_t *data, size_t size) {
   size_t result = 0;
   File f = SD.open(AID_INI_DATA_FILE_NAME, FILE_READ);

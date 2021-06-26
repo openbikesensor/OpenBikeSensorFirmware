@@ -56,7 +56,7 @@ class Gps {
 
     uint8_t getValidSatellites() const;
 
-    void showWaitStatus(SSD1306DisplayDevice *display) const;
+    void showWaitStatus(const SSD1306DisplayDevice *display) const;
 
     /* Returns current speed, negative value means unknown speed. */
     double getSpeed() const;
@@ -335,7 +335,7 @@ class Gps {
         uint32_t sAcc;
         uint32_t cAcc;
       } navVelned;
-      struct __attribute__((__packed__)) {
+      struct __attribute__((__packed__)) UbxNavTimeGps {
         UBX_HEADER ubxHeader;
         uint32_t iTow;
         int32_t fTow;
@@ -379,7 +379,7 @@ class Gps {
         uint32_t reserved2;
         uint32_t reserved3;
       } navAopStatus;
-      struct __attribute__((__packed__)) AID_INI {
+      struct __attribute__((__packed__)) AidIni {
         UBX_HEADER ubxHeader;
         int32_t ecefXorLat;
         int32_t ecefYorLon;
@@ -534,6 +534,8 @@ class Gps {
 
     void softResetGps();
 
+    void handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps & message, const uint32_t receivedMs, const uint32_t delayMs);
+    void handleUbxAidIni(const GpsBuffer::AidIni &message) const;
 };
 
 #endif

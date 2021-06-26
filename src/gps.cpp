@@ -532,7 +532,7 @@ int32_t Gps::getMessagesWithFailedCrcCount() const {
   return mMessagesWithFailedCrcReceived;
 }
 
-void Gps::showWaitStatus(SSD1306DisplayDevice *display) const {
+void Gps::showWaitStatus(SSD1306DisplayDevice const * display) const {
   String satellitesString[2];
   if (mValidMessagesReceived == 0) { // could not get any valid char from GPS module
     satellitesString[0] = "OFF?";
@@ -904,33 +904,8 @@ void Gps::parseUbxMessage() {
       }
     }
       break;
-    case (uint16_t) UBX_MSG::NAV_TIMEGPS: {
-      log_i("TIMEGPS: iTOW: %u, fTOW: %d, week %d, leapS: %d, valid: 0x%02x, tAcc %dns, delay %dms",
-            mGpsBuffer.navTimeGps.iTow, mGpsBuffer.navTimeGps.fTow, mGpsBuffer.navTimeGps.week,
-            mGpsBuffer.navTimeGps.leapS, mGpsBuffer.navTimeGps.valid, mGpsBuffer.navTimeGps.tAcc,
-            delayMs);
-      if ((mGpsBuffer.navTimeGps.valid & 0x03) == 0x03  // WEEK && TOW
-          && delayMs < 80
-          && mGpsBuffer.navTimeGps.tAcc < (80 * 1000 * 1000 /* 80ms */)
-          && (mLastTimeTimeSet == 0
-              || (mLastTimeTimeSet + (2 * 60 * 1000 /* 2 minutes */)) < receivedMs)) {
-        String oldTime = TimeUtils::dateTimeToString();
-        TimeUtils::setClockByGps(mGpsBuffer.navTimeGps.iTow, mGpsBuffer.navTimeGps.fTow, mGpsBuffer.navTimeGps.week);
-        String newTime = TimeUtils::dateTimeToString();
-        if (oldTime != newTime) {
-          log_i("TIMEGPS set: %s -> %s", oldTime.c_str(), newTime.c_str());
-          addStatisticsMessage(String("TIMEGPS set: ")
-                               + oldTime + " -> " + newTime + " " + String(delayMs) + "ms.");
-        }
-        if (mLastTimeTimeSet == 0) {
-          mLastTimeTimeSet = receivedMs;
-          // This triggers another NAV-TIMEGPS message!
-          setMessageInterval(UBX_MSG::NAV_TIMEGPS, 240); // every 4 minutes
-        } else {
-          mLastTimeTimeSet = receivedMs;
-        }
-      }
-    }
+    case (uint16_t) UBX_MSG::NAV_TIMEGPS:
+      handleUbxNavTimeGps(mGpsBuffer.navTimeGps, receivedMs, delayMs);
       break;
     case (uint16_t) UBX_MSG::NAV_TIMEUTC: {
       log_d("TIMEUTC: iTOW: %u acc: %uns nano: %d %04u-%02u-%02uT%02u:%02u:%02u valid 0x%02x delay %dms",
@@ -950,15 +925,8 @@ void Gps::parseUbxMessage() {
                            + " cnt: " + String((int16_t) mGpsBuffer.navSbas.cnt));
     }
       break;
-    case (uint16_t) UBX_MSG::AID_INI: {
-      log_i("AID_INI received Status: %04x, Location valid: %d.", mGpsBuffer.aidIni.flags,
-            (mGpsBuffer.aidIni.flags & GpsBuffer::AID_INI::POS));
-      if ((mGpsBuffer.aidIni.flags & GpsBuffer::AID_INI::POS)
-          && mGpsBuffer.aidIni.posAcc < 50000) {
-        AlpData::saveMessage(mGpsBuffer.u1Data, mGpsPayloadLength + 6);
-        log_i("Stored new AID_INI data.");
-      }
-    }
+    case (uint16_t) UBX_MSG::AID_INI:
+      handleUbxAidIni(mGpsBuffer.aidIni);
       break;
     case (uint16_t) UBX_MSG::AID_HUI: {
       if ((uint32_t) mGpsBuffer.aidHui.flags & (uint32_t) GpsBuffer::AID_HUI::FLAGS::utc) {
@@ -1060,6 +1028,42 @@ void Gps::parseUbxMessage() {
   }
 }
 
+void Gps::handleUbxAidIni(const GpsBuffer::AidIni &message) const {
+  log_i("AidIni received Status: %04x, Location valid: %d.", message.flags,
+        (message.flags & GpsBuffer::AidIni::POS));
+  if ((message.flags & GpsBuffer::AidIni::POS)
+      && message.posAcc < 50000) {
+    AlpData::saveMessage(mGpsBuffer.u1Data, mGpsPayloadLength + 6);
+    log_i("Stored new AidIni data.");
+  }
+}
+
+void Gps::handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps &message, const uint32_t receivedMs, const uint32_t delayMs) {
+  log_i("TIMEGPS: iTOW: %u, fTOW: %d, week %d, leapS: %d, valid: 0x%02x, tAcc %dns, delay %dms",
+        message.iTow, message.fTow, message.week, message.leapS, message.valid, message.tAcc, delayMs);
+  if ((message.valid & 0x03) == 0x03  // WEEK && TOW
+      && delayMs < 80
+      && message.tAcc < (80 * 1000 * 1000 /* 80ms */)
+      && (mLastTimeTimeSet == 0
+          || (mLastTimeTimeSet + (2 * 60 * 1000 /* 2 minutes */)) < receivedMs)) {
+    String oldTime = TimeUtils::dateTimeToString();
+    TimeUtils::setClockByGps(message.iTow, message.fTow, message.week);
+    String newTime = TimeUtils::dateTimeToString();
+    if (oldTime != newTime) {
+      log_i("TIMEGPS set: %s -> %s", oldTime.c_str(), newTime.c_str());
+      addStatisticsMessage(String("TIMEGPS set: ")
+                           + oldTime + " -> " + newTime + " " + String(delayMs) + "ms.");
+    }
+    if (mLastTimeTimeSet == 0) {
+      mLastTimeTimeSet = receivedMs;
+      // This triggers another NAV-TIMEGPS message!
+      setMessageInterval(UBX_MSG::NAV_TIMEGPS, 240); // every 4 minutes
+    } else {
+      mLastTimeTimeSet = receivedMs;
+    }
+  }
+}
+
 bool Gps::validNmeaMessageChar(uint8_t chr) {
   return (chr >= 0x20 && chr <= 0x7e && chr != '$');
 }
@@ -1088,7 +1092,7 @@ void Gps::aidIni() {
     log_i("Will send AID_INI");
     mGpsBuffer.aidIni.posAcc = 5000; // 50m
     mGpsBuffer.aidIni.tAccMs = 3 * 24 * 60 * 60 * 1000; // 3 days!?
-    mGpsBuffer.aidIni.flags = (GpsBuffer::AID_INI::FLAGS) 0x03;
+    mGpsBuffer.aidIni.flags = (GpsBuffer::AidIni::FLAGS) 0x03;
     time_t t = time(nullptr);
     if (t > TimeUtils::PAST_TIME) {
       mGpsBuffer.aidIni.tAccMs = 1000; // 1 sec
