@@ -132,7 +132,6 @@ class ObsConfig {
     static const String PROPERTY_WIFI_PASSWORD;
     static const String PROPERTY_PORTAL_TOKEN;
     static const String PROPERTY_PORTAL_URL;
-    static const String PROPERTY_GPS_FIX;
     static const String PROPERTY_DISPLAY_CONFIG;
     static const String PROPERTY_CONFIRMATION_TIME_SECONDS;
     static const String PROPERTY_PRIVACY_CONFIG;

@@ -26,6 +26,7 @@
 #include "globals.h"
 #include "utils/multipart.h"
 #include "utils/cacerts.h"
+#include "utils/timeutils.h"
 #include "writer.h"
 
 static char const *const HTTP_LOCATION_HEADER = "location";
@@ -33,7 +34,7 @@ static char const *const HTTP_LOCATION_HEADER = "location";
 Uploader::Uploader(String portalUrl, String userToken) :
     mPortalUrl(std::move(portalUrl)),
     mPortalUserToken(std::move(userToken)) {
-  ObsUtils::setClockByNtpAndWait();
+  TimeUtils::setClockByNtpAndWait();
   mWiFiClient.setCACert(trustedRootCACertificates);
 }
 

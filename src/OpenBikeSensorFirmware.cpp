@@ -325,8 +325,7 @@ void setup() {
   gps.handle();
   gps.setStatisticsIntervalInSeconds(1); // get regular updates.
 
-  int gpsWaitFor = cfg.getProperty<int>(ObsConfig::PROPERTY_GPS_FIX);
-  while (!gps.hasState(gpsWaitFor, displayTest)) {
+  while (!gps.hasFix(displayTest)) {
     currentTimeMillis = millis();
     gps.handle();
     sensorManager->getDistances();
@@ -345,9 +344,9 @@ void setup() {
   // now we have a fix only rate updates, could be set to 0?
   gps.setStatisticsIntervalInSeconds(0);
 
-  gps.handle(1000); // Added for user experience
-  gps.pollStatistics();
   gps.enableSbas();
+  gps.handle(1100); // Added for user experience
+  gps.pollStatistics();
   displayTest->clear();
 }
 
@@ -410,7 +409,7 @@ void loop() {
   if (startTimeMillis == 0) {
     startTimeMillis = (currentTimeMillis / measureInterval) * measureInterval;
   }
-  currentSet->time = Gps::currentTime();
+  currentSet->time = time(nullptr);
   currentSet->millis = currentTimeMillis;
   currentSet->batteryLevel = voltageMeter->read();
   currentSet->isInsidePrivacyArea = gps.isInsidePrivacyArea();
