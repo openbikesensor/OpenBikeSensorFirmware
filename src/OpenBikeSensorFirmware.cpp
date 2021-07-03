@@ -557,8 +557,8 @@ void loop() {
       displayTest->normalDisplay();
     }
   }
-
-  log_i("Time elapsed in loop: %lu milliseconds", currentTimeMillis - startTimeMillis);
+  log_i("Time in loop: %lums %d inner loops, %d measures",
+        currentTimeMillis - startTimeMillis, loops, lastMeasurements);
   // synchronize to full measureIntervals
   startTimeMillis = (currentTimeMillis / measureInterval) * measureInterval;
 }
