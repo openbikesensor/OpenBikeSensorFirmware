@@ -438,14 +438,15 @@ void loop() {
     currentTimeMillis = millis();
     if (sensorManager->pollDistancesParallel()) {
       // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
-      if (sensorManager->sensorValues[confirmationSensorID] > 0
-          && sensorManager->sensorValues[confirmationSensorID] < minDistanceToConfirm) {
-        minDistanceToConfirm = sensorManager->sensorValues[confirmationSensorID];
+      const uint16_t reading = sensorManager->sensorValues[confirmationSensorID];
+      if (reading > 0 && reading < minDistanceToConfirm) {
+        minDistanceToConfirm = reading;
         minDistanceToConfirmIndex = sensorManager->getCurrentMeasureIndex();
         // if there was no measurement of this sensor for this index, it is the
         // one before. This happens with fast confirmations.
-        if (sensorManager->m_sensors[confirmationSensorID].echoDurationMicroseconds[minDistanceToConfirm - 1] <= 0) {
-          minDistanceToConfirmIndex--;
+        while (minDistanceToConfirmIndex > 0
+               && sensorManager->m_sensors[confirmationSensorID].echoDurationMicroseconds[minDistanceToConfirmIndex] <= 0) {
+            minDistanceToConfirmIndex--;
         }
         datasetToConfirm = currentSet;
         timeOfMinimum = currentTimeMillis;
@@ -499,24 +500,9 @@ void loop() {
       lastButtonState = buttonState;
     }
 
-    // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
-    const uint16_t reading = sensorManager->sensorValues[confirmationSensorID];
-    if (reading > 0 && reading < minDistanceToConfirm) {
-      minDistanceToConfirm = reading;
-      minDistanceToConfirmIndex = sensorManager->getCurrentMeasureIndex();
-      // if there was no measurement of this sensor for this index, it is the
-      // one before. This happens with fast confirmations.
-      while (minDistanceToConfirmIndex > 0
-         && sensorManager->m_sensors[confirmationSensorID].echoDurationMicroseconds[minDistanceToConfirmIndex] <= 0) {
-        minDistanceToConfirmIndex--;
-      }
-      datasetToConfirm = currentSet;
-      timeOfMinimum = currentTimeMillis;
-    }
+    if(BMP280_active == true)  TemperatureValue = bmp280.readTemperature();
 
-       if(BMP280_active == true)  TemperatureValue = bmp280.readTemperature();
-
-       delay(1);
+    delay(1);
   } // end measureInterval while
 
   // Write the minimum values of the while-loop to a set
