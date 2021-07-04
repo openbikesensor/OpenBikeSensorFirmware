@@ -502,7 +502,7 @@ void loop() {
 
     if(BMP280_active == true)  TemperatureValue = bmp280.readTemperature();
 
-    delay(1);
+    yield(); //
   } // end measureInterval while
 
   // Write the minimum values of the while-loop to a set

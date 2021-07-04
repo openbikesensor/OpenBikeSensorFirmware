@@ -223,8 +223,14 @@ bool CSVFileWriter::append(DataSet &set) {
   } else if (time.tm_sec == 5) {
     csv += "DEV: GPS alp bytes: ";
     csv += gps.getNumberOfAlpBytesSent();
-  } else if (time.tm_sec >= 6 && time.tm_sec < 26) {
-    String msg = gps.getMessage(time.tm_sec - 6);
+  } else if (time.tm_sec == 6) {
+    csv += "DEV: Left Sensor no : ";
+    csv += sensorManager->getNoSignalReadings(LEFT_SENSOR_ID);
+  } else if (time.tm_sec == 7) {
+    csv += "DEV: Right Sensor no : ";
+    csv += sensorManager->getNoSignalReadings(RIGHT_SENSOR_ID);
+  } else if (time.tm_sec >= 8 && time.tm_sec < 28) {
+    String msg = gps.getMessage(time.tm_sec - 8);
     if (!msg.isEmpty()) {
       csv += "DEV: GPS: ";
       csv += ObsUtils::encodeForCsvField(msg);
