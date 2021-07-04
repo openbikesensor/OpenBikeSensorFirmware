@@ -69,7 +69,7 @@ struct HCSR04SensorInfo {
   uint16_t distance = MAX_SENSOR_VALUE;
   char* sensorLocation;
   unsigned long lastMinUpdate=0;
-  // timestamp of the trigger signal in us. 0 == measurement was reported already.
+  // timestamp when the trigger signal was sent in us micros()
   uint32_t trigger = 0;
   volatile uint32_t start = 0;
   /* if end == 0 - a measurement is in progress */
@@ -85,6 +85,7 @@ struct HCSR04SensorInfo {
   // should only happen with defect or missing sensors
   uint32_t numberOfNoSignals = 0;
   uint16_t numberOfTriggers = 0;
+  bool measurementRead;
 };
 
 class HCSR04SensorManager {
@@ -121,7 +122,7 @@ class HCSR04SensorManager {
     void setSensorTriggersToLow();
     bool collectSensorResults();
     void attachSensorInterrupt(uint8_t idx);
-    uint32_t getFixedStart(size_t idx, const HCSR04SensorInfo *sensor);
+    uint32_t getFixedStart(size_t idx, const HCSR04SensorInfo * const sensor);
     boolean isReadyForStart(uint8_t sensorId);
     void registerReadings();
     static uint16_t medianMeasure(HCSR04SensorInfo* const sensor, uint16_t value);
@@ -130,7 +131,7 @@ class HCSR04SensorManager {
     static uint32_t microsBetween(uint32_t a, uint32_t b);
     static uint32_t microsSince(uint32_t a);
     static uint16_t millisSince(uint16_t milliseconds);
-    static void updateStatistics(HCSR04SensorInfo *sensor);
+    static void updateStatistics(HCSR04SensorInfo * const sensor);
     uint16_t startReadingMilliseconds = 0;
     uint8_t primarySensor = 1;
 };

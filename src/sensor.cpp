@@ -199,11 +199,11 @@ void HCSR04SensorManager::setPrimarySensor(uint8_t idx) {
 }
 
 /* Polls for new readings, if sensors are not ready, the
- * method simply exits and returns false. If readings are available,
- * data is read and updated. If the primary sensor is ready for
- * new measurement, a fresh measurement is triggered.
- * Method returns true if new data (no timeout measurement) was
- * generated.
+ * method returns false. If sensors are ready and readings
+ * are available, data is read and updated. If the primary
+ * sensor is ready for new measurement, a fresh measurement
+ * is triggered. Method returns true if new data (no timeout
+ * measurement) was collected.
  */
 bool HCSR04SensorManager::pollDistancesParallel() {
   bool newMeasurements = false;
@@ -224,20 +224,23 @@ uint16_t HCSR04SensorManager::getCurrentMeasureIndex() {
   return lastReadingCount - 1;
 }
 
-/* Start measurement with all sensors that are ready to measure, wait
- * if there is no ready sensor at all.
+/* Send echo trigger to the selected sensor and prepare measurement data
+ * structures.
  */
 void HCSR04SensorManager::sendTriggerToSensor(uint8_t sensorId) {
-  HCSR04SensorInfo* sensor = &(m_sensors[sensorId]);
+  HCSR04SensorInfo * const sensor = &(m_sensors[sensorId]);
   updateStatistics(sensor);
   sensor->trigger = sensor->start = micros(); // will be updated with HIGH signal
   sensor->end = MEASUREMENT_IN_PROGRESS; // will be updated with LOW signal
   sensor->numberOfTriggers++;
+  sensor->measurementRead = false;
   digitalWrite(sensor->triggerPin, HIGH);
 }
 
+/* Checks if the given sensor is ready for a new measurement cycle.
+ */
 boolean HCSR04SensorManager::isReadyForStart(uint8_t sensorId) {
-  HCSR04SensorInfo* sensor = &m_sensors[sensorId];
+  const HCSR04SensorInfo * const sensor = &m_sensors[sensorId];
   boolean ready = false;
   const uint32_t now = micros();
   const uint32_t start = sensor->start;
@@ -255,7 +258,6 @@ boolean HCSR04SensorManager::isReadyForStart(uint8_t sensorId) {
     ready = true;
     log_w("Timeout trigger for %s duration %u us - echo pin state: %d start: %u end: %u now: %u",
       sensor->sensorLocation, now - start, digitalRead(sensor->echoPin), start, end, now);
-    sensor->numberOfNoSignals++;
   }
   return ready;
 }
@@ -283,7 +285,7 @@ void HCSR04SensorManager::registerReadings() {
 /* Returns true if there was a no timeout reading. */
 bool HCSR04SensorManager::collectSensorResult(uint8_t sensorId) {
   HCSR04SensorInfo* const sensor = &m_sensors[sensorId];
-  if (sensor->trigger == 0) {
+  if (sensor->measurementRead) {
     return false; // already read
   }
   bool validReading = false;
@@ -313,17 +315,15 @@ bool HCSR04SensorManager::collectSensorResult(uint8_t sensorId) {
   sensorValues[sensorId] =
     sensor->distance = correctSensorOffset(medianMeasure(sensor, dist), sensor->offset);
 
-#ifdef DEVELOP
-  Serial.printf("Raw sensor[%d] distance read %03u / %03u (%03u, %03u, %03u) -> *%03ucm*, duration: %zu us - echo pin state: %d\n",
+  log_v("Raw sensor[%d] distance read %03u / %03u (%03u, %03u, %03u) -> *%03ucm*, duration: %zu us - echo pin state: %d",
     sensorId, sensor->rawDistance, dist, sensor->distances[0], sensor->distances[1],
     sensor->distances[2], sensorValues[sensorId], duration, digitalRead(sensor->echoPin));
-#endif
 
   if (sensor->distance > 0 && sensor->distance < sensor->minDistance) {
     sensor->minDistance = sensor->distance;
     sensor->lastMinUpdate = millis();
   }
-  sensor->trigger = 0;
+  sensor->measurementRead = true;
   return validReading;
 }
 
@@ -349,7 +349,7 @@ uint32_t HCSR04SensorManager::getLastDelayTillStartUs(uint8_t sensorId) {
  * After research, is a bug in the ESP!? See https://esp32.com/viewtopic.php?t=10124
  */
 uint32_t HCSR04SensorManager::getFixedStart(
-  size_t idx, const HCSR04SensorInfo *sensor) {
+  size_t idx, const HCSR04SensorInfo * const sensor) {
   uint32_t start = sensor->start;
   // the error appears if both sensors trigger the interrupt at the exact same
   // time, if this happens, trigger time == start time
@@ -380,12 +380,12 @@ uint16_t HCSR04SensorManager::correctSensorOffset(uint16_t dist, uint16_t offset
 }
 
 void HCSR04SensorManager::setSensorTriggersToLow() {
-  for (size_t idx = 0; idx < NUMBER_OF_TOF_SENSORS; ++idx) {
-    digitalWrite(m_sensors[idx].triggerPin, LOW);
+  for (auto & m_sensor : m_sensors) {
+    digitalWrite(m_sensor.triggerPin, LOW);
   }
 }
 
-void HCSR04SensorManager::updateStatistics(HCSR04SensorInfo *sensor) {
+void HCSR04SensorManager::updateStatistics(HCSR04SensorInfo * const sensor) {
   if (sensor->end != MEASUREMENT_IN_PROGRESS) {
     const uint32_t startDelay = sensor->start - sensor->trigger;
     if (startDelay != 0) {
@@ -398,6 +398,8 @@ void HCSR04SensorManager::updateStatistics(HCSR04SensorInfo *sensor) {
       }
       sensor->lastDelayTillStartUs = startDelay;
     }
+  } else {
+    sensor->numberOfNoSignals++;
   }
 }
 
