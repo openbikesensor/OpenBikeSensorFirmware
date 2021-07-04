@@ -91,7 +91,6 @@ class HCSR04SensorManager {
   public:
     HCSR04SensorManager() {}
     virtual ~HCSR04SensorManager() {}
-    void getDistances();
     void reset();
     void registerSensor(const HCSR04SensorInfo &, uint8_t idx);
     void setOffsets(std::vector<uint16_t>);
@@ -117,11 +116,8 @@ class HCSR04SensorManager {
   protected:
 
   private:
-    void waitTillSensorIsReady(uint8_t sensorId);
     void sendTriggerToSensor(uint8_t sensorId);
-    void waitForEchosOrTimeout(uint8_t sensorId);
     bool collectSensorResult(uint8_t sensorId);
-    void setNoMeasureDate(uint8_t sensorId);
     void setSensorTriggersToLow();
     bool collectSensorResults();
     void attachSensorInterrupt(uint8_t idx);
@@ -136,8 +132,6 @@ class HCSR04SensorManager {
     static uint16_t millisSince(uint16_t milliseconds);
     static void updateStatistics(HCSR04SensorInfo *sensor);
     uint16_t startReadingMilliseconds = 0;
-    /* The currently used sensor for alternating use. */
-    uint32_t activeSensor = 0;
     uint8_t primarySensor = 1;
 };
 

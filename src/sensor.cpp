@@ -178,7 +178,6 @@ void HCSR04SensorManager::reset() {
   }
   lastReadingCount = 0;
   memset(&(startOffsetMilliseconds), 0, sizeof(startOffsetMilliseconds));
-  activeSensor = primarySensor;
   startReadingMilliseconds = millis();
 }
 
@@ -197,33 +196,6 @@ void HCSR04SensorManager::setOffsets(std::vector<uint16_t> offsets) {
  */
 void HCSR04SensorManager::setPrimarySensor(uint8_t idx) {
   primarySensor = idx;
-}
-
-
-/* Reads left sensor alternating to the right sensor, while
- * one sensor is used the other one has time to settle down.
- */
-void HCSR04SensorManager::getDistances() {
-  setSensorTriggersToLow();
-  waitTillSensorIsReady(activeSensor);
-  sendTriggerToSensor(activeSensor);
-  startOffsetMilliseconds[lastReadingCount] = millisSince(startReadingMilliseconds);
-  // spec says 10, there are reports that the JSN-SR04T-2.0 behaves better if we wait 20 microseconds.
-  // I did not observe this but others might be affected so we spend this time ;)
-  // https://wolles-elektronikkiste.de/hc-sr04-und-jsn-sr04t-2-0-abstandssensoren
-  delayMicroseconds(20);
-  setSensorTriggersToLow();
-
-  waitForEchosOrTimeout(activeSensor);
-  collectSensorResult(activeSensor);
-  activeSensor++;
-  if (activeSensor >= NUMBER_OF_TOF_SENSORS) {
-    activeSensor = 0;
-  }
-  setNoMeasureDate(activeSensor);
-  if (lastReadingCount < MAX_NUMBER_MEASUREMENTS_PER_INTERVAL) {
-    lastReadingCount++;
-  }
 }
 
 /* Polls for new readings, if sensors are not ready, the
@@ -250,13 +222,6 @@ bool HCSR04SensorManager::pollDistancesParallel() {
 
 uint16_t HCSR04SensorManager::getCurrentMeasureIndex() {
   return lastReadingCount - 1;
-}
-
-/* Wait till the given sensor is ready.  */
-void HCSR04SensorManager::waitTillSensorIsReady(uint8_t sensorId) {
-  while (!isReadyForStart(sensorId)) {
-    yield();
-  }
 }
 
 /* Start measurement with all sensors that are ready to measure, wait
@@ -378,10 +343,6 @@ uint32_t HCSR04SensorManager::getLastDelayTillStartUs(uint8_t sensorId) {
   return m_sensors[sensorId].lastDelayTillStartUs;
 }
 
-void HCSR04SensorManager::setNoMeasureDate(uint8_t sensorId) {
-  m_sensors[sensorId].echoDurationMicroseconds[lastReadingCount] = -1;
-}
-
 /* During debugging I observed readings that did not get `start` updated
  * By the interrupt. Since we also set start when we send the pulse to the
  * sensor this adds 300 microseconds or 5 centimeters to the measured result.
@@ -421,14 +382,6 @@ uint16_t HCSR04SensorManager::correctSensorOffset(uint16_t dist, uint16_t offset
 void HCSR04SensorManager::setSensorTriggersToLow() {
   for (size_t idx = 0; idx < NUMBER_OF_TOF_SENSORS; ++idx) {
     digitalWrite(m_sensors[idx].triggerPin, LOW);
-  }
-}
-
-void HCSR04SensorManager::waitForEchosOrTimeout(uint8_t sensorId) {
-  HCSR04SensorInfo* const sensor = &m_sensors[sensorId];
-  while ((sensor->end == MEASUREMENT_IN_PROGRESS)
-    && (microsSince(sensor->start) < MAX_DURATION_MICRO_SEC)) { // max duration not expired
-    yield();
   }
 }
 
