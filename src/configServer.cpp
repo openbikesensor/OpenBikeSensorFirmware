@@ -903,10 +903,12 @@ static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
   page += keyValue("Left Sensor max duration", sensorManager->getMaxDurationUs(LEFT_SENSOR_ID), "&#xB5;s");
   page += keyValue("Left Sensor min duration", sensorManager->getMinDurationUs(LEFT_SENSOR_ID), "&#xB5;s");
   page += keyValue("Left Sensor last start delay", sensorManager->getLastDelayTillStartUs(LEFT_SENSOR_ID), "&#xB5;s");
+  page += keyValue("Left Sensor no signal errors", sensorManager->getNoSignalReadings(LEFT_SENSOR_ID));
   page += keyValue("Right Sensor raw", sensorManager->getRawMedianDistance(RIGHT_SENSOR_ID), "cm");
   page += keyValue("Right Sensor max duration", sensorManager->getMaxDurationUs(RIGHT_SENSOR_ID), "&#xB5;s");
   page += keyValue("Right Sensor min duration", sensorManager->getMinDurationUs(RIGHT_SENSOR_ID), "&#xB5;s");
   page += keyValue("Right Sensor last start delay", sensorManager->getLastDelayTillStartUs(RIGHT_SENSOR_ID), "&#xB5;s");
+  page += keyValue("Right Sensor no signal errors", sensorManager->getNoSignalReadings(RIGHT_SENSOR_ID));
 
   res->print(page);
   page.clear();

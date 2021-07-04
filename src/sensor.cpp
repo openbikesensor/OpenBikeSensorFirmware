@@ -343,6 +343,10 @@ uint32_t HCSR04SensorManager::getLastDelayTillStartUs(uint8_t sensorId) {
   return m_sensors[sensorId].lastDelayTillStartUs;
 }
 
+uint32_t HCSR04SensorManager::getNoSignalReadings(const uint8_t sensorId) {
+  return m_sensors[sensorId].numberOfNoSignals;
+}
+
 /* During debugging I observed readings that did not get `start` updated
  * By the interrupt. Since we also set start when we send the pulse to the
  * sensor this adds 300 microseconds or 5 centimeters to the measured result.

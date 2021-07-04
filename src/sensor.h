@@ -107,6 +107,7 @@ class HCSR04SensorManager {
     uint32_t getMaxDurationUs(uint8_t sensorId);
     uint32_t getMinDurationUs(uint8_t sensorId);
     uint32_t getLastDelayTillStartUs(uint8_t sensorId);
+    uint32_t getNoSignalReadings(const uint8_t sensorId);
 
     HCSR04SensorInfo m_sensors[NUMBER_OF_TOF_SENSORS];
     uint16_t sensorValues[NUMBER_OF_TOF_SENSORS];
