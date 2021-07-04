@@ -226,22 +226,6 @@ void HCSR04SensorManager::getDistances() {
   }
 }
 
-/* Triggers or collects sensor data if available.
- */
-void HCSR04SensorManager::getDistancesNoWait() {
-  // only start if both are ready:
-  for (size_t idx = 0; idx < NUMBER_OF_TOF_SENSORS; ++idx) {
-    if(!isReadyForStart(idx)) {
-      return;
-    }
-  }
-  setSensorTriggersToLow();
-  collectSensorResults();
-  sendTriggerToReadySensor();
-  delayMicroseconds(20);
-  setSensorTriggersToLow();
-}
-
 /* Polls for new readings, if sensors are not ready, the
  * method simply exits and returns false. If readings are available,
  * data is read and updated. If the primary sensor is ready for
@@ -264,51 +248,14 @@ bool HCSR04SensorManager::pollDistancesParallel() {
   return newMeasurements;
 }
 
-/* Method that reads the sensors in parallel. We observed false readings
- * that are likely caused by both sensors operated at the same time.
- * So once the alternating implementation is established this code must
- * be removed.
- */
-void HCSR04SensorManager::getDistancesParallel() {
-  setSensorTriggersToLow();
-  waitTillPrimarySensorIsReady();
-  sendTriggerToReadySensor();
-  // spec says 10, there are reports that the JSN-SR04T-2.0 behaves better if we wait 20 microseconds.
-  // I did not observe this but others might be affected so we spend this time ;)
-  // https://wolles-elektronikkiste.de/hc-sr04-und-jsn-sr04t-2-0-abstandssensoren
-  delayMicroseconds(20);
-  setSensorTriggersToLow();
-
-  waitForEchosOrTimeout();
-  collectSensorResults();
-}
-
 uint16_t HCSR04SensorManager::getCurrentMeasureIndex() {
   return lastReadingCount - 1;
-}
-
-/* Wait till the primary sensor is ready, this also defines the frequency of
- * measurements and ensures we do not over pace.
- */
-void HCSR04SensorManager::waitTillPrimarySensorIsReady() {
-  waitTillSensorIsReady(primarySensor);
 }
 
 /* Wait till the given sensor is ready.  */
 void HCSR04SensorManager::waitTillSensorIsReady(uint8_t sensorId) {
   while (!isReadyForStart(sensorId)) {
     yield();
-  }
-}
-
-/* Start measurement with all sensors that are ready to measure, wait
- * if there is no ready sensor at all.
- */
-void HCSR04SensorManager::sendTriggerToReadySensor() {
-  for (size_t idx = 0; idx < NUMBER_OF_TOF_SENSORS; ++idx) {
-    if (idx == primarySensor || isReadyForStart(idx)) {
-      sendTriggerToSensor(idx);
-    }
   }
 }
 
@@ -474,12 +421,6 @@ uint16_t HCSR04SensorManager::correctSensorOffset(uint16_t dist, uint16_t offset
 void HCSR04SensorManager::setSensorTriggersToLow() {
   for (size_t idx = 0; idx < NUMBER_OF_TOF_SENSORS; ++idx) {
     digitalWrite(m_sensors[idx].triggerPin, LOW);
-  }
-}
-
-void HCSR04SensorManager::waitForEchosOrTimeout() {
-  for (size_t idx = 0; idx < NUMBER_OF_TOF_SENSORS; ++idx) {
-    waitForEchosOrTimeout(idx);
   }
 }
 

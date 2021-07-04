@@ -356,7 +356,7 @@ void setup() {
 void serverLoop() {
   gps.handle();
   configServerHandle();
-  sensorManager->getDistancesNoWait();
+  sensorManager->pollDistancesParallel();
   handleButtonInServerMode();
 }
 

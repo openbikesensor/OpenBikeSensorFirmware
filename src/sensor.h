@@ -92,8 +92,6 @@ class HCSR04SensorManager {
     HCSR04SensorManager() {}
     virtual ~HCSR04SensorManager() {}
     void getDistances();
-    void getDistancesParallel();
-    void getDistancesNoWait();
     void reset();
     void registerSensor(const HCSR04SensorInfo &, uint8_t idx);
     void setOffsets(std::vector<uint16_t>);
@@ -124,11 +122,8 @@ class HCSR04SensorManager {
     void waitForEchosOrTimeout(uint8_t sensorId);
     bool collectSensorResult(uint8_t sensorId);
     void setNoMeasureDate(uint8_t sensorId);
-    void waitTillPrimarySensorIsReady();
-    void waitForEchosOrTimeout();
     void setSensorTriggersToLow();
     bool collectSensorResults();
-    void sendTriggerToReadySensor();
     void attachSensorInterrupt(uint8_t idx);
     uint32_t getFixedStart(size_t idx, const HCSR04SensorInfo *sensor);
     boolean isReadyForStart(uint8_t sensorId);
