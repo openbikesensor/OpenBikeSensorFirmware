@@ -230,8 +230,8 @@ uint16_t HCSR04SensorManager::getCurrentMeasureIndex() {
 void HCSR04SensorManager::sendTriggerToSensor(uint8_t sensorId) {
   HCSR04SensorInfo * const sensor = &(m_sensors[sensorId]);
   updateStatistics(sensor);
-  sensor->trigger = sensor->start = micros(); // will be updated with HIGH signal
   sensor->end = MEASUREMENT_IN_PROGRESS; // will be updated with LOW signal
+  sensor->trigger = sensor->start = micros(); // will be updated with HIGH signal
   sensor->numberOfTriggers++;
   sensor->measurementRead = false;
   digitalWrite(sensor->triggerPin, HIGH);
@@ -245,19 +245,27 @@ boolean HCSR04SensorManager::isReadyForStart(uint8_t sensorId) {
   const uint32_t now = micros();
   const uint32_t start = sensor->start;
   const uint32_t end = sensor->end;
-  if (digitalRead(sensor->echoPin) == LOW && end != MEASUREMENT_IN_PROGRESS) { // no measurement in flight or just finished
+  if (end != MEASUREMENT_IN_PROGRESS) { // no measurement in flight or just finished
     const uint32_t startOther = m_sensors[1 - sensorId].start;
     if (   (microsBetween(now, end) > SENSOR_QUIET_PERIOD_AFTER_END_MICRO_SEC)
         && (microsBetween(now, start) > SENSOR_QUIET_PERIOD_AFTER_START_MICRO_SEC)
         && (microsBetween(now, startOther) > SENSOR_QUIET_PERIOD_AFTER_OPPOSITE_START_MICRO_SEC)) {
       ready = true;
     }
+    if (digitalRead(sensor->echoPin) != LOW) {
+      log_e("Measurement done, but echo pin is high for %s sensor", sensor->sensorLocation);
+    }
+
+
   } else if (microsBetween(now, start) > 2 * MAX_TIMEOUT_MICRO_SEC) {
     // signal or interrupt was lost altogether this is an error,
     // should we raise it?? Now pretend the sensor is ready, hope it helps to give it a trigger.
     ready = true;
-    log_w("Timeout trigger for %s duration %u us - echo pin state: %d start: %u end: %u now: %u",
-      sensor->sensorLocation, now - start, digitalRead(sensor->echoPin), start, end, now);
+    // do not log to much there might be devices out there with one sensor only
+    log_d("Timeout trigger for %s duration %u us - echo pin state: %d trigger: %u "
+        "start: %u end: %u now: %u",
+      sensor->sensorLocation, now - start, digitalRead(sensor->echoPin), sensor->trigger,
+        start, end, now);
   }
   return ready;
 }
