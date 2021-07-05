@@ -61,8 +61,11 @@ static BluetoothManager* bluetoothManager;
 
 Gps gps;
 
-static const uint32_t BLUETOOTH_INTERVAL_MILLIS = 100;
-static uint32_t lastBluetoothInterval = 0;
+static const long BLUETOOTH_INTERVAL_MILLIS = 150;
+static long lastBluetoothInterval = 0;
+
+static const long DISPLAY_INTERVAL_MILLIS = 20;
+static long lastDisplayInterval = 0;
 
 float TemperatureValue = -1;
 
@@ -328,7 +331,7 @@ void setup() {
   while (!gps.hasFix(displayTest)) {
     currentTimeMillis = millis();
     gps.handle();
-    sensorManager->getDistances();
+    sensorManager->pollDistancesParallel();
     reportBluetooth();
     gps.showWaitStatus(displayTest);
     buttonState = digitalRead(PushButton_PIN);
@@ -353,7 +356,7 @@ void setup() {
 void serverLoop() {
   gps.handle();
   configServerHandle();
-  sensorManager->getDistancesNoWait();
+  sensorManager->pollDistancesParallel();
   handleButtonInServerMode();
 }
 
@@ -415,9 +418,8 @@ void loop() {
   currentSet->isInsidePrivacyArea = gps.isInsidePrivacyArea();
   currentSet->gpsRecord = gps.getCurrentGpsRecord();
 
+  lastMeasurements = sensorManager->m_sensors[confirmationSensorID].numberOfTriggers;
   sensorManager->reset();
-
-  int measurements = 0;
 
   // if the detected minimum was measured more than 5s ago, it is discarded and cannot be confirmed
   int timeDelta = (int) (currentTimeMillis - timeOfMinimum);
@@ -428,24 +430,44 @@ void loop() {
     datasetToConfirm = nullptr;
   }
 
+  int loops = 0;
   // do this for the time specified by measureInterval, e.g. 1s
   while ((currentTimeMillis - startTimeMillis) < measureInterval) {
+    loops++;
 
     currentTimeMillis = millis();
-    sensorManager->getDistances();
+    if (sensorManager->pollDistancesParallel()) {
+      // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
+      const uint16_t reading = sensorManager->sensorValues[confirmationSensorID];
+      if (reading > 0 && reading < minDistanceToConfirm) {
+        minDistanceToConfirm = reading;
+        minDistanceToConfirmIndex = sensorManager->getCurrentMeasureIndex();
+        // if there was no measurement of this sensor for this index, it is the
+        // one before. This happens with fast confirmations.
+        while (minDistanceToConfirmIndex > 0
+               && sensorManager->m_sensors[confirmationSensorID].echoDurationMicroseconds[minDistanceToConfirmIndex] <= 0) {
+            minDistanceToConfirmIndex--;
+        }
+        datasetToConfirm = currentSet;
+        timeOfMinimum = currentTimeMillis;
+      }
+    }
     gps.handle();
 
-    displayTest->showValues(
-      sensorManager->m_sensors[LEFT_SENSOR_ID],
-      sensorManager->m_sensors[RIGHT_SENSOR_ID],
-      minDistanceToConfirm,
-      voltageMeter->readPercentage(),
-      (int16_t) TemperatureValue,
-      lastMeasurements,
-      currentSet->isInsidePrivacyArea,
-      gps.getSpeed(),
-      gps.getValidSatellites()
-    );
+    if (lastDisplayInterval != (currentTimeMillis / DISPLAY_INTERVAL_MILLIS)) {
+      lastDisplayInterval = currentTimeMillis / DISPLAY_INTERVAL_MILLIS;
+      displayTest->showValues(
+        sensorManager->m_sensors[LEFT_SENSOR_ID],
+        sensorManager->m_sensors[RIGHT_SENSOR_ID],
+        minDistanceToConfirm,
+        voltageMeter->readPercentage(),
+        (int16_t) TemperatureValue,
+        lastMeasurements,
+        currentSet->isInsidePrivacyArea,
+        gps.getSpeed(),
+        gps.getValidSatellites()
+      );
+    }
 
     reportBluetooth();
     buttonState = digitalRead(PushButton_PIN);
@@ -478,23 +500,9 @@ void loop() {
       lastButtonState = buttonState;
     }
 
-    // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
-    const uint16_t reading = sensorManager->sensorValues[confirmationSensorID];
-    if (reading > 0 && reading < minDistanceToConfirm) {
-      minDistanceToConfirm = reading;
-      minDistanceToConfirmIndex = sensorManager->getCurrentMeasureIndex();
-      // if there was no measurement of this sensor for this index, it is the
-      // one before. This happens with fast confirmations.
-      while (minDistanceToConfirmIndex > 0
-         && sensorManager->m_sensors[confirmationSensorID].echoDurationMicroseconds[minDistanceToConfirmIndex] <= 0) {
-        minDistanceToConfirmIndex--;
-      }
-      datasetToConfirm = currentSet;
-      timeOfMinimum = currentTimeMillis;
-    }
-    measurements++;
+    if(BMP280_active == true)  TemperatureValue = bmp280.readTemperature();
 
-       if(BMP280_active == true)  TemperatureValue = bmp280.readTemperature();
+    yield(); //
   } // end measureInterval while
 
   // Write the minimum values of the while-loop to a set
@@ -510,15 +518,12 @@ void loop() {
     &(sensorManager->startOffsetMilliseconds), currentSet->measurements * sizeof(uint16_t));
 
 #ifdef DEVELOP
-  Serial.write("min. distance: ");
-  Serial.print(currentSet->sensorValues[confirmationSensorID]) ;
-  Serial.write(" cm,");
-  Serial.print(measurements);
-  Serial.write(" measurements  \n");
+  log_i("min. distance: %dcm, loops %d",
+        currentSet->sensorValues[confirmationSensorID],
+        loops);
 #endif
 
   dataBuffer.push(currentSet);
-  lastMeasurements = measurements;
   // convert all data that does not wait for confirmation.
   while ((!dataBuffer.isEmpty() && dataBuffer.first() != datasetToConfirm) || dataBuffer.isFull()) {
     DataSet* dataset = dataBuffer.shift();
@@ -552,8 +557,8 @@ void loop() {
       displayTest->normalDisplay();
     }
   }
-
-  log_i("Time elapsed in loop: %lu milliseconds", currentTimeMillis - startTimeMillis);
+  log_i("Time in loop: %lums %d inner loops, %d measures",
+        currentTimeMillis - startTimeMillis, loops, lastMeasurements);
   // synchronize to full measureIntervals
   startTimeMillis = (currentTimeMillis / measureInterval) * measureInterval;
 }
