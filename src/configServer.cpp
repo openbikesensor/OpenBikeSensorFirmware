@@ -205,7 +205,10 @@ static const char* const httpsRedirect =
   "and the up to 6 digit pin displayed "
   "on the OBS."
   "<input type=button onclick=\"window.location.href='https://{host}'\" class=btn value='Goto https'>"
-  "<input type=button onclick=\"window.location.href='/cert'\" class=btn value='Download Cert'>";
+  "<input type=button onclick=\"window.location.href='/cert'\" class=btn value='Download Cert'>"
+  "<hr/>If you are in a local network under your control with no risk of hostile external access, "
+  "you can enable unencrypted access."
+  "<input type='submit' name='http' id='http' class=btn value='Enable unencrypted access' />";
 
 // #########################################
 // Development
@@ -472,6 +475,7 @@ static void handleSettingSecurity(HTTPRequest *, HTTPResponse * res);
 static void handleSettingSecurityAction(HTTPRequest * req, HTTPResponse * res);
 
 static void handleHttpsRedirect(HTTPRequest *req, HTTPResponse *res);
+static void handleHttpAction(HTTPRequest *req, HTTPResponse *res);
 
 static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<void()> next);
 
@@ -482,45 +486,50 @@ static uint16_t countFilesInRoot();
 static String ensureSdIsAvailable();
 static void moveToUploaded(const String &fileName);
 
-void beginPages() {
-  server->setDefaultNode(new ResourceNode("", HTTP_GET,  handleNotFound));
-  server->registerNode(new ResourceNode("/", HTTP_GET,  handleIndex));
-  server->registerNode(new ResourceNode("/about", HTTP_GET,  handleAbout));
-  server->registerNode(new ResourceNode("/reboot", HTTP_GET,  handleReboot));
-  server->registerNode(new ResourceNode("/settings/backup", HTTP_GET,  handleBackup));
-  server->registerNode(new ResourceNode("/settings/backup.json", HTTP_GET,  handleBackupDownload));
-  server->registerNode(new ResourceNode("/settings/restore", HTTP_POST,  handleBackupRestore));
-  server->registerNode(new ResourceNode("/settings/wifi", HTTP_GET,  handleWifi));
-  server->registerNode(new ResourceNode("/settings/wifi/action", HTTP_POST, handleWifiSave));
-  server->registerNode(new ResourceNode("/settings/general", HTTP_GET,  handleConfig));
-  server->registerNode(new ResourceNode("/settings/general/action", HTTP_POST, handleConfigSave));
-  server->registerNode(new ResourceNode("/updateFlash", HTTP_GET, handleFlashUpdate));
-  server->registerNode(new ResourceNode("/updateFlash", HTTP_POST, handleFlashFileUpdateAction));
-  server->registerNode(new ResourceNode("/updateFlashUrl", HTTP_POST, handleFlashUpdateUrlAction));
-  server->registerNode(new ResourceNode("/updatesd", HTTP_GET, handleFirmwareUpdateSd));
-  server->registerNode(new ResourceNode("/updatesd", HTTP_POST, handleFirmwareUpdateSdAction));
-  server->registerNode(new ResourceNode("/updateSdUrl", HTTP_POST, handleFirmwareUpdateSdUrlAction));
-  server->registerNode(new ResourceNode("/delete", HTTP_GET, handleDelete));
-  server->registerNode(new ResourceNode("/delete", HTTP_POST, handleDeleteAction));
+void registerPages(HTTPServer * httpServer) {
+  httpServer->setDefaultNode(new ResourceNode("", HTTP_GET, handleNotFound));
+  httpServer->registerNode(new ResourceNode("/", HTTP_GET, handleIndex));
+  httpServer->registerNode(new ResourceNode("/about", HTTP_GET, handleAbout));
+  httpServer->registerNode(new ResourceNode("/reboot", HTTP_GET, handleReboot));
+  httpServer->registerNode(new ResourceNode("/settings/backup", HTTP_GET, handleBackup));
+  httpServer->registerNode(new ResourceNode("/settings/backup.json", HTTP_GET, handleBackupDownload));
+  httpServer->registerNode(new ResourceNode("/settings/restore", HTTP_POST, handleBackupRestore));
+  httpServer->registerNode(new ResourceNode("/settings/wifi", HTTP_GET, handleWifi));
+  httpServer->registerNode(new ResourceNode("/settings/wifi/action", HTTP_POST, handleWifiSave));
+  httpServer->registerNode(new ResourceNode("/settings/general", HTTP_GET, handleConfig));
+  httpServer->registerNode(new ResourceNode("/settings/general/action", HTTP_POST, handleConfigSave));
+  httpServer->registerNode(new ResourceNode("/updateFlash", HTTP_GET, handleFlashUpdate));
+  httpServer->registerNode(new ResourceNode("/updateFlash", HTTP_POST, handleFlashFileUpdateAction));
+  httpServer->registerNode(new ResourceNode("/updateFlashUrl", HTTP_POST, handleFlashUpdateUrlAction));
+  httpServer->registerNode(new ResourceNode("/updatesd", HTTP_GET, handleFirmwareUpdateSd));
+  httpServer->registerNode(new ResourceNode("/updatesd", HTTP_POST, handleFirmwareUpdateSdAction));
+  httpServer->registerNode(new ResourceNode("/updateSdUrl", HTTP_POST, handleFirmwareUpdateSdUrlAction));
+  httpServer->registerNode(new ResourceNode("/delete", HTTP_GET, handleDelete));
+  httpServer->registerNode(new ResourceNode("/delete", HTTP_POST, handleDeleteAction));
 #ifdef DEVELOP
-  server->registerNode(new ResourceNode("/settings/development/action", HTTP_GET, handleDevAction));
-  server->registerNode(new ResourceNode("/settings/development", HTTP_GET, handleDev));
+  httpServer->registerNode(new ResourceNode("/settings/development/action", HTTP_GET, handleDevAction));
+    httpServer->registerNode(new ResourceNode("/settings/development", HTTP_GET, handleDev));
 #endif
-  server->registerNode(new ResourceNode("/privacy_action", HTTP_POST, handlePrivacyAction));
-  server->registerNode(new ResourceNode("/upload", HTTP_GET, handleUpload));
-  server->registerNode(new ResourceNode("/settings/privacy/makeCurrentLocationPrivate", HTTP_GET, handleMakeCurrentLocationPrivate));
-  server->registerNode(new ResourceNode("/settings/privacy", HTTP_GET, handlePrivacy));
-  server->registerNode(new ResourceNode("/privacy_delete", HTTP_GET, handlePrivacyDeleteAction));
-  server->registerNode(new ResourceNode("/sd", HTTP_GET, handleSd));
-  server->registerNode(new ResourceNode("/deleteFiles", HTTP_POST, handleDeleteFiles));
-  server->registerNode(new ResourceNode("/cert", HTTP_GET, handleDownloadCert));
-  server->registerNode(new ResourceNode("/settings/security", HTTP_GET, handleSettingSecurity));
-  server->registerNode(new ResourceNode("/settings/security", HTTP_POST, handleSettingSecurityAction));
+  httpServer->registerNode(new ResourceNode("/privacy_action", HTTP_POST, handlePrivacyAction));
+  httpServer->registerNode(new ResourceNode("/upload", HTTP_GET, handleUpload));
+  httpServer->registerNode(new ResourceNode("/settings/privacy/makeCurrentLocationPrivate", HTTP_GET, handleMakeCurrentLocationPrivate));
+  httpServer->registerNode(new ResourceNode("/settings/privacy", HTTP_GET, handlePrivacy));
+  httpServer->registerNode(new ResourceNode("/privacy_delete", HTTP_GET, handlePrivacyDeleteAction));
+  httpServer->registerNode(new ResourceNode("/sd", HTTP_GET, handleSd));
+  httpServer->registerNode(new ResourceNode("/deleteFiles", HTTP_POST, handleDeleteFiles));
+  httpServer->registerNode(new ResourceNode("/cert", HTTP_GET, handleDownloadCert));
+  httpServer->registerNode(new ResourceNode("/settings/security", HTTP_GET, handleSettingSecurity));
+  httpServer->registerNode(new ResourceNode("/settings/security", HTTP_POST, handleSettingSecurityAction));
 
-  server->addMiddleware(&accessFilter);
-  server->setDefaultHeader("Server", std::string("OBS/") + OBSVersion);
+  httpServer->addMiddleware(&accessFilter);
+  httpServer->setDefaultHeader("Server", std::string("OBS/") + OBSVersion);
+}
+
+void beginPages() {
+  registerPages(server);
 
   insecureServer->registerNode(new ResourceNode("/cert", HTTP_GET, handleDownloadCert));
+  insecureServer->registerNode(new ResourceNode("/http", HTTP_POST, handleHttpAction));
   insecureServer->setDefaultNode(new ResourceNode("", HTTP_GET,  handleHttpsRedirect));
   insecureServer->setDefaultHeader("Server", std::string("OBS/") + OBSVersion);
 }
@@ -1759,13 +1768,24 @@ static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<vo
 
 static void handleHttpsRedirect(HTTPRequest *req, HTTPResponse *res) {
   String html = createPage(httpsRedirect);
-  html = replaceDefault(html, "Https Redirect");
+  html = replaceDefault(html, "Https Redirect", "/http");
   String host(req->getHeader("host").c_str());
   if (!host || host == "") {
     host = getIp();
   }
   html = replaceHtml(html, "{host}", host);
   sendHtml(res, html);
+}
+
+static void handleHttpAction(HTTPRequest *req, HTTPResponse *res) {
+  const String referer = req->getHTTPHeaders()->getValue("referer").c_str();
+  req->discardRequestBody();
+  if (referer.endsWith("/") && referer.startsWith("http://")) {
+    registerPages(insecureServer);
+  } else {
+    log_w("Refused to enable http access, referer: '%s' suspect. ", referer.c_str());
+  }
+  sendRedirect(res, "/");
 }
 
 void configServerHandle() {
