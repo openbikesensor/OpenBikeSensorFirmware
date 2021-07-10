@@ -1497,6 +1497,7 @@ static void handleDeleteFiles(HTTPRequest *req, HTTPResponse * res) {
   if (path != "trash") {
     SD.mkdir("/trash");
   }
+  bool moveToRoot = !getParameter(params, "move").isEmpty();
 
   String html = replaceDefault(header, "Delete Files");
   html += "<h3>Deleting files</h3>";
@@ -1512,7 +1513,15 @@ static void handleDeleteFiles(HTTPRequest *req, HTTPResponse * res) {
       String fullName = path + (path.length() > 1 ? "/" : "") + file;
 
       html += ObsUtils::encodeForXmlText(file) + " &#10140; ";
-      if (path != "trash") {
+      if (moveToRoot) {
+        if (SD.rename(fullName, "/" + file)) {
+          log_i("Moved '%s' to /", fullName.c_str());
+          html += HTML_ENTITY_OK_MARK;
+        } else {
+          log_w("Failed to moved '%s' to /", fullName.c_str());
+          html += HTML_ENTITY_FAILED_CROSS;
+        }
+      } else if (path != "trash") {
         if (SD.rename(fullName, "/trash/" + file)) {
           log_i("Moved '%s'.", fullName.c_str());
           html += HTML_ENTITY_WASTEBASKET;
@@ -1615,6 +1624,11 @@ static void handleSd(HTTPRequest *req, HTTPResponse *res) {
     }
 
     if (counter > 0) {
+      if (path == "/uploaded") {
+        html += "<hr /><p>Move for new upload will move selected files to the root directory, where "
+                "they will be considered as new tracks and uploaded to the portal with the next "
+                "Track upload.</p><input type='submit' class='btn' name='move' value='Move for new upload' />";
+      }
       if (path == "/trash") {
         html += "<hr /><input type='submit' class='btn' value='Delete Selected' />";
       } else {
