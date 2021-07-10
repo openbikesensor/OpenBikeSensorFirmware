@@ -29,6 +29,7 @@ void BluetoothManager::init(
   std::function<uint8_t()> batteryPercentage,
   const String &trackId) {
 
+  deviceConnected = false;
   ESP_ERROR_CHECK_WITHOUT_ABORT(
     esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
   BLEDevice::init(obsName.c_str());
