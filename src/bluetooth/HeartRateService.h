@@ -37,6 +37,7 @@ class HeartRateService : public IBluetoothService {
     BLEService *mService = nullptr;
     BLECharacteristic mHeartRateMeasurementCharacteristics
       = BLECharacteristic(BLEUUID((uint16_t)ESP_GATT_HEART_RATE_MEAS), BLECharacteristic::PROPERTY_NOTIFY);
+    BLE2902 mHeartRateMeasurementConfiguration;
     unsigned long mCollectionStartTime = 0;
     uint16_t mMinimumDistance = MAX_SENSOR_VALUE;
     uint8_t mValue[4];
