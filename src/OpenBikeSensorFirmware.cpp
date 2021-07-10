@@ -22,6 +22,7 @@
  */
 
 #include <utils/obsutils.h>
+#include <utils/timeutils.h>
 #include "OpenBikeSensorFirmware.h"
 
 #include "SPIFFS.h"
@@ -152,13 +153,13 @@ static void setupBluetooth(const ObsConfig &cfg, const String &trackUniqueIdenti
 }
 
 static void reportBluetooth() {
-  if (bluetoothManager
-      && lastBluetoothInterval != (currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS)) {
-    log_d("Reporting BT: %d/%d Button: %d\n",
+  const uint32_t currentInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
+  if (bluetoothManager && lastBluetoothInterval != currentInterval) {
+    log_d("Reporting BT: %d/%d cm Button: %d",
           sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
           sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median(),
           buttonState);
-    lastBluetoothInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
+    lastBluetoothInterval = currentInterval;
     bluetoothManager->newSensorValues(
       currentTimeMillis,
       sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
@@ -557,8 +558,9 @@ void loop() {
       displayTest->normalDisplay();
     }
   }
-  log_i("Time in loop: %lums %d inner loops, %d measures",
-        currentTimeMillis - startTimeMillis, loops, lastMeasurements);
+  log_d("Time in loop: %lums %d inner loops, %d measures, %s , %d",
+        currentTimeMillis - startTimeMillis, loops, lastMeasurements,
+        TimeUtils::timeToString().c_str(), millis());
   // synchronize to full measureIntervals
   startTimeMillis = (currentTimeMillis / measureInterval) * measureInterval;
 }
