@@ -24,11 +24,11 @@
 #ifndef OPENBIKESENSORFIRMWARE_FONTS_H
 #define OPENBIKESENSORFIRMWARE_FONTS_H
 
-#include "ubuntu8.h"
-#include "ubuntu10.h"
-#include "ubuntu22.h"
-#include "ubuntu34.h"
-#include "ubuntu54.h"
+#include "opensans8.h"
+#include "opensans10.h"
+#include "opensans20.h"
+#include "opensans34.h"
+#include "opensans50.h"
 
 #include "logos.h"
 

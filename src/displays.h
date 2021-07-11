@@ -34,22 +34,21 @@
 #include "sensor.h"
 
 
-extern const uint8_t Ubuntu_Regular_Plain_8[];
-extern const uint8_t ArialMT_Plain_10[]; // :(
-extern const uint8_t Ubuntu_Regular_Plain_10[];
-extern const uint8_t Ubuntu_Regular_Plain_22[];
-extern const uint8_t Ubuntu_Regular_Plain_34[];
-extern const uint8_t Ubuntu_Regular_Plain_54[];
+extern const uint8_t Open_Sans_Regular_Plain_8[];
+//// this font is part of OLEDDisplay::OLEDDisplay :/
+//extern const uint8_t ArialMT_Plain_10[]; // :(
+extern const uint8_t Open_Sans_Regular_Plain_10[];
+extern const uint8_t Open_Sans_Regular_Plain_20[];
+extern const uint8_t Open_Sans_Regular_Plain_34[];
+extern const uint8_t Open_Sans_Regular_Plain_50[];
 extern const uint8_t BatterieLogo1[];
 extern const uint8_t TempLogo[];
 
-#define TINY_FONT Ubuntu_Regular_Plain_8
-// this font is part of OLEDDisplay::OLEDDisplay :/
-// #define SMALL_FONT ArialMT_Plain_10
-#define SMALL_FONT Ubuntu_Regular_Plain_10
-#define MEDIUM_FONT Ubuntu_Regular_Plain_22
-#define LARGE_FONT Ubuntu_Regular_Plain_34
-#define HUGE_FONT Ubuntu_Regular_Plain_54
+#define TINY_FONT Open_Sans_Regular_Plain_8
+#define SMALL_FONT Open_Sans_Regular_Plain_10
+#define MEDIUM_FONT Open_Sans_Regular_Plain_20
+#define LARGE_FONT Open_Sans_Regular_Plain_34
+#define HUGE_FONT Open_Sans_Regular_Plain_50
 
 // Forward declare classes to build (because there is a cyclic dependency between sensor.h and displays.h)
 class HCSR04SensorInfo;
