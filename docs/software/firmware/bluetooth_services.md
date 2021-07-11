@@ -97,10 +97,7 @@ Might get removed soon, prefer the "OBS Service".
 | ------------------- | -------------------------------------- | --------------- | ----------------------------------------------------------------------------------- |
 | Close Pass Events   | `1FE7FAF9-CE63-4236-0003-000000000002` | `READ`,`NOTIFY` | Notifies of new close pass events                                                   |
 
-The format of the transmitted string for the *distance characteristic* is `"timestamp;[leftSensor1, leftSensor2, ...];[rightSensor1, rightSensor2, ...]"`, e.g. `"43567893;100,30;400"` or `"43567893;100;"`.
-The list of sensor values for one side might be empty, but the entire transmitted string can be safely split on `";"` and each sensor value list safely on `","`.
-
-The format of the transmitted string for the *event characteristic* is `"timestamp;eventName;[payload1, payload2, ...]"`, e.g. `"43567893;button;"` or `"43567893;avg2s;142,83"`.
+The format of the transmitted string for the *Close Pass Events* is `"timestamp;eventName;[payload1, payload2, ...]"`, e.g. `"43567893;button;123"`.
 The following events are defined:
 * `button`: Triggered using a physical button
   * Payload: last distance value
