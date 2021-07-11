@@ -62,7 +62,7 @@ static BluetoothManager* bluetoothManager;
 
 Gps gps;
 
-static const long BLUETOOTH_INTERVAL_MILLIS = 150;
+static const long BLUETOOTH_INTERVAL_MILLIS = 50;
 static long lastBluetoothInterval = 0;
 
 static const long DISPLAY_INTERVAL_MILLIS = 20;

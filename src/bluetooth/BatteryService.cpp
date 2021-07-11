@@ -35,7 +35,7 @@ void BatteryService::setup(BLEServer *pServer) {
 }
 
 bool BatteryService::shouldAdvertise() {
-  return true;
+  return false;
 }
 
 BLEService* BatteryService::getService() {
