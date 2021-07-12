@@ -229,8 +229,26 @@ bool CSVFileWriter::append(DataSet &set) {
   } else if (time.tm_sec == 7) {
     csv += "DEV: Right Sensor no : ";
     csv += sensorManager->getNoSignalReadings(RIGHT_SENSOR_ID);
-  } else if (time.tm_sec >= 8 && time.tm_sec < 28) {
-    String msg = gps.getMessage(time.tm_sec - 8);
+  } else if (time.tm_sec == 8) {
+    csv += "DEV: Left last delay till start : ";
+    csv += sensorManager->getLastDelayTillStartUs(LEFT_SENSOR_ID);
+  } else if (time.tm_sec == 9) {
+    csv += "DEV: Right last delay till start : ";
+    csv += sensorManager->getLastDelayTillStartUs(RIGHT_SENSOR_ID);
+  } else if (time.tm_sec == 10) {
+    csv += "DEV: Left min echo : ";
+    csv += sensorManager->getMinDurationUs(LEFT_SENSOR_ID);
+  } else if (time.tm_sec == 11) {
+    csv += "DEV: Right min echo : ";
+    csv += sensorManager->getMinDurationUs(RIGHT_SENSOR_ID);
+  } else if (time.tm_sec == 12) {
+    csv += "DEV: Left max echo : ";
+    csv += sensorManager->getMaxDurationUs(LEFT_SENSOR_ID);
+  } else if (time.tm_sec == 13) {
+    csv += "DEV: Right max echo : ";
+    csv += sensorManager->getMaxDurationUs(RIGHT_SENSOR_ID);
+  } else if (time.tm_sec >= 14 && time.tm_sec < 34) {
+    String msg = gps.getMessage(time.tm_sec - 14);
     if (!msg.isEmpty()) {
       csv += "DEV: GPS: ";
       csv += ObsUtils::encodeForCsvField(msg);

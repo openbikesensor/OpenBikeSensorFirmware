@@ -123,7 +123,7 @@ class HCSR04SensorManager {
     void setSensorTriggersToLow();
     bool collectSensorResults();
     void attachSensorInterrupt(uint8_t idx);
-    uint32_t getFixedStart(size_t idx, const HCSR04SensorInfo * const sensor);
+    uint32_t getFixedStart(size_t idx, HCSR04SensorInfo * const sensor);
     boolean isReadyForStart(uint8_t sensorId);
     void registerReadings();
     static uint16_t medianMeasure(HCSR04SensorInfo* const sensor, uint16_t value);
