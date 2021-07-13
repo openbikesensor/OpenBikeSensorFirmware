@@ -56,6 +56,7 @@ static const uint32_t MAX_TIMEOUT_MICRO_SEC = 75000;
 /* To avoid that we receive a echo from a former measurement, we do not
  * start a new measurement within the given time from the start of the
  * former measurement of the opposite sensor.
+ * TODO: This can lead to the situation that we only poll the primary sensor for a while!
  */
 static const uint32_t SENSOR_QUIET_PERIOD_AFTER_OPPOSITE_START_MICRO_SEC = 50 * 1000;
 
@@ -288,6 +289,14 @@ bool HCSR04SensorManager::collectSensorResults() {
 
 void HCSR04SensorManager::registerReadings() {
   startOffsetMilliseconds[lastReadingCount] = millisSince(startReadingMilliseconds);
+  // secondary sensor was not captured
+  if (m_sensors[1 - primarySensor].echoDurationMicroseconds[lastReadingCount] == 0) {
+    m_sensors[1 - primarySensor].echoDurationMicroseconds[lastReadingCount] = -1;
+    sensorValues[1 - primarySensor] = MAX_SENSOR_VALUE;
+    m_sensors[1 - primarySensor].rawDistance = MAX_SENSOR_VALUE;
+    m_sensors[1 - primarySensor].distance = MAX_SENSOR_VALUE;
+    m_sensors[1 - primarySensor].median->addValue(MAX_SENSOR_VALUE);
+  }
   if (lastReadingCount < MAX_NUMBER_MEASUREMENTS_PER_INTERVAL - 1) {
     lastReadingCount++;
   }
