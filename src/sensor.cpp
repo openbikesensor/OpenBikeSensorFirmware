@@ -210,8 +210,9 @@ bool HCSR04SensorManager::pollDistancesParallel() {
   if (isReadyForStart(primarySensor)) {
     setSensorTriggersToLow();
     newMeasurements = collectSensorResults();
+    const bool secondSensorIsReady = isReadyForStart(1 - primarySensor);
     sendTriggerToSensor(primarySensor);
-    if (isReadyForStart(1 - primarySensor)) {
+    if (secondSensorIsReady) {
       sendTriggerToSensor(1 - primarySensor);
     }
   }
