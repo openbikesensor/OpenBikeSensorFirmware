@@ -258,10 +258,10 @@ boolean HCSR04SensorManager::isReadyForStart(uint8_t sensorId) {
     }
     if (digitalRead(sensor->echoPin) != LOW) {
       log_e("Measurement done, but echo pin is high for %s sensor", sensor->sensorLocation);
-      sensor->numberOfNoSignals++;
+      sensor->numberOfLowAfterMeasurement++;
     }
   } else if (microsBetween(now, start) > 2 * MAX_TIMEOUT_MICRO_SEC) {
-    sensor->numberOfNoSignals++;
+    sensor->numberOfToLongMeasurement++;
     // signal or interrupt was lost altogether this is an error,
     // should we raise it?? Now pretend the sensor is ready, hope it helps to give it a trigger.
     ready = true;
@@ -367,6 +367,18 @@ uint32_t HCSR04SensorManager::getNoSignalReadings(const uint8_t sensorId) {
   return m_sensors[sensorId].numberOfNoSignals;
 }
 
+uint32_t HCSR04SensorManager::getNumberOfLowAfterMeasurement(const uint8_t sensorId) {
+  return m_sensors[sensorId].numberOfLowAfterMeasurement;
+}
+
+uint32_t HCSR04SensorManager::getNumberOfToLongMeasurement(const uint8_t sensorId) {
+  return m_sensors[sensorId].numberOfToLongMeasurement;
+}
+
+uint32_t HCSR04SensorManager::getNumberOfInterruptAdjustments(const uint8_t sensorId) {
+  return m_sensors[sensorId].numberOfInterruptAdjustments;
+}
+
 /* During debugging I observed readings that did not get `start` updated
  * By the interrupt. Since we also set start when we send the pulse to the
  * sensor this adds 300 microseconds or 5 centimeters to the measured result.
@@ -382,7 +394,7 @@ uint32_t HCSR04SensorManager::getFixedStart(
     const uint32_t alternativeStart = m_sensors[1 - idx].start;
     if (microsBetween(alternativeStart, start) < 500) { // typically 290-310 microseconds {
       start = alternativeStart;
-      sensor->numberOfNoSignals++;
+      sensor->numberOfInterruptAdjustments++;
     }
   }
   return start;

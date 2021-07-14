@@ -247,8 +247,26 @@ bool CSVFileWriter::append(DataSet &set) {
   } else if (time.tm_sec == 13) {
     csv += "DEV: Right max echo : ";
     csv += sensorManager->getMaxDurationUs(RIGHT_SENSOR_ID);
-  } else if (time.tm_sec >= 14 && time.tm_sec < 34) {
-    String msg = gps.getMessage(time.tm_sec - 14);
+  } else if (time.tm_sec == 14) {
+    csv += "DEV: Left low after measure: ";
+    csv += sensorManager->getNumberOfLowAfterMeasurement(LEFT_SENSOR_ID);
+  } else if (time.tm_sec == 15) {
+    csv += "DEV: Right low after measure : ";
+    csv += sensorManager->getNumberOfLowAfterMeasurement(RIGHT_SENSOR_ID);
+  } else if (time.tm_sec == 16) {
+    csv += "DEV: Left long after measurement : ";
+    csv += sensorManager->getNumberOfToLongMeasurement(LEFT_SENSOR_ID);
+  } else if (time.tm_sec == 17) {
+    csv += "DEV: Right long after measurement : ";
+    csv += sensorManager->getNumberOfToLongMeasurement(RIGHT_SENSOR_ID);
+  } else if (time.tm_sec == 18) {
+    csv += "DEV: Left interrupt adjusted : ";
+    csv += sensorManager->getNumberOfInterruptAdjustments(LEFT_SENSOR_ID);
+  } else if (time.tm_sec == 19) {
+    csv += "DEV: Right interrupt adjusted : ";
+    csv += sensorManager->getNumberOfInterruptAdjustments(RIGHT_SENSOR_ID);
+  } else if (time.tm_sec >= 20 && time.tm_sec < 40) {
+    String msg = gps.getMessage(time.tm_sec - 20);
     if (!msg.isEmpty()) {
       csv += "DEV: GPS: ";
       csv += ObsUtils::encodeForCsvField(msg);

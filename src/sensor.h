@@ -84,6 +84,9 @@ struct HCSR04SensorInfo {
   // counts how often no echo and also no timeout signal was received
   // should only happen with defect or missing sensors
   uint32_t numberOfNoSignals = 0;
+  uint32_t numberOfLowAfterMeasurement = 0;
+  uint32_t numberOfToLongMeasurement = 0;
+  uint32_t numberOfInterruptAdjustments = 0;
   uint16_t numberOfTriggers = 0;
   bool measurementRead;
 };
@@ -108,6 +111,9 @@ class HCSR04SensorManager {
     uint32_t getMinDurationUs(uint8_t sensorId);
     uint32_t getLastDelayTillStartUs(uint8_t sensorId);
     uint32_t getNoSignalReadings(const uint8_t sensorId);
+    uint32_t getNumberOfLowAfterMeasurement(const uint8_t sensorId);
+    uint32_t getNumberOfToLongMeasurement(const uint8_t sensorId);
+    uint32_t getNumberOfInterruptAdjustments(const uint8_t sensorId);
 
     HCSR04SensorInfo m_sensors[NUMBER_OF_TOF_SENSORS];
     uint16_t sensorValues[NUMBER_OF_TOF_SENSORS];
