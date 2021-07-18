@@ -472,6 +472,14 @@ uint16_t HCSR04SensorManager::millisSince(uint16_t milliseconds) {
 uint16_t HCSR04SensorManager::medianMeasure(HCSR04SensorInfo *const sensor, uint16_t value) {
   sensor->distances[sensor->nextMedianDistance] = value;
   sensor->nextMedianDistance++;
+
+  // if we got "fantom" measures, they are <= the current measures, so remove
+  // all values <= the current measure from the median data
+  for (unsigned short & distance : sensor->distances) {
+    if (distance < value) {
+      distance = value;
+    }
+  }
   if (sensor->nextMedianDistance >= MEDIAN_DISTANCE_MEASURES) {
     sensor->nextMedianDistance = 0;
   }
