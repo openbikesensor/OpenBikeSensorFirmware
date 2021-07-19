@@ -59,7 +59,7 @@ static const uint32_t MAX_TIMEOUT_MICRO_SEC = 75000;
  * High values can lead to the situation that we only poll the
  * primary sensor for a while!?
  */
-static const uint32_t SENSOR_QUIET_PERIOD_AFTER_OPPOSITE_START_MICRO_SEC = 35 * 1000;
+static const uint32_t SENSOR_QUIET_PERIOD_AFTER_OPPOSITE_START_MICRO_SEC = 30 * 1000;
 
 /* The last end (echo goes to low) of a measurement must be this far
  * away before a new measurement is started.
@@ -179,6 +179,7 @@ void HCSR04SensorManager::reset() {
     sensor.numberOfTriggers = 0;
   }
   lastReadingCount = 0;
+  lastSensor = 1 - primarySensor;
   memset(&(startOffsetMilliseconds), 0, sizeof(startOffsetMilliseconds));
   startReadingMilliseconds = millis();
 }
@@ -206,7 +207,7 @@ void HCSR04SensorManager::setPrimarySensor(uint8_t idx) {
 bool HCSR04SensorManager::pollDistancesAlternating() {
   bool newMeasurements = false;
   newMeasurements = collectSensorResults(); // TODO: Collect here or after left sensor?
-  if (lastReadingCount > 0 && lastSensor == primarySensor && isReadyForStart(1 - primarySensor)) {
+  if (lastSensor == primarySensor && isReadyForStart(1 - primarySensor)) {
     setSensorTriggersToLow();
     lastSensor = 1 - primarySensor;
     sendTriggerToSensor(1 - primarySensor);
