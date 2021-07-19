@@ -81,7 +81,7 @@ jobs:
         mkdir -p sonarqube
         cd sonarqube
         wget --no-verbose https://sonarcloud.io/static/cpp/build-wrapper-linux-x86.zip
-        unzip -qq build-wrapper-linux-x86.zip
+        unzip -vf build-wrapper-linux-x86.zip
         rm build-wrapper-linux-x86.zip
         wget --no-verbose https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${{ env.SONAR_SCANNER_VERSION }}-linux.zip
         unzip -qq sonar-scanner-cli-${{ env.SONAR_SCANNER_VERSION }}-linux.zip
