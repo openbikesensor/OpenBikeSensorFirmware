@@ -254,10 +254,10 @@ bool CSVFileWriter::append(DataSet &set) {
     csv += "DEV: Right low after measure : ";
     csv += sensorManager->getNumberOfLowAfterMeasurement(RIGHT_SENSOR_ID);
   } else if (time.tm_sec == 16) {
-    csv += "DEV: Left long after measurement : ";
+    csv += "DEV: Left long measurement : ";
     csv += sensorManager->getNumberOfToLongMeasurement(LEFT_SENSOR_ID);
   } else if (time.tm_sec == 17) {
-    csv += "DEV: Right long after measurement : ";
+    csv += "DEV: Right long measurement : ";
     csv += sensorManager->getNumberOfToLongMeasurement(RIGHT_SENSOR_ID);
   } else if (time.tm_sec == 18) {
     csv += "DEV: Left interrupt adjusted : ";

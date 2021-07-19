@@ -120,6 +120,7 @@ class HCSR04SensorManager {
     uint16_t lastReadingCount = 0;
     uint16_t startOffsetMilliseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
     bool pollDistancesParallel();
+    bool pollDistancesAlternating();
 
   protected:
 
@@ -141,6 +142,7 @@ class HCSR04SensorManager {
     static void updateStatistics(HCSR04SensorInfo * const sensor);
     uint16_t startReadingMilliseconds = 0;
     uint8_t primarySensor = 1;
+    uint8_t lastSensor;
 };
 
 #endif

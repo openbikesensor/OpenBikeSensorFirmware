@@ -332,7 +332,7 @@ void setup() {
   while (!gps.hasFix(displayTest)) {
     currentTimeMillis = millis();
     gps.handle();
-    sensorManager->pollDistancesParallel();
+    sensorManager->pollDistancesAlternating();
     reportBluetooth();
     gps.showWaitStatus(displayTest);
     buttonState = digitalRead(PushButton_PIN);
@@ -357,7 +357,7 @@ void setup() {
 void serverLoop() {
   gps.handle();
   configServerHandle();
-  sensorManager->pollDistancesParallel();
+  sensorManager->pollDistancesAlternating();
   handleButtonInServerMode();
 }
 
@@ -437,7 +437,7 @@ void loop() {
     loops++;
 
     currentTimeMillis = millis();
-    if (sensorManager->pollDistancesParallel()) {
+    if (sensorManager->pollDistancesAlternating()) {
       // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
       const uint16_t reading = sensorManager->sensorValues[confirmationSensorID];
       if (reading > 0 && reading < minDistanceToConfirm) {

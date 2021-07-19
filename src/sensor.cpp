@@ -56,9 +56,10 @@ static const uint32_t MAX_TIMEOUT_MICRO_SEC = 75000;
 /* To avoid that we receive a echo from a former measurement, we do not
  * start a new measurement within the given time from the start of the
  * former measurement of the opposite sensor.
- * TODO: This can lead to the situation that we only poll the primary sensor for a while!
+ * High values can lead to the situation that we only poll the
+ * primary sensor for a while!?
  */
-static const uint32_t SENSOR_QUIET_PERIOD_AFTER_OPPOSITE_START_MICRO_SEC = 50 * 1000;
+static const uint32_t SENSOR_QUIET_PERIOD_AFTER_OPPOSITE_START_MICRO_SEC = 35 * 1000;
 
 /* The last end (echo goes to low) of a measurement must be this far
  * away before a new measurement is started.
@@ -71,7 +72,7 @@ static const uint32_t SENSOR_QUIET_PERIOD_AFTER_END_MICRO_SEC = 10 * 1000;
    - With 30ms I could get stable readings down to 25/35cm only (new sensor)
    - It looked fine with the old sensor for all values
  */
-static const uint32_t SENSOR_QUIET_PERIOD_AFTER_START_MICRO_SEC = 32 * 1000;
+static const uint32_t SENSOR_QUIET_PERIOD_AFTER_START_MICRO_SEC = 35 * 1000;
 
 /* Value of HCSR04SensorInfo::end during an ongoing measurement. */
 static const uint32_t MEASUREMENT_IN_PROGRESS = 0;
@@ -200,6 +201,24 @@ void HCSR04SensorManager::setPrimarySensor(uint8_t idx) {
 }
 
 /* Polls for new readings, if sensors are not ready, the
+ * method returns false.
+ */
+bool HCSR04SensorManager::pollDistancesAlternating() {
+  bool newMeasurements = false;
+  newMeasurements = collectSensorResults(); // TODO: Collect here or after left sensor?
+  if (lastReadingCount > 0 && lastSensor == primarySensor && isReadyForStart(1 - primarySensor)) {
+    setSensorTriggersToLow();
+    lastSensor = 1 - primarySensor;
+    sendTriggerToSensor(1 - primarySensor);
+  } else if (isReadyForStart(primarySensor)) {
+    setSensorTriggersToLow();
+    lastSensor = primarySensor;
+    sendTriggerToSensor(primarySensor);
+  }
+  return newMeasurements;
+}
+
+/* Polls for new readings, if sensors are not ready, the
  * method returns false. If sensors are ready and readings
  * are available, data is read and updated. If the primary
  * sensor is ready for new measurement, a fresh measurement
@@ -214,7 +233,6 @@ bool HCSR04SensorManager::pollDistancesParallel() {
     const bool secondSensorIsReady = isReadyForStart(1 - primarySensor);
     sendTriggerToSensor(primarySensor);
     if (secondSensorIsReady) {
-      delay(10);
       sendTriggerToSensor(1 - primarySensor);
     }
   }
@@ -291,13 +309,14 @@ bool HCSR04SensorManager::collectSensorResults() {
 void HCSR04SensorManager::registerReadings() {
   startOffsetMilliseconds[lastReadingCount] = millisSince(startReadingMilliseconds);
   // secondary sensor was not captured
-  if (m_sensors[1 - primarySensor].echoDurationMicroseconds[lastReadingCount] == 0) {
-    m_sensors[1 - primarySensor].echoDurationMicroseconds[lastReadingCount] = -1;
-    sensorValues[1 - primarySensor] = MAX_SENSOR_VALUE;
-    m_sensors[1 - primarySensor].rawDistance = MAX_SENSOR_VALUE;
-    m_sensors[1 - primarySensor].distance = MAX_SENSOR_VALUE;
-    m_sensors[1 - primarySensor].median->addValue(MAX_SENSOR_VALUE);
-  }
+// FIXME: Can be removed after test
+//  if (m_sensors[1 - primarySensor].echoDurationMicroseconds[lastReadingCount] == 0) {
+//    m_sensors[1 - primarySensor].echoDurationMicroseconds[lastReadingCount] = -1;
+//    sensorValues[1 - primarySensor] = MAX_SENSOR_VALUE;
+//    m_sensors[1 - primarySensor].rawDistance = MAX_SENSOR_VALUE;
+//    m_sensors[1 - primarySensor].distance = MAX_SENSOR_VALUE;
+//    m_sensors[1 - primarySensor].median->addValue(MAX_SENSOR_VALUE);
+//  }
   if (lastReadingCount < MAX_NUMBER_MEASUREMENTS_PER_INTERVAL - 1) {
     lastReadingCount++;
   }
@@ -390,10 +409,11 @@ uint32_t HCSR04SensorManager::getFixedStart(
   uint32_t start = sensor->start;
   // the error appears if both sensors trigger the interrupt at the exact same
   // time, if this happens, trigger time == start time
-  if (sensor->trigger == sensor->start) {
+  if (start == sensor->trigger && sensor->end != MEASUREMENT_IN_PROGRESS) {
     // it should be save to use the start value from the other sensor.
     const uint32_t alternativeStart = m_sensors[1 - idx].start;
-    if (microsBetween(alternativeStart, start) < 500) { // typically 290-310 microseconds {
+    if (alternativeStart != m_sensors[1 - idx].trigger
+      && microsBetween(alternativeStart, start) < 500) { // typically 290-310 microseconds {
       start = alternativeStart;
       sensor->numberOfInterruptAdjustments++;
     }
