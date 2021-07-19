@@ -68,7 +68,6 @@ struct HCSR04SensorInfo {
   uint16_t minDistance = MAX_SENSOR_VALUE;
   uint16_t distance = MAX_SENSOR_VALUE;
   char* sensorLocation;
-  unsigned long lastMinUpdate=0;
   // timestamp when the trigger signal was sent in us micros()
   uint32_t trigger = 0;
   volatile uint32_t start = 0;

@@ -362,7 +362,6 @@ bool HCSR04SensorManager::collectSensorResult(uint8_t sensorId) {
 
   if (sensor->distance > 0 && sensor->distance < sensor->minDistance) {
     sensor->minDistance = sensor->distance;
-    sensor->lastMinUpdate = millis();
   }
   sensor->measurementRead = true;
   return validReading;
