@@ -206,12 +206,12 @@ void HCSR04SensorManager::setPrimarySensor(uint8_t idx) {
  */
 bool HCSR04SensorManager::pollDistancesAlternating() {
   bool newMeasurements = false;
-  newMeasurements = collectSensorResults(); // TODO: Collect here or after left sensor?
   if (lastSensor == primarySensor && isReadyForStart(1 - primarySensor)) {
     setSensorTriggersToLow();
     lastSensor = 1 - primarySensor;
     sendTriggerToSensor(1 - primarySensor);
   } else if (isReadyForStart(primarySensor)) {
+    newMeasurements = collectSensorResults();
     setSensorTriggersToLow();
     lastSensor = primarySensor;
     sendTriggerToSensor(primarySensor);
