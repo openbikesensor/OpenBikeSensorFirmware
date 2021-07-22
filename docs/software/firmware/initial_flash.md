@@ -72,7 +72,7 @@ Now select the checkboxes in front of the entries you just made.
 All other values stay with the default:
 `SPI SPEED` : `40MHz`, `SPI MODE` : `DIO` (This one will change 
 automatically in a moment), `FLASH SIZE` : `32Mbit` and finally
-`SpiAutoSet` : `selected`, `DoNotChgBin` : `not selected`.
+`SpiAutoSet` : `not selected`, `DoNotChgBin` : `selected`.
 
 On the button you see a drop-down box `COM:` here you have to 
 select the correct com post for the flash process. If unsure
