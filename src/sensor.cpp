@@ -254,9 +254,9 @@ void HCSR04SensorManager::sendTriggerToSensor(uint8_t sensorId) {
   sensor->numberOfTriggers++;
   sensor->measurementRead = false;
   sensor->trigger = sensor->start = micros(); // will be updated with HIGH signal
-  // do the wait per sensor here - some sensors might be sensible for to long
-  // trigger high time (not directly observed but could be cause for some issues)
   digitalWrite(sensor->triggerPin, HIGH);
+  // 10us are specified but some sensors are more stable with 20us according
+  // to internet reports
   delayMicroseconds(20);
   digitalWrite(sensor->triggerPin, LOW);
 }
