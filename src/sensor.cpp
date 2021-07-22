@@ -280,7 +280,7 @@ boolean HCSR04SensorManager::isReadyForStart(uint8_t sensorId) {
       log_e("Measurement done, but echo pin is high for %s sensor", sensor->sensorLocation);
       sensor->numberOfLowAfterMeasurement++;
     }
-  } else if (microsBetween(now, start) > 2 * MAX_TIMEOUT_MICRO_SEC) {
+  } else if (microsBetween(now, start) > MAX_TIMEOUT_MICRO_SEC) {
     sensor->numberOfToLongMeasurement++;
     // signal or interrupt was lost altogether this is an error,
     // should we raise it?? Now pretend the sensor is ready, hope it helps to give it a trigger.
@@ -309,15 +309,6 @@ bool HCSR04SensorManager::collectSensorResults() {
 
 void HCSR04SensorManager::registerReadings() {
   startOffsetMilliseconds[lastReadingCount] = millisSince(startReadingMilliseconds);
-  // secondary sensor was not captured
-// FIXME: Can be removed after test
-//  if (m_sensors[1 - primarySensor].echoDurationMicroseconds[lastReadingCount] == 0) {
-//    m_sensors[1 - primarySensor].echoDurationMicroseconds[lastReadingCount] = -1;
-//    sensorValues[1 - primarySensor] = MAX_SENSOR_VALUE;
-//    m_sensors[1 - primarySensor].rawDistance = MAX_SENSOR_VALUE;
-//    m_sensors[1 - primarySensor].distance = MAX_SENSOR_VALUE;
-//    m_sensors[1 - primarySensor].median->addValue(MAX_SENSOR_VALUE);
-//  }
   if (lastReadingCount < MAX_NUMBER_MEASUREMENTS_PER_INTERVAL - 1) {
     lastReadingCount++;
   }
