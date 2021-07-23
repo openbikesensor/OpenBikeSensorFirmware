@@ -53,8 +53,10 @@ const uint32_t MICRO_SEC_TO_CM_DIVIDER = 58; // sound speed 340M/S, 2 times back
 
 
 const uint16_t MEDIAN_DISTANCE_MEASURES = 3;
-const uint16_t MAX_NUMBER_MEASUREMENTS_PER_INTERVAL = 60;
+const uint16_t MAX_NUMBER_MEASUREMENTS_PER_INTERVAL = 30; //  is 1000/SENSOR_QUIET_PERIOD_AFTER_START_MICRO_SEC/2
 extern const uint16_t MAX_SENSOR_VALUE;
+
+const uint8_t NUMBER_OF_TOF_SENSORS = 2;
 
 struct HCSR04SensorInfo {
   uint8_t triggerPin = 15;
@@ -66,7 +68,7 @@ struct HCSR04SensorInfo {
   uint16_t minDistance = MAX_SENSOR_VALUE;
   uint16_t distance = MAX_SENSOR_VALUE;
   char* sensorLocation;
-  unsigned long lastMinUpdate=0;
+  // timestamp when the trigger signal was sent in us micros()
   uint32_t trigger = 0;
   volatile uint32_t start = 0;
   /* if end == 0 - a measurement is in progress */
@@ -78,17 +80,22 @@ struct HCSR04SensorInfo {
   uint32_t maxDurationUs = 0;
   uint32_t minDurationUs = UINT32_MAX;
   uint32_t lastDelayTillStartUs = 0;
+  // counts how often no echo and also no timeout signal was received
+  // should only happen with defect or missing sensors
+  uint32_t numberOfNoSignals = 0;
+  uint32_t numberOfLowAfterMeasurement = 0;
+  uint32_t numberOfToLongMeasurement = 0;
+  uint32_t numberOfInterruptAdjustments = 0;
+  uint16_t numberOfTriggers = 0;
+  bool measurementRead;
 };
 
 class HCSR04SensorManager {
   public:
     HCSR04SensorManager() {}
     virtual ~HCSR04SensorManager() {}
-    void getDistances();
-    void getDistancesParallel();
-    void getDistancesNoWait();
     void reset();
-    void registerSensor(HCSR04SensorInfo);
+    void registerSensor(const HCSR04SensorInfo &, uint8_t idx);
     void setOffsets(std::vector<uint16_t>);
     void setPrimarySensor(uint8_t idx);
     void detachInterrupts();
@@ -97,44 +104,44 @@ class HCSR04SensorManager {
      * given sensor.
      */
     uint16_t getRawMedianDistance(uint8_t sensorId);
-    /* Index for CSV - starts with 1. */
+    /* Index for CSV. */
     uint16_t getCurrentMeasureIndex();
     uint32_t getMaxDurationUs(uint8_t sensorId);
     uint32_t getMinDurationUs(uint8_t sensorId);
     uint32_t getLastDelayTillStartUs(uint8_t sensorId);
+    uint32_t getNoSignalReadings(const uint8_t sensorId);
+    uint32_t getNumberOfLowAfterMeasurement(const uint8_t sensorId);
+    uint32_t getNumberOfToLongMeasurement(const uint8_t sensorId);
+    uint32_t getNumberOfInterruptAdjustments(const uint8_t sensorId);
 
-    std::vector<HCSR04SensorInfo> m_sensors;
-    std::vector<uint16_t> sensorValues;
+    HCSR04SensorInfo m_sensors[NUMBER_OF_TOF_SENSORS];
+    uint16_t sensorValues[NUMBER_OF_TOF_SENSORS];
     uint16_t lastReadingCount = 0;
     uint16_t startOffsetMilliseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
+    bool pollDistancesParallel();
+    bool pollDistancesAlternating();
 
   protected:
 
   private:
-    void waitTillSensorIsReady(uint8_t sensorId);
     void sendTriggerToSensor(uint8_t sensorId);
-    void waitForEchosOrTimeout(uint8_t sensorId);
-    void collectSensorResult(uint8_t sensorId);
-    void setNoMeasureDate(uint8_t sensorId);
-    void waitTillPrimarySensorIsReady();
-    void waitForEchosOrTimeout();
+    bool collectSensorResult(uint8_t sensorId);
     void setSensorTriggersToLow();
-    void collectSensorResults();
-    void sendTriggerToReadySensor();
-    void attachSensorInterrupt(HCSR04SensorInfo &sensorInfo);
-    uint32_t getFixedStart(size_t idx, const HCSR04SensorInfo *sensor);
+    bool collectSensorResults();
+    void attachSensorInterrupt(uint8_t idx);
+    uint32_t getFixedStart(size_t idx, HCSR04SensorInfo * const sensor);
+    boolean isReadyForStart(uint8_t sensorId);
+    void registerReadings();
     static uint16_t medianMeasure(HCSR04SensorInfo* const sensor, uint16_t value);
     static uint16_t median(uint16_t a, uint16_t b, uint16_t c);
     static uint16_t correctSensorOffset(uint16_t dist, uint16_t offset);
-    static boolean isReadyForStart(HCSR04SensorInfo* sensor);
     static uint32_t microsBetween(uint32_t a, uint32_t b);
     static uint32_t microsSince(uint32_t a);
     static uint16_t millisSince(uint16_t milliseconds);
-    void updateStatistics(HCSR04SensorInfo *sensor);
+    static void updateStatistics(HCSR04SensorInfo * const sensor);
     uint16_t startReadingMilliseconds = 0;
-    /* The currently used sensor for alternating use. */
-    uint32_t activeSensor = 0;
     uint8_t primarySensor = 1;
+    uint8_t lastSensor;
 };
 
 #endif

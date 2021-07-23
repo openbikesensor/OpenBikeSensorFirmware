@@ -30,7 +30,7 @@ const BLEUUID HeartRateService::SERVICE_UUID = BLEUUID((uint16_t)ESP_GATT_UUID_H
 void HeartRateService::setup(BLEServer *pServer) {
   mService = pServer->createService(SERVICE_UUID); // Keep the defaults!!, 5);
   mService->addCharacteristic(&mHeartRateMeasurementCharacteristics);
-  mHeartRateMeasurementCharacteristics.addDescriptor(new BLE2902());
+  mHeartRateMeasurementCharacteristics.addDescriptor(&mHeartRateMeasurementConfiguration);
   mValue[0] = mValue[1] = mValue[2] = 0;
   mHeartRateMeasurementCharacteristics.setValue(mValue, 2);
 
@@ -54,12 +54,13 @@ void HeartRateService::newSensorValues(
     return;
   }
 
-  mValue[0] = mMinimumDistance <= UINT8_MAX ? 0 : 1; // 8/16 bit data no other flags set;
-  mValue[1] = mMinimumDistance & 0xFFu;
-  mValue[2] = mMinimumDistance >> 8u;
-
-  mHeartRateMeasurementCharacteristics.setValue(mValue, mMinimumDistance <= UINT8_MAX ? 2 : 3);
-  mHeartRateMeasurementCharacteristics.notify();
+  if (mHeartRateMeasurementConfiguration.getNotifications()) {
+    mValue[0] = mMinimumDistance <= UINT8_MAX ? 0 : 1; // 8/16 bit data no other flags set;
+    mValue[1] = mMinimumDistance & 0xFFu;
+    mValue[2] = mMinimumDistance >> 8u;
+    mHeartRateMeasurementCharacteristics.setValue(mValue, mMinimumDistance <= UINT8_MAX ? 2 : 3);
+    mHeartRateMeasurementCharacteristics.notify();
+  }
 
   // Reset values
   mMinimumDistance = MAX_SENSOR_VALUE;

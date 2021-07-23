@@ -26,6 +26,8 @@
 void DistanceService::setup(BLEServer *pServer) {
   mService = pServer->createService(SERVICE_DISTANCE_UUID);
   mCharacteristic = mService->createCharacteristic(SERVICE_DISTANCE_CHAR_50MS_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+// SimRa does not like BLE2902
+  mCharacteristic->setValue((String(millis()) + ";;").c_str());
 }
 
 bool DistanceService::shouldAdvertise() {

@@ -23,12 +23,15 @@
 
 #include "BluetoothManager.h"
 
+const uint32_t BluetoothManager::HIGH_ADVERTISEMENT_TIME_MS = 60 * 1000;
+
 void BluetoothManager::init(
   const String &obsName,
   const uint16_t leftOffset, const uint16_t rightOffset,
   std::function<uint8_t()> batteryPercentage,
   const String &trackId) {
 
+  deviceConnected = false;
   ESP_ERROR_CHECK_WITHOUT_ABORT(
     esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
   BLEDevice::init(obsName.c_str());
@@ -48,16 +51,29 @@ void BluetoothManager::init(
   for (auto &service : services) {
     service->getService()->start();
   }
+  lastDisconnected = millis();
 }
 
-void BluetoothManager::activateBluetooth() const {
+void BluetoothManager::activateBluetooth() {
   auto adv = pServer->getAdvertising();
+
+  // only the heard rate service && OBS service use advertisement
+  // if I add one more service the 0x12 info is not sent.
   for (auto &service : services) {
     if (service->shouldAdvertise()) {
       adv->addServiceUUID(service->getService()->getUUID());
     }
   }
-  adv->setMinPreferred(0x0);
+  setFastAdvertising();
+
+//  Save some bytes in the advertising payload
+//  https://specificationrefs.bluetooth.com/assigned-values/Appearance%20Values.pdf
+//  adv->setAppearance(1152); // Generic: Cycling
+
+// causes 0x12 Slave Connection Interval Range to be sent
+  adv->setMinPreferred(0x06);  // Apple?
+  adv->setMaxPreferred(0x12);
+
   BLEDevice::startAdvertising();
 }
 
@@ -74,16 +90,8 @@ void BluetoothManager::newSensorValues(const uint32_t millis, const uint16_t lef
     for (auto &service : services) {
       service->newSensorValues(millis, leftValues, rightValues);
     }
-  }
-  // disconnecting
-  if (!deviceConnected && oldDeviceConnected) {
-    delay(500); // give the bluetooth stack the chance to get things ready
-    pServer->startAdvertising(); // restart advertising
-    oldDeviceConnected = deviceConnected;
-  }
-  // connecting
-  if (deviceConnected && !oldDeviceConnected) {
-    oldDeviceConnected = deviceConnected;
+  } else if (lastDisconnected + HIGH_ADVERTISEMENT_TIME_MS < millis) {
+    setSlowAdvertising();
   }
 }
 
@@ -103,10 +111,31 @@ bool BluetoothManager::hasConnectedClients() {
 void BluetoothManager::onConnect(BLEServer* pServer) {
   log_i("BTLE connected!");
   deviceConnected = true;
-  BLEDevice::startAdvertising();
 };
 
 void BluetoothManager::onDisconnect(BLEServer* pServer) {
   log_i("BTLE disconnected!");
+  lastDisconnected = millis();
   deviceConnected = false;
+  setFastAdvertising();
+  pServer->startAdvertising();
+}
+
+void BluetoothManager::setFastAdvertising() {
+  auto adv = pServer->getAdvertising();
+  adv->setMinInterval(48  /*  0.625 msec =  30ms */);
+  adv->setMaxInterval(80  /*  0.625 msec =  50ms */);
+  fastAdvertising = true;
+}
+
+void BluetoothManager::setSlowAdvertising() {
+  if (fastAdvertising) {
+    log_i("Decreasing BTLE advertisement interval.");
+    auto adv = pServer->getAdvertising();
+    adv->stop();
+    adv->setMinInterval(800   /*  0.625 msec = 500ms */);
+    adv->setMaxInterval(1280  /*  0.625 msec = 800ms */);
+    adv->start();
+    fastAdvertising = false;
+  }
 }

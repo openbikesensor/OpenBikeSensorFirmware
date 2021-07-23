@@ -29,21 +29,21 @@
 #include <configServer.h>
 #include <OpenBikeSensorFirmware.h>
 #include <uploader.h>
-#include <https/cert.h>
-#include <https/private_key.h>
 #include <HTTPURLEncodedBodyParser.hpp>
 #include <esp_ota_ops.h>
 #include <esp_partition.h>
+#include <DNSServer.h>
 #include "SPIFFS.h"
-#include "SSLCert.hpp"
 #include "HTTPMultipartBodyParser.hpp"
 #include "Firmware.h"
+#include "utils/https.h"
+#include "utils/timeutils.h"
 
 using namespace httpsserver;
 
 static const char *const HTML_ENTITY_FAILED_CROSS = "&#x274C;";
 static const char *const HTML_ENTITY_OK_MARK = "&#x2705;";
-static const char *const HTML_ENTITY_WASTEBASKED = "&#x1f5d1;";
+static const char *const HTML_ENTITY_WASTEBASKET = "&#x1f5d1;";
 static const char *const HTTP_GET = "GET";
 static const char *const HTTP_POST = "POST";
 
@@ -52,13 +52,10 @@ static const size_t HTTP_UPLOAD_BUFLEN = 1024; // TODO: refine
 static ObsConfig *theObsConfig;
 static HTTPSServer * server;
 static HTTPServer * insecureServer;
+static SSLCert * serverSslCert;
 static String OBS_ID;
 static String OBS_ID_SHORT;
-
-static SSLCert obsCert = SSLCert(
-  obs_crt_DER, obs_crt_DER_len,
-  obs_key_DER, obs_key_DER_len
-);
+static DNSServer *dnsServer;
 
 // TODO
 //  - Fix CSS Style for mobile && desktop
@@ -109,7 +106,7 @@ static const char* const header =
   "<p>Firmware version: {version}</p>"
   "<a href=\"javascript:history.back()\" class='previous'>&#8249;</a>";
 
-static const String footer = "</form></body></html>";
+static const char* const footer = "</form></body></html>";
 
 // #########################################
 // Upload form
@@ -191,6 +188,7 @@ static const char* const navigationIndex =
   "<input type=button onclick=\"window.location.href='/settings/privacy'\" class=btn value='Privacy Zones'>"
   "<input type=button onclick=\"window.location.href='/settings/wifi'\" class=btn value='Wifi'>"
   "<input type=button onclick=\"window.location.href='/settings/backup'\" class=btn value='Backup &amp; Restore'>"
+  "<input type=button onclick=\"window.location.href='/settings/security'\" class=btn value='Security'>"
   "<h3>Maintenance</h3>"
   "<input type=button onclick=\"window.location.href='/updatesd'\" class=btn value='Update Firmware'>"
   "<input type=button onclick=\"window.location.href='/updateFlash'\" class=btn value='Update Flash App'>"
@@ -206,7 +204,11 @@ static const char* const httpsRedirect =
   "accept the self signed cert from the OBS after pressing 'Goto https'. Login is 'obs' "
   "and the up to 6 digit pin displayed "
   "on the OBS."
-  "<input type=button onclick=\"window.location.href='https://{host}'\" class=btn value='Goto https'>";
+  "<input type=button onclick=\"window.location.href='https://{host}'\" class=btn value='Goto https'>"
+  "<input type=button onclick=\"window.location.href='/cert'\" class=btn value='Download Cert'>"
+  "<hr/>If you are in a local network under your control with no risk of hostile external access, "
+  "you can enable unencrypted access."
+  "<input type='submit' name='http' id='http' class=btn value='Enable unencrypted access' />";
 
 // #########################################
 // Development
@@ -313,14 +315,6 @@ static const char* const configIndex =
   "<hr>"
   "Swap Sensors (Left &#8660; Right)<input type='checkbox' name='displaySwapSensors' {displaySwapSensors}>"
   ""
-  "<h3>GPS</h3>"
-  "<label for='gpsFix'>GPS to wait for</label> "
-  "<select id='gpsFix' name='gpsFix'>"
-  "<option value='-2' {fixPos}>position</option>"
-  "<option value='-1' {fixTime}>time only</option>"
-  "<option value='0' {fixNoWait}>no wait</option>"
-  "</select>"
-  ""
   "<h3>Generic Display</h3>"
   "Invert<br>(black &#8660; white)<input type='checkbox' name='displayInvert' {displayInvert}>"
   "<hr>"
@@ -373,16 +367,51 @@ static const char* const makeCurrentLocationPrivateIndex =
   "<div>Making current location private, waiting for fix. Press device button to cancel.</div>";
 
 static const char* const deleteIndex =
-  "<h3>Delete (beta)</h3>"
-  "Config in flash<input type='checkbox' name='flash'>"
-  "Config in memory<input type='checkbox' name='config'>"
-  "<hr>"
-  "SD Card all content <input type='checkbox' name='sdcard' disabled='true'>"
+  "<h3>Flash</h3>"
+  "<p>Flash stores ssl certificate and configuration.</p>"
+  "<label for='flash'>Format flash</label>"
+  "<input type='checkbox' id='flash' name='flash' "
+  "onchange=\"document.getElementById('flashCert').checked = document.getElementById('flashConfig').checked = document.getElementById('flash').checked;\">"
+  "<label for='flashCert'>Delete ssl certificate, a new one will be created at the next start.</label>"
+  // Link https://support.mozilla.org/en-US/kb/Certificate-contains-the-same-serial-number-as-another-certificate ?
+  "<input type='checkbox' id='flashCert' name='flashCert'>"
+  "<label for='flashConfig'>Delete configuration, default settings will be used at the next start,"
+  " consider storing a <a href='/settings/backup.json'>Backup</a> 1st.</label>"
+  "<input type='checkbox' id='flashConfig' name='flashConfig'>"
+  "<h3>Memory</h3>"
+  "<label for='config'>Clear current configuration, wifi connection will stay.</label>"
+  "<input type='checkbox' id='config' name='config'>"
+  "<h3>SD Card</h3>"
+  "<label for='sdcard'>Delete OBS related content (ald_ini.ubx, tracknumber.txt, current_14d.*, *.obsdata.csv, sdflash/*, trash/*, uploaded/*)</label>"
+  "<input type='checkbox' id='sdcard' name='sdcard' disabled='true'>"
   "<input type=submit class=btn value='Delete'>";
+
+static const char* const settingsSecurityIndex =
+  "<h3>Http</h3>"
+  "<label for='pin'>Wish pin for http access, the pin will still be displayed on"
+  " the OBS display. Pin must consist out of 3-8 numeric digits.</label>"
+  "<input name='pin' type='number' value='{pin}' maxlength='8'>"
+//  "<label for='httpAccess'>Allow full access via http. Do this only in networks you"
+//  " have control over. All data send or retrieved from the OBS can be intercepted"
+//  " from within your network as well as everybody in this network has full access to"
+//  " your OBS. The setting wil be reset if you change the WiFi settings.</label>"
+//  "<input type='checkbox' id='httpAccess' name='httpAccess' />"
+  "<input type=submit class=btn value='Save'>"
+//  "<h3>OBS SSL Cert</h3>"
+//  "<label for='flashCert'>Delete ssl certificate, a new one will be created at the next start.</label>"
+//  "<input type=button onclick=\"window.location.href='/settings/deleteSslCert'\" class=btn value='Renew SSL Cert'>"
+//  "<h3>CA Cert Management</h3>"
+//  "For outgoing https connections the OBS has to trust different authorities (CA). "
+//  "The OBS can not hold all well known authorities like your browser does "
+//  "here you can add or remove the CAs your OBS trusts, usually you do not need "
+//  "to modify this. You can not remove CAs trusted by the OBS by default, but "
+//  "you can add additional CAs to trust here."
+//  "{caList}";
+;
 
 // #########################################
 static String getParameter(const std::vector<std::pair<String,String>> &params, const String& name, const String&  def = "") {
-  for (auto param : params) {
+  for (const auto& param : params) {
     if (param.first == name) {
       return param.second;
     }
@@ -441,8 +470,12 @@ static void handleSd(HTTPRequest *req, HTTPResponse *res);
 static void handleDeleteFiles(HTTPRequest *req, HTTPResponse *res);
 static void handleDelete(HTTPRequest *req, HTTPResponse *res);
 static void handleDeleteAction(HTTPRequest *req, HTTPResponse *res);
+static void handleDownloadCert(HTTPRequest *req, HTTPResponse * res);
+static void handleSettingSecurity(HTTPRequest *, HTTPResponse * res);
+static void handleSettingSecurityAction(HTTPRequest * req, HTTPResponse * res);
 
 static void handleHttpsRedirect(HTTPRequest *req, HTTPResponse *res);
+static void handleHttpAction(HTTPRequest *req, HTTPResponse *res);
 
 static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<void()> next);
 
@@ -453,54 +486,74 @@ static uint16_t countFilesInRoot();
 static String ensureSdIsAvailable();
 static void moveToUploaded(const String &fileName);
 
-void beginPages() {
-  server->setDefaultNode(new ResourceNode("", HTTP_GET,  handleNotFound));
-  server->registerNode(new ResourceNode("/", HTTP_GET,  handleIndex));
-  server->registerNode(new ResourceNode("/about", HTTP_GET,  handleAbout));
-  server->registerNode(new ResourceNode("/reboot", HTTP_GET,  handleReboot));
-  server->registerNode(new ResourceNode("/settings/backup", HTTP_GET,  handleBackup));
-  server->registerNode(new ResourceNode("/settings/backup.json", HTTP_GET,  handleBackupDownload));
-  server->registerNode(new ResourceNode("/settings/restore", HTTP_POST,  handleBackupRestore));
-  server->registerNode(new ResourceNode("/settings/wifi", HTTP_GET,  handleWifi));
-  server->registerNode(new ResourceNode("/settings/wifi/action", HTTP_POST, handleWifiSave));
-  server->registerNode(new ResourceNode("/settings/general", HTTP_GET,  handleConfig));
-  server->registerNode(new ResourceNode("/settings/general/action", HTTP_POST, handleConfigSave));
-  server->registerNode(new ResourceNode("/updateFlash", HTTP_GET, handleFlashUpdate));
-  server->registerNode(new ResourceNode("/updateFlash", HTTP_POST, handleFlashFileUpdateAction));
-  server->registerNode(new ResourceNode("/updateFlashUrl", HTTP_POST, handleFlashUpdateUrlAction));
-  server->registerNode(new ResourceNode("/updatesd", HTTP_GET, handleFirmwareUpdateSd));
-  server->registerNode(new ResourceNode("/updatesd", HTTP_POST, handleFirmwareUpdateSdAction));
-  server->registerNode(new ResourceNode("/updateSdUrl", HTTP_POST, handleFirmwareUpdateSdUrlAction));
-  server->registerNode(new ResourceNode("/delete", HTTP_GET, handleDelete));
-  server->registerNode(new ResourceNode("/delete", HTTP_POST, handleDeleteAction));
+void registerPages(HTTPServer * httpServer) {
+  httpServer->setDefaultNode(new ResourceNode("", HTTP_GET, handleNotFound));
+  httpServer->registerNode(new ResourceNode("/", HTTP_GET, handleIndex));
+  httpServer->registerNode(new ResourceNode("/about", HTTP_GET, handleAbout));
+  httpServer->registerNode(new ResourceNode("/reboot", HTTP_GET, handleReboot));
+  httpServer->registerNode(new ResourceNode("/settings/backup", HTTP_GET, handleBackup));
+  httpServer->registerNode(new ResourceNode("/settings/backup.json", HTTP_GET, handleBackupDownload));
+  httpServer->registerNode(new ResourceNode("/settings/restore", HTTP_POST, handleBackupRestore));
+  httpServer->registerNode(new ResourceNode("/settings/wifi", HTTP_GET, handleWifi));
+  httpServer->registerNode(new ResourceNode("/settings/wifi/action", HTTP_POST, handleWifiSave));
+  httpServer->registerNode(new ResourceNode("/settings/general", HTTP_GET, handleConfig));
+  httpServer->registerNode(new ResourceNode("/settings/general/action", HTTP_POST, handleConfigSave));
+  httpServer->registerNode(new ResourceNode("/updateFlash", HTTP_GET, handleFlashUpdate));
+  httpServer->registerNode(new ResourceNode("/updateFlash", HTTP_POST, handleFlashFileUpdateAction));
+  httpServer->registerNode(new ResourceNode("/updateFlashUrl", HTTP_POST, handleFlashUpdateUrlAction));
+  httpServer->registerNode(new ResourceNode("/updatesd", HTTP_GET, handleFirmwareUpdateSd));
+  httpServer->registerNode(new ResourceNode("/updatesd", HTTP_POST, handleFirmwareUpdateSdAction));
+  httpServer->registerNode(new ResourceNode("/updateSdUrl", HTTP_POST, handleFirmwareUpdateSdUrlAction));
+  httpServer->registerNode(new ResourceNode("/delete", HTTP_GET, handleDelete));
+  httpServer->registerNode(new ResourceNode("/delete", HTTP_POST, handleDeleteAction));
 #ifdef DEVELOP
-  server->registerNode(new ResourceNode("/settings/development/action", HTTP_GET, handleDevAction));
-  server->registerNode(new ResourceNode("/settings/development", HTTP_GET, handleDev));
+  httpServer->registerNode(new ResourceNode("/settings/development/action", HTTP_GET, handleDevAction));
+    httpServer->registerNode(new ResourceNode("/settings/development", HTTP_GET, handleDev));
 #endif
-  server->registerNode(new ResourceNode("/privacy_action", HTTP_POST, handlePrivacyAction));
-  server->registerNode(new ResourceNode("/upload", HTTP_GET, handleUpload));
-  server->registerNode(new ResourceNode("/settings/privacy/makeCurrentLocationPrivate", HTTP_GET, handleMakeCurrentLocationPrivate));
-  server->registerNode(new ResourceNode("/settings/privacy", HTTP_GET, handlePrivacy));
-  server->registerNode(new ResourceNode("/privacy_delete", HTTP_GET, handlePrivacyDeleteAction));
-  server->registerNode(new ResourceNode("/sd", HTTP_GET, handleSd));
-  server->registerNode(new ResourceNode("/deleteFiles", HTTP_POST, handleDeleteFiles));
+  httpServer->registerNode(new ResourceNode("/privacy_action", HTTP_POST, handlePrivacyAction));
+  httpServer->registerNode(new ResourceNode("/upload", HTTP_GET, handleUpload));
+  httpServer->registerNode(new ResourceNode("/settings/privacy/makeCurrentLocationPrivate", HTTP_GET, handleMakeCurrentLocationPrivate));
+  httpServer->registerNode(new ResourceNode("/settings/privacy", HTTP_GET, handlePrivacy));
+  httpServer->registerNode(new ResourceNode("/privacy_delete", HTTP_GET, handlePrivacyDeleteAction));
+  httpServer->registerNode(new ResourceNode("/sd", HTTP_GET, handleSd));
+  httpServer->registerNode(new ResourceNode("/deleteFiles", HTTP_POST, handleDeleteFiles));
+  httpServer->registerNode(new ResourceNode("/cert", HTTP_GET, handleDownloadCert));
+  httpServer->registerNode(new ResourceNode("/settings/security", HTTP_GET, handleSettingSecurity));
+  httpServer->registerNode(new ResourceNode("/settings/security", HTTP_POST, handleSettingSecurityAction));
 
-  server->addMiddleware(&accessFilter);
-  server->setDefaultHeader("Server", std::string("OBS/") + OBSVersion);
+  httpServer->addMiddleware(&accessFilter);
+  httpServer->setDefaultHeader("Server", std::string("OBS/") + OBSVersion);
+}
 
+void beginPages() {
+  registerPages(server);
+
+  insecureServer->registerNode(new ResourceNode("/cert", HTTP_GET, handleDownloadCert));
+  insecureServer->registerNode(new ResourceNode("/http", HTTP_POST, handleHttpAction));
   insecureServer->setDefaultNode(new ResourceNode("", HTTP_GET,  handleHttpsRedirect));
   insecureServer->setDefaultHeader("Server", std::string("OBS/") + OBSVersion);
 }
 
+static int ticks;
+static void progressTick() {
+  displayTest->drawWaitBar(5, ticks++);
+}
 
-void createHttpServer() {
-  server = new HTTPSServer(&obsCert, 443, 2);
+static void createHttpServer() {
+  if (!Https::existsCertificate()) {
+    displayTest->showTextOnGrid(1, 4, "");
+    displayTest->showTextOnGrid(0, 5, "");
+    displayTest->showTextOnGrid(0, 4, "Creating ssl cert!");
+  }
+  serverSslCert = Https::getCertificate(progressTick);
+  server = new HTTPSServer(serverSslCert, 443, 1);
+  displayTest->clearProgressBar(5);
+  displayTest->showTextOnGrid(0, 4, "");
   insecureServer = new HTTPServer(80, 1);
 
-  log_i("About to create pages.");
   beginPages();
 
-  log_i("About to start.");
+  log_i("Starting http(s) servers.");
   server->start();
   insecureServer->start();
 }
@@ -547,6 +600,22 @@ String replaceDefault(String html, const String& subTitle, const String& action 
   return html;
 }
 
+static void sendHtml(HTTPResponse * res, const String& data) {
+  res->setHeader("Content-Type", "text/html");
+  res->print(data);
+}
+
+static void sendHtml(HTTPResponse * res, const char * data) {
+  res->setHeader("Content-Type", "text/html");
+  res->print(data);
+}
+
+static void sendRedirect(HTTPResponse * res, const String& location) {
+  res->setHeader("Location", location.c_str());
+  res->setStatusCode(302);
+  res->finalize();
+}
+
 static void handleNotFound(HTTPRequest * req, HTTPResponse * res) {
   // Discard request body, if we received any
   // We do this, as this is the default node and may also server POST/PUT requests
@@ -556,31 +625,10 @@ static void handleNotFound(HTTPRequest * req, HTTPResponse * res) {
   res->setStatusCode(404);
   res->setStatusText("Not Found");
 
-  // Set content type of the response
-  res->setHeader("Content-Type", "text/html");
-
-  // Write a tiny HTTP page
-  res->println("<!DOCTYPE html>");
-  res->println("<html>");
-  res->println("<head><title>Not Found</title></head>");
-  res->println("<body><h1>404 Not Found</h1><p>The requested resource was not found on this server.</p></body>");
-  res->println("</html>");
-}
-
-void sendHtml(HTTPResponse * res, String& data) {
-  res->setHeader("Content-Type", "text/html");
-  res->print(data);
-}
-
-void sendHtml(HTTPResponse * res, const char * data) {
-  res->setHeader("Content-Type", "text/html");
-  res->print(data);
-}
-
-void sendRedirect(HTTPResponse * res, String location) {
-  res->setHeader("Location", location.c_str());
-  res->setStatusCode(302);
-  res->finalize();
+  sendHtml(res, replaceDefault(header, "Not Found"));
+  res->println("<h3>404 Not Found</h3><p>The requested resource was not found on this server.</p>");
+  res->println("<input type=button onclick=\"window.location.href='/'\" class='btn' value='Home' />");
+  res->print(footer);
 }
 
 String getIp() {
@@ -592,12 +640,12 @@ String getIp() {
 }
 
 bool CreateWifiSoftAP() {
-  bool SoftAccOK;
+  bool softAccOK;
   WiFi.disconnect();
   Serial.print(F("Initalize SoftAP "));
-  String APName = OBS_ID;
+  String apName = OBS_ID;
   String APPassword = "12345678";
-  SoftAccOK  =  WiFi.softAP(APName.c_str(), APPassword.c_str()); // Passwortlänge mindestens 8 Zeichen !
+  softAccOK  =  WiFi.softAP(apName.c_str(), APPassword.c_str(), 1, 0, 1); // Passwortlänge mindestens 8 Zeichen !
   delay(2000); // Without delay I've seen the IP address blank
   /* Soft AP network parameters */
   IPAddress apIP(172, 20, 0, 1);
@@ -605,16 +653,17 @@ bool CreateWifiSoftAP() {
 
   displayTest->showTextOnGrid(0, 1, "AP:");
   displayTest->showTextOnGrid(1, 1, "");
-  displayTest->showTextOnGrid(0, 2, APName.c_str());
+  displayTest->showTextOnGrid(0, 2, apName.c_str());
 
 
   WiFi.softAPConfig(apIP, apIP, netMsk);
-  if (SoftAccOK) {
-    /* Setup the DNS server redirecting all the domains to the apIP */
-    //dnsserver->setErrorReplyCode(DNSReplyCode::NoError);
-    //dnsserver->start(DNS_PORT, "*", apIP);
+  if (softAccOK) {
+    dnsServer = new DNSServer();
+    // with "*" we get a lot of requests from all sort of apps,
+    // use obs.local here
+    dnsServer->start(53, "obs.local", apIP);
 
-    Serial.println(F("AP successful."));
+    log_i("AP successful IP: %s", apIP.toString().c_str());
 
     displayTest->showTextOnGrid(0, 3, "Pass:");
     displayTest->showTextOnGrid(1, 3, APPassword);
@@ -622,11 +671,9 @@ bool CreateWifiSoftAP() {
     displayTest->showTextOnGrid(0, 4, "IP:");
     displayTest->showTextOnGrid(1, 4, WiFi.softAPIP().toString());
   } else {
-    Serial.println(F("Soft AP Error."));
-    Serial.println(APName.c_str());
-    Serial.println(APPassword.c_str());
+    log_e("Soft AP Error. Name: %s Pass: %s", apName.c_str(), APPassword.c_str());
   }
-  return SoftAccOK;
+  return softAccOK;
 }
 
 void startServer(ObsConfig *obsConfig) {
@@ -666,7 +713,7 @@ void startServer(ObsConfig *obsConfig) {
 
   MDNS.begin("obs");
 
-  ObsUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
+  TimeUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
   if (!voltageMeter) {
     voltageMeter = new VoltageMeter();
   }
@@ -761,7 +808,7 @@ static String appVersion(const esp_partition_t *partition) {
 }
 
 
-static void handleAbout(HTTPRequest *, HTTPResponse * res) {
+static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
   res->setHeader("Content-Type", "text/html");
   res->print(replaceDefault(header, "About"));
   String page;
@@ -792,21 +839,6 @@ static void handleAbout(HTTPRequest *, HTTPResponse * res) {
 #ifdef CORE_DEBUG_LEVEL
   page += keyValue("Core debug level", String(CORE_DEBUG_LEVEL));
 #endif
-
-  const esp_partition_t *running = esp_ota_get_running_partition();
-  page += keyValue("Current Partition", running->label);
-
-  const esp_partition_t *ota0 = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_0,
-                                                         nullptr);
-  page += keyValue("OTA-0 Partition", ota0->label);
-  page += keyValue("OTA-0 Partition Size", ObsUtils::toScaledByteString(ota0->size));
-  page += keyValue("OTA-0 App", appVersion(ota0));
-  const esp_partition_t *ota1 = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_1,
-                                                         nullptr);
-  page += keyValue("OTA-1 Partition", ota1->label);
-  page += keyValue("OTA-1 Partition Size", ObsUtils::toScaledByteString(ota1->size));
-  page += keyValue("OTA-1 App", appVersion(ota1));
-
   res->print(page);
   page.clear();
 
@@ -827,23 +859,39 @@ static void handleAbout(HTTPRequest *, HTTPResponse * res) {
     files += " ";
     files += ObsUtils::toScaledByteString(file.size());
     files += " ";
-    files += ObsUtils::dateTimeToString(file.getLastWrite());
+    files += TimeUtils::dateTimeToString(file.getLastWrite());
     file.close();
     file = dir.openNextFile();
   }
   dir.close();
   page += keyValue("SPIFFS files", files);
-  page += keyValue("System date time", ObsUtils::dateTimeToString(file.getLastWrite()));
+  page += keyValue("System date time", TimeUtils::dateTimeToString(file.getLastWrite()));
   page += keyValue("System millis", String(millis()));
 
   if (voltageMeter) {
     page += keyValue("Battery voltage", String(voltageMeter->read(), 2), "V");
   }
-
   res->print(page);
   page.clear();
-  page += "<h3>SD Card</h3>";
 
+  page += "<h3>App Partitions</h3>";
+  const esp_partition_t *running = esp_ota_get_running_partition();
+  page += keyValue("Current Partition", running->label);
+
+  const esp_partition_t *ota0 = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_0,
+                                                         nullptr);
+  page += keyValue("OTA-0 Partition", ota0->label);
+  page += keyValue("OTA-0 Partition Size", ObsUtils::toScaledByteString(ota0->size));
+  page += keyValue("OTA-0 App", appVersion(ota0));
+  const esp_partition_t *ota1 = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_1,
+                                                         nullptr);
+  page += keyValue("OTA-1 Partition", ota1->label);
+  page += keyValue("OTA-1 Partition Size", ObsUtils::toScaledByteString(ota1->size));
+  page += keyValue("OTA-1 App", appVersion(ota1));
+  res->print(page);
+  page.clear();
+
+  page += "<h3>SD Card</h3>";
   page += keyValue("SD card size", ObsUtils::toScaledByteString(SD.cardSize()));
 
   String sdCardType;
@@ -864,10 +912,12 @@ static void handleAbout(HTTPRequest *, HTTPResponse * res) {
   page += keyValue("Left Sensor max duration", sensorManager->getMaxDurationUs(LEFT_SENSOR_ID), "&#xB5;s");
   page += keyValue("Left Sensor min duration", sensorManager->getMinDurationUs(LEFT_SENSOR_ID), "&#xB5;s");
   page += keyValue("Left Sensor last start delay", sensorManager->getLastDelayTillStartUs(LEFT_SENSOR_ID), "&#xB5;s");
+  page += keyValue("Left Sensor signal errors", sensorManager->getNoSignalReadings(LEFT_SENSOR_ID));
   page += keyValue("Right Sensor raw", sensorManager->getRawMedianDistance(RIGHT_SENSOR_ID), "cm");
   page += keyValue("Right Sensor max duration", sensorManager->getMaxDurationUs(RIGHT_SENSOR_ID), "&#xB5;s");
   page += keyValue("Right Sensor min duration", sensorManager->getMinDurationUs(RIGHT_SENSOR_ID), "&#xB5;s");
   page += keyValue("Right Sensor last start delay", sensorManager->getLastDelayTillStartUs(RIGHT_SENSOR_ID), "&#xB5;s");
+  page += keyValue("Right Sensor signal errors", sensorManager->getNoSignalReadings(RIGHT_SENSOR_ID));
 
   res->print(page);
   page.clear();
@@ -890,6 +940,22 @@ static void handleAbout(HTTPRequest *, HTTPResponse * res) {
   page += keyValue("Display i2c speed", Wire.getClock() / 1000, "KHz");
   page += keyValue("Display i2c timeout", Wire.getTimeOut(), "ms");
 
+  page += "<h3>WiFi</h3>";
+  page += keyValue("Local IP", WiFi.localIP().toString());
+  page += keyValue("AP IP", WiFi.softAPIP().toString());
+  page += keyValue("Gateway IP", WiFi.gatewayIP().toString());
+  page += keyValue("Hostname", WiFi.getHostname());
+  page += keyValue("SSID", WiFi.SSID());
+
+  page += "<h3>HTTP</h3>";
+  page += keyValue("User Agent", req->getHeader("user-agent").c_str());
+  page += keyValue("Request Host", req->getHeader("host").c_str());
+  page += keyValue("Client IP", req->getClientIP().toString());
+  page += keyValue("Language", req->getHeader("Accept-Language").c_str());
+#ifdef HTTPS_LOGLEVEL
+  page += keyValue("Https log level", String(HTTPS_LOGLEVEL));
+#endif
+
   res->print(page);
   res->print(footer);
 }
@@ -901,7 +967,7 @@ static void handleReboot(HTTPRequest *, HTTPResponse * res) {
   res->finalize();
   delay(1000);
   ESP.restart();
-};
+}
 
 
 static void handleBackup(HTTPRequest *, HTTPResponse * res) {
@@ -910,7 +976,7 @@ static void handleBackup(HTTPRequest *, HTTPResponse * res) {
   html = replaceHtml(html, "{method}", "/settings/restore");
   html = replaceHtml(html, "{accept}", ".json");
   sendHtml(res, html);
-};
+}
 
 static void handleBackupDownload(HTTPRequest *, HTTPResponse * res) {
   const String fileName
@@ -962,7 +1028,7 @@ static void handleBackupRestore(HTTPRequest * req, HTTPResponse * res) {
     }
   }
   sensorManager->attachInterrupts();
-};
+}
 
 
 static void handleWifi(HTTPRequest *, HTTPResponse * res) {
@@ -977,7 +1043,7 @@ static void handleWifi(HTTPRequest *, HTTPResponse * res) {
     html = replaceHtml(html, "{password}", "");
   }
   sendHtml(res, html);
-};
+}
 
 static void handleWifiSave(HTTPRequest * req, HTTPResponse * res) {
   const auto params = extractParameters(req);
@@ -1032,9 +1098,6 @@ static void handleConfigSave(HTTPRequest * req, HTTPResponse * res) {
   offsets.push_back(atoi(getParameter(params, "offsetS2").c_str()));
   offsets.push_back(atoi(getParameter(params, "offsetS1").c_str()));
   theObsConfig->setOffsets(0, offsets);
-
-  theObsConfig->setProperty(0, ObsConfig::PROPERTY_GPS_FIX,
-                            atoi(getParameter(params, "gpsFix").c_str()));
 
   // TODO: cleanup
   const String privacyOptions = getParameter(params, "privacyOptions");
@@ -1099,11 +1162,6 @@ static void handleConfig(HTTPRequest *, HTTPResponse * res) {
   html = replaceHtml(html, "{simRaMode}",
                theObsConfig->getProperty<bool>(ObsConfig::PROPERTY_SIM_RA) ? "checked" : "");
 
-  int gpsFix = theObsConfig->getProperty<int>(ObsConfig::PROPERTY_GPS_FIX);
-  html = replaceHtml(html, "{fixPos}", gpsFix == (int) Gps::WaitFor::FIX_POS || gpsFix > 0 ? "selected" : "");
-  html = replaceHtml(html, "{fixTime}", gpsFix == (int) Gps::WaitFor::FIX_TIME ? "selected" : "");
-  html = replaceHtml(html, "{fixNoWait}", gpsFix == (int) Gps::WaitFor::FIX_NO_WAIT ? "selected" : "");
-
   const uint privacyConfig = (uint) theObsConfig->getProperty<int>(
     ObsConfig::PROPERTY_PRIVACY_CONFIG);
   const bool absolutePrivacy = privacyConfig & AbsolutePrivacy;
@@ -1117,7 +1175,7 @@ static void handleConfig(HTTPRequest *, HTTPResponse * res) {
   html = replaceHtml(html, "{overridePrivacy}", overridePrivacy ? "checked" : "");
 
   sendHtml(res, html);
-};
+}
 
 #ifdef DEVELOP
 static void handleDevAction(HTTPRequest *req, HTTPResponse *res) {
@@ -1375,7 +1433,7 @@ static void handleFlashUpdate(HTTPRequest *, HTTPResponse * res) {
   html = replaceHtml(html, "{releaseApiUrl}",
                      "https://api.github.com/repos/openbikesensor/OpenBikeSensorFlash/releases");
   sendHtml(res, html);
-};
+}
 
 void updateProgress(size_t pos, size_t all) {
   displayTest->drawProgressBar(4, pos, all);
@@ -1448,6 +1506,7 @@ static void handleDeleteFiles(HTTPRequest *req, HTTPResponse * res) {
   if (path != "trash") {
     SD.mkdir("/trash");
   }
+  bool moveToRoot = !getParameter(params, "move").isEmpty();
 
   String html = replaceDefault(header, "Delete Files");
   html += "<h3>Deleting files</h3>";
@@ -1456,17 +1515,25 @@ static void handleDeleteFiles(HTTPRequest *req, HTTPResponse * res) {
   sendHtml(res, html);
   html.clear();
 
-  for (auto param : params) {
+  for (const auto& param : params) {
     if (param.first == "delete") {
       String file = param.second;
 
       String fullName = path + (path.length() > 1 ? "/" : "") + file;
 
       html += ObsUtils::encodeForXmlText(file) + " &#10140; ";
-      if (path != "trash") {
+      if (moveToRoot) {
+        if (SD.rename(fullName, "/" + file)) {
+          log_i("Moved '%s' to /", fullName.c_str());
+          html += HTML_ENTITY_OK_MARK;
+        } else {
+          log_w("Failed to moved '%s' to /", fullName.c_str());
+          html += HTML_ENTITY_FAILED_CROSS;
+        }
+      } else if (path != "trash") {
         if (SD.rename(fullName, "/trash/" + file)) {
           log_i("Moved '%s'.", fullName.c_str());
-          html += HTML_ENTITY_WASTEBASKED;
+          html += HTML_ENTITY_WASTEBASKET;
         } else {
           log_w("Failed to move '%s'.", fullName.c_str());
           html += HTML_ENTITY_FAILED_CROSS;
@@ -1474,7 +1541,7 @@ static void handleDeleteFiles(HTTPRequest *req, HTTPResponse * res) {
       } else {
         if (SD.remove(fullName)) {
           log_i("Deleted '%s'.", fullName.c_str());
-          html += HTML_ENTITY_WASTEBASKED;
+          html += HTML_ENTITY_WASTEBASKET;
         } else {
           log_w("Failed to delete '%s'.", fullName.c_str());
           html += HTML_ENTITY_FAILED_CROSS;
@@ -1522,7 +1589,7 @@ static void handleSd(HTTPRequest *req, HTTPResponse *res) {
 
       auto fileName = String(child.name());
       auto fileTip = ObsUtils::encodeForXmlAttribute(
-        ObsUtils::dateTimeToString(child.getLastWrite())
+        TimeUtils::dateTimeToString(child.getLastWrite())
         + " - " + ObsUtils::toScaledByteString(child.size()));
 
       fileName = fileName.substring(int(fileName.lastIndexOf("/") + 1));
@@ -1562,10 +1629,15 @@ static void handleSd(HTTPRequest *req, HTTPResponse *res) {
               + ObsUtils::encodeForUrl(back) + "'\" class='btn' value='Up' />";
     } else {
       html += "<input type=button onclick=\"window.location.href='/'\" "
-              "class='btn' value='Menu' />";
+              "class='btn' value='Home' />";
     }
 
     if (counter > 0) {
+      if (path == "/uploaded") {
+        html += "<hr /><p>Move for new upload will move selected files to the root directory, where "
+                "they will be considered as new tracks and uploaded to the portal with the next "
+                "Track upload.</p><input type='submit' class='btn' name='move' value='Move for new upload' />";
+      }
       if (path == "/trash") {
         html += "<hr /><input type='submit' class='btn' value='Delete Selected' />";
       } else {
@@ -1657,9 +1729,6 @@ static uint16_t countFilesInRoot() {
 static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<void()> next) {
   configServerWasConnectedViaHttpFlag = true;
 
-  log_w("Access Filter!");
-  log_w("HTTP password: %s", req->getBasicAuthPassword().c_str());
-
   const String incomingPassword(req->getBasicAuthPassword().c_str());
 
   String httpPin = theObsConfig->getProperty<String>(ObsConfig::PROPERTY_HTTP_PIN);
@@ -1676,6 +1745,7 @@ static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<vo
   }
 
   if (incomingPassword != httpPin) {
+    log_i("HTTP password: %s", httpPin.c_str());
     res->setStatusCode(401);
     res->setStatusText("Unauthorized");
     res->setHeader("Content-Type", "text/plain");
@@ -1698,19 +1768,32 @@ static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<vo
 
 static void handleHttpsRedirect(HTTPRequest *req, HTTPResponse *res) {
   String html = createPage(httpsRedirect);
-  html = replaceDefault(html, "Https Redirect");
-  String linkHost(req->getHTTPHeaders()->getValue("linkHost").c_str());
-  // this could be more hardened?
-  if (!linkHost || linkHost == "") {
-    linkHost = getIp();
+  html = replaceDefault(html, "Https Redirect", "/http");
+  String host(req->getHeader("host").c_str());
+  if (!host || host == "") {
+    host = getIp();
   }
-  html = replaceHtml(html, "{host}", linkHost);
+  html = replaceHtml(html, "{host}", host);
   sendHtml(res, html);
+}
+
+static void handleHttpAction(HTTPRequest *req, HTTPResponse *res) {
+  const String referer = req->getHTTPHeaders()->getValue("referer").c_str();
+  req->discardRequestBody();
+  if (referer.endsWith("/") && referer.startsWith("http://")) {
+    registerPages(insecureServer);
+  } else {
+    log_w("Refused to enable http access, referer: '%s' suspect. ", referer.c_str());
+  }
+  sendRedirect(res, "/");
 }
 
 void configServerHandle() {
   server->loop();
   insecureServer->loop();
+  if (dnsServer) {
+    dnsServer->processNextRequest();
+  }
 }
 
 std::vector<std::pair<String,String>> extractParameters(HTTPRequest *req) {
@@ -1821,7 +1904,7 @@ static void handleFirmwareUpdateSdAction(HTTPRequest * req, HTTPResponse * res) 
           parser.getFieldMimeType().c_str(), parser.getFieldFilename().c_str());
 
     int tick = 0;
-    int pos = 0;
+    size_t pos = 0;
     while (!parser.endOfField()) {
       byte buffer[256];
       size_t len = parser.read(buffer, 256);
@@ -1859,15 +1942,49 @@ static void handleFirmwareUpdateSdAction(HTTPRequest * req, HTTPResponse * res) 
         res->print("Failed to switch!");
       }
     } else {
-      String errorMsg = firmwareError;
-      log_e("Update: %s", errorMsg.c_str());
+      log_e("Update: %s", firmwareError.c_str());
       displayTest->showTextOnGrid(0, 3, "Error");
-      displayTest->showTextOnGrid(0, 4, errorMsg);
+      displayTest->showTextOnGrid(0, 4, firmwareError);
       res->setStatusCode(500);
       res->setStatusText(firmwareError.c_str());
       res->print(firmwareError);
     }
   }
+}
+
+static void handleDownloadCert(HTTPRequest *req, HTTPResponse * res) {
+  if (serverSslCert == nullptr) {
+    handleNotFound(req, res);
+    return;
+  }
+  uint8_t out[4096];
+  size_t outLen;
+  int err = mbedtls_base64_encode(
+    out, sizeof(out), &outLen, serverSslCert->getCertData(), serverSslCert->getCertLength());
+
+  if (err != 0) {
+    log_e("Base64 encode returned 0x%02X.", err);
+    res->setHeader("Content-Type", "text/plain");
+    res->setStatusCode(500);
+    res->setStatusText("Failed to convert cert.");
+    res->print("ERROR");
+  }
+  res->setHeader("Content-Type", "application/octet-stream");
+  res->setHeader("Content-Disposition", "attachment; filename=\"obs.crt\"");
+  res->setStatusCode(200);
+  res->setStatusText("OK");
+
+  res->print("-----BEGIN CERTIFICATE-----\n");
+  for (int i = 0; i < outLen; i += 64) {
+    size_t ll = 64;
+    if (i + ll > outLen) {
+      ll = outLen - i;
+    }
+    res->write(&out[i], ll);
+    res->print("\n");
+  }
+  res->print("-----END CERTIFICATE-----\n");
+  res->finalize();
 }
 
 static void handleDelete(HTTPRequest *, HTTPResponse * res) {
@@ -1879,19 +1996,40 @@ static void handleDelete(HTTPRequest *, HTTPResponse * res) {
 };
 
 static void handleDeleteAction(HTTPRequest *req, HTTPResponse * res) {
+  // TODO: Result page with status!
   const auto params = extractParameters(req);
-  const auto deleteFlash = getParameter(params, "flash");
-  const auto deleteConfig = getParameter(params, "config");
 
-  log_e("FLASH: %s", deleteFlash.c_str());
-  log_e("CONFIG: %s", deleteConfig.c_str());
-
-  if (deleteFlash == "on") {
+  if (getParameter(params, "flash") == "on") {
     SPIFFS.format();
+  } else {
+    if (getParameter(params, "flashConfig") == "on") {
+      theObsConfig->removeConfig();
+    }
+    if (getParameter(params, "flashCert") == "on") {
+      Https::removeCertificate();
+    }
   }
-  if (deleteConfig == "on") {
+  if (getParameter(params, "config") == "on") {
     theObsConfig->parseJson("{}");
     theObsConfig->fill(config);
   }
   sendRedirect(res, "/");
 }
+
+static void handleSettingSecurity(HTTPRequest *, HTTPResponse * res) {
+  String html = createPage(settingsSecurityIndex);
+  html = replaceDefault(html, "Settings Security", "/settings/security");
+  html = replaceHtml(html, "{pin}",
+      theObsConfig->getProperty<String>(ObsConfig::PROPERTY_HTTP_PIN));
+  sendHtml(res, html);
+}
+
+static void handleSettingSecurityAction(HTTPRequest * req, HTTPResponse * res) {
+  const auto params = extractParameters(req);
+  const auto pin = getParameter(params, "pin");
+  if (pin && pin.length() > 3) {
+    theObsConfig->setProperty(0, ObsConfig::PROPERTY_HTTP_PIN, pin);
+  }
+  sendRedirect(res, "/settings/security");
+}
+

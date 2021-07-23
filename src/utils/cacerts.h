@@ -21,24 +21,10 @@
  * see <http://www.gnu.org/licenses/>.
  */
 
-#include "ClosePassService.h"
+#ifndef OPENBIKESENSORFIRMWARE_CACERTS_H
+#define OPENBIKESENSORFIRMWARE_CACERTS_H
 
-void ClosePassService::setup(BLEServer *pServer) {
-  mService = pServer->createService(SERVICE_CLOSEPASS_UUID);
-  mEventCharacteristic = mService->createCharacteristic(SERVICE_CLOSEPASS_CHAR_EVENT_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
-  mEventCharacteristic->setValue((String(millis()) + ";button;").c_str());
-}
+extern const char *const trustedRootCACertificates;
 
-bool ClosePassService::shouldAdvertise() {
-  return false;
-}
 
-BLEService* ClosePassService::getService() {
-  return mService;
-}
-
-void ClosePassService::newPassEvent(const uint32_t millis, const uint16_t leftValue, const uint16_t rightValue) {
-  auto transmitValue = String(millis) + ";button;" + valueAsString(leftValue);
-  mEventCharacteristic->setValue(transmitValue.c_str());
-  mEventCharacteristic->notify();
-}
+#endif //OPENBIKESENSORFIRMWARE_CACERTS_H

@@ -44,7 +44,6 @@ const String ObsConfig::PROPERTY_WIFI_SSID = String("wifiSsid");
 const String ObsConfig::PROPERTY_WIFI_PASSWORD = String("wifiPassword");
 const String ObsConfig::PROPERTY_PORTAL_URL = String("portalUrl");
 const String ObsConfig::PROPERTY_PORTAL_TOKEN = String("portalToken");
-const String ObsConfig::PROPERTY_GPS_FIX = String("gpsFix");
 const String ObsConfig::PROPERTY_DISPLAY_CONFIG = String("displayConfig");
 const String ObsConfig::PROPERTY_CONFIRMATION_TIME_SECONDS = String("confirmationTimeSeconds");
 const String ObsConfig::PROPERTY_PRIVACY_CONFIG = String("privacyConfig");
@@ -148,7 +147,6 @@ void ObsConfig::makeSureSystemDefaultsAreSet() {
     setProperty(0, PROPERTY_PORTAL_TOKEN, "");
   }
   ensureSet(data, PROPERTY_PORTAL_TOKEN, "");
-  ensureSet(data, PROPERTY_GPS_FIX, (int) Gps::WaitFor::FIX_POS);
   ensureSet(data, PROPERTY_DISPLAY_CONFIG, DisplaySimple);
   if (getProperty<int>(PROPERTY_DISPLAY_CONFIG) == 0) {
     data[PROPERTY_DISPLAY_CONFIG] = DisplaySimple;
@@ -399,17 +397,6 @@ void ObsConfig::parseOldJsonDocument(DynamicJsonDocument &doc) {
   setProperty(0, PROPERTY_WIFI_PASSWORD, doc["password"] | String("Freifunk"));
   setProperty(0, PROPERTY_PORTAL_TOKEN, doc["obsUserID"] | String("5e8f2f43e7e3b3668ca13151"));
   setProperty(0, PROPERTY_DISPLAY_CONFIG, doc["displayConfig"] | DisplaySimple);
-
-  uint16_t gpsConfig = doc["GPSConfig"];
-  if (gpsConfig & GPSOptions::ValidTime) {
-    setProperty(0, PROPERTY_GPS_FIX, (int) Gps::WaitFor::FIX_TIME);
-  } else if (gpsConfig & GPSOptions::ValidLocation) {
-    setProperty(0, PROPERTY_GPS_FIX, (int) Gps::WaitFor::FIX_POS);
-  } else if (gpsConfig & GPSOptions::NumberSatellites) {
-    setProperty(0, PROPERTY_GPS_FIX, doc["satsForFix"] | 4);
-  } else {
-    setProperty(0, PROPERTY_GPS_FIX, (int) Gps::WaitFor::FIX_NO_WAIT);
-  }
   setProperty(0, PROPERTY_CONFIRMATION_TIME_SECONDS, doc["confirmationTimeWindow"] | 5);
   setProperty(0, PROPERTY_PRIVACY_CONFIG, doc["privacyConfig"] | AbsolutePrivacy);
   setProperty(0, PROPERTY_BLUETOOTH, doc["bluetooth"] | false);
@@ -469,4 +456,14 @@ std::vector<int> ObsConfig::getIntegersProperty(const String &key) const {
 
 void ObsConfig::releaseJson() {
   jsonData.clear(); // should we just shrink?
+}
+
+bool ObsConfig::removeConfig() {
+  SPIFFS.remove(OLD_CONFIG_FILENAME);
+  SPIFFS.remove(CONFIG_OLD_FILENAME);
+  SPIFFS.remove(CONFIG_FILENAME);
+
+  return !SPIFFS.exists(OLD_CONFIG_FILENAME)
+    && !SPIFFS.exists(CONFIG_OLD_FILENAME)
+    && !SPIFFS.exists(CONFIG_FILENAME);
 }

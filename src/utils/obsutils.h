@@ -32,8 +32,6 @@
 class ObsUtils {
   public:
     static String createTrackUuid();
-    static String dateTimeToString(time_t time = 0);
-    static String timeToString(time_t theTime =0);
     static String sha256ToString(byte *sha256);
     /* Strips technical details like extension or '/' from the file name. */
     static String stripCsvFileName(const String &fileName);
@@ -41,19 +39,8 @@ class ObsUtils {
     static String encodeForXmlText(const String &text);
     static String encodeForCsvField(const String &field);
     static String encodeForUrl(const String &url);
-    static void setClockByNtp(const char *ntpServer = nullptr);
-    static void setClockByNtpAndWait(const char *ntpServer = nullptr);
-    static bool systemTimeIsSet();
-    static String toScaledByteString(uint32_t size);
-    static String dateTimeToHttpHeaderString(time_t theTime);
+    static String toScaledByteString(uint64_t size);
     static void logHexDump(const uint8_t *buffer, uint16_t length);
-    static const time_t PAST_TIME;
-
-  private:
-    static const char *weekDayToString(uint8_t wDay);
-    static const char *monthToString(uint8_t mon);
-    static const char *WEEK_DAYS[7];
-    static const char *MONTHS[12];
 
 };
 

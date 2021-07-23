@@ -37,14 +37,15 @@ relevant put the order of the array content.
           // Bitfield display config, see DisplayOptions for details, 
           // as noted all subject to change!
             "displayConfig": 15,
-          // For what GPS fix should the OBS wait at startup?
-          // -2: FIX POS; -1: Time only; 0: No wait
-            "gpsFix": -2,
-          // Textual name of the profile - waiting for fetures to come.
+          // PIN to be entered when accessing the OBS web interface.
+          // a new one will be created when empty. The PIN is also displayed 
+          // on the OBS display when needed.
+            "httpPin": "12345678",
+          // Textual name of the profile - waiting for features to come.
             "name": "default",
           // Name of the OBS, will be used for WiFo, Bluetooth and other places 
           // currently no way to change it, consists of OpenBikeSensor-<deviceId>  
-            "obsName": "OpenBikeSensor-affe",
+            "obsName": "OpenBikeSensor-cafe",
           // The handle bar offset in cm, order right, left.  
             "offset": [
                 31,

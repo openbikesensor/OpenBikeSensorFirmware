@@ -25,17 +25,17 @@
 
 bool FileUtil::appendFile(fs::FS &fs, const char * path, const char * message) {
   bool result = false;
-  Serial.printf("Appending to file: %s\n", path);
+  log_i("Appending to file: %s", path);
 
   File file = fs.open(path, FILE_APPEND);
   if (!file) {
-    Serial.println("Failed to open file for appending");
+    log_e("Failed to open file for appending");
     return false;
   }
   if (file.print(message)) {
     result = true;
   } else {
-    Serial.println("Append failed");
+    log_e("Append failed");
   }
   file.close();
   return result;

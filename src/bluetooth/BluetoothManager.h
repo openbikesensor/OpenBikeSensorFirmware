@@ -49,7 +49,7 @@ class BluetoothManager: public BLEServerCallbacks  {
      * Starts advertising all services that internally implement shouldAdvertise()
      * with `true`. The bluetooth server needs to be started before this method.
      */
-    void activateBluetooth() const;
+    void activateBluetooth();
 
     /**
      * Stops advertising the bluetooth services. The bluetooth server will not be
@@ -86,8 +86,12 @@ class BluetoothManager: public BLEServerCallbacks  {
     std::list<IBluetoothService*> services;
     void onDisconnect(BLEServer *pServer) override;
     void onConnect(BLEServer *pServer) override;
+    void setFastAdvertising();
+    void setSlowAdvertising();
     bool deviceConnected;
-    bool oldDeviceConnected;
+    bool fastAdvertising;
+    uint32_t lastDisconnected;
+    static const uint32_t HIGH_ADVERTISEMENT_TIME_MS;
 
 };
 

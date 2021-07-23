@@ -23,6 +23,7 @@
 
 #include <vector>
 #include <utils/obsutils.h>
+#include <utils/timeutils.h>
 #include "OpenBikeSensorFirmware.h"
 
 #include "SPIFFS.h"
@@ -34,7 +35,7 @@
 
 // --- Global variables ---
 // Version only change the "vN.M" part if needed.
-const char *OBSVersion = "v0.7" BUILD_NUMBER;
+const char *OBSVersion = "v0.8" BUILD_NUMBER;
 
 const uint8_t LEFT_SENSOR_ID = 1;
 const uint8_t RIGHT_SENSOR_ID = 0;
@@ -62,8 +63,11 @@ static BluetoothManager* bluetoothManager;
 
 Gps gps;
 
-static const uint32_t BLUETOOTH_INTERVAL_MILLIS = 100;
-static uint32_t lastBluetoothInterval = 0;
+static const long BLUETOOTH_INTERVAL_MILLIS = 100;
+static long lastBluetoothInterval = 0;
+
+static const long DISPLAY_INTERVAL_MILLIS = 25;
+static long lastDisplayInterval = 0;
 
 float TemperatureValue = -1;
 
@@ -119,13 +123,13 @@ void setupSensors() {
   sensorManaged1.triggerPin = (config.displayConfig & DisplaySwapSensors) ? 25 : 15;
   sensorManaged1.echoPin = (config.displayConfig & DisplaySwapSensors) ? 26 : 4;
   sensorManaged1.sensorLocation = (char*) "Right"; // TODO
-  sensorManager->registerSensor(sensorManaged1);
+  sensorManager->registerSensor(sensorManaged1, 0);
 
   HCSR04SensorInfo sensorManaged2;
   sensorManaged2.triggerPin = (config.displayConfig & DisplaySwapSensors) ? 15 : 25;
   sensorManaged2.echoPin = (config.displayConfig & DisplaySwapSensors) ? 4 : 26;
   sensorManaged2.sensorLocation = (char*) "Left"; // TODO
-  sensorManager->registerSensor(sensorManaged2);
+  sensorManager->registerSensor(sensorManaged2, 1);
 
   sensorManager->setOffsets(config.sensorOffsets);
 
@@ -152,13 +156,13 @@ static void setupBluetooth(const ObsConfig &cfg, const String &trackUniqueIdenti
 }
 
 static void reportBluetooth() {
-  if (bluetoothManager
-      && lastBluetoothInterval != (currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS)) {
-    log_d("Reporting BT: %d/%d Button: %d\n",
+  const uint32_t currentInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
+  if (bluetoothManager && lastBluetoothInterval != currentInterval) {
+    log_d("Reporting BT: %d/%d cm Button: %d",
           sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
           sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median(),
           buttonState);
-    lastBluetoothInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
+    lastBluetoothInterval = currentInterval;
     bluetoothManager->newSensorValues(
       currentTimeMillis,
       sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
@@ -196,7 +200,7 @@ static void buttonBluetooth(const DataSet *dataSet, uint16_t measureIndex) {
 void setup() {
   Serial.begin(115200);
 
-  log_i("setup()");
+  log_i("openbikesensor.org - OBS/%s", OBSVersion);
 
   //##############################################################
   // Configure button pin as INPUT
@@ -257,7 +261,7 @@ void setup() {
   }
 
   if (SD.begin()) {
-    displayTest->showTextOnGrid(2, displayTest->currentLine(), "SD... ok");
+    displayTest->showTextOnGrid(2, displayTest->currentLine(), "SD... OK");
   }
   delay(333); // Added for user experience
 
@@ -305,7 +309,7 @@ void setup() {
     writer = new CSVFileWriter;
     writer->setFileName();
     writer->writeHeader(trackUniqueIdentifier);
-    displayTest->showTextOnGrid(2, displayTest->currentLine(), "CSV file... ok");
+    displayTest->showTextOnGrid(2, displayTest->currentLine(), "CSV file... OK");
   } else {
     displayTest->showTextOnGrid(2, displayTest->currentLine(), "CSV. skipped");
   }
@@ -328,11 +332,10 @@ void setup() {
   gps.handle();
   gps.setStatisticsIntervalInSeconds(1); // get regular updates.
 
-  int gpsWaitFor = cfg.getProperty<int>(ObsConfig::PROPERTY_GPS_FIX);
-  while (!gps.hasState(gpsWaitFor, displayTest)) {
+  while (!gps.hasFix(displayTest)) {
     currentTimeMillis = millis();
     gps.handle();
-    sensorManager->getDistances();
+    sensorManager->pollDistancesAlternating();
     reportBluetooth();
     gps.showWaitStatus(displayTest);
     buttonState = digitalRead(PushButton_PIN);
@@ -348,9 +351,9 @@ void setup() {
   // now we have a fix only rate updates, could be set to 0?
   gps.setStatisticsIntervalInSeconds(0);
 
-  gps.handle(1000); // Added for user experience
-  gps.pollStatistics();
   gps.enableSbas();
+  gps.handle(1100); // Added for user experience
+  gps.pollStatistics();
   displayTest->clear();
   registerDisplayableValues(*displayTest);
 //  displayTest->selectComplexLayout();
@@ -401,7 +404,7 @@ void registerDisplayableValues(SSD1306DisplayDevice &display) {
 void serverLoop() {
   gps.handle();
   configServerHandle();
-  sensorManager->getDistancesNoWait();
+  sensorManager->pollDistancesAlternating();
   handleButtonInServerMode();
 }
 
@@ -427,6 +430,24 @@ void handleButtonInServerMode() {
   }
 }
 
+void writeDataset(const uint8_t confirmationSensorID, DataSet *dataset) {
+  if (dataset->confirmedDistances.empty()) {
+    if (writer) {
+      writer->append(*dataset);
+    }
+  }
+  // write record as many times as we have confirmed values
+  for (int i = 0; i < dataset->confirmedDistances.size(); i++) {
+    // make sure the distance reported is the one that was confirmed
+    dataset->sensorValues[confirmationSensorID] = dataset->confirmedDistances[i];
+    dataset->confirmed = 1 + dataset->confirmedDistancesIndex[i];
+    confirmedMeasurements++;
+    if (writer) {
+      writer->append(*dataset);
+    }
+  }
+}
+
 void loop() {
   log_i("loop()");
 
@@ -439,45 +460,66 @@ void loop() {
   if (startTimeMillis == 0) {
     startTimeMillis = (currentTimeMillis / measureInterval) * measureInterval;
   }
-  currentSet->time = Gps::currentTime();
+  currentSet->time = time(nullptr);
   currentSet->millis = currentTimeMillis;
   currentSet->batteryLevel = voltageMeter->read();
   currentSet->isInsidePrivacyArea = gps.isInsidePrivacyArea();
   currentSet->gpsRecord = gps.getCurrentGpsRecord();
 
+  lastMeasurements = sensorManager->m_sensors[confirmationSensorID].numberOfTriggers;
   sensorManager->reset();
-
-  int measurements = 0;
 
   // if the detected minimum was measured more than 5s ago, it is discarded and cannot be confirmed
   int timeDelta = (int) (currentTimeMillis - timeOfMinimum);
-  if ((timeDelta ) > (config.confirmationTimeWindow * 1000)) {
-    Serial.println(">>> CTW reached - reset() <<<");
+  if (datasetToConfirm != nullptr &&
+      timeDelta > (config.confirmationTimeWindow * 1000)) {
+    log_i("minimum %dcm unconfirmed - resetting", minDistanceToConfirm);
     minDistanceToConfirm = MAX_SENSOR_VALUE;
     datasetToConfirm = nullptr;
   }
 
+  int loops = 0;
   // do this for the time specified by measureInterval, e.g. 1s
   while ((currentTimeMillis - startTimeMillis) < measureInterval) {
+    loops++;
 
     currentTimeMillis = millis();
-    sensorManager->getDistances();
+    if (sensorManager->pollDistancesAlternating()) {
+      // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
+      const uint16_t reading = sensorManager->sensorValues[confirmationSensorID];
+      if (reading > 0 && reading < minDistanceToConfirm) {
+        minDistanceToConfirm = reading;
+        minDistanceToConfirmIndex = sensorManager->getCurrentMeasureIndex();
+        // if there was no measurement of this sensor for this index, it is the
+        // one before. This happens with fast confirmations.
+        while (minDistanceToConfirmIndex > 0
+               && sensorManager->m_sensors[confirmationSensorID].echoDurationMicroseconds[minDistanceToConfirmIndex] <= 0) {
+            minDistanceToConfirmIndex--;
+        }
+        datasetToConfirm = currentSet;
+        timeOfMinimum = currentTimeMillis;
+      }
+    }
     gps.handle();
 
-    displayTest->handle();
-    /*
-    displayTest->showValues(
-      sensorManager->m_sensors[LEFT_SENSOR_ID],
-      sensorManager->m_sensors[RIGHT_SENSOR_ID],
-      minDistanceToConfirm,
-      voltageMeter->readPercentage(),
-      (int16_t) TemperatureValue,
-      lastMeasurements,
-      currentSet->isInsidePrivacyArea,
-      gps.getSpeed(),
-      gps.getValidSatellites()
-    );
+    if (lastDisplayInterval != (currentTimeMillis / DISPLAY_INTERVAL_MILLIS)) {
+      lastDisplayInterval = currentTimeMillis / DISPLAY_INTERVAL_MILLIS;
+      displayTest->handle();
+      /*
+      displayTest->showValues(
+        sensorManager->m_sensors[LEFT_SENSOR_ID],
+        sensorManager->m_sensors[RIGHT_SENSOR_ID],
+        minDistanceToConfirm,
+        voltageMeter->readPercentage(),
+        (int16_t) TemperatureValue,
+        lastMeasurements,
+        currentSet->isInsidePrivacyArea,
+        gps.getSpeed(),
+        gps.getValidSatellites()
+      );
 */
+    }
+
     reportBluetooth();
     buttonState = digitalRead(PushButton_PIN);
     // detect state change
@@ -495,12 +537,12 @@ void loop() {
         numButtonReleased++;
         if (datasetToConfirm != nullptr) {
           datasetToConfirm->confirmedDistances.push_back(minDistanceToConfirm);
-          datasetToConfirm->confirmedDistancesTimeOffset.push_back(minDistanceToConfirmIndex);
+          datasetToConfirm->confirmedDistancesIndex.push_back(minDistanceToConfirmIndex);
           buttonBluetooth(datasetToConfirm, minDistanceToConfirmIndex);
           datasetToConfirm = nullptr;
         } else { // confirming a overtake without left measure
           currentSet->confirmedDistances.push_back(MAX_SENSOR_VALUE);
-          currentSet->confirmedDistancesTimeOffset.push_back(
+          currentSet->confirmedDistancesIndex.push_back(
             sensorManager->getCurrentMeasureIndex());
           buttonBluetooth(currentSet, sensorManager->getCurrentMeasureIndex());
         }
@@ -509,23 +551,9 @@ void loop() {
       lastButtonState = buttonState;
     }
 
-    // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
-    if (sensorManager->sensorValues[confirmationSensorID] > 0
-      && sensorManager->sensorValues[confirmationSensorID] < minDistanceToConfirm) {
-      minDistanceToConfirm = sensorManager->sensorValues[confirmationSensorID];
-      minDistanceToConfirmIndex = sensorManager->getCurrentMeasureIndex();
-      // if there was no measurement of this sensor for this index, it is the
-      // one before. This happens with fast confirmations.
-      if (minDistanceToConfirm > 0
-         && sensorManager->m_sensors[confirmationSensorID].echoDurationMicroseconds[minDistanceToConfirm - 1] <= 0) {
-        minDistanceToConfirmIndex--;
-      }
-      datasetToConfirm = currentSet;
-      timeOfMinimum = currentTimeMillis;
-    }
-    measurements++;
+    if(BMP280_active == true)  TemperatureValue = bmp280.readTemperature();
 
-       if(BMP280_active == true)  TemperatureValue = bmp280.readTemperature();
+    yield(); //
   } // end measureInterval while
 
   // Write the minimum values of the while-loop to a set
@@ -541,71 +569,17 @@ void loop() {
     &(sensorManager->startOffsetMilliseconds), currentSet->measurements * sizeof(uint16_t));
 
 #ifdef DEVELOP
-  Serial.write("min. distance: ");
-  Serial.print(currentSet->sensorValues[confirmationSensorID]) ;
-  Serial.write(" cm,");
-  Serial.print(measurements);
-  Serial.write(" measurements  \n");
+  log_i("min. distance: %dcm, loops %d",
+        currentSet->sensorValues[confirmationSensorID],
+        loops);
 #endif
 
-  // if nothing was detected, write the dataset to file, otherwise write it to the buffer for confirmation
-  if (!transmitConfirmedData
-    && currentSet->sensorValues[confirmationSensorID] == MAX_SENSOR_VALUE
-    && dataBuffer.isEmpty()) {
-    Serial.write("Empty Buffer, writing directly ");
-    if (writer) {
-      writer->append(*currentSet);
-    }
-    delete currentSet;
-  } else {
-    dataBuffer.push(currentSet);
-  }
-
-
-  lastMeasurements = measurements;
-
-  if (transmitConfirmedData) {
-    // Empty buffer by writing it, after confirmation it will be written to SD card directly so no confirmed sets will be lost
-    while (!dataBuffer.isEmpty() && dataBuffer.first() != datasetToConfirm) {
-      DataSet* dataset = dataBuffer.shift();
-      if (dataset->confirmedDistances.empty()) {
-        if (writer) {
-          writer->append(*dataset);
-        }
-      }
-      // write record as many times as we have confirmed values
-      for (int i = 0; i < dataset->confirmedDistances.size(); i++) {
-        // make sure the distance reported is the one that was confirmed
-        dataset->sensorValues[confirmationSensorID] = dataset->confirmedDistances[i];
-        dataset->confirmed = dataset->confirmedDistancesTimeOffset[i];
-        confirmedMeasurements++;
-        if (writer) {
-          writer->append(*dataset);
-        }
-      }
-      delete dataset;
-    }
-    if (writer) {  // "flush"
-      writer->flush();
-    }
-    Serial.printf(">>> flush - reset <<<");
-    transmitConfirmedData = false;
-    // back to normal display mode
-    if (config.displayConfig & DisplayInvert) {
-      displayTest->invert();
-    } else {
-      displayTest->normalDisplay();
-    }
-  }
-
-  // If the circular buffer is full, write just one set to the writers buffer,
-  if (dataBuffer.isFull()) { // TODO: Same code as above
+  dataBuffer.push(currentSet);
+  // convert all data that does not wait for confirmation.
+  while ((!dataBuffer.isEmpty() && dataBuffer.first() != datasetToConfirm) || dataBuffer.isFull()) {
     DataSet* dataset = dataBuffer.shift();
-    Serial.printf("data buffer full, writing set to file buffer\n");
-    if (writer) {
-      writer->append(*dataset);
-    }
-    // we are about to delete the to be confirmed dataset, so take care for this.
+    writeDataset(confirmationSensorID, dataset);
+    // if we are about to delete the to be confirmed dataset, take care for this.
     if (datasetToConfirm == dataset) {
       datasetToConfirm = nullptr;
       minDistanceToConfirm = MAX_SENSOR_VALUE;
@@ -613,7 +587,30 @@ void loop() {
     delete dataset;
   }
 
-  Serial.printf("Time elapsed %lu milliseconds\n", currentTimeMillis - startTimeMillis);
+  if (transmitConfirmedData) {
+    // After confirmation make sure it will be written to SD card directly
+    // so no confirmed sets might be lost
+    if (writer) {
+      writer->flush();
+    }
+    // there might be a confirmed value in the current set and also already a
+    // new value to be confirmed flagged in the current set.
+    // In this case the dataset is kept until we know if there are further
+    // confirmed values in the set to be written.
+    if (dataBuffer.isEmpty() || dataBuffer.first()->confirmedDistancesIndex.empty()) {
+      log_i("Confirmed data flushed to sd.");
+      transmitConfirmedData = false;
+    }
+    // back to normal display mode
+    if (config.displayConfig & DisplayInvert) {
+      displayTest->invert();
+    } else {
+      displayTest->normalDisplay();
+    }
+  }
+  log_d("Time in loop: %lums %d inner loops, %d measures, %s , %d",
+        currentTimeMillis - startTimeMillis, loops, lastMeasurements,
+        TimeUtils::timeToString().c_str(), millis());
   // synchronize to full measureIntervals
   startTimeMillis = (currentTimeMillis / measureInterval) * measureInterval;
 }

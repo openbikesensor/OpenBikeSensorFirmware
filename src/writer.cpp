@@ -162,6 +162,7 @@ bool CSVFileWriter::writeHeader(String trackId) {
   header += "MaximumValidFlightTimeMicroseconds=" + String(MAX_DURATION_MICRO_SEC) + "&";
   header += "BluetoothEnabled=" + String(config.bluetooth) + "&";
   header += "PresetId=default&";
+  header += "TimeZone=GPS&";
   header += "DistanceSensorsUsed=HC-SR04/JSN-SR04T\n";
 
   header += "Date;Time;Millis;Comment;Latitude;Longitude;Altitude;"
@@ -191,7 +192,7 @@ bool CSVFileWriter::append(DataSet &set) {
   }
 
   tm time;
-  localtime_r(&set.time, &time);
+  localtime_r(&(set.time), &time);
   char date[32];
   snprintf(date, sizeof(date),
     "%02d.%02d.%04d;%02d:%02d:%02d;%u;",
@@ -222,8 +223,50 @@ bool CSVFileWriter::append(DataSet &set) {
   } else if (time.tm_sec == 5) {
     csv += "DEV: GPS alp bytes: ";
     csv += gps.getNumberOfAlpBytesSent();
-  } else if (time.tm_sec >= 6 && time.tm_sec < 26) {
-    String msg = gps.getMessage(time.tm_sec - 6);
+  } else if (time.tm_sec == 6) {
+    csv += "DEV: Left Sensor no : ";
+    csv += sensorManager->getNoSignalReadings(LEFT_SENSOR_ID);
+  } else if (time.tm_sec == 7) {
+    csv += "DEV: Right Sensor no : ";
+    csv += sensorManager->getNoSignalReadings(RIGHT_SENSOR_ID);
+  } else if (time.tm_sec == 8) {
+    csv += "DEV: Left last delay till start : ";
+    csv += sensorManager->getLastDelayTillStartUs(LEFT_SENSOR_ID);
+  } else if (time.tm_sec == 9) {
+    csv += "DEV: Right last delay till start : ";
+    csv += sensorManager->getLastDelayTillStartUs(RIGHT_SENSOR_ID);
+  } else if (time.tm_sec == 10) {
+    csv += "DEV: Left min echo : ";
+    csv += sensorManager->getMinDurationUs(LEFT_SENSOR_ID);
+  } else if (time.tm_sec == 11) {
+    csv += "DEV: Right min echo : ";
+    csv += sensorManager->getMinDurationUs(RIGHT_SENSOR_ID);
+  } else if (time.tm_sec == 12) {
+    csv += "DEV: Left max echo : ";
+    csv += sensorManager->getMaxDurationUs(LEFT_SENSOR_ID);
+  } else if (time.tm_sec == 13) {
+    csv += "DEV: Right max echo : ";
+    csv += sensorManager->getMaxDurationUs(RIGHT_SENSOR_ID);
+  } else if (time.tm_sec == 14) {
+    csv += "DEV: Left low after measure: ";
+    csv += sensorManager->getNumberOfLowAfterMeasurement(LEFT_SENSOR_ID);
+  } else if (time.tm_sec == 15) {
+    csv += "DEV: Right low after measure : ";
+    csv += sensorManager->getNumberOfLowAfterMeasurement(RIGHT_SENSOR_ID);
+  } else if (time.tm_sec == 16) {
+    csv += "DEV: Left long measurement : ";
+    csv += sensorManager->getNumberOfToLongMeasurement(LEFT_SENSOR_ID);
+  } else if (time.tm_sec == 17) {
+    csv += "DEV: Right long measurement : ";
+    csv += sensorManager->getNumberOfToLongMeasurement(RIGHT_SENSOR_ID);
+  } else if (time.tm_sec == 18) {
+    csv += "DEV: Left interrupt adjusted : ";
+    csv += sensorManager->getNumberOfInterruptAdjustments(LEFT_SENSOR_ID);
+  } else if (time.tm_sec == 19) {
+    csv += "DEV: Right interrupt adjusted : ";
+    csv += sensorManager->getNumberOfInterruptAdjustments(RIGHT_SENSOR_ID);
+  } else if (time.tm_sec >= 20 && time.tm_sec < 40) {
+    String msg = gps.getMessage(time.tm_sec - 20);
     if (!msg.isEmpty()) {
       csv += "DEV: GPS: ";
       csv += ObsUtils::encodeForCsvField(msg);

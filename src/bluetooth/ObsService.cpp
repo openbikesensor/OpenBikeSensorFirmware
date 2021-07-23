@@ -46,7 +46,7 @@ void ObsService::setup(BLEServer *pServer) {
   mTimeCharacteristic.setCallbacks(&mTimeCharacteristicsCallback);
 
   mService->addCharacteristic(&mDistanceCharacteristic);
-  mDistanceCharacteristic.addDescriptor(new BLE2902);
+  mDistanceCharacteristic.addDescriptor(&mDistanceConfiguration);
 
   mService->addCharacteristic(&mButtonCharacteristic);
   mButtonCharacteristic.addDescriptor(new BLE2902);
@@ -57,7 +57,7 @@ void ObsService::setup(BLEServer *pServer) {
 }
 
 bool ObsService::shouldAdvertise() {
-  return false;
+  return true;
 }
 
 BLEService* ObsService::getService() {
@@ -65,7 +65,9 @@ BLEService* ObsService::getService() {
 }
 
 void ObsService::newSensorValues(uint32_t millis, uint16_t leftValue, uint16_t rightValue) {
-  sendEventData(&mDistanceCharacteristic, millis, leftValue, rightValue);
+  if (mDistanceConfiguration.getNotifications()) {
+    sendEventData(&mDistanceCharacteristic, millis, leftValue, rightValue);
+  }
 }
 
 void ObsService::newPassEvent(uint32_t millis, uint16_t leftValue, uint16_t rightValue) {

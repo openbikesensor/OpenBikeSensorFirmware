@@ -37,11 +37,10 @@ struct DataSet {
   uint32_t  millis;
   String comment;
   GpsRecord gpsRecord;
-  float BatterieVoltage;
   double batteryLevel;
   std::vector<uint16_t> sensorValues;
   std::vector<uint16_t> confirmedDistances;
-  std::vector<uint16_t> confirmedDistancesTimeOffset;
+  std::vector<uint16_t> confirmedDistancesIndex;
   uint16_t confirmed = 0;
   String marked;
   bool invalidMeasurement = false;

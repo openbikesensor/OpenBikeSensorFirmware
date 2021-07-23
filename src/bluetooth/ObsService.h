@@ -51,6 +51,7 @@ class ObsService : public IBluetoothService {
 
     BLECharacteristic mDistanceCharacteristic
       = BLECharacteristic(OBS_DISTANCE_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_NOTIFY);
+    BLE2902 mDistanceConfiguration;
 
     BLECharacteristic mButtonCharacteristic
       = BLECharacteristic(OBS_BUTTON_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_NOTIFY);
