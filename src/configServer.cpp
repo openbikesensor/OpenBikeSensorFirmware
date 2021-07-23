@@ -1405,17 +1405,21 @@ static void handlePrivacyDeleteAction(HTTPRequest *req, HTTPResponse *res) {
   sendRedirect(res, "/settings/privacy");
 }
 
-static void makeCurrentLocationPrivate() {
+static bool makeCurrentLocationPrivate() {
+  bool modified = false;
   auto gpsRecord = gps.getCurrentGpsRecord();
   if (gpsRecord.hasValidFix()) {
     theObsConfig->addPrivacyArea(
       0,
       Gps::newPrivacyArea(
           gpsRecord.getLatitude(), gpsRecord.getLongitude(), 500));
+    modified = true;
   }
+  return modified;
 }
 
-static void updatePrivacyAreas(const std::vector<std::pair<String, String>> &params) {
+static bool updatePrivacyAreas(const std::vector<std::pair<String, String>> &params) {
+  bool modified = false;
   for (int pos = 0; pos < theObsConfig->getNumberOfPrivacyAreas(0); ++pos) {
     String idx = String(pos);
     String latitude = getParameter(params, "latitude" + idx);
@@ -1434,11 +1438,14 @@ static void updatePrivacyAreas(const std::vector<std::pair<String, String>> &par
         0, pos,
         Gps::newPrivacyArea(atof(latitude.c_str()), atof(longitude.c_str()),
                             atoi(radius.c_str())));
+      modified = true;
     }
   }
+  return modified;
 }
 
-static void addPrivacyArea(const std::vector<std::pair<String, String>> &params) {
+static bool addPrivacyArea(const std::vector<std::pair<String, String>> &params) {
+  bool modified = false;
   String latitude = getParameter(params, "newlatitude");
   latitude.replace(",", ".");
   String longitude = getParameter(params, "newlongitude");
@@ -1451,20 +1458,29 @@ static void addPrivacyArea(const std::vector<std::pair<String, String>> &params)
       0,
       Gps::newPrivacyArea(atof(latitude.c_str()), atof(longitude.c_str()),
                          atoi(radius.c_str())));
+    modified = true;
   }
+  return modified;
 }
 
 static void handlePrivacyAction(HTTPRequest *req, HTTPResponse *res) {
   const auto params = extractParameters(req);
+  bool modified = false;
 
   if (!getParameter(params, "addCurrent").isEmpty()) {
-    makeCurrentLocationPrivate();
+    modified = makeCurrentLocationPrivate();
   } else {
-    updatePrivacyAreas(params);
-    addPrivacyArea(params);
+    modified = updatePrivacyAreas(params);
+    if (addPrivacyArea(params)) {
+      modified = true;
+    }
   }
-  theObsConfig->saveConfig();
-  sendRedirect(res, "/settings/privacy");
+  if (modified) {
+    theObsConfig->saveConfig();
+    sendRedirect(res, "/settings/privacy");
+  } else {
+    sendRedirect(res, "/");
+  }
 }
 
 static void handleGps(HTTPRequest * req, HTTPResponse * res) {
