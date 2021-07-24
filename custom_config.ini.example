@@ -1,36 +1,29 @@
 ; This file should contain your local modifications to the PlatformIO.ini file.
 
 [env:esp32dev]
+build_flags =
+; settings needed by the build
+    -DHTTPS_REQUEST_MAX_REQUEST_LENGTH=1024
+; reduce probability of https://github.com/fhessel/esp32_https_server/pull/123
+    -DHTTPS_CONNECTION_DATA_CHUNK_SIZE=1024
+; custom default configuration
+;
+; you can specify a custom config json (see docs/software/firmware/obs_cfg.md)
+; here which will be used for fresh installs based on this firmware
+    -DCUSTOM_OBS_DEFAULT_CONFIG='"{ obs: [ { displayConfig: 15, offset: [ 30, 30 ], httpPin: \\"12345678\\", wifiSsid: \\"SID\\", wifiPassword: \\"87654321\\" } ] }"'
+; aditional logoutput from 0 (node) over 3 (default info) to 5 debug
+    -DCORE_DEBUG_LEVEL=3
+; build with development option
+    -D DEVELOP
+; http lib loglevel
+    -DHTTPS_LOGLEVEL=3
+
 
 ; === upload_port ===
 ; Optional. If not set, PlatformIO will try to autodetect the port.
-
 ; -- macOS --
 ; upload_port = /dev/cu.SLAB_USBtoUART
-
 ; -- Windows --
 ; upload_port = COM3
-
 ; === build_flags ===
 ; build with development option
-; build_flags = -D DEVELOP
-
-;;;; Loglevel for debugging ;;;;
-
-; None
-;build_flags = -DCORE_DEBUG_LEVEL=0
-
-; Error
-;build_flags = -DCORE_DEBUG_LEVEL=1
-
-; Warn
-;build_flags = -DCORE_DEBUG_LEVEL=2
-
-; Info
-;build_flags = -DCORE_DEBUG_LEVEL=3
-
-; Debug
-;build_flags = -DCORE_DEBUG_LEVEL=4
-
-; Verbose
-;build_flags = -DCORE_DEBUG_LEVEL=5

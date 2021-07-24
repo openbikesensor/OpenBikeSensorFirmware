@@ -77,6 +77,16 @@ bool ObsConfig::loadConfig() {
   if (!loaded && SPIFFS.exists(OLD_CONFIG_FILENAME)) {
     loaded = loadOldConfig(OLD_CONFIG_FILENAME);
   }
+#ifdef CUSTOM_OBS_DEFAULT_CONFIG
+  if (!loaded) {
+    if(parseJsonFromString(jsonData, CUSTOM_OBS_DEFAULT_CONFIG)) {
+      log_i("Read complied-in default config.");
+      } else {
+      log_e("Failed to load compiled-in default config!");
+      jsonData.clear();
+    }
+  }
+#endif
   makeSureSystemDefaultsAreSet();
   return loaded;
 }
