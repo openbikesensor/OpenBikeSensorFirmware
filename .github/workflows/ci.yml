@@ -156,6 +156,7 @@ jobs:
           firmware.bin
           COPYRIGHT-ESP.html
           LICENSE-ARDUINO-ESP32.md
+          LICENSE-OpenSans.txt
           LICENSE
         if-no-files-found: error
 
@@ -167,6 +168,7 @@ jobs:
           0x*.bin
           COPYRIGHT-ESP.html
           LICENSE-ARDUINO-ESP32.md
+          LICENSE-OpenSans.txt
           LICENSE
         if-no-files-found: error
 
