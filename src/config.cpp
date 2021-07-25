@@ -83,7 +83,6 @@ bool ObsConfig::loadConfig() {
       log_i("Read complied-in default config.");
       } else {
       log_e("Failed to load compiled-in default config!");
-      jsonData.clear();
     }
   }
 #endif
@@ -322,6 +321,7 @@ bool ObsConfig::loadJson(JsonDocument &jsonDocument, File &file) {
   if (error) {
     log_w("Failed to read file %s, using default configuration got %s.\n",
           file.name(), error.c_str());
+    jsonDocument.clear();
   } else {
     success = true;
   }
@@ -340,6 +340,7 @@ bool ObsConfig::parseJsonFromString(JsonDocument &jsonDocument, const String &js
   DeserializationError error = deserializeJson(jsonDocument, jsonAsString);
   if (error) {
     log_w("Failed to parse %s, got %s.\n", jsonAsString.c_str(), error.c_str());
+    jsonDocument.clear();
   } else {
     success = true;
   }
