@@ -935,7 +935,7 @@ static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
   page += keyValue("GPS messages", gps.getMessagesHtml());
 
   page += "<h3>Display / Button</h3>";
-  page += keyValue("Button State", digitalRead(PushButton_PIN));
+  page += keyValue("Button State", digitalRead(PUSHBUTTON_PIN));
   page += keyValue("Display i2c last error", Wire.lastError());
   page += keyValue("Display i2c speed", Wire.getClock() / 1000, "KHz");
   page += keyValue("Display i2c timeout", Wire.getTimeOut(), "ms");
@@ -1351,30 +1351,7 @@ static void handleUpload(HTTPRequest *, HTTPResponse * res) {
 }
 
 static void handleMakeCurrentLocationPrivate(HTTPRequest *, HTTPResponse *res) {
-  String html = createPage(makeCurrentLocationPrivateIndex);
-  html = replaceDefault(html, "MakeLocationPrivate");
-  sendHtml(res, html);
-
-  bool validGPSData = false;
-  buttonState = digitalRead(PushButton_PIN);
-  while (!validGPSData && (buttonState == LOW)) {
-    log_d("GPSData not valid");
-    buttonState = digitalRead(PushButton_PIN);
-    gps.handle();
-    validGPSData = gps.getCurrentGpsRecord().hasValidFix();
-    if (validGPSData) {
-      log_d("GPSData valid");
-// FIXME: Not used?
-      Gps::newPrivacyArea(gps.getCurrentGpsRecord().getLatitude(),
-                          gps.getCurrentGpsRecord().getLongitude(), 500);
-    }
-    delay(300);
-  }
-
-// #77 - 200 cannot be send twice via HTTP
-//String s = "<meta http-equiv='refresh' content='0; url=/settings/privacy'><a href='/settings/privacy'>Go Back</a>";
-//server->send(200, "text/html", s); //Send web page
-
+// new implementation in other branch
 }
 
 static void handlePrivacy(HTTPRequest *, HTTPResponse *res) {

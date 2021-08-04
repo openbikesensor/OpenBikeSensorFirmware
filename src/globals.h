@@ -44,13 +44,10 @@ class HCSR04SensorManager;
 extern const char *OBSVersion;
 
 // PINs
-extern const int PushButton_PIN;
+extern const int PUSHBUTTON_PIN;
 
 extern int confirmedMeasurements;
 extern int numButtonReleased;
-
-extern int buttonState;
-extern uint32_t buttonStateChanged;
 
 extern Config config;
 
