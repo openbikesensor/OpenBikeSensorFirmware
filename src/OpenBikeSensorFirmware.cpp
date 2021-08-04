@@ -21,6 +21,7 @@
  * see <http://www.gnu.org/licenses/>.
  */
 
+#include <vector>
 #include <utils/obsutils.h>
 #include <utils/button.h>
 #include "OpenBikeSensorFirmware.h"
@@ -102,6 +103,8 @@ uint8_t batteryPercentage();
 void serverLoop();
 void handleButtonInServerMode();
 void loadConfig(ObsConfig &cfg);
+
+void registerDisplayableValues(SSD1306DisplayDevice &display);
 
 // The BMP280 can keep up to 3.4MHz I2C speed, so no need for an individual slower speed
 void switch_wire_speed_to_VL53(){
@@ -345,6 +348,50 @@ void setup() {
   gps.handle(1100); // Added for user experience
   gps.pollStatistics();
   displayTest->clear();
+  registerDisplayableValues(*displayTest);
+//  displayTest->selectComplexLayout();
+  displayTest->selectSimpleLayout();
+}
+
+// Where to place this?
+void registerDisplayableValues(SSD1306DisplayDevice &display) {
+
+  display.addDisplayableString("sensor.left.label", "Left");
+  display.addDisplayableString("sensor.right.label", "Right");
+  display.addDisplayableString("sensor.unit", "cm");
+  display.addDisplayableString("gps.sats.visible.label", "Sats");
+  display.addDisplayableString("gps.speed.unit", "km/h");
+  display.addDisplayableString("battery.voltage.unit", "V");
+  display.addDisplayableString("battery.percentage.unit", "V");
+  display.addDisplayableString("freeHeap.unit", "kb");
+  display.addDisplayableString("vbar.symbol", "|");
+
+
+  display.addDisplayableInt("sensor.left.confirmDistance",
+                            []() {
+                              return minDistanceToConfirm == MAX_SENSOR_VALUE
+                                     ? sensorManager->m_sensors[LEFT_SENSOR_ID].minDistance
+                                     : minDistanceToConfirm;
+                            });
+  display.addDisplayableInt("sensor.right.distance",
+                            []() { return sensorManager->m_sensors[RIGHT_SENSOR_ID].distance; });
+  display.addDisplayableInt("sensor.left.rawDistance",
+                            []() { return sensorManager->m_sensors[LEFT_SENSOR_ID].rawDistance; });
+  display.addDisplayableInt("sensor.right.rawDistance",
+                            []() { return sensorManager->m_sensors[RIGHT_SENSOR_ID].rawDistance; });
+  display.addDisplayableInt("measurement.loops",
+                            []() { return lastMeasurements; });
+  display.addDisplayableInt("gps.sats.visible",
+                            []() { return gps.getCurrentGpsRecord().getSatellitesUsed(); });
+  display.addDisplayableString("gps.speed",
+                            []() { return gps.getCurrentGpsRecord().getSpeedKmHString(); }); // TODO: only if valid!
+  display.addDisplayableDouble("battery.voltage",
+                               []() { return voltageMeter->read(); });
+  display.addDisplayableInt("battery.percentage",
+                            []() { return batteryPercentage(); });
+//                                                      []() { return voltageMeter->readPercentage(); }));
+  display.addDisplayableInt("freeHeap",
+                            []() { return (int32_t) (ESP.getFreeHeap() / 1024); });
 }
 
 void serverLoop() {
@@ -446,6 +493,8 @@ void loop() {
 
     if (lastDisplayInterval != (currentTimeMillis / DISPLAY_INTERVAL_MILLIS)) {
       lastDisplayInterval = currentTimeMillis / DISPLAY_INTERVAL_MILLIS;
+      displayTest->handle();
+      /*
       displayTest->showValues(
         sensorManager->m_sensors[LEFT_SENSOR_ID],
         sensorManager->m_sensors[RIGHT_SENSOR_ID],
@@ -457,6 +506,7 @@ void loop() {
         gps.getSpeed(),
         gps.getValidSatellites()
       );
+*/
     }
 
     reportBluetooth();

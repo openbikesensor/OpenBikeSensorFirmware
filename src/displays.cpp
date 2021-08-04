@@ -22,8 +22,92 @@
  */
 
 #include "displays.h"
-
 #include "fonts/fonts.h"
+
+class SSD1306DisplayDevice;
+
+uint8_t DisplayItemType::sNextOrdinal
+  = 0;
+std::map<String, DisplayItemType&> DisplayItemType::sTypeValues
+  = std::map<String, DisplayItemType&>();
+
+
+const DisplayItemType DisplayItemType::NONE = DisplayItemType("NONE");
+const DisplayItemType DisplayItemType::TEXT_8PT = DisplayItemType("TEXT_8PT");
+const DisplayItemType DisplayItemType::TEXT_10PT = DisplayItemType("TEXT_10PT");
+const DisplayItemType DisplayItemType::TEXT_16PT = DisplayItemType("TEXT_16PT");
+const DisplayItemType DisplayItemType::TEXT_20PT = DisplayItemType("TEXT_20PT");
+const DisplayItemType DisplayItemType::TEXT_26PT = DisplayItemType("TEXT_26PT");
+const DisplayItemType DisplayItemType::TEXT_30PT = DisplayItemType("TEXT_30PT");
+const DisplayItemType DisplayItemType::PROGRESS_BAR = DisplayItemType("PROGRESS_BAR");
+const DisplayItemType DisplayItemType::WAIT_BAR = DisplayItemType("WAIT_BAR");
+const DisplayItemType DisplayItemType::BATTERY_SYMBOLS = DisplayItemType("BATTERY_SYMBOLS");
+const DisplayItemType DisplayItemType::TEMPERATURE_SYMBOLS = DisplayItemType("TEMPERATURE_SYMBOLS");
+
+const DisplayItemType& DisplayItemType::fromString(const String& str) {
+  return sTypeValues.at(str);
+}
+
+
+void SSD1306DisplayDevice::handle() {
+  auto now = millis();
+  if (now - mLastHandle < MIN_MILLIS_BETWEEN_DISPLAY_UPDATE) {
+    return;
+  }
+  mLastHandle = now;
+
+  m_display->clear();
+  for (DisplayItem &item : mCurrentLayout.items) {
+    prepareItem(item);
+  }
+  m_display->display();
+
+}
+
+void SSD1306DisplayDevice::prepareItem(DisplayItem &displayItem) {
+  switch ((int) displayItem.style & 3) {
+    case 1:
+      m_display->setTextAlignment(TEXT_ALIGN_RIGHT);
+      break;
+    case 2:
+      m_display->setTextAlignment(TEXT_ALIGN_CENTER);
+      break;
+    case 4:
+      m_display->setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
+      break;
+    default:
+      m_display->setTextAlignment(TEXT_ALIGN_LEFT);
+      break;
+  }
+  m_display->setTextAlignment(
+    ((int) displayItem.style) % 2 == 0 ?
+    OLEDDISPLAY_TEXT_ALIGNMENT::TEXT_ALIGN_LEFT : OLEDDISPLAY_TEXT_ALIGNMENT::TEXT_ALIGN_RIGHT);
+
+  // TODO: DisplayItemType should know how to draw itself.
+  if (displayItem.type == &DisplayItemType::TEXT_8PT) {
+    drawString(displayItem.posX, displayItem.posY, getStringValue(displayItem), TINY_FONT);
+  } else if (displayItem.type == &DisplayItemType::TEXT_10PT) {
+    drawString(displayItem.posX, displayItem.posY, getStringValue(displayItem), SMALL_FONT);
+  } else if (displayItem.type == &DisplayItemType::TEXT_16PT) {
+    drawString(displayItem.posX, displayItem.posY, getStringValue(displayItem), ArialMT_Plain_16);
+  } else if (displayItem.type == &DisplayItemType::TEXT_20PT) {
+    drawString(displayItem.posX, displayItem.posY, getStringValue(displayItem), MEDIUM_FONT);
+  } else if (displayItem.type == &DisplayItemType::TEXT_26PT) {
+    drawString(displayItem.posX, displayItem.posY, getStringValue(displayItem), LARGE_FONT);
+  } else if (displayItem.type == &DisplayItemType::TEXT_30PT) {
+    drawString(displayItem.posX, displayItem.posY, getStringValue(displayItem), HUGE_FONT);
+  } else if (displayItem.type == &DisplayItemType::BATTERY_SYMBOLS) {
+    drawBatterySymbols(displayItem.posX, displayItem.posY, displayItem.contentGetter->getValueAsUint32());
+  } else {
+    log_d("Unexpected display item type %d", (int) displayItem.type);
+  }
+}
+
+void SSD1306DisplayDevice::drawString(int16_t x, int16_t y, const String& text, const uint8_t *font = DEFAULT_FONT) {
+  m_display->setFont(font);
+  m_display->drawString(x, y, text);
+}
+
 
 void SSD1306DisplayDevice::showNumConfirmed() {
   String val = String(confirmedMeasurements);
@@ -270,3 +354,187 @@ uint8_t SSD1306DisplayDevice::scrollUp() {
 uint8_t SSD1306DisplayDevice::startLine() {
   return mCurrentLine = 0;
 }
+
+void SSD1306DisplayDevice::addDisplayableString(const String& name, std::function<String()> getValue) {
+  auto *getter = new DisplayStringContentGetter(getValue);
+  mDisplayableValues.insert({name, getter});
+}
+
+void SSD1306DisplayDevice::addDisplayableInt(const String& name, std::function<int32_t()> getValue) {
+  auto *getter = new DisplayIntegerContentGetter(getValue);
+  mDisplayableValues.insert({name, getter});
+}
+
+void SSD1306DisplayDevice::addDisplayableDouble(const String& name, std::function<double()> getValue, int defaultDigits) {
+  auto *getter = new DisplayDoubleContentGetter(getValue, defaultDigits);
+  mDisplayableValues.insert({name, getter});
+}
+
+void SSD1306DisplayDevice::addDisplayableString(const String& name, String label) {
+  auto *getter = new DisplayStringContentGetter(label);
+  mDisplayableValues.insert({name, getter});
+}
+
+String SSD1306DisplayDevice::getStringValue(DisplayContentGetter getter, DisplayItemTextStyle style = DisplayItemTextStyle::LEFT_ALIGNED) {
+  return apply(getter.getValueAsString(), style);
+}
+
+String SSD1306DisplayDevice::getStringValue(DisplayItem& item) {
+  return apply(item.contentGetter->getValueAsString(), item.style);
+}
+
+int32_t SSD1306DisplayDevice::getInt32Value(DisplayItem& item) {
+  return item.contentGetter->getValueAsUint32();
+}
+
+double SSD1306DisplayDevice::getDoubleValue(DisplayItem& item) {
+  return item.contentGetter->getValueAsDouble();
+}
+
+String SSD1306DisplayDevice::apply(String data, DisplayItemTextStyle style) {
+  switch(style) {
+    case DisplayItemTextStyle::NUMBER_3_DIGITS_0_FILLED:
+    case DisplayItemTextStyle::NUMBER_3_DIGITS_0_FILLED_RIGHT_ALIGNED:
+      data = data.substring(0, 3);
+      while(data.length() < 3) {
+        data = "0" + data;
+      }
+      return data;
+    case DisplayItemTextStyle::NUMBER_2_DIGITS_0_FILLED:
+    case DisplayItemTextStyle::NUMBER_2_DIGITS_0_FILLED_RIGHT_ALIGNED:
+      data = data.substring(0, 2);
+      while(data.length() < 2) {
+        data = "0" + data;
+      }
+      return data;
+    default:
+      return data;
+  }
+}
+
+void SSD1306DisplayDevice::drawBatterySymbols(uint8_t x, uint8_t y, int32_t value) {
+  if (value > 90) {
+    m_display->drawXbm(x, y, 8, 9, BatterieLogo1);
+  } else if (value > 70) {
+    m_display->drawXbm(x, y, 8, 9, BatterieLogo2);
+  } else if (value > 50) {
+    m_display->drawXbm(x, y, 8, 9, BatterieLogo3);
+  } else if (value > 30) {
+    m_display->drawXbm(x, y, 8, 9, BatterieLogo4);
+  } else if (value > 10) {
+    m_display->drawXbm(x, y, 8, 9, BatterieLogo5);
+  } else if (value >= 0){
+    m_display->drawXbm(x, y, 8, 9, BatterieLogo6);
+  } else {
+    // no image!
+  }
+}
+
+void SSD1306DisplayDevice::selectComplexLayout() {
+/*  mCurrentLayout.items.clear();
+
+  mCurrentLayout.items.emplace_back(0, 0, mDisplayableValues.find("sensor.left.label"));
+
+
+
+  mCurrentLayout.items.emplace_back(0, 10, mDisplayableValues.find("sensor.left.confirmDistance"),
+                                    DisplayItemType::TEXT_30PT,
+                                    DisplayItemTextStyle::NUMBER_3_DIGITS_0_FILLED);
+  mCurrentLayout.items.emplace_back(128, 0, DisplayContent::DISTANCE_RIGHT_TOF_SENSOR_LABEL,
+                                    DisplayItemType::TEXT_8PT, DisplayItemTextStyle::RIGHT_ALIGNED);
+  mCurrentLayout.items.emplace_back(128, 10, DisplayContent::DISTANCE_RIGHT_TOF_SENSOR,
+                                    DisplayItemType::TEXT_30PT,
+                                    DisplayItemTextStyle::NUMBER_3_DIGITS_0_FILLED_RIGHT_ALIGNED);
+
+  mCurrentLayout.items.emplace_back(0, 40, DisplayContent::RAW_DISTANCE_TOF_LEFT,
+                                    DisplayItemType::TEXT_20PT,
+                                    DisplayItemTextStyle::NUMBER_3_DIGITS_0_FILLED);
+  mCurrentLayout.items.emplace_back(128, 40, DisplayContent::RAW_DISTANCE_TOF_RIGHT,
+                                    DisplayItemType::TEXT_20PT,
+                                    DisplayItemTextStyle::NUMBER_3_DIGITS_0_FILLED_RIGHT_ALIGNED);
+  mCurrentLayout.items.emplace_back(52, 40, DisplayContent::MEASUREMENT_LOOPS_PER_INTERVAL,
+                                    DisplayItemType::TEXT_20PT,
+                                    DisplayItemTextStyle::NUMBER_2_DIGITS_0_FILLED);
+  mCurrentLayout.items.emplace_back(40, 40, DisplayContent::V_BAR_LABEL, DisplayItemType::TEXT_20PT);
+  mCurrentLayout.items.emplace_back(80, 40, DisplayContent::V_BAR_LABEL, DisplayItemType::TEXT_20PT);
+
+  mCurrentLayout.items.emplace_back(20, 0, DisplayContent::BATTERY_VOLTAGE);
+  mCurrentLayout.items.emplace_back(40, 0, DisplayContent::BATTERY_VOLTAGE_LABEL);
+
+  mCurrentLayout.items.emplace_back(58, 0, DisplayContent::BATTERY_PERCENTAGE, DisplayItemType::TEXT_8PT,
+                                    DisplayItemTextStyle::RIGHT_ALIGNED);
+  mCurrentLayout.items.emplace_back(58, 0, DisplayContent::BATTERY_PERCENTAGE_LABEL);
+  mCurrentLayout.items.emplace_back(68, 0, DisplayContent::BATTERY_PERCENTAGE,
+                                    DisplayItemType::BATTERY_SYMBOLS);
+
+  mCurrentLayout.items.emplace_back(92, 0, DisplayContent::FREE_HEAP_KB, DisplayItemType::TEXT_8PT,
+                                    DisplayItemTextStyle::RIGHT_ALIGNED);
+  mCurrentLayout.items.emplace_back(92, 0, DisplayContent::FREE_HEAP_KB_LABEL); */
+}
+
+void SSD1306DisplayDevice::selectSimpleLayout() {
+  mCurrentLayout.items.clear();
+
+  mCurrentLayout.items.push_back(DisplayItem(0, 0, mDisplayableValues["sensor.left.label"]));
+  mCurrentLayout.items.push_back(DisplayItem(8, 10, mDisplayableValues["sensor.left.confirmDistance"],
+                                    &DisplayItemType::TEXT_30PT,
+                                    DisplayItemTextStyle::NUMBER_3_DIGITS_0_FILLED));
+  mCurrentLayout.items.push_back(DisplayItem(96, 38, mDisplayableValues["sensor.unit"], &DisplayItemType::TEXT_20PT));
+
+
+/*
+
+  mCurrentLayout.items.emplace_back(0, 0, mDisplayableValues["sensor.left.label"]);
+  mCurrentLayout.items.emplace_back(8, 10, mDisplayableValues["sensor.left.confirmDistance"],
+                                    DisplayItemType::TEXT_30PT,
+                                    DisplayItemTextStyle::NUMBER_3_DIGITS_0_FILLED);
+  mCurrentLayout.items.emplace_back(68, 18, mDisplayableValues["sensor.unit"], DisplayItemType::TEXT_20PT);
+  */
+}
+
+DisplayItem::DisplayItem(const std::map<String, DisplayContentGetter *> &displayContentGetter, String &item) {
+  if (item.isEmpty() || !item.endsWith("}") || !item.startsWith("{")) {
+    log_e("Invalid display item format %s", item.c_str());
+    return;
+  }
+  size_t pos = item.indexOf(":");
+  String name = item.substring(1, pos);
+  contentGetter = displayContentGetter.at(name);
+
+  size_t end = item.indexOf(":", pos);
+  String sPosX = item.substring(pos, end);
+  if (sPosX.startsWith("C")) {
+    posX = 32 * atoi(item.substring(pos + 1, end).c_str());
+  } else {
+    posX = atoi(item.substring(pos, end).c_str());
+  }
+  pos = end;
+  end = item.indexOf(":", pos);
+  if (end == -1) {
+    end = item.indexOf("}", pos);
+  }
+  String sPosY = item.substring(pos, end);
+  if (sPosY.startsWith("R")) {
+    posY = 10 * atoi(item.substring(pos + 1, end).c_str());
+  } else {
+    posY = atoi(item.substring(pos, end).c_str());
+  }
+  pos = end;
+  end = item.indexOf(":", pos);
+  if (end == -1) {
+    end = item.indexOf("}", pos);
+  }
+  if (end != -1) {
+    type = &DisplayItemType::fromString(item.substring(pos, end));
+  } else {
+    type = &DisplayItemType::TEXT_8PT;
+  }
+  pos = end;
+  end = item.indexOf("}", pos);
+  if (end != -1) {
+    // TODO Style from string
+    log_e("TODO: Parse style from %s", item.substring(pos, end).c_str());
+  }
+  style = DisplayItemTextStyle::RIGHT_ALIGNED;
+}
+
