@@ -23,7 +23,7 @@
 
 #include <vector>
 #include <utils/obsutils.h>
-#include <utils/timeutils.h>
+#include <utils/button.h>
 #include "OpenBikeSensorFirmware.h"
 
 #include "SPIFFS.h"
@@ -35,7 +35,7 @@
 
 // --- Global variables ---
 // Version only change the "vN.M" part if needed.
-const char *OBSVersion = "v0.8" BUILD_NUMBER;
+const char *OBSVersion = "v0.9" BUILD_NUMBER;
 
 const uint8_t LEFT_SENSOR_ID = 1;
 const uint8_t RIGHT_SENSOR_ID = 0;
@@ -44,7 +44,7 @@ const uint32_t LONG_BUTTON_PRESS_TIME_MS = 2000;
 
 
 // PINs
-const int PushButton_PIN = 2;
+const int PUSHBUTTON_PIN = 2;
 const uint8_t GPS_POWER_PIN = 12;
 const uint8_t BatterieVoltage_PIN = 34;
 
@@ -52,8 +52,7 @@ int confirmedMeasurements = 0;
 int numButtonReleased = 0;
 DataSet *datasetToConfirm = nullptr;
 
-int buttonState = 0;
-uint32_t buttonStateChanged = millis();
+Button button(PUSHBUTTON_PIN);
 
 Config config;
 
@@ -86,7 +85,6 @@ unsigned long currentTimeMillis = millis();
 uint16_t minDistanceToConfirm = MAX_SENSOR_VALUE;
 uint16_t minDistanceToConfirmIndex = 0;
 bool transmitConfirmedData = false;
-int lastButtonState = 0;
 
 CircularBuffer<DataSet*, 10> dataBuffer;
 
@@ -158,10 +156,9 @@ static void setupBluetooth(const ObsConfig &cfg, const String &trackUniqueIdenti
 static void reportBluetooth() {
   const uint32_t currentInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
   if (bluetoothManager && lastBluetoothInterval != currentInterval) {
-    log_d("Reporting BT: %d/%d cm Button: %d",
+    log_d("Reporting BT: %d/%d cm",
           sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
-          sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median(),
-          buttonState);
+          sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median());
     lastBluetoothInterval = currentInterval;
     bluetoothManager->newSensorValues(
       currentTimeMillis,
@@ -206,7 +203,7 @@ void setup() {
   // Configure button pin as INPUT
   //##############################################################
 
-  pinMode(PushButton_PIN, INPUT);
+  pinMode(PUSHBUTTON_PIN, INPUT);
   pinMode(BatterieVoltage_PIN, INPUT);
   pinMode(GPS_POWER_PIN, OUTPUT);
   digitalWrite(GPS_POWER_PIN,HIGH);
@@ -254,7 +251,7 @@ void setup() {
     sdCount++;
     displayTest->showTextOnGrid(2,
       displayTest->currentLine(), "SD... error " + String(sdCount));
-    if (config.simRaMode || digitalRead(PushButton_PIN) == HIGH || sdCount > 10) {
+    if (config.simRaMode || button.read() == HIGH || sdCount > 10) {
       break;
     }
     delay(200);
@@ -276,14 +273,11 @@ void setup() {
   // Enter configuration mode and enable OTA
   //##############################################################
 
-  buttonState = digitalRead(PushButton_PIN);
-  if (buttonState == HIGH || (!config.simRaMode && displayError != 0)) {
+  if (button.read() == HIGH || (!config.simRaMode && displayError != 0)) {
     displayTest->showTextOnGrid(2, displayTest->newLine(), "Start Server");
     ESP_ERROR_CHECK_WITHOUT_ABORT(
       esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
 
-    buttonStateChanged = 0;
-    lastButtonState = buttonState;
     delay(200);
     startServer(&cfg);
     gps.begin();
@@ -338,8 +332,7 @@ void setup() {
     sensorManager->pollDistancesAlternating();
     reportBluetooth();
     gps.showWaitStatus(displayTest);
-    buttonState = digitalRead(PushButton_PIN);
-    if (buttonState == HIGH
+    if (button.read() == HIGH
         || (config.simRaMode && !gps.moduleIsAlive()) // no module && simRaMode
       ) {
       log_d("Skipped get GPS...");
@@ -409,23 +402,18 @@ void serverLoop() {
 }
 
 void handleButtonInServerMode() {
-  buttonState = digitalRead(PushButton_PIN);
-  const uint32_t now = millis();
-  if (buttonState != lastButtonState) {
-    if (buttonState == LOW && !configServerWasConnectedViaHttp()) {
+  button.handle();
+  if (!configServerWasConnectedViaHttp()) {
+    if (button.gotPressed()) {
       displayTest->clearProgressBar(5);
       displayTest->showTextOnGrid(0, 3, "Press the button for");
       displayTest->showTextOnGrid(0, 4, "automatic track upload.");
-    }
-    lastButtonState = buttonState;
-    buttonStateChanged = now;
-  }
-  if (!configServerWasConnectedViaHttp() &&
-      buttonState == HIGH && buttonStateChanged != 0) {
-    const uint32_t buttonPressedMs = now - buttonStateChanged;
-    displayTest->drawProgressBar(5, buttonPressedMs, LONG_BUTTON_PRESS_TIME_MS);
-    if (buttonPressedMs > LONG_BUTTON_PRESS_TIME_MS) {
-      uploadTracks();
+    } else if (button.getPreviousStateMillis() > 0 && button.getState() == HIGH) {
+      const uint32_t buttonPressedMs = button.getCurrentStateMillis();
+      displayTest->drawProgressBar(5, buttonPressedMs, LONG_BUTTON_PRESS_TIME_MS);
+      if (buttonPressedMs > LONG_BUTTON_PRESS_TIME_MS) {
+        uploadTracks();
+      }
     }
   }
 }
@@ -484,6 +472,7 @@ void loop() {
     loops++;
 
     currentTimeMillis = millis();
+    button.handle(currentTimeMillis);
     if (sensorManager->pollDistancesAlternating()) {
       // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
       const uint16_t reading = sensorManager->sensorValues[confirmationSensorID];
@@ -521,34 +510,29 @@ void loop() {
     }
 
     reportBluetooth();
-    buttonState = digitalRead(PushButton_PIN);
-    // detect state change
-    if (buttonState != lastButtonState) {
-      if (buttonState == LOW) { // after button was released, detect long press here
-        // immediate user feedback - we start the action
-        // invert state might be a bit long - it does not block next confirmation.
-        if (config.displayConfig & DisplayInvert) {
-          displayTest->normalDisplay();
-        } else {
-          displayTest->invert();
-        }
-
-        transmitConfirmedData = true;
-        numButtonReleased++;
-        if (datasetToConfirm != nullptr) {
-          datasetToConfirm->confirmedDistances.push_back(minDistanceToConfirm);
-          datasetToConfirm->confirmedDistancesIndex.push_back(minDistanceToConfirmIndex);
-          buttonBluetooth(datasetToConfirm, minDistanceToConfirmIndex);
-          datasetToConfirm = nullptr;
-        } else { // confirming a overtake without left measure
-          currentSet->confirmedDistances.push_back(MAX_SENSOR_VALUE);
-          currentSet->confirmedDistancesIndex.push_back(
-            sensorManager->getCurrentMeasureIndex());
-          buttonBluetooth(currentSet, sensorManager->getCurrentMeasureIndex());
-        }
-        minDistanceToConfirm = MAX_SENSOR_VALUE; // ready for next confirmation
+    if (button.gotPressed()) { // after button was released, detect long press here
+      // immediate user feedback - we start the action
+      // invert state might be a bit long - it does not block next confirmation.
+      if (config.displayConfig & DisplayInvert) {
+        displayTest->normalDisplay();
+      } else {
+        displayTest->invert();
       }
-      lastButtonState = buttonState;
+
+      transmitConfirmedData = true;
+      numButtonReleased++;
+      if (datasetToConfirm != nullptr) {
+        datasetToConfirm->confirmedDistances.push_back(minDistanceToConfirm);
+        datasetToConfirm->confirmedDistancesIndex.push_back(minDistanceToConfirmIndex);
+        buttonBluetooth(datasetToConfirm, minDistanceToConfirmIndex);
+        datasetToConfirm = nullptr;
+      } else { // confirming a overtake without left measure
+        currentSet->confirmedDistances.push_back(MAX_SENSOR_VALUE);
+        currentSet->confirmedDistancesIndex.push_back(
+          sensorManager->getCurrentMeasureIndex());
+        buttonBluetooth(currentSet, sensorManager->getCurrentMeasureIndex());
+      }
+      minDistanceToConfirm = MAX_SENSOR_VALUE; // ready for next confirmation
     }
 
     if(BMP280_active == true)  TemperatureValue = bmp280.readTemperature();

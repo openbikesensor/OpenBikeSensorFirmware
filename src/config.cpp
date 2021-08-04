@@ -77,6 +77,15 @@ bool ObsConfig::loadConfig() {
   if (!loaded && SPIFFS.exists(OLD_CONFIG_FILENAME)) {
     loaded = loadOldConfig(OLD_CONFIG_FILENAME);
   }
+#ifdef CUSTOM_OBS_DEFAULT_CONFIG
+  if (!loaded) {
+    if(parseJsonFromString(jsonData, CUSTOM_OBS_DEFAULT_CONFIG)) {
+      log_i("Read complied-in default config.");
+      } else {
+      log_e("Failed to load compiled-in default config!");
+    }
+  }
+#endif
   makeSureSystemDefaultsAreSet();
   return loaded;
 }
@@ -312,6 +321,7 @@ bool ObsConfig::loadJson(JsonDocument &jsonDocument, File &file) {
   if (error) {
     log_w("Failed to read file %s, using default configuration got %s.\n",
           file.name(), error.c_str());
+    jsonDocument.clear();
   } else {
     success = true;
   }
@@ -330,6 +340,7 @@ bool ObsConfig::parseJsonFromString(JsonDocument &jsonDocument, const String &js
   DeserializationError error = deserializeJson(jsonDocument, jsonAsString);
   if (error) {
     log_w("Failed to parse %s, got %s.\n", jsonAsString.c_str(), error.c_str());
+    jsonDocument.clear();
   } else {
     success = true;
   }
