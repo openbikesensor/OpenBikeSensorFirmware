@@ -24,9 +24,8 @@
 #include "button.h"
 #include "esp32-hal-gpio.h"
 
-Button::Button(int pin) : mPin(pin) {
+Button::Button(int pin) : mPin(pin), mPreviousStateDurationMillis(0) {
   pinMode(pin, INPUT);
-  mPreviousStateDurationMillis = 0;
   mLastStateChangeMillis = mLastRawReadMillis = millis();
   mLastState = mLastRawState = digitalRead(pin);
 }
