@@ -43,7 +43,7 @@ class Button {
     int mLastRawState;
     int mLastState;
     unsigned long mLastStateChangeMillis;
-    unsigned long mPreviousStateDurationMillis;
+    unsigned long mPreviousStateDurationMillis = 0;
     int mReleaseEvents = 0;
 };
 
