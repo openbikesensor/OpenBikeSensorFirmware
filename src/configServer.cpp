@@ -360,11 +360,21 @@ static const char* const configIndex =
   "<input type=submit class=btn value=Save>";
 
 static const char* const privacyIndexPostfix =
-  "<input type=submit onclick=\"window.location.href='/'\" class=btn value=Save>"
-  "<input type=button onclick=\"window.location.href='/settings/privacy/makeCurrentLocationPrivate'\" class=btn value='Make current location private'>";
-
-static const char* const makeCurrentLocationPrivateIndex =
-  "<div>Making current location private, waiting for fix. Press device button to cancel.</div>";
+  "<input type='submit' class='btn' value='Save'>"
+  "<hr>"
+  "Location: <div id='gps'>{gps}</div> <a href='javascript:window.location.reload()'>&#8635;</a>"
+  "<input type='submit' name='addCurrent' id='addCurrent' class=btn value='Add current location' />"
+  "<script>"
+  "async function updateLocation() {"
+  "  if (document.readyState == 'complete') {"
+  "    const gps = await fetch('/gps').then(res => res.text());"
+  "    document.getElementById('gps').innerHTML = gps;"
+  "  }"
+  "  setTimeout(updateLocation, 1000);"
+  "}"
+  "setTimeout(updateLocation, 1000);"
+  "</script>"
+  ;
 
 static const char* const deleteIndex =
   "<h3>Flash</h3>"
@@ -462,8 +472,8 @@ static void handleDev(HTTPRequest * req, HTTPResponse * res);
 static void handleDevAction(HTTPRequest * req, HTTPResponse * res);
 #endif
 static void handlePrivacyAction(HTTPRequest * req, HTTPResponse * res);
+static void handleGps(HTTPRequest * req, HTTPResponse * res);
 static void handleUpload(HTTPRequest * req, HTTPResponse * res);
-static void handleMakeCurrentLocationPrivate(HTTPRequest * req, HTTPResponse * res);
 static void handlePrivacy(HTTPRequest *req, HTTPResponse *res);
 static void handlePrivacyDeleteAction(HTTPRequest *req, HTTPResponse *res);
 static void handleSd(HTTPRequest *req, HTTPResponse *res);
@@ -511,8 +521,8 @@ void registerPages(HTTPServer * httpServer) {
     httpServer->registerNode(new ResourceNode("/settings/development", HTTP_GET, handleDev));
 #endif
   httpServer->registerNode(new ResourceNode("/privacy_action", HTTP_POST, handlePrivacyAction));
+  httpServer->registerNode(new ResourceNode("/gps", HTTP_GET, handleGps));
   httpServer->registerNode(new ResourceNode("/upload", HTTP_GET, handleUpload));
-  httpServer->registerNode(new ResourceNode("/settings/privacy/makeCurrentLocationPrivate", HTTP_GET, handleMakeCurrentLocationPrivate));
   httpServer->registerNode(new ResourceNode("/settings/privacy", HTTP_GET, handlePrivacy));
   httpServer->registerNode(new ResourceNode("/privacy_delete", HTTP_GET, handlePrivacyDeleteAction));
   httpServer->registerNode(new ResourceNode("/sd", HTTP_GET, handleSd));
@@ -546,10 +556,10 @@ static void createHttpServer() {
     displayTest->showTextOnGrid(0, 4, "Creating ssl cert!");
   }
   serverSslCert = Https::getCertificate(progressTick);
-  server = new HTTPSServer(serverSslCert, 443, 1);
+  server = new HTTPSServer(serverSslCert, 443, 2);
   displayTest->clearProgressBar(5);
   displayTest->showTextOnGrid(0, 4, "");
-  insecureServer = new HTTPServer(80, 1);
+  insecureServer = new HTTPServer(80, 2);
 
   beginPages();
 
@@ -598,6 +608,12 @@ String replaceDefault(String html, const String& subTitle, const String& action 
   displayTest->showTextOnGrid(0, 2, "Menu");
   displayTest->showTextOnGrid(1, 2, subTitle);
   return html;
+}
+
+static void sendPlainText(HTTPResponse * res, const String& data) {
+  res->setHeader("Content-Type", "text/plain");
+  res->setHeader("Connection", "keep-alive");
+  res->print(data);
 }
 
 static void sendHtml(HTTPResponse * res, const String& data) {
@@ -1205,25 +1221,6 @@ static void handleDev(HTTPRequest *, HTTPResponse *res) {
 }
 #endif
 
-static void handlePrivacyAction(HTTPRequest *req, HTTPResponse *res) {
-  const auto params = extractParameters(req);
-
-  String latitude = getParameter(params, "newlatitude");
-  latitude.replace(",", ".");
-  String longitude = getParameter(params, "newlongitude");
-  longitude.replace(",", ".");
-  String radius = getParameter(params, "newradius");
-
-  if ( (latitude != "") && (longitude != "") && (radius != "") ) {
-    Serial.println(F("Valid privacyArea!"));
-    theObsConfig->addPrivacyArea(0,
-      Gps::newPrivacyArea(atof(latitude.c_str()), atof(longitude.c_str()), atoi(radius.c_str())));
-  }
-
-  String s = "<meta http-equiv='refresh' content='0; url=/settings/privacy'><a href='/settings/privacy'>Go Back</a>";
-  sendHtml(res, s);
-}
-
 /* Upload tracks found on SD card to the portal server->
  * This method also takes care to give appropriate feedback
  * to the user about the progress. If httpRequest is true
@@ -1350,31 +1347,22 @@ static void handleUpload(HTTPRequest *, HTTPResponse * res) {
   uploadTracks(res);
 }
 
-static void handleMakeCurrentLocationPrivate(HTTPRequest *, HTTPResponse *res) {
-  String html = createPage(makeCurrentLocationPrivateIndex);
-  html = replaceDefault(html, "MakeLocationPrivate");
-  sendHtml(res, html);
-
-  bool validGPSData = false;
-  buttonState = digitalRead(PushButton_PIN);
-  while (!validGPSData && (buttonState == LOW)) {
-    log_d("GPSData not valid");
-    buttonState = digitalRead(PushButton_PIN);
-    gps.handle();
-    validGPSData = gps.getCurrentGpsRecord().hasValidFix();
-    if (validGPSData) {
-      log_d("GPSData valid");
-// FIXME: Not used?
-      Gps::newPrivacyArea(gps.getCurrentGpsRecord().getLatitude(),
-                          gps.getCurrentGpsRecord().getLongitude(), 500);
-    }
-    delay(300);
+static String getGpsStatusString() {
+  String gpsString;
+  auto gpsData = gps.getCurrentGpsRecord();
+  if (!gps.moduleIsAlive()) {
+    gpsString = "OFF?";
+  } else if (gpsData.hasValidFix()) {
+    gpsString = "Latitude:&nbsp;" + gpsData.getLatString() +
+                +" Longitude:&nbsp;" + gpsData.getLongString() +
+                +" Altitude:&nbsp;" + gpsData.getAltitudeMetersString()
+                + "m HDOP:&nbsp;"
+                + gpsData.getHdopString();
+  } else {
+    gpsString = "no&nbsp;fix " + String(gps.getValidSatellites()) + "&nbsp;satellites "
+       " SN:&nbsp;" + gps.getLastNoiseLevel();
   }
-
-// #77 - 200 cannot be send twice via HTTP
-//String s = "<meta http-equiv='refresh' content='0; url=/settings/privacy'><a href='/settings/privacy'>Go Back</a>";
-//server->send(200, "text/html", s); //Send web page
-
+  return gpsString;
 }
 
 static void handlePrivacy(HTTPRequest *, HTTPResponse *res) {
@@ -1382,29 +1370,29 @@ static void handlePrivacy(HTTPRequest *, HTTPResponse *res) {
   for (int idx = 0; idx < theObsConfig->getNumberOfPrivacyAreas(0); ++idx) {
     auto pa = theObsConfig->getPrivacyArea(0, idx);
     privacyPage += "<h3>Privacy Area #" + String(idx + 1) + "</h3>";
-    privacyPage += "Latitude <input name=latitude" + String(idx)
-                   + " placeholder='latitude' value='" + String(pa.latitude, 7) + "' disabled />";
-    privacyPage += "Longitude <input name='longitude" + String(idx)
-                   + "' placeholder='longitude' value='" + String(pa.longitude, 7) + "' disabled />";
-    privacyPage += "Radius (m) <input name='radius" + String(idx)
-                   + "' placeholder='radius' value='" + String(pa.radius) + "' disabled />";
-    privacyPage += "<a class='deletePrivacyArea' href='/privacy_delete?erase=" + String(idx) + "'>&#x2716;</a>";
+    const String &index = String(idx);
+    privacyPage += "Latitude <input name=latitude" + index
+                   + " placeholder='latitude' value='" + String(pa.latitude, 6) + "' />";
+    privacyPage += "<input type='hidden' name='oldLatitude" + index + "' value='" + String(pa.latitude, 6) + "' />";
+
+    privacyPage += "Longitude <input name='longitude" + index
+                   + "' placeholder='longitude' value='" + String(pa.longitude, 6) + "' />";
+    privacyPage += "<input type='hidden' name='oldLongitude" + index + "' value='" + String(pa.longitude, 6) + "' />";
+
+    privacyPage += "Radius (m) <input name='radius" + index
+                   + "' placeholder='radius' value='" + String(pa.radius, 0) + "' />";
+    privacyPage += "<input type='hidden' name='oldRadius" + index + "' value='" + String(pa.radius, 0) + "' />";
+    privacyPage += "<a class='deletePrivacyArea' href='/privacy_delete?erase=" + index + "'>&#x2716;</a>";
   }
 
-  privacyPage += "<h3>New Privacy Area  <a href='javascript:window.location.reload()'>&#8635;</a></h3>";
-  gps.handle();
-  bool validGPSData = gps.getCurrentGpsRecord().hasValidFix();
-  if (validGPSData) {
-    privacyPage += "Latitude<input name='newlatitude' value='" + gps.getCurrentGpsRecord().getLatString() + "' />";
-    privacyPage += "Longitude<input name='newlongitude' value='" + gps.getCurrentGpsRecord().getLongString() + "' />";
-  } else {
-    privacyPage += "Latitude<input name='newlatitude' placeholder='48.12345' />";
-    privacyPage += "Longitude<input name='newlongitude' placeholder='9.12345' />";
-  }
+  privacyPage += "<h3>New Privacy Area</h3>";
+  privacyPage += "Latitude<input name='newlatitude' placeholder='latitude' />";
+  privacyPage += "Longitude<input name='newlongitude' placeholder='longitude' />";
   privacyPage += "Radius (m)<input name='newradius' placeholder='radius' value='500' />";
 
   String html = createPage(privacyPage, privacyIndexPostfix);
   html = replaceDefault(html, "Privacy Zones", "/privacy_action");
+  html.replace("{gps}", getGpsStatusString());
   sendHtml(res, html);
 }
 
@@ -1415,6 +1403,88 @@ static void handlePrivacyDeleteAction(HTTPRequest *req, HTTPResponse *res) {
     theObsConfig->saveConfig();
   }
   sendRedirect(res, "/settings/privacy");
+}
+
+static bool makeCurrentLocationPrivate() {
+  bool modified = false;
+  auto gpsRecord = gps.getCurrentGpsRecord();
+  if (gpsRecord.hasValidFix()) {
+    theObsConfig->addPrivacyArea(
+      0,
+      Gps::newPrivacyArea(
+          gpsRecord.getLatitude(), gpsRecord.getLongitude(), 500));
+    modified = true;
+  }
+  return modified;
+}
+
+static bool updatePrivacyAreas(const std::vector<std::pair<String, String>> &params) {
+  bool modified = false;
+  for (int pos = 0; pos < theObsConfig->getNumberOfPrivacyAreas(0); ++pos) {
+    String idx = String(pos);
+    String latitude = getParameter(params, "latitude" + idx);
+    String oldLatitude = getParameter(params, "oldLatitude" + idx);
+    String longitude = getParameter(params, "longitude" + idx);
+    String oldLongitude = getParameter(params, "oldLongitude" + idx);
+    String radius = getParameter(params, "radius" + idx);
+    String oldRadius = getParameter(params, "oldRadius" + idx);
+
+    if ((latitude != "") && (longitude != "") && (radius != "")
+      && ((latitude != oldLatitude) || (longitude != oldLongitude) || (radius != oldRadius))) {
+      latitude.replace(",", ".");
+      longitude.replace(",", ".");
+      log_i("Update privacyArea %d!", pos);
+      theObsConfig->setPrivacyArea(
+        0, pos,
+        Gps::newPrivacyArea(atof(latitude.c_str()), atof(longitude.c_str()),
+                            atoi(radius.c_str())));
+      modified = true;
+    }
+  }
+  return modified;
+}
+
+static bool addPrivacyArea(const std::vector<std::pair<String, String>> &params) {
+  bool modified = false;
+  String latitude = getParameter(params, "newlatitude");
+  latitude.replace(",", ".");
+  String longitude = getParameter(params, "newlongitude");
+  longitude.replace(",", ".");
+  String radius = getParameter(params, "newradius");
+
+  if ((latitude != "") && (longitude != "") && (radius != "")) {
+    log_i("New valid privacyArea!");
+    theObsConfig->addPrivacyArea(
+      0,
+      Gps::newPrivacyArea(atof(latitude.c_str()), atof(longitude.c_str()),
+                         atoi(radius.c_str())));
+    modified = true;
+  }
+  return modified;
+}
+
+static void handlePrivacyAction(HTTPRequest *req, HTTPResponse *res) {
+  const auto params = extractParameters(req);
+  bool modified = false;
+
+  if (!getParameter(params, "addCurrent").isEmpty()) {
+    modified = makeCurrentLocationPrivate();
+  } else {
+    modified = updatePrivacyAreas(params);
+    if (addPrivacyArea(params)) {
+      modified = true;
+    }
+  }
+  if (modified) {
+    theObsConfig->saveConfig();
+    sendRedirect(res, "/settings/privacy");
+  } else {
+    sendRedirect(res, "/");
+  }
+}
+
+static void handleGps(HTTPRequest * req, HTTPResponse * res) {
+  sendPlainText(res, getGpsStatusString());
 }
 
 static void handleFlashUpdate(HTTPRequest *, HTTPResponse * res) {
@@ -1993,7 +2063,7 @@ static void handleDelete(HTTPRequest *, HTTPResponse * res) {
   html = replaceHtml(html, "{description}",
                        "Warning there is not safety question!");
   sendHtml(res, html);
-};
+}
 
 static void handleDeleteAction(HTTPRequest *req, HTTPResponse * res) {
   // TODO: Result page with status!
