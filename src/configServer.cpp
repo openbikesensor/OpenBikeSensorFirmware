@@ -1602,7 +1602,7 @@ static void handleDeleteFiles(HTTPRequest *req, HTTPResponse * res) {
           log_w("Failed to moved '%s' to /", fullName.c_str());
           html += HTML_ENTITY_FAILED_CROSS;
         }
-      } else if (path != "trash") {
+      } else if (path != "/trash") {
         if (SD.rename(fullName, "/trash/" + file)) {
           log_i("Moved '%s'.", fullName.c_str());
           html += HTML_ENTITY_WASTEBASKET;
