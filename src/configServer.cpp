@@ -392,9 +392,11 @@ static const char* const deleteIndex =
   "<label for='config'>Clear current configuration, wifi connection will stay.</label>"
   "<input type='checkbox' id='config' name='config'>"
   "<h3>SD Card</h3>"
-  "<label for='sdcard'>Delete OBS related content (ald_ini.ubx, tracknumber.txt, current_14d.*, *.obsdata.csv, sdflash/*, trash/*, uploaded/*)</label>"
-  "<input type='checkbox' id='sdcard' name='sdcard' disabled='true'>"
-  "<input type=submit class=btn value='Delete'>";
+  "<label for='sdcard'>Delete OBS related content (aid_ini.ubx, tracknumber.txt, current_14d.*, "
+  "*.obsdata.csv, sdflash/*, trash/*, uploaded/*). The files are just removed from to filesystem "
+  "part of the data might be still read from the card. Be patient.</label>"
+  "<input type='checkbox' id='sdcard' name='sdcard'>"
+  "<input type='submit' class='btn' value='Delete' onclick=\"return confirm('Are you sure?')\" />";
 
 static const char* const settingsSecurityIndex =
   "<h3>Http</h3>"
@@ -2065,6 +2067,62 @@ static void handleDelete(HTTPRequest *, HTTPResponse * res) {
   sendHtml(res, html);
 }
 
+static void deleteFilesFromDirectory(File dir) {
+  File entry =  dir.openNextFile();
+  while (entry) {
+    if (!entry.isDirectory()) {
+      String fileName = entry.name();
+      entry.close();
+      log_i("Will delete %s", fileName.c_str());
+      SD.remove(fileName);
+    }
+    entry = dir.openNextFile();
+  }
+}
+
+static void deleteFilesFromDirectory(String dirName) {
+  File dir = SD.open(dirName);
+  if (dir.isDirectory()) {
+    deleteFilesFromDirectory(dir);
+  }
+  dir.close();
+}
+
+static void deleteObsdataFiles() {
+  File dir = SD.open("/");
+  if (dir.isDirectory()) {
+    File entry =  dir.openNextFile();
+    while (entry) {
+      if (!entry.isDirectory()) {
+        String fileName = entry.name();
+        entry.close();
+        if (fileName.endsWith("obsdata.csv")) {
+          log_d("Will delete %s", fileName.c_str());
+          SD.remove(fileName);
+        }
+      }
+      entry = dir.openNextFile();
+    }
+  }
+  dir.close();
+}
+
+static void deleteAllFromSd() {
+  // ald_ini.ubx, tracknumber.txt, current_14d.*, *.obsdata.csv, sdflash/*, trash/*, uploaded/*
+  deleteFilesFromDirectory("/trash");
+  SD.rmdir("/trash");
+  deleteFilesFromDirectory("/uploaded");
+  SD.rmdir("/uploaded");
+  deleteFilesFromDirectory("/sdflash");
+  SD.rmdir("/sdflash");
+  SD.remove("/tracknumber.txt");
+  SD.remove("/aid_ini.ubx");
+  SD.remove(LAST_MODIFIED_HEADER_FILE_NAME);
+  SD.remove(ALP_DATA_FILE_NAME);
+  SD.remove(ALP_NEW_DATA_FILE_NAME);
+  deleteObsdataFiles();
+}
+
 static void handleDeleteAction(HTTPRequest *req, HTTPResponse * res) {
   // TODO: Result page with status!
   const auto params = extractParameters(req);
@@ -2080,8 +2138,15 @@ static void handleDeleteAction(HTTPRequest *req, HTTPResponse * res) {
     }
   }
   if (getParameter(params, "config") == "on") {
+#ifdef CUSTOM_OBS_DEFAULT_CONFIG
+    theObsConfig->parseJson(CUSTOM_OBS_DEFAULT_CONFIG);
+#else
     theObsConfig->parseJson("{}");
+#endif
     theObsConfig->fill(config);
+  }
+  if (getParameter(params, "sdcard") == "on") {
+    deleteAllFromSd();
   }
   sendRedirect(res, "/");
 }
