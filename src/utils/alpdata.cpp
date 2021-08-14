@@ -34,16 +34,17 @@ void AlpData::update(SSD1306DisplayDevice *display) {
   String lastModified = loadLastModified();
 
   File f = SD.open(ALP_DATA_FILE_NAME, FILE_READ);
+  const time_t lastWrite = f.getLastWrite();
   if (!f || f.size() < ALP_DATA_MIN_FILE_SIZE ) {
     lastModified = "";
-  } else if (f.getLastWrite() > TimeUtils::PAST_TIME &&
-    (f.getLastWrite() + 4 * 24  * 60 * 60) > time(nullptr)) {
+  } else if (lastWrite > TimeUtils::PAST_TIME &&
+    time(nullptr) - lastWrite > 4 * 24 * 60 * 60) {
     log_d("File still current %s",
-          TimeUtils::dateTimeToString(f.getLastWrite()).c_str());
+          TimeUtils::dateTimeToString(lastWrite).c_str());
     log_d("Now: %s",
           TimeUtils::dateTimeToString(time(nullptr)).c_str());
     log_d("Next Update: %s",
-          TimeUtils::dateTimeToString(f.getLastWrite() + 4 * 24 * 60 * 60).c_str());
+          TimeUtils::dateTimeToString(lastWrite + 4 * 24 * 60 * 60).c_str());
     f.close();
     return;
   }
