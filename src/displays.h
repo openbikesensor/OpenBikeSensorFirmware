@@ -73,10 +73,14 @@ class DisplayDevice {
 
 class SSD1306DisplayDevice : public DisplayDevice {
   private:
+    void handleHighlight();
     SSD1306* m_display;
     String gridText[ 4 ][ 6 ];
     uint8_t mLastProgress = 255;
     uint8_t mCurrentLine = 0;
+    bool mInverted = false;
+    uint32_t mHighlightTill = 0;
+    bool mHighlighted = false;
 
   public:
     SSD1306DisplayDevice() : DisplayDevice() {
@@ -95,6 +99,7 @@ class SSD1306DisplayDevice : public DisplayDevice {
     uint8_t newLine();
     uint8_t scrollUp();
     uint8_t startLine();
+    void highlight(uint32_t highlightTimeMillis = 500);
 
     //##############################################################
     // Basic display configuration
@@ -103,11 +108,13 @@ class SSD1306DisplayDevice : public DisplayDevice {
     void invert() {
       m_display->invertDisplay();
       m_display->display();
+      mInverted = true;
     }
 
     void normalDisplay() {
       m_display->normalDisplay();
       m_display->display();
+      mInverted = false;
     }
 
     void flipScreen() {

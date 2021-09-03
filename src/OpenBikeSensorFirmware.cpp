@@ -462,12 +462,7 @@ void loop() {
     reportBluetooth();
     if (button.gotPressed()) { // after button was released, detect long press here
       // immediate user feedback - we start the action
-      // invert state might be a bit long - it does not block next confirmation.
-      if (config.displayConfig & DisplayInvert) {
-        displayTest->normalDisplay();
-      } else {
-        displayTest->invert();
-      }
+      displayTest->highlight();
 
       transmitConfirmedData = true;
       numButtonReleased++;
@@ -534,12 +529,6 @@ void loop() {
     if (dataBuffer.isEmpty() || dataBuffer.first()->confirmedDistancesIndex.empty()) {
       log_i("Confirmed data flushed to sd.");
       transmitConfirmedData = false;
-    }
-    // back to normal display mode
-    if (config.displayConfig & DisplayInvert) {
-      displayTest->invert();
-    } else {
-      displayTest->normalDisplay();
     }
   }
   log_d("Time in loop: %lums %d inner loops, %d measures, %s , %d",
