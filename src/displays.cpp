@@ -47,6 +47,8 @@ void SSD1306DisplayDevice::showValues(
   HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2, uint16_t minDistanceToConfirm,  int16_t batteryPercentage,
   int16_t TemperaturValue, int lastMeasurements, boolean insidePrivacyArea,
   double speed, uint8_t satellites) {
+
+  handleHighlight();
   // Show sensor1, when DisplaySimple or DisplayLeft is configured
   if (config.displayConfig & DisplaySimple || config.displayConfig & DisplayLeft) {
     uint16_t value1 = sensor1.minDistance;
@@ -269,4 +271,27 @@ uint8_t SSD1306DisplayDevice::scrollUp() {
 
 uint8_t SSD1306DisplayDevice::startLine() {
   return mCurrentLine = 0;
+}
+
+void SSD1306DisplayDevice::highlight(uint32_t highlightTimeMillis) {
+  mHighlightTill = millis() + highlightTimeMillis;
+  if (!mHighlighted) {
+    if (mInverted) {
+      m_display->normalDisplay();
+    } else {
+      m_display->invertDisplay();
+    }
+    mHighlighted = true;
+  }
+}
+
+void SSD1306DisplayDevice::handleHighlight() {
+  if (mHighlighted && mHighlightTill < millis()) {
+    if (mInverted) {
+      m_display->invertDisplay();
+    } else {
+      m_display->normalDisplay();
+    }
+    mHighlighted = false;
+  }
 }
