@@ -942,6 +942,7 @@ static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
   page += "<h3>GPS</h3>";
   page += keyValue("GPS valid checksum", gps.getValidMessageCount());
   page += keyValue("GPS failed checksum", gps.getMessagesWithFailedCrcCount());
+  page += keyValue("GPS unexpected chars", gps.getUnexpectedCharReceivedCount());
   page += keyValue("GPS hdop", gps.getCurrentGpsRecord().getHdopString());
   page += keyValue("GPS fix", String(gps.getCurrentGpsRecord().getFixStatus(), 16));
   page += keyValue("GPS fix flags", String(gps.getCurrentGpsRecord().getFixStatusFlags(), 16));

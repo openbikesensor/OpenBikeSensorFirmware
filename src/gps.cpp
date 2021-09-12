@@ -363,13 +363,13 @@ void Gps::handle(uint32_t milliSeconds) {
 }
 
 bool Gps::handle() {
+  const int bytesAvailable = mSerial.available();
   // log if there is a lot of data in the input buffer for serial data.
-  if (mSerial.available() > 250) {
-    addStatisticsMessage(String("readGPSData(av: ") + String(mSerial.available())
+  if (bytesAvailable > 250) {
+    addStatisticsMessage(String("readGPSData(av: ") + String(bytesAvailable)
                          + " bytes in buffer, lastCall " + String(millis() - mMessageStarted)
                          + "ms ago, at " + TimeUtils::dateTimeToString() + ")");
   }
-
   boolean gotGpsData = false;
   int bytesProcessed = 0;
   int data;
@@ -621,6 +621,7 @@ bool Gps::encode(uint8_t data) {
       } else {
         if (data != 0) {
           log_w("Unexpected GPS char in state null: %02x %c", data, data);
+          mUnexpectedCharReceivedCount++;
         }
       }
       break;
@@ -629,6 +630,7 @@ bool Gps::encode(uint8_t data) {
         mReceiverState = UBX_SYNC1;
       } else {
         log_w("Unexpected GPS char in state ubx sync: %02x", data);
+        mUnexpectedCharReceivedCount++;
         mReceiverState = GPS_NULL;
       }
       break;
@@ -752,16 +754,19 @@ void Gps::checkForCharThatCausesMessageReset(uint8_t data) {
           data, data,
           String(mGpsBuffer.charData).substring(0, mGpsBufferBytePos).c_str());
     mReceiverState = GPS_NULL;
+    mUnexpectedCharReceivedCount++;
   }
   if (mReceiverState == NMEA_CR && data != '\r') {
     log_w("Invalid char while expecting \\r in NMEA message, reset: %02x '%c'",
           data, data);
     mReceiverState = GPS_NULL;
+    mUnexpectedCharReceivedCount++;
   }
   if (mReceiverState == NMEA_LF && data != '\n') {
     log_w("Invalid char while expecting \\n in NMEA message, reset: %02x '%c'",
           data, data);
     mReceiverState = GPS_NULL;
+    mUnexpectedCharReceivedCount++;
   }
   if (mReceiverState >= UBX_SYNC
       && mReceiverState <= UBX_PAYLOAD
@@ -770,6 +775,7 @@ void Gps::checkForCharThatCausesMessageReset(uint8_t data) {
     log_w("Message start char ('%c') early in UBX message (pos: %d), reset.",
           data, mGpsBufferBytePos);
     mReceiverState = GPS_NULL;
+    mUnexpectedCharReceivedCount++;
   }
 }
 
@@ -1164,4 +1170,8 @@ GpsRecord Gps::getCurrentGpsRecord() const {
 
 uint32_t Gps::getNumberOfAlpBytesSent() const {
   return mAlpBytesSent;
+}
+
+uint32_t Gps::getUnexpectedCharReceivedCount() const {
+  return mUnexpectedCharReceivedCount;
 }

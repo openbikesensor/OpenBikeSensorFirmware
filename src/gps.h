@@ -96,6 +96,7 @@ class Gps {
     int32_t getMessagesWithFailedCrcCount() const;
 
     uint32_t getNumberOfAlpBytesSent() const;
+    uint32_t getUnexpectedCharReceivedCount() const;
 
   private:
     /* ALP msgs up to 0x16A seen might be more? */
@@ -473,6 +474,7 @@ class Gps {
     uint32_t mGpsPayloadLength;
     uint16_t mValidMessagesReceived = 0;
     uint16_t mMessagesWithFailedCrcReceived = 0;
+    uint32_t mUnexpectedCharReceivedCount = 0;
     uint8_t mNmeaChk;
     uint16_t mLastNoiseLevel;
     AlpData mAlpData;
