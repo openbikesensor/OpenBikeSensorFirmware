@@ -142,7 +142,7 @@ You can find the OpenBikeSensor documentation under:
 
 ## Getting Started
 
-1. You need a OpenBikeSensor in order to try work on the Firmware. [Head over to our Hardware Guide to assemble one](https://www.openbikesensor.org/hardware/).
+1. You need a OpenBikeSensor in order to try work on the Firmware. [Head over to our Hardware Guide to assemble one](https://www.openbikesensor.org/docs/hardware/).
 2. Clone this repo: `git clone https://github.com/openbikesensor/OpenBikeSensorFirmware.git` and `cd` into it.
 3. Choose between developing with recommended [VSCode](https://www.openbikesensor.org/software/firmware/setup.html#vscode), 
    or [CLion](https://www.openbikesensor.org/software/firmware/setup.html#clion) (license required), 
