@@ -21,6 +21,7 @@
  * see <http://www.gnu.org/licenses/>.
  */
 
+#include <utils/timeutils.h>
 #include "writer.h"
 #include "utils/file.h"
 
@@ -271,6 +272,9 @@ bool CSVFileWriter::append(DataSet &set) {
       csv += "DEV: GPS: ";
       csv += ObsUtils::encodeForCsvField(msg);
     }
+  } else if (time.tm_sec == 40) {
+    csv += "DBG GPS Time: " +
+      TimeUtils::dateTimeToString(TimeUtils::toTime(set.gpsRecord.getWeek(), set.gpsRecord.getTow() / 1000));
   }
 // #endif
   csv += ";";

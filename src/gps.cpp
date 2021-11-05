@@ -1027,8 +1027,17 @@ void Gps::parseUbxMessage() {
 }
 
 void Gps::handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps &message, const uint32_t receivedMs, const uint32_t delayMs) {
-  log_i("TIMEGPS: iTOW: %u, fTOW: %d, week %d, leapS: %d, valid: 0x%02x, tAcc %dns, delay %dms",
-        message.iTow, message.fTow, message.week, message.leapS, message.valid, message.tAcc, delayMs);
+  log_i("TIMEGPS: iTOW: %u, fTOW: %d, week %d, leapS: %d, valid: 0x%02x (%s%s%s) , tAcc %uns, DATE: %s, delay %dms",
+        message.iTow, message.fTow, message.week, message.leapS, message.valid,
+        message.valid & 1 ? "TOW" : "",
+        message.valid & 2 ? " WEEK " : "",
+        message.valid & 4 ? " GPS" : "",
+        message.tAcc,
+        TimeUtils::dateTimeToString(TimeUtils::toTime(message.week, message.iTow / 1000)).c_str(),
+        delayMs);
+  if (message.valid & 2) {
+    mLastGpsWeek = message.week;
+  }
   if ((message.valid & 0x03) == 0x03  // WEEK && TOW
       && delayMs < 80
       && message.tAcc < (80 * 1000 * 1000 /* 80ms */)
@@ -1136,6 +1145,7 @@ bool Gps::prepareGpsData(uint32_t tow) {
     // fine already prepared
   } else if (mIncomingGpsRecord.mCollectTow == 0) {
     mIncomingGpsRecord.setTow(tow);
+    mIncomingGpsRecord.setWeek(mLastGpsWeek);
   } else if ((int32_t) (mIncomingGpsRecord.mCollectTow - tow) > 0) {
     log_e("Data already published: %d",
           mCurrentGpsRecord.mCollectTow);
