@@ -1,6 +1,6 @@
 #!/bin/bash
 
-/github/home/.platformio/packages/toolchain-xtensa32/bin/xtensa-esp32-elf-g++ \
+/home/runner/.platformio/packages/toolchain-xtensa32/bin/xtensa-esp32-elf-g++ \
   "$@" 2>&1 \
   | sed 's|: xtensa-esp32-elf|: le32-unknown-nacl|g' \
   | sed 's|=xtensa-esp32-elf|=le32-unknown-nacl|g'
