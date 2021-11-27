@@ -117,6 +117,12 @@ jobs:
 
     - name: Package firmware
       run: |
+        echo ### local ##
+        find . -name "bootloader_dio_40m.bin"
+        echo ### home ##
+        find /github/home/ -name "bootloader_dio_40m.bin"
+        echo ### global ##
+        sudo find / -type f -name "bootloader_dio_40m.bin"
         cp /github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/bin/bootloader_dio_40m.bin 0x01000.bin
         cp bin/.pio/build/esp32dev/partitions.bin 0x08000.bin
         cp /github/home/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin 0x0e000.bin
@@ -165,7 +171,7 @@ jobs:
           -Dsonar.projectVersion=${{ env.OBS_MAJOR_VERSION }}
 
     - name: Upload Build Asset
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v2
       with:
         name: obs-${{ env.OBS_VERSION }}
         path: |
@@ -177,7 +183,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload Build Asset Initial Flash
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v2
       with:
         name: obs-${{ env.OBS_VERSION }}-initial-flash
         path: |
