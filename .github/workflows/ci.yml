@@ -119,8 +119,8 @@ jobs:
       run: |
         echo ### local ##
         find . -name "bootloader_dio_40m.bin"
-        echo ### home ##
-        find /github/home/ -name "bootloader_dio_40m.bin"
+        echo ### home ~ ###
+        find ~ -name "bootloader_dio_40m.bin"
         echo ### global ##
         sudo find / -type f -name "bootloader_dio_40m.bin"
         cp /github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/bin/bootloader_dio_40m.bin 0x01000.bin
