@@ -31,13 +31,29 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-    # could use a container with sq tools already installed
-       image: infinitecoding/platformio-for-ci:latest
     steps:
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
+
+    - name: Cache pip
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - name: Cache PlatformIO
+      uses: actions/cache@v2
+      with:
+        path: ~/.platformio
+        key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
+    - name: Set up Python
+      uses: actions/setup-python@v2
+    - name: Install PlatformIO
+      run: |
+        python -m pip install --upgrade pip
+        pip install --upgrade platformio
 
     - name: Prepare source
       run: |
@@ -90,8 +106,8 @@ jobs:
 
     - name: Install build dependencies
       run: |
-        apt-get update
-        apt-get install -qq -y zip
+        sudo apt-get update
+        sudo apt-get install -qq -y zip
 
     - name: Build firmware
       run: |
