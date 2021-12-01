@@ -38,6 +38,7 @@
 #include "Firmware.h"
 #include "utils/https.h"
 #include "utils/timeutils.h"
+#include "obsimprov.h"
 
 using namespace httpsserver;
 
@@ -56,6 +57,7 @@ static SSLCert * serverSslCert;
 static String OBS_ID;
 static String OBS_ID_SHORT;
 static DNSServer *dnsServer;
+static ObsImprov *obsImprov = NULL;
 
 // TODO
 //  - Fix CSS Style for mobile && desktop
@@ -694,6 +696,51 @@ bool CreateWifiSoftAP() {
   return softAccOK;
 }
 
+/* callback function called if wifi data is received via improv */
+std::string initWifi(const std::string & ssid, const std::string & password) {
+  log_w("Received WiFi credentials for SSID '%s'", ssid.c_str());
+  theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_SSID, ssid);
+  theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_PASSWORD, password);
+  WiFi.disconnect();
+  tryWiFiConnect(theObsConfig);
+  std::string url = "";
+  if (WiFiClass::status() == WL_CONNECTED) {
+    theObsConfig->saveConfig();
+    url += "http://";
+    url += WiFi.localIP().toString().c_str();
+    url += + "/";
+
+    // TODO: Cleanup!!
+    displayTest->showTextOnGrid(0, 2, "IP:");
+    displayTest->showTextOnGrid(1, 2, WiFi.localIP().toString().c_str());
+    MDNS.begin("obs");
+
+    TimeUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
+    if (!voltageMeter) {
+      voltageMeter = new VoltageMeter();
+    }
+
+    if (SD.begin() && WiFiClass::status() == WL_CONNECTED) {
+      AlpData::update(displayTest);
+    }
+
+  }
+  log_w("init wifi result: '%s'", url.c_str());
+  return url;
+}
+
+/* Callback for improv - status of device */
+improv::State getWifiStatus() {
+  improv::State result;
+  if (WiFiClass::status() == WL_CONNECTED) {
+    result = improv::STATE_PROVISIONED;
+  } else  { // not sure for STATE_PROVISIONING
+    result = improv::STATE_AUTHORIZED;
+  }
+  return result;
+}
+
+
 void startServer(ObsConfig *obsConfig) {
   theObsConfig = obsConfig;
 
@@ -705,6 +752,12 @@ void startServer(ObsConfig *obsConfig) {
   OBS_ID_SHORT = "OBS-" + String((uint16_t)(ESP.getEfuseMac() >> 32), HEX);
   OBS_ID_SHORT.toUpperCase();
 
+  obsImprov = new ObsImprov(initWifi, getWifiStatus, &Serial);
+  obsImprov->setDeviceInfo("OpenBikeSensor", OBSVersion,
+                           ESP.getChipModel(),
+                           OBS_ID.c_str());
+  obsImprov->handle();
+
   displayTest->clear();
   displayTest->showTextOnGrid(0, 0, "Ver.:");
   displayTest->showTextOnGrid(1, 0, OBSVersion);
@@ -714,6 +767,7 @@ void startServer(ObsConfig *obsConfig) {
                               theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID));
 
   tryWiFiConnect(obsConfig);
+  obsImprov->handle();
 
   if (WiFiClass::status() != WL_CONNECTED) {
     CreateWifiSoftAP();
@@ -758,7 +812,7 @@ static void tryWiFiConnect(const ObsConfig *obsConfig) {
   const uint16_t timeout = 10000;
   // Connect to WiFi network
   while ((WiFiClass::status() != WL_CONNECTED) && (( millis() - startTime) <= timeout)) {
-    log_d("Trying to connect to %s",
+    log_i("Trying to connect to %s",
       theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_SSID));
     wl_status_t status = WiFi.begin(
       theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_SSID),
@@ -770,8 +824,8 @@ static void tryWiFiConnect(const ObsConfig *obsConfig) {
       log_d("WiFi resetting connection for retry.");
       WiFi.disconnect(true, true);
     } else if (status == WL_NO_SSID_AVAIL){
-      log_d("WiFi SSID not found - try rescan.");
-      WiFi.scanNetworks(false);
+      log_d("WiFi SSID not found - delay.");
+      delay(250);// WiFi.scanNetworks(false);
     }
     delay(250);
   }
@@ -832,7 +886,9 @@ static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
   String page;
   gps.pollStatistics(); // takes ~100ms!
 
-  res->print("<h3>ESP32</h3>"); // SPDIFF
+  res->print("<h3>ESP32</h3>");
+  res->print(keyValue("Chip Model", ESP.getChipModel()));
+  res->print(keyValue("Chip Revision", ESP.getChipRevision()));
   res->print(keyValue("Heap size", ObsUtils::toScaledByteString(ESP.getHeapSize())));
   res->print(keyValue("Free heap", ObsUtils::toScaledByteString(ESP.getFreeHeap())));
   res->print(keyValue("Min. free heap", ObsUtils::toScaledByteString(ESP.getMinFreeHeap())));
@@ -1866,6 +1922,9 @@ void configServerHandle() {
   insecureServer->loop();
   if (dnsServer) {
     dnsServer->processNextRequest();
+  }
+  if (obsImprov) {
+    obsImprov->handle();
   }
 }
 

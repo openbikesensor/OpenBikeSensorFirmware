@@ -26,6 +26,7 @@
 #include "OpenBikeSensorFirmware.h"
 
 #include "SPIFFS.h"
+#include <rom/rtc.h>
 
 #ifndef BUILD_NUMBER
 #define BUILD_NUMBER "local"
@@ -101,7 +102,7 @@ int lastMeasurements = 0 ;
 uint8_t batteryPercentage();
 void serverLoop();
 void handleButtonInServerMode();
-void loadConfig(ObsConfig &cfg);
+bool loadConfig(ObsConfig &cfg);
 
 // The BMP280 can keep up to 3.4MHz I2C speed, so no need for an individual slower speed
 void switch_wire_speed_to_VL53(){
@@ -191,10 +192,38 @@ static void buttonBluetooth(const DataSet *dataSet, uint16_t measureIndex) {
   }
 }
 
+void print_reset_reason(RESET_REASON reason)
+{
+  switch ( reason)
+  {
+    case 1 : log_i("POWERON_RESET");break;          /**<1, Vbat power on reset*/
+    case 3 : log_i ("SW_RESET");break;               /**<3, Software reset digital core*/
+    case 4 : log_i ("OWDT_RESET");break;             /**<4, Legacy watch dog reset digital core*/
+    case 5 : log_i ("DEEPSLEEP_RESET");break;        /**<5, Deep Sleep reset digital core*/
+    case 6 : log_i ("SDIO_RESET");break;             /**<6, Reset by SLC module, reset digital core*/
+    case 7 : log_i ("TG0WDT_SYS_RESET");break;       /**<7, Timer Group0 Watch dog reset digital core*/
+    case 8 : log_i ("TG1WDT_SYS_RESET");break;       /**<8, Timer Group1 Watch dog reset digital core*/
+    case 9 : log_i ("RTCWDT_SYS_RESET");break;       /**<9, RTC Watch dog Reset digital core*/
+    case 10 : log_i ("INTRUSION_RESET");break;       /**<10, Instrusion tested to reset CPU*/
+    case 11 : log_i ("TGWDT_CPU_RESET");break;       /**<11, Time Group reset CPU*/
+    case 12 : log_i ("SW_CPU_RESET");break;          /**<12, Software reset CPU*/
+    case 13 : log_i ("RTCWDT_CPU_RESET");break;      /**<13, RTC Watch dog Reset CPU*/
+    case 14 : log_i ("EXT_CPU_RESET");break;         /**<14, for APP CPU, reseted by PRO CPU*/
+    case 15 : log_i ("RTCWDT_BROWN_OUT_RESET");break;/**<15, Reset when the vdd voltage is not stable*/
+    case 16 : log_i ("RTCWDT_RTC_RESET");break;      /**<16, RTC Watch dog reset digital core and rtc module*/
+    default : log_i ("NO_MEAN 0x%02x", reason);
+  }
+}
+
 void setup() {
   Serial.begin(115200);
 
   log_i("openbikesensor.org - OBS/%s", OBSVersion);
+  log_i("CPU0 reset reason: ");
+  print_reset_reason(rtc_get_reset_reason(0));
+
+  log_i("CPU1 reset reason: ");
+  print_reset_reason(rtc_get_reset_reason(1));
 
   //##############################################################
   // Configure button pin as INPUT
@@ -237,7 +266,7 @@ void setup() {
   // Load, print and save config
   //##############################################################
   ObsConfig cfg; // this one is valid in setup!
-  loadConfig(cfg);
+  bool configIsNew = loadConfig(cfg);
 
   //##############################################################
   // Handle SD
@@ -269,8 +298,17 @@ void setup() {
   // Check, if the button is pressed
   // Enter configuration mode and enable OTA
   //##############################################################
+  bool triggerServerMode = false;
+  if (Serial.peek() == 'I') {
+    log_i("IMPROV char detected on serial, will start in server mode.");
+    triggerServerMode = true;
+  }
+  if (configIsNew) {
+    log_i("Config was freshly generated, will start in server mode.");
+    triggerServerMode = true;
+  }
 
-  if (button.read() == HIGH || (!config.simRaMode && displayError != 0)) {
+  if (button.read() == HIGH || (!config.simRaMode && displayError != 0) || triggerServerMode) {
     displayTest->showTextOnGrid(2, displayTest->newLine(), "Start Server");
     ESP_ERROR_CHECK_WITHOUT_ABORT(
       esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
@@ -546,7 +584,8 @@ uint8_t batteryPercentage() {
   return result;
 }
 
-void loadConfig(ObsConfig &cfg) {
+bool loadConfig(ObsConfig &cfg) {
+  bool isNew = false;
   displayTest->showTextOnGrid(2, displayTest->newLine(), "Config... ");
 
   if (!SPIFFS.begin(true)) {
@@ -572,6 +611,7 @@ void loadConfig(ObsConfig &cfg) {
     f.close();
     SD.remove("/obs.json");
     delay(5000);
+    isNew = true;
   } else {
     log_d("No configuration init from SD. SD: %d File: %d", SD.begin(), (SD.begin() && SD.exists("/obs.json")));
   }
@@ -579,7 +619,7 @@ void loadConfig(ObsConfig &cfg) {
   log_i("Load cfg");
   if (!cfg.loadConfig()) {
     displayTest->showTextOnGrid(2, displayTest->currentLine(), "Config...RESET");
-    delay(5000); // resetting cfg once, wait a moment
+    isNew = true;
   }
 
   cfg.printConfig();
@@ -607,4 +647,5 @@ void loadConfig(ObsConfig &cfg) {
            config.sensorOffsets[LEFT_SENSOR_ID],
            config.sensorOffsets[RIGHT_SENSOR_ID]);
   displayTest->showTextOnGrid(2, displayTest->currentLine(), buffer);
+  return isNew;
 }
