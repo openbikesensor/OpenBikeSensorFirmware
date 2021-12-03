@@ -25,7 +25,6 @@
 #define OPENBIKESENSORFIRMWARE_OBSIMPROV_H
 
 /* TODO:
- *  - is the original improv lib of use?
  *  - not clear if we need to respond early in the boot phase already. I saw different results
  *    (waiting after update or not offering a set wi-fi
  *  - cleanup, refine log levels
@@ -39,22 +38,54 @@
  */
 
 #include <HardwareSerial.h>
-#include <improv.h>
 #include <functional>
 
 
 class ObsImprov {
   public:
+    enum State : uint8_t {
+      READY = 0x02,
+      PROVISIONING = 0x03,
+      PROVISIONED = 0x04,
+    };
+
+    /**
+     * Create a new ObsImprov instance, able to handle incoming messages.
+     * All callback methods must be expected to be called from "handle()"
+     * call.
+     *
+     * @param initWifi callback method if new wifi data was received via improv.
+     *                 must return true if a connection could be established.
+     * @param getWifiStatus should return the status of the wifi connection.
+     * @param getDeviceUrl if the device wifi is up the url needed to reach
+     *                     the device should be returned, a empty string otherwise.
+     */
     ObsImprov(std::function<bool(const std::string & ssid, const std::string & password)> initWifi,
-              std::function<improv::State()> getWifiStatus,
+              std::function<State()> getWifiStatus,
               std::function<std::string()> getDeviceUrl,
                HardwareSerial* serial = &Serial) :
                 mSerial(serial),
                 mInitWifi(initWifi),
                 mWifiStatus(getWifiStatus),
                 mDeviceUrl(getDeviceUrl) { };
+
+    /**
+     * Check for new chars on serial.
+     */
     void handle();
+
+    /**
+     * Consume given char as if it had been read from serial.
+     * Can be used if there are several parties interested in serial data.
+     * @param c the char to be consumed.
+     */
     void handle(char c);
+
+    /**
+     * Store detailed device information.
+     * Should be called as soon as possible after creating a ObsImprov instance.
+     * Empty data is reported upstream if needed earlier.
+     */
     void setDeviceInfo(const std::string & firmwareName,
                        const std::string & firmwareVersion,
                        const std::string & hardwareVariant,
@@ -64,12 +95,33 @@ class ObsImprov {
      * Used to send an early IMPROV message during boot.
      */
     static void sendHello(Stream* serial = &Serial);
-    static const char *HEADER;
-    static const uint8_t HEADER_LENGTH;
-    static const char *IMPROV_STARTUP_MESSAGE;
-    static const uint8_t IMPROV_STARTUP_MESSAGE_LENGTH;
 
   private:
+    enum Type : uint8_t {
+      CURRENT_STATE = 0x01,
+      ERROR_STATE = 0x02,
+      RPC_COMMAND = 0x03,
+      RPC_RESULT = 0x04
+    };
+    enum Command : uint8_t {
+      WIFI_SETTINGS = 0x01,
+      GET_CURRENT_STATE = 0x02,
+      GET_DEVICE_INFO = 0x03
+    };
+    enum Error : uint8_t {
+      ERROR_NONE = 0x00,
+      ERROR_INVALID_RPC = 0x01,
+      ERROR_UNKNOWN_RPC = 0x02,
+      ERROR_UNABLE_TO_CONNECT = 0x03,
+      ERROR_UNKNOWN = 0xFF
+    };
+    enum Offset : uint8_t {
+      TYPE_OFFSET = 0x00,
+      LENGTH_OFFSET = 0x01,
+      RPC_COMMAND_OFFSET = 0x02,
+      RPC_DATA_LENGTH_OFFSET = 0x03,
+      RPC_DATA_1_OFFSET = 0x04
+    };
     HardwareSerial* mSerial;
     std::vector<uint8_t> mBuffer;
     uint8_t  mHeaderPos = 0;
@@ -77,10 +129,23 @@ class ObsImprov {
     std::string mFirmwareVersion;
     std::string mHardwareVariant;
     std::string mDeviceName;
+    static const char *HEADER;
+    static const uint8_t HEADER_LENGTH;
+    static const char *IMPROV_STARTUP_MESSAGE;
+    static const uint8_t IMPROV_STARTUP_MESSAGE_LENGTH;
     const std::function<bool(const std::string & ssid, const std::string & password)> mInitWifi;
-    const std::function<improv::State()> mWifiStatus;
+    const std::function<State()> mWifiStatus;
     const std::function<std::string()> mDeviceUrl;
-    void sendWifiSuccess(improv::Command cmd = improv::WIFI_SETTINGS) const;
+    void sendWifiSuccess(Command cmd = WIFI_SETTINGS) const;
+    void sendCurrentState(State state) const;
+    void sendErrorState(Error error) const;
+    void sendRpcDeviceInformation() const;
+    void appendStringAndLength(std::vector<uint8_t> &response, std::string data) const;
+    void sendPayload(Stream *stream, std::vector<uint8_t> payload) const;
+    bool isCompleteImprovMessage(std::vector<uint8_t> buffer) const;
+    bool isValidImprovMessage(std::vector<uint8_t> buffer) const;
+    void handleImprovMessage(std::vector<uint8_t> buffer);
+
 };
 
 

@@ -735,12 +735,12 @@ bool initWifi(const std::string & ssid, const std::string & password) {
 }
 
 /* Callback for improv - status of device */
-improv::State getWifiStatus() {
-  improv::State result;
+ObsImprov::State getWifiStatus() {
+  ObsImprov::State result;
   if (WiFiClass::status() == WL_CONNECTED) {
-    result = improv::STATE_PROVISIONED;
+    result = ObsImprov::PROVISIONED;
   } else  { // not sure for STATE_PROVISIONING
-    result = improv::STATE_AUTHORIZED;
+    result = ObsImprov::READY;
   }
   return result;
 }

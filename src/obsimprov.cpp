@@ -24,8 +24,6 @@
 #include <utils/obsutils.h>
 #include "obsimprov.h"
 
-using namespace improv;
-
 const char *ObsImprov::HEADER = "IMPROV\01";
 const uint8_t ObsImprov::HEADER_LENGTH = 7;
 const char *ObsImprov::IMPROV_STARTUP_MESSAGE = "IMPROV\x01\x01\x01\x01\xE1\x0A";
@@ -40,70 +38,22 @@ void ObsImprov::sendHello(Stream *serial) {
   }
 }
 
-static void sendPayload(Stream * stream, std::vector<uint8_t> payload) {
-  stream->flush();
-
-  std::vector<uint8_t> out;
-  for (int i = 0; i < ObsImprov::HEADER_LENGTH; i++) {
-    out.push_back((uint8_t) ObsImprov::HEADER[i]);
-  }
-  out.insert(out.end(), payload.begin(), payload.end());
-
-  uint8_t calculated_checksum = 0;
-  for (uint8_t byte : out) {
-    calculated_checksum += byte;
-  }
-  out.push_back(calculated_checksum);
-  out.push_back(SEPARATOR);
-
-  stream->write(out.data(), out.size());
-  stream->flush();
-  ObsUtils::logHexDump(out.data(), out.size());
-}
-
-
-static std::vector<uint8_t> build_current_state(State state, bool add_checksum = true) {
-  std::vector<uint8_t> out;
-  out.push_back(0x01 /* CURRENT_STATE */); // TYPE
-  out.push_back(state);
-  if (add_checksum) {
-    uint32_t calculated_checksum = 0;
-
-    for (uint8_t byte : out) {
-      calculated_checksum += byte;
-    }
-    out.push_back(calculated_checksum);
-  }
-  return out;
-}
-
-static std::vector<uint8_t> build_rpc_response(Command command, State payload, bool add_checksum = true) {
-  std::vector<uint8_t> out;
-  out.push_back(0x04 /* RPC_RESULT */); // TYPE
-  out.push_back(command); // RPC command
-  out.push_back(payload);
-  if (add_checksum) {
-    uint32_t calculated_checksum = 0;
-
-    for (uint8_t byte : out) {
-      calculated_checksum += byte;
-    }
-    out.push_back(calculated_checksum);
-  }
-  return out;
-}
-
-static void appendStringAndLength(std::vector<uint8_t> & response, std::string data) {
-  response.push_back(data.size());
-  response.insert(response.end(), data.begin(), data.end());
-  log_d("insert '%s'", data.c_str());
+void ObsImprov::setDeviceInfo(const std::string &firmwareName,
+                              const std::string &firmwareVersion,
+                              const std::string &hardwareVariant,
+                              const std::string &deviceName) {
+  mFirmwareName = firmwareName;
+  mFirmwareVersion = firmwareVersion;
+  mHardwareVariant = hardwareVariant;
+  mDeviceName = deviceName;
 }
 
 void ObsImprov::handle() {
- while (mSerial->available() > 0) {
-   handle(mSerial->read());
- }
+  while (mSerial->available() > 0) {
+    handle(mSerial->read());
+  }
 }
+
 void ObsImprov::handle(char c) {
   log_d("in improv read(0x%02x) %d/%d ", c, mHeaderPos, HEADER_LENGTH);
   if (mHeaderPos < HEADER_LENGTH) {
@@ -115,114 +65,157 @@ void ObsImprov::handle(char c) {
     }
   } else {
     mBuffer.push_back(c);
-      ImprovCommand cmd = parse_improv_data(mBuffer);
-      if (cmd.command != UNKNOWN) {
-        log_w("received message of type: 0x%02x", mBuffer[0]);
-        ObsUtils::logHexDump(mBuffer.data(), mBuffer.size());
-
+    if (isCompleteImprovMessage(mBuffer)) {
+      if (isValidImprovMessage(mBuffer)) {
+        handleImprovMessage(mBuffer);
         if (mSerial->peek() == SEPARATOR) {
-          log_d("Skipping from serial: 0x%02x", mSerial->read());
+          mSerial->read();
         }
-
-        switch (mBuffer[0]) { // type
-          case 0x03: // RPC Command
-            log_i("received RPC command 0x%02x", mBuffer[2]);
-
-            switch (mBuffer[2]) {
-              case WIFI_SETTINGS: {
-                const std::string ssid((char*)&mBuffer.data()[5], (size_t) mBuffer.data()[4]);
-                const std::string password((char*)&mBuffer.data()[6 + mBuffer[4]], (size_t) mBuffer.data()[5 + mBuffer[4]]);
-                log_i("wifi settings ssid: %s.", ssid.c_str());
-                if (mInitWifi(ssid, password)) {
-                  std::vector<uint8_t> response;
-                  response.push_back(0x01 /* TYPE_CURRENT_STATE */); // TYPE
-                  response.push_back(0x01 /* */); // LENGTH
-                  response.push_back(improv::STATE_PROVISIONED);
-                  sendPayload(mSerial, response);
-                  sendWifiSuccess();
-                } else {
-                  std::vector<uint8_t> response;
-                  response.push_back(0x02 /* TYPE_ERROR */); // TYPE
-                  response.push_back(0x01 /* */); // LENGTH
-                  response.push_back(ERROR_UNABLE_TO_CONNECT);
-                  sendPayload(mSerial, response);
-                }
-                break;
-              }
-              case GET_CURRENT_STATE: {
-                State state = mWifiStatus();
-                log_i("get current state -> 0x%02x", state);
-
-                std::vector<uint8_t> response;
-                response.push_back(0x01 /* TYPE_CURRENT_STATE */); // TYPE
-                response.push_back(0x01 /* */); // LENGTH
-                response.push_back(state);
-                sendPayload(mSerial, response);
-                if (state == improv::STATE_PROVISIONED) {
-                  sendWifiSuccess(GET_CURRENT_STATE);
-                }
-                break;
-              }
-              case GET_DEVICE_INFO: {
-                log_i("get device info.");
-                std::vector<uint8_t> response;
-                response.push_back(0x04 /* RPC Result */); // TYPE
-                response.push_back(0x00 /* */); // LENGTH
-                response.push_back(0x03 /* Response to GET_DEVICE_INFO */); // TYPE
-                response.push_back(0x00 /* */); // LENGTH
-                appendStringAndLength(response, mFirmwareName);
-                appendStringAndLength(response, mFirmwareVersion);
-                appendStringAndLength(response, mHardwareVariant);
-                appendStringAndLength(response, mDeviceName);
-                response[1] = response.size() - 2;
-                response[3] = response.size() - 4;
-                sendPayload(mSerial, response);
-                // OTHER?
-                break;
-              }
-              default: {
-                log_w("Unsupported improv rpc command 0x%02x ignored.", mBuffer[2]);
-              }
-            }
-            mBuffer.clear();
-            mHeaderPos = 0;
-            break;
-          case BAD_CHECKSUM: {
-            log_w("Error decoding Improv payload");
-            mBuffer.clear();
-            break;
-          }
-          default: {
-            log_w("Unsupported improv message type 0x%02x ignored.", mBuffer[2]);
-            mBuffer.clear();
-          }
+      } else {
+        // log this?
       }
-    }
-    if (mBuffer.size() > 256) {
+      mHeaderPos = 0;
+      mBuffer.clear();
+    } else if (mBuffer.size() > 256) {
       log_w("Garbage data on serial, ignoring.");
+      mHeaderPos = 0;
       mBuffer.clear();
     }
   }
 }
 
+void ObsImprov::handleImprovMessage(std::vector<uint8_t> buffer) {
+  if (buffer[TYPE_OFFSET] == RPC_COMMAND) {
+    log_i("received RPC command 0x%02x", buffer[2]);
+    switch (buffer[RPC_COMMAND_OFFSET]) {
+      case WIFI_SETTINGS: {
+        const std::string ssid((char *) &buffer.data()[5], (size_t) buffer.data()[4]);
+        const std::string password((char *) &buffer.data()[6 + buffer[4]], (size_t) buffer.data()[5 + buffer[4]]);
+        log_i("wifi settings ssid: %s.", ssid.c_str());
+        if (mInitWifi(ssid, password)) {
+          sendCurrentState(PROVISIONED);
+          sendWifiSuccess();
+        } else {
+          sendErrorState(ERROR_UNABLE_TO_CONNECT);
+        }
+        break;
+      }
+      case GET_CURRENT_STATE: {
+        State state = mWifiStatus();
+        log_i("get current state -> 0x%02x", state);
+        sendCurrentState(state);
+        if (state == PROVISIONED) {
+          sendWifiSuccess(GET_CURRENT_STATE);
+        }
+        break;
+      }
+      case GET_DEVICE_INFO: {
+        log_i("get device info.");
+        sendRpcDeviceInformation();
+        break;
+      }
+      default: {
+        log_w("Unsupported improv rpc command 0x%02x ignored.", buffer[2]);
+      }
+    }
+  } else {
+    log_w("Unsupported improv message type 0x%02x ignored.", buffer[2]);
+  }
+}
+
+
+void ObsImprov::sendRpcDeviceInformation() const {
+  std::vector<uint8_t> response;
+  response.push_back(RPC_RESULT);
+  response.push_back(0x00 /* LENGTH, to be set */);
+  response.push_back(GET_DEVICE_INFO);
+  response.push_back(0x00 /* LENGTH payload to be set */);
+  appendStringAndLength(response, mFirmwareName);
+  appendStringAndLength(response, mFirmwareVersion);
+  appendStringAndLength(response, mHardwareVariant);
+  appendStringAndLength(response, mDeviceName);
+  response[LENGTH_OFFSET] = response.size() - 2;
+  response[RPC_DATA_LENGTH_OFFSET] = response.size() - 4;
+  sendPayload(mSerial, response);
+}
+
+void ObsImprov::sendCurrentState(State state) const {
+  std::vector<uint8_t> response;
+  response.push_back(CURRENT_STATE);
+  response.push_back(0x01 /* LENGTH */);
+  response.push_back(state);
+  sendPayload(mSerial, response);
+}
+
+void ObsImprov::sendErrorState(Error error) const {
+  std::vector<uint8_t> response;
+  response.push_back(ERROR_STATE);
+  response.push_back(0x01 /* LENGTH */);
+  response.push_back(error);
+  sendPayload(mSerial, response);
+}
+
 void ObsImprov::sendWifiSuccess(Command cmd) const {
   std::vector<uint8_t> response;
-  response.push_back(0x04 /* RPC Result */); // TYPE
+  response.push_back(RPC_RESULT); // TYPE
   response.push_back(0x00 /* */); // LENGTH
   response.push_back(cmd); // TYPE
   response.push_back(0x00 /* */); // LENGTH
   appendStringAndLength(response, mDeviceUrl());
-  response[1] = response.size() - 2;
-  response[3] = response.size() - 4;
+  response[LENGTH_OFFSET] = response.size() - 2;
+  response[RPC_DATA_LENGTH_OFFSET] = response.size() - 4;
   sendPayload(mSerial, response);
 }
 
-void ObsImprov::setDeviceInfo(const std::string & firmwareName,
-                   const std::string & firmwareVersion,
-                   const std::string & hardwareVariant,
-                   const std::string & deviceName) {
-  mFirmwareName = firmwareName;
-  mFirmwareVersion = firmwareVersion;
-  mHardwareVariant = hardwareVariant;
-  mDeviceName = deviceName;
+void ObsImprov::appendStringAndLength(std::vector<uint8_t> &response, std::string data) const {
+  response.push_back(data.size());
+  response.insert(response.end(), data.begin(), data.end());
+  log_d("insert '%s'", data.c_str());
+}
+
+void ObsImprov::sendPayload(Stream *stream, std::vector<uint8_t> payload) const {
+  stream->flush();
+
+  std::vector<uint8_t> out;
+  for (int i = 0; i < ObsImprov::HEADER_LENGTH; i++) {
+    out.push_back((uint8_t) ObsImprov::HEADER[i]);
+  }
+  out.insert(out.end(), payload.begin(), payload.end());
+
+  uint8_t calculated_checksum = 0;
+  for (uint8_t byte: out) {
+    calculated_checksum += byte;
+  }
+  out.push_back(calculated_checksum);
+  out.push_back(SEPARATOR);
+
+  stream->write(out.data(), out.size());
+  stream->flush();
+  ObsUtils::logHexDump(out.data(), out.size());
+}
+
+bool ObsImprov::isCompleteImprovMessage(std::vector<uint8_t> buffer) const {
+  if (buffer.size() <= 2) {
+    return false;
+  }
+  if (buffer.size() < (3 + buffer[1])) {
+    return false;
+  }
+  return true;
+}
+
+bool ObsImprov::isValidImprovMessage(std::vector<uint8_t> buffer) const {
+  log_i("received message of type: 0x%02x", buffer[0]);
+  ObsUtils::logHexDump(buffer.data(), buffer.size());
+  int dataLength = buffer[1];
+  uint8_t calculated_checksum = 0xDE; /* from header */
+  for (int pos = 0; pos < dataLength + 2; pos++) {
+    calculated_checksum += buffer[pos];
+  }
+  if (calculated_checksum == buffer[dataLength + 2]) {
+    log_d("Correct checksum 0x%02x", calculated_checksum);
+  } else {
+    log_w("Wrong checksum 0x%02x != 0x%02x", calculated_checksum, buffer[dataLength + 2]);
+  }
+  return calculated_checksum == buffer[dataLength + 2];
 }
