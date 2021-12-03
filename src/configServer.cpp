@@ -697,18 +697,23 @@ bool CreateWifiSoftAP() {
 }
 
 /* callback function called if wifi data is received via improv */
-std::string initWifi(const std::string & ssid, const std::string & password) {
+bool initWifi(const std::string & ssid, const std::string & password) {
   log_w("Received WiFi credentials for SSID '%s'", ssid.c_str());
   theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_SSID, ssid);
   theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_PASSWORD, password);
+  displayTest->showTextOnGrid(0, 1, "SSID:");
+  displayTest->showTextOnGrid(1, 1,
+                              theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID));
+  displayTest->showTextOnGrid(0, 2, "Connecting (IMPROV)...");
+  displayTest->showTextOnGrid(0, 3, "");
+  displayTest->showTextOnGrid(1, 3, "");
+
   WiFi.disconnect();
   tryWiFiConnect(theObsConfig);
-  std::string url = "";
+  bool success = false;
   if (WiFiClass::status() == WL_CONNECTED) {
     theObsConfig->saveConfig();
-    url += "http://";
-    url += WiFi.localIP().toString().c_str();
-    url += + "/";
+    success = true;
 
     // TODO: Cleanup!!
     displayTest->showTextOnGrid(0, 2, "IP:");
@@ -723,10 +728,10 @@ std::string initWifi(const std::string & ssid, const std::string & password) {
     if (SD.begin() && WiFiClass::status() == WL_CONNECTED) {
       AlpData::update(displayTest);
     }
-
+  } else {
+    CreateWifiSoftAP();
   }
-  log_w("init wifi result: '%s'", url.c_str());
-  return url;
+  return success;
 }
 
 /* Callback for improv - status of device */
@@ -740,6 +745,17 @@ improv::State getWifiStatus() {
   return result;
 }
 
+std::string getDeviceUrl() {
+  std::string url = "";
+  if (WiFiClass::status() == WL_CONNECTED) {
+    theObsConfig->saveConfig();
+    url += "http://";
+    url += WiFi.localIP().toString().c_str();
+    url += + "/";
+  }
+  log_i("Device URL: '%s'", url.c_str());
+  return url;
+}
 
 void startServer(ObsConfig *obsConfig) {
   theObsConfig = obsConfig;
@@ -752,7 +768,7 @@ void startServer(ObsConfig *obsConfig) {
   OBS_ID_SHORT = "OBS-" + String((uint16_t)(ESP.getEfuseMac() >> 32), HEX);
   OBS_ID_SHORT.toUpperCase();
 
-  obsImprov = new ObsImprov(initWifi, getWifiStatus, &Serial);
+  obsImprov = new ObsImprov(initWifi, getWifiStatus, getDeviceUrl, &Serial);
   obsImprov->setDeviceInfo("OpenBikeSensor", OBSVersion,
                            ESP.getChipModel(),
                            OBS_ID.c_str());

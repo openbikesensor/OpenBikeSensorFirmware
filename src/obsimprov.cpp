@@ -33,6 +33,12 @@ const uint8_t ObsImprov::IMPROV_STARTUP_MESSAGE_LENGTH = 12;
 
 static const uint8_t SEPARATOR = 0x0A;
 
+void ObsImprov::sendHello(Stream *serial) {
+  if (serial) {
+    serial->flush();
+    serial->write(IMPROV_STARTUP_MESSAGE, IMPROV_STARTUP_MESSAGE_LENGTH);
+  }
+}
 
 static void sendPayload(Stream * stream, std::vector<uint8_t> payload) {
   stream->flush();
@@ -90,7 +96,7 @@ static std::vector<uint8_t> build_rpc_response(Command command, State payload, b
 static void appendStringAndLength(std::vector<uint8_t> & response, std::string data) {
   response.push_back(data.size());
   response.insert(response.end(), data.begin(), data.end());
-  log_w("Payload size after insert %s is : %d", data.c_str(), response.size());
+  log_d("insert '%s'", data.c_str());
 }
 
 void ObsImprov::handle() {
@@ -126,25 +132,20 @@ void ObsImprov::handle(char c) {
               case WIFI_SETTINGS: {
                 const std::string ssid((char*)&mBuffer.data()[5], (size_t) mBuffer.data()[4]);
                 const std::string password((char*)&mBuffer.data()[6 + mBuffer[4]], (size_t) mBuffer.data()[5 + mBuffer[4]]);
-
                 log_i("wifi settings ssid: %s.", ssid.c_str());
-                mUrl = mInitWifi(ssid, password);
-
-                if (mUrl.empty()) {
-                  std::vector<uint8_t> response;
-                  response.push_back(0x02 /* TYPE_ERROR */); // TYPE
-                  response.push_back(0x01 /* */); // LENGTH
-                  response.push_back(ERROR_UNABLE_TO_CONNECT);
-                  sendPayload(mSerial, response);
-                } else {
+                if (mInitWifi(ssid, password)) {
                   std::vector<uint8_t> response;
                   response.push_back(0x01 /* TYPE_CURRENT_STATE */); // TYPE
                   response.push_back(0x01 /* */); // LENGTH
                   response.push_back(improv::STATE_PROVISIONED);
                   sendPayload(mSerial, response);
-
-
                   sendWifiSuccess();
+                } else {
+                  std::vector<uint8_t> response;
+                  response.push_back(0x02 /* TYPE_ERROR */); // TYPE
+                  response.push_back(0x01 /* */); // LENGTH
+                  response.push_back(ERROR_UNABLE_TO_CONNECT);
+                  sendPayload(mSerial, response);
                 }
                 break;
               }
@@ -158,7 +159,7 @@ void ObsImprov::handle(char c) {
                 response.push_back(state);
                 sendPayload(mSerial, response);
                 if (state == improv::STATE_PROVISIONED) {
-                  sendWifiSuccess();
+                  sendWifiSuccess(GET_CURRENT_STATE);
                 }
                 break;
               }
@@ -204,22 +205,22 @@ void ObsImprov::handle(char c) {
   }
 }
 
-void ObsImprov::sendWifiSuccess() const {
+void ObsImprov::sendWifiSuccess(Command cmd) const {
   std::vector<uint8_t> response;
   response.push_back(0x04 /* RPC Result */); // TYPE
   response.push_back(0x00 /* */); // LENGTH
-  response.push_back(WIFI_SETTINGS); // TYPE
+  response.push_back(cmd); // TYPE
   response.push_back(0x00 /* */); // LENGTH
-  appendStringAndLength(response, mUrl);
+  appendStringAndLength(response, mDeviceUrl());
   response[1] = response.size() - 2;
   response[3] = response.size() - 4;
   sendPayload(mSerial, response);
 }
 
-void ObsImprov::setDeviceInfo(const std::string firmwareName,
-                   const std::string firmwareVersion,
-                   const std::string hardwareVariant,
-                   const std::string deviceName) {
+void ObsImprov::setDeviceInfo(const std::string & firmwareName,
+                   const std::string & firmwareVersion,
+                   const std::string & hardwareVariant,
+                   const std::string & deviceName) {
   mFirmwareName = firmwareName;
   mFirmwareVersion = firmwareVersion;
   mHardwareVariant = hardwareVariant;

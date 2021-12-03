@@ -45,15 +45,25 @@
 
 class ObsImprov {
   public:
-    ObsImprov(std::function<std::string(const std::string & ssid, const std::string & password)> initWifi,
+    ObsImprov(std::function<bool(const std::string & ssid, const std::string & password)> initWifi,
               std::function<improv::State()> getWifiStatus,
-               HardwareSerial* serial = &Serial) : mSerial(serial), mInitWifi(initWifi), mWifiStatus(getWifiStatus) { };
+              std::function<std::string()> getDeviceUrl,
+               HardwareSerial* serial = &Serial) :
+                mSerial(serial),
+                mInitWifi(initWifi),
+                mWifiStatus(getWifiStatus),
+                mDeviceUrl(getDeviceUrl) { };
     void handle();
     void handle(char c);
-    void setDeviceInfo(const std::string firmwareName,
-                       const std::string firmwareVersion,
-                       const std::string hardwareVariant,
-                       const std::string deviceName);
+    void setDeviceInfo(const std::string & firmwareName,
+                       const std::string & firmwareVersion,
+                       const std::string & hardwareVariant,
+                       const std::string & deviceName);
+
+    /* Send a hello device status message.
+     * Used to send an early IMPROV message during boot.
+     */
+    static void sendHello(Stream* serial = &Serial);
     static const char *HEADER;
     static const uint8_t HEADER_LENGTH;
     static const char *IMPROV_STARTUP_MESSAGE;
@@ -67,11 +77,10 @@ class ObsImprov {
     std::string mFirmwareVersion;
     std::string mHardwareVariant;
     std::string mDeviceName;
-    std::string mUrl;
-    const std::function<std::string(const std::string & ssid, const std::string & password)> mInitWifi;
+    const std::function<bool(const std::string & ssid, const std::string & password)> mInitWifi;
     const std::function<improv::State()> mWifiStatus;
-
-    void sendWifiSuccess() const;
+    const std::function<std::string()> mDeviceUrl;
+    void sendWifiSuccess(improv::Command cmd = improv::WIFI_SETTINGS) const;
 };
 
 
