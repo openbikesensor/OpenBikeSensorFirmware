@@ -786,13 +786,16 @@ void startServer(ObsConfig *obsConfig) {
   MDNS.begin("obs");
 
   TimeUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
+  obsImprov->handle();
   if (!voltageMeter) {
     voltageMeter = new VoltageMeter();
   }
+  obsImprov->handle();
 
   if (SD.begin() && WiFiClass::status() == WL_CONNECTED) {
     AlpData::update(displayTest);
   }
+  obsImprov->handle();
 
   log_i("About to create http server.");
   createHttpServer();
@@ -807,6 +810,10 @@ static void tryWiFiConnect(const ObsConfig *obsConfig) {
   if (!WiFi.setHostname(hostname)) {
     log_e("Failed to set hostname to %s.", hostname);
   }
+  if (theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID).isEmpty()) {
+    log_w("No wifi SID set - will not try to connect.");
+    return;
+  }
 
   const auto startTime = millis();
   const uint16_t timeout = 10000;
@@ -818,16 +825,19 @@ static void tryWiFiConnect(const ObsConfig *obsConfig) {
       theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_SSID),
       theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_PASSWORD));
     log_d("WiFi status after begin is %d", status);
-    status = static_cast<wl_status_t>(WiFi.waitForConnectResult());
-    log_d("WiFi status after wait is %d", status);
-    if (status >= WL_CONNECT_FAILED) {
-      log_d("WiFi resetting connection for retry.");
-      WiFi.disconnect(true, true);
-    } else if (status == WL_NO_SSID_AVAIL){
-      log_d("WiFi SSID not found - delay.");
-      delay(250);// WiFi.scanNetworks(false);
+    while(status != WL_CONNECTED && (( millis() - startTime) <= timeout)) {
+      status = static_cast<wl_status_t>(WiFi.waitForConnectResult());
+      log_d("WiFi status after wait is %d", status);
+      if (status >= WL_CONNECT_FAILED) {
+        log_d("WiFi resetting connection for retry.");
+        WiFi.disconnect(true, true);
+        break;
+      } else if (status == WL_NO_SSID_AVAIL) {
+        log_d("WiFi SSID not found - delay.");
+        delay(250);// WiFi.scanNetworks(false);
+      }
+      delay(250);
     }
-    delay(250);
   }
 }
 

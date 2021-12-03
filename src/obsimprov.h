@@ -34,7 +34,7 @@
  *  - still some `Improv Wi-Fi Serial not detected` in console.
  *  - refactor as lib?
  *  - smooth display after wifi connect via improve (initWifi)
- *  - do we still need the freifunk default?
+ *  - do we still need the freifunk default? -> No
  *  - serial is there a race condition when writing? (sendPayload)
  */
 
@@ -61,11 +61,11 @@ class ObsImprov {
     HardwareSerial* mSerial;
     std::vector<uint8_t> mBuffer;
     uint8_t  mHeaderPos = 0;
-    std::string mFirmwareName = "";
-    std::string mFirmwareVersion = "";
-    std::string mHardwareVariant = "";
-    std::string mDeviceName = "";
-    std::string mUrl = "";
+    std::string mFirmwareName;
+    std::string mFirmwareVersion;
+    std::string mHardwareVariant;
+    std::string mDeviceName;
+    std::string mUrl;
     const std::function<std::string(const std::string & ssid, const std::string & password)> mInitWifi;
     const std::function<improv::State()> mWifiStatus;
 
