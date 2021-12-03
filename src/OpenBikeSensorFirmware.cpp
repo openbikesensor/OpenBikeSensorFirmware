@@ -26,6 +26,7 @@
 #include "OpenBikeSensorFirmware.h"
 
 #include "SPIFFS.h"
+#include "obsimprov.h"
 #include <rom/rtc.h>
 
 #ifndef BUILD_NUMBER
@@ -217,6 +218,10 @@ void print_reset_reason(RESET_REASON reason)
 
 void setup() {
   Serial.begin(115200);
+
+  // say hello to improv
+  Serial.write(
+    ObsImprov::IMPROV_STARTUP_MESSAGE, ObsImprov::IMPROV_STARTUP_MESSAGE_LENGTH);
 
   log_i("openbikesensor.org - OBS/%s", OBSVersion);
   log_i("CPU0 reset reason: ");

@@ -28,30 +28,30 @@ using namespace improv;
 
 const char *ObsImprov::HEADER = "IMPROV\01";
 const uint8_t ObsImprov::HEADER_LENGTH = 7;
+const char *ObsImprov::IMPROV_STARTUP_MESSAGE = "IMPROV\x01\x01\x01\x01\xE1\x0A";
+const uint8_t ObsImprov::IMPROV_STARTUP_MESSAGE_LENGTH = 12;
+
+static const uint8_t SEPARATOR = 0x0A;
 
 
 static void sendPayload(Stream * stream, std::vector<uint8_t> payload) {
+  stream->flush();
+
   std::vector<uint8_t> out;
   for (int i = 0; i < ObsImprov::HEADER_LENGTH; i++) {
     out.push_back((uint8_t) ObsImprov::HEADER[i]);
   }
-  log_w("Payload size is : %d", payload.size());
-
   out.insert(out.end(), payload.begin(), payload.end());
-
-  // Assert length?
 
   uint8_t calculated_checksum = 0;
   for (uint8_t byte : out) {
     calculated_checksum += byte;
   }
   out.push_back(calculated_checksum);
-  out.push_back(0x0A); // newline
+  out.push_back(SEPARATOR);
 
-  Serial.println("---");
-  Serial.write(out.data(), out.size());
-  Serial.println("---");
-//  stream->write(out.data(), out.size());
+  stream->write(out.data(), out.size());
+  stream->flush();
   ObsUtils::logHexDump(out.data(), out.size());
 }
 
@@ -99,7 +99,7 @@ void ObsImprov::handle() {
  }
 }
 void ObsImprov::handle(char c) {
-  log_i("in improv read(0x%02x) %d/%d ", c, mHeaderPos, HEADER_LENGTH);
+  log_d("in improv read(0x%02x) %d/%d ", c, mHeaderPos, HEADER_LENGTH);
   if (mHeaderPos < HEADER_LENGTH) {
     if (c == HEADER[mHeaderPos]) {
       mHeaderPos++;
@@ -111,16 +111,16 @@ void ObsImprov::handle(char c) {
     mBuffer.push_back(c);
       ImprovCommand cmd = parse_improv_data(mBuffer);
       if (cmd.command != UNKNOWN) {
-        log_w("Got command: 0x%02x", mBuffer[0]);
+        log_w("received message of type: 0x%02x", mBuffer[0]);
         ObsUtils::logHexDump(mBuffer.data(), mBuffer.size());
 
-        if (mSerial->peek() == 0x0a) {
-          log_w("Skipping from serial: 0x%02x", mSerial->read());
+        if (mSerial->peek() == SEPARATOR) {
+          log_d("Skipping from serial: 0x%02x", mSerial->read());
         }
 
         switch (mBuffer[0]) { // type
           case 0x03: // RPC Command
-            log_i("Got RPC command 0x%02x", mBuffer[2]);
+            log_i("received RPC command 0x%02x", mBuffer[2]);
 
             switch (mBuffer[2]) {
               case WIFI_SETTINGS: {
@@ -180,27 +180,24 @@ void ObsImprov::handle(char c) {
                 break;
               }
               default: {
-                log_w("Unsupported improv rpc command 0x%02x", mBuffer[2]);
+                log_w("Unsupported improv rpc command 0x%02x ignored.", mBuffer[2]);
               }
             }
             mBuffer.clear();
             mHeaderPos = 0;
-            break;
-
-          case WIFI_SETTINGS:
-            log_i("received wifi settings");
-            break;
-          case GET_CURRENT_STATE:
-            log_i("get current state.");
             break;
           case BAD_CHECKSUM: {
             log_w("Error decoding Improv payload");
             mBuffer.clear();
             break;
           }
+          default: {
+            log_w("Unsupported improv message type 0x%02x ignored.", mBuffer[2]);
+            mBuffer.clear();
+          }
       }
     }
-    if (mBuffer.size() > 4096) {
+    if (mBuffer.size() > 256) {
       log_w("Garbage data on serial, ignoring.");
       mBuffer.clear();
     }

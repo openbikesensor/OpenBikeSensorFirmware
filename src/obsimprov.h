@@ -56,6 +56,8 @@ class ObsImprov {
                        const std::string deviceName);
     static const char *HEADER;
     static const uint8_t HEADER_LENGTH;
+    static const char *IMPROV_STARTUP_MESSAGE;
+    static const uint8_t IMPROV_STARTUP_MESSAGE_LENGTH;
 
   private:
     HardwareSerial* mSerial;
