@@ -21,7 +21,6 @@
  * see <http://www.gnu.org/licenses/>.
  */
 
-#include <utils/obsutils.h>
 #include "obsimprov.h"
 
 const char *ObsImprov::HEADER = "IMPROV\01";
@@ -51,7 +50,7 @@ void ObsImprov::handle(char c) {
     if (c == HEADER[mHeaderPos]) {
       mHeaderPos++;
     } else {
-      log_w("unexpected IMPROV Header read(0x%02x)", c);
+      log_w("unexpected header char read(0x%02x)", c);
       mHeaderPos = (c == HEADER[0]) ? 1 : 0;
     }
   } else {
@@ -64,7 +63,8 @@ void ObsImprov::handle(char c) {
           mSerial->read();
         }
       } else {
-        // log this?
+        log_w("ignoring invalid message.");
+        ESP_LOG_BUFFER_HEXDUMP(__FILE__, mBuffer.data(), mBuffer.size(), ESP_LOG_WARN);
       }
       mHeaderPos = 0;
       mBuffer.clear();
@@ -82,12 +82,12 @@ bool ObsImprov::isActive() {
 
 void ObsImprov::handleImprovMessage(std::vector<uint8_t> buffer) {
   if (buffer[TYPE_OFFSET] == RPC_COMMAND) {
-    log_i("received RPC command 0x%02x", buffer[2]);
+    log_d("received RPC command 0x%02x", buffer[2]);
     switch (buffer[RPC_COMMAND_OFFSET]) {
       case WIFI_SETTINGS: {
         const std::string ssid((char *) &buffer.data()[5], (size_t) buffer.data()[4]);
         const std::string password((char *) &buffer.data()[6 + buffer[4]], (size_t) buffer.data()[5 + buffer[4]]);
-        log_i("wifi settings ssid: %s.", ssid.c_str());
+        log_i("received wifi ssid: %s.", ssid.c_str());
         if (mInitWifi(ssid, password)) {
           sendCurrentState(PROVISIONED);
           sendWifiSuccess();
@@ -98,7 +98,7 @@ void ObsImprov::handleImprovMessage(std::vector<uint8_t> buffer) {
       }
       case GET_CURRENT_STATE: {
         State state = mWifiStatus();
-        log_i("get current state -> 0x%02x", state);
+        log_i("report current state -> 0x%02x", state);
         sendCurrentState(state);
         if (state == PROVISIONED) {
           sendWifiSuccess(GET_CURRENT_STATE);
@@ -106,7 +106,7 @@ void ObsImprov::handleImprovMessage(std::vector<uint8_t> buffer) {
         break;
       }
       case GET_DEVICE_INFO: {
-        log_i("get device info.");
+        log_i("report device info.");
         sendRpcDeviceInformation();
         break;
       }
@@ -187,7 +187,7 @@ void ObsImprov::sendPayload(Stream *stream, std::vector<uint8_t> payload) const 
 
   stream->write(out.data(), out.size());
   stream->flush();
-  ObsUtils::logHexDump(out.data(), out.size());
+  ESP_LOG_BUFFER_HEXDUMP(__FILE__ "->send", out.data(), out.size(), ESP_LOG_INFO);
 }
 
 bool ObsImprov::isCompleteImprovMessage(std::vector<uint8_t> buffer) const {
@@ -201,8 +201,8 @@ bool ObsImprov::isCompleteImprovMessage(std::vector<uint8_t> buffer) const {
 }
 
 bool ObsImprov::isValidImprovMessage(std::vector<uint8_t> buffer) const {
-  log_i("received message of type: 0x%02x", buffer[0]);
-  ObsUtils::logHexDump(buffer.data(), buffer.size());
+  log_d("received message of type: 0x%02x", buffer[0]);
+  ESP_LOG_BUFFER_HEXDUMP(__FILE__ "<-receive", buffer.data(), buffer.size(), ESP_LOG_INFO);
   int dataLength = buffer[1];
   uint8_t calculated_checksum = 0xDE; /* from header */
   for (int pos = 0; pos < dataLength + 2; pos++) {

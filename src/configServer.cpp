@@ -763,7 +763,7 @@ std::string getDeviceUrl() {
     url += WiFi.localIP().toString().c_str();
     url += + "/";
   }
-  log_i("Device URL: '%s'", url.c_str());
+  log_d("Device URL: '%s'", url.c_str());
   return url;
 }
 

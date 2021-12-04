@@ -38,6 +38,7 @@
 
 #include <HardwareSerial.h>
 #include <functional>
+#include <vector>
 
 
 class ObsImprov {

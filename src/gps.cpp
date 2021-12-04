@@ -408,7 +408,7 @@ void Gps::addStatisticsMessage(String newMessage) {
       break;
     }
     if (prefix >= 0 && mMessages[i].startsWith(STATIC_MSG_PREFIX[prefix])) {
-      log_i("Update GPS statistic message: %s", newMessage.c_str());
+      log_i("Update: %s", newMessage.c_str());
       mMessages[i] = newMessage;
       newMessage.clear();
       break;
@@ -416,7 +416,7 @@ void Gps::addStatisticsMessage(String newMessage) {
   }
   if (!newMessage.isEmpty()) {
     mMessages.push_back(newMessage);
-    log_i("New GPS statistic message: %s", newMessage.c_str());
+    log_i("New: %s", newMessage.c_str());
   }
   newMessage.clear();
   if (mMessages.size() > 20) {
@@ -1053,12 +1053,12 @@ void Gps::handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps &message, const uin
 }
 
 void Gps::handleUbxAidIni(const GpsBuffer::AidIni &message) const {
-  log_i("AidIni received Status: %04x, Location valid: %d.", message.flags,
+  log_d("AidIni received Status: 0x%04x, Location valid: %d.", message.flags,
         (message.flags & GpsBuffer::AidIni::POS));
   if ((message.flags & GpsBuffer::AidIni::POS)
       && message.posAcc < 50000) {
     AlpData::saveMessage(mGpsBuffer.u1Data, mGpsPayloadLength + 6);
-    log_i("Stored new AidIni data.");
+    log_d("Stored new AidIni data.");
   }
 }
 
