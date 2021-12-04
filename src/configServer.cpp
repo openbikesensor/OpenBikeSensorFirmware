@@ -500,6 +500,50 @@ static uint16_t countFilesInRoot();
 static String ensureSdIsAvailable();
 static void moveToUploaded(const String &fileName);
 
+String getIp() {
+  if (WiFiClass::status() != WL_CONNECTED) {
+    return WiFi.softAPIP().toString();
+  } else {
+    return WiFi.localIP().toString();
+  }
+}
+
+void updateDisplay(SSD1306DisplayDevice *display, String action = "") {
+  if (action.isEmpty()) {
+    display->showTextOnGrid(0, 0, "Ver.:");
+    display->showTextOnGrid(1, 0, OBSVersion);
+
+    if (WiFiClass::status() == WL_CONNECTED) {
+      display->showTextOnGrid(0, 1, "SSID:");
+      display->showTextOnGrid(1, 1, WiFi.SSID());
+      display->showTextOnGrid(0, 2, "IP:");
+      display->showTextOnGrid(1, 2, WiFi.localIP().toString());
+    } else if (WiFiGenericClass::getMode() == WIFI_MODE_AP || WiFiGenericClass::getMode() == WIFI_MODE_APSTA) {
+      // OK??
+      display->showTextOnGrid(0, 1, "AP: " + WiFi.softAPSSID());
+      display->showTextOnGrid(0, 2, "IP:");
+      display->showTextOnGrid(1, 2, WiFi.softAPIP().toString());
+      display->showTextOnGrid(0, 3, "Pass:");
+      display->showTextOnGrid(1, 3, "12345678");
+    } else {
+      log_w("Unexpected wifi mode %d ", WiFiGenericClass::getMode());
+    }
+  } else {
+    displayTest->showTextOnGrid(0, 0,
+                                theObsConfig->getProperty<String>(ObsConfig::PROPERTY_OBS_NAME));
+    displayTest->showTextOnGrid(0, 1, "IP:");
+    display->showTextOnGrid(1, 1, getIp());
+    displayTest->showTextOnGrid(1, 2, "");
+    displayTest->showTextOnGrid(0, 2, action);
+    displayTest->showTextOnGrid(0, 3, "");
+    displayTest->showTextOnGrid(1, 3, "");
+  }
+  // TODO:
+  //  - menu
+  //  - IMPROV?
+}
+
+
 void registerPages(HTTPServer * httpServer) {
   httpServer->setDefaultNode(new ResourceNode("", HTTP_GET, handleNotFound));
   httpServer->registerNode(new ResourceNode("/", HTTP_GET, handleIndex));
@@ -555,14 +599,14 @@ static void progressTick() {
 
 static void createHttpServer() {
   if (!Https::existsCertificate()) {
-    displayTest->showTextOnGrid(1, 4, "");
-    displayTest->showTextOnGrid(0, 5, "");
-    displayTest->showTextOnGrid(0, 4, "Creating ssl cert!");
+    displayTest->clear();
+    displayTest->showTextOnGrid(0, 2, "Creating ssl cert,");
+    displayTest->showTextOnGrid(0, 3, "be patient.");
   }
   serverSslCert = Https::getCertificate(progressTick);
   server = new HTTPSServer(serverSslCert, 443, 2);
-  displayTest->clearProgressBar(5);
-  displayTest->showTextOnGrid(0, 4, "");
+  displayTest->clear();
+  updateDisplay(displayTest);
   insecureServer = new HTTPServer(80, 2);
 
   beginPages();
@@ -599,18 +643,7 @@ String replaceDefault(String html, const String& subTitle, const String& action 
   html = replaceHtml(html, "{subtitle}", subTitle);
   html = replaceHtml(html, "{action}", action);
   displayTest->clear();
-  displayTest->showTextOnGrid(0, 0,
-                              theObsConfig->getProperty<String>(ObsConfig::PROPERTY_OBS_NAME));
-  displayTest->showTextOnGrid(0, 1, "IP:");
-  String ip;
-  if (WiFiGenericClass::getMode() == WIFI_MODE_STA) {
-    ip = WiFi.localIP().toString();
-  } else {
-    ip = WiFi.softAPIP().toString();
-  }
-  displayTest->showTextOnGrid(1, 1, ip);
-  displayTest->showTextOnGrid(0, 2, "Menu");
-  displayTest->showTextOnGrid(1, 2, subTitle);
+  updateDisplay(displayTest, "Menu: " + subTitle);
   return html;
 }
 
@@ -651,30 +684,17 @@ static void handleNotFound(HTTPRequest * req, HTTPResponse * res) {
   res->print(footer);
 }
 
-String getIp() {
-  if (WiFiClass::status() != WL_CONNECTED) {
-    return WiFi.softAPIP().toString();
-  } else {
-    return WiFi.localIP().toString();
-  }
-}
-
 bool CreateWifiSoftAP() {
   bool softAccOK;
   WiFi.disconnect();
-  Serial.print(F("Initalize SoftAP "));
+  log_i("Initialize SoftAP");
   String apName = OBS_ID;
   String APPassword = "12345678";
-  softAccOK  =  WiFi.softAP(apName.c_str(), APPassword.c_str(), 1, 0, 1); // Passwortlänge mindestens 8 Zeichen !
+  softAccOK  =  WiFi.softAP(apName.c_str(), APPassword.c_str(), 1, 0, 1);
   delay(2000); // Without delay I've seen the IP address blank
   /* Soft AP network parameters */
   IPAddress apIP(172, 20, 0, 1);
   IPAddress netMsk(255, 255, 255, 0);
-
-  displayTest->showTextOnGrid(0, 1, "AP:");
-  displayTest->showTextOnGrid(1, 1, "");
-  displayTest->showTextOnGrid(0, 2, apName.c_str());
-
 
   WiFi.softAPConfig(apIP, apIP, netMsk);
   if (softAccOK) {
@@ -682,17 +702,11 @@ bool CreateWifiSoftAP() {
     // with "*" we get a lot of requests from all sort of apps,
     // use obs.local here
     dnsServer->start(53, "obs.local", apIP);
-
     log_i("AP successful IP: %s", apIP.toString().c_str());
-
-    displayTest->showTextOnGrid(0, 3, "Pass:");
-    displayTest->showTextOnGrid(1, 3, APPassword);
-
-    displayTest->showTextOnGrid(0, 4, "IP:");
-    displayTest->showTextOnGrid(1, 4, WiFi.softAPIP().toString());
   } else {
     log_e("Soft AP Error. Name: %s Pass: %s", apName.c_str(), APPassword.c_str());
   }
+  updateDisplay(displayTest);
   return softAccOK;
 }
 
@@ -701,12 +715,10 @@ bool initWifi(const std::string & ssid, const std::string & password) {
   log_w("Received WiFi credentials for SSID '%s'", ssid.c_str());
   theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_SSID, ssid);
   theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_PASSWORD, password);
+  displayTest->clear();
   displayTest->showTextOnGrid(0, 1, "SSID:");
-  displayTest->showTextOnGrid(1, 1,
-                              theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID));
+  displayTest->showTextOnGrid(1, 1, ssid.c_str());
   displayTest->showTextOnGrid(0, 2, "Connecting (IMPROV)...");
-  displayTest->showTextOnGrid(0, 3, "");
-  displayTest->showTextOnGrid(1, 3, "");
 
   WiFi.disconnect();
   tryWiFiConnect(theObsConfig);
@@ -714,22 +726,20 @@ bool initWifi(const std::string & ssid, const std::string & password) {
   if (WiFiClass::status() == WL_CONNECTED) {
     theObsConfig->saveConfig();
     success = true;
-
     // TODO: Cleanup!!
-    displayTest->showTextOnGrid(0, 2, "IP:");
-    displayTest->showTextOnGrid(1, 2, WiFi.localIP().toString().c_str());
-    MDNS.begin("obs");
+    updateDisplay(displayTest);
 
+    MDNS.begin("obs");
     TimeUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
     if (!voltageMeter) {
       voltageMeter = new VoltageMeter();
     }
-
     if (SD.begin() && WiFiClass::status() == WL_CONNECTED) {
       AlpData::update(displayTest);
     }
   } else {
     CreateWifiSoftAP();
+    displayTest->showTextOnGrid(0, 4, "Connect failed.");
   }
   return success;
 }
@@ -789,11 +799,8 @@ void startServer(ObsConfig *obsConfig) {
     CreateWifiSoftAP();
     touchConfigServerHttp(); // side effect do not allow track upload via button
   } else {
-    Serial.println("");
-    Serial.print("Connected to ");
-    Serial.println(WiFi.SSID());
-    Serial.print("IP address: ");
-    Serial.println(WiFi.localIP());
+    log_i("Connected to %s, IP: %s",
+          WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
 
     displayTest->showTextOnGrid(0, 2, "IP:");
     displayTest->showTextOnGrid(1, 2, WiFi.localIP().toString().c_str());
