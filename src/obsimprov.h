@@ -25,8 +25,7 @@
 #define OPENBIKESENSORFIRMWARE_OBSIMPROV_H
 
 /* TODO:
- *  - not clear if we need to respond early in the boot phase already. I saw different results
- *    (waiting after update or not offering a set wi-fi
+ *  - https://github.com/esphome/esp-web-tools/issues/135
  *  - cleanup, refine log levels
  *  - remove debug logging
  *  - provide short documentation (on index.html?)
@@ -91,10 +90,11 @@ class ObsImprov {
                        const std::string & hardwareVariant,
                        const std::string & deviceName);
 
-    /* Send a hello device status message.
-     * Used to send an early IMPROV message during boot.
+    /**
+     * Returns true if any improv message was received.
+     * @return true if a improv message was received at any time
      */
-    static void sendHello(Stream* serial = &Serial);
+    bool isActive();
 
   private:
     enum Type : uint8_t {
@@ -136,6 +136,7 @@ class ObsImprov {
     const std::function<bool(const std::string & ssid, const std::string & password)> mInitWifi;
     const std::function<State()> mWifiStatus;
     const std::function<std::string()> mDeviceUrl;
+    bool mImprovActive = false;
     void sendWifiSuccess(Command cmd = WIFI_SETTINGS) const;
     void sendCurrentState(State state) const;
     void sendErrorState(Error error) const;

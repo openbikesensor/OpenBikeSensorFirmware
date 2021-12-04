@@ -26,17 +26,8 @@
 
 const char *ObsImprov::HEADER = "IMPROV\01";
 const uint8_t ObsImprov::HEADER_LENGTH = 7;
-const char *ObsImprov::IMPROV_STARTUP_MESSAGE = "IMPROV\x01\x01\x01\x01\xE1\x0A";
-const uint8_t ObsImprov::IMPROV_STARTUP_MESSAGE_LENGTH = 12;
 
 static const uint8_t SEPARATOR = 0x0A;
-
-void ObsImprov::sendHello(Stream *serial) {
-  if (serial) {
-    serial->flush();
-    serial->write(IMPROV_STARTUP_MESSAGE, IMPROV_STARTUP_MESSAGE_LENGTH);
-  }
-}
 
 void ObsImprov::setDeviceInfo(const std::string &firmwareName,
                               const std::string &firmwareVersion,
@@ -67,6 +58,7 @@ void ObsImprov::handle(char c) {
     mBuffer.push_back(c);
     if (isCompleteImprovMessage(mBuffer)) {
       if (isValidImprovMessage(mBuffer)) {
+        mImprovActive = true;
         handleImprovMessage(mBuffer);
         if (mSerial->peek() == SEPARATOR) {
           mSerial->read();
@@ -82,6 +74,10 @@ void ObsImprov::handle(char c) {
       mBuffer.clear();
     }
   }
+}
+
+bool ObsImprov::isActive() {
+  return mImprovActive;
 }
 
 void ObsImprov::handleImprovMessage(std::vector<uint8_t> buffer) {

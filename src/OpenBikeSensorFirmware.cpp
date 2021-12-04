@@ -219,8 +219,6 @@ void print_reset_reason(RESET_REASON reason)
 void setup() {
   Serial.begin(115200);
 
-  ObsImprov::sendHello(&Serial);
-
   log_i("openbikesensor.org - OBS/%s", OBSVersion);
   log_i("CPU0 reset reason: ");
   print_reset_reason(rtc_get_reset_reason(0));
