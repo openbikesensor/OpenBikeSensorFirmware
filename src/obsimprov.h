@@ -26,21 +26,20 @@
 
 /* TODO:
  *  - https://github.com/esphome/esp-web-tools/issues/135
- *  - cleanup, refine log levels
- *  - remove debug logging
  *  - provide short documentation (on index.html?)
- *  - still some `Improv Wi-Fi Serial not detected` in console.
  *  - refactor as lib?
  *  - smooth display after wifi connect via improve (initWifi)
- *  - do we still need the freifunk default? -> No
- *  - serial is there a race condition when writing? (sendPayload)
  */
 
 #include <HardwareSerial.h>
 #include <functional>
 #include <vector>
 
-
+/**
+ * Utility class to implement the improv protocol.
+ * See protocol documentation at https://www.improv-wifi.com/serial/ for
+ * the specification of the protocol.
+ */
 class ObsImprov {
   public:
     enum State : uint8_t {
