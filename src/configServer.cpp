@@ -57,7 +57,7 @@ static SSLCert * serverSslCert;
 static String OBS_ID;
 static String OBS_ID_SHORT;
 static DNSServer *dnsServer;
-static ObsImprov *obsImprov = NULL;
+static ObsImprov *obsImprov = nullptr;
 
 // TODO
 //  - Fix CSS Style for mobile && desktop
@@ -508,7 +508,7 @@ String getIp() {
   }
 }
 
-void updateDisplay(SSD1306DisplayDevice *display, String action = "") {
+void updateDisplay(SSD1306DisplayDevice * const display, String action = "") {
   if (action.isEmpty()) {
     display->showTextOnGrid(0, 0, "Ver.:");
     display->showTextOnGrid(1, 0, OBSVersion);
@@ -538,9 +538,6 @@ void updateDisplay(SSD1306DisplayDevice *display, String action = "") {
     displayTest->showTextOnGrid(0, 3, "");
     displayTest->showTextOnGrid(1, 3, "");
   }
-  // TODO:
-  //  - menu
-  //  - IMPROV?
 }
 
 
@@ -753,9 +750,9 @@ bool initWifi(const std::string & ssid, const std::string & password) {
 ObsImprov::State getWifiStatus() {
   ObsImprov::State result;
   if (WiFiClass::status() == WL_CONNECTED) {
-    result = ObsImprov::PROVISIONED;
+    result = ObsImprov::State::PROVISIONED;
   } else  { // not sure for STATE_PROVISIONING
-    result = ObsImprov::READY;
+    result = ObsImprov::State::READY;
   }
   return result;
 }

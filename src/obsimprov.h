@@ -42,7 +42,7 @@
  */
 class ObsImprov {
   public:
-    enum State : uint8_t {
+    enum class State : uint8_t {
       READY = 0x02,
       PROVISIONING = 0x03,
       PROVISIONED = 0x04,
@@ -94,33 +94,33 @@ class ObsImprov {
      * Returns true if any improv message was received.
      * @return true if a improv message was received at any time
      */
-    bool isActive();
+    bool isActive() const;
 
   private:
-    enum Type : uint8_t {
+    enum class Type : uint8_t {
       CURRENT_STATE = 0x01,
       ERROR_STATE = 0x02,
       RPC_COMMAND = 0x03,
       RPC_RESULT = 0x04
     };
-    enum Command : uint8_t {
+    enum class Command : uint8_t {
       WIFI_SETTINGS = 0x01,
       GET_CURRENT_STATE = 0x02,
       GET_DEVICE_INFO = 0x03
     };
-    enum Error : uint8_t {
-      ERROR_NONE = 0x00,
-      ERROR_INVALID_RPC = 0x01,
-      ERROR_UNKNOWN_RPC = 0x02,
-      ERROR_UNABLE_TO_CONNECT = 0x03,
-      ERROR_UNKNOWN = 0xFF
+    enum class Error : uint8_t {
+      NOBE = 0x00,
+      INVALID_RPC = 0x01,
+      UNKNOWN_RPC = 0x02,
+      UNABLE_TO_CONNECT = 0x03,
+      UNKNOWN = 0xFF
     };
-    enum Offset : uint8_t {
-      TYPE_OFFSET = 0x00,
-      LENGTH_OFFSET = 0x01,
-      RPC_COMMAND_OFFSET = 0x02,
-      RPC_DATA_LENGTH_OFFSET = 0x03,
-      RPC_DATA_1_OFFSET = 0x04
+    enum class Offset : uint8_t {
+      TYPE = 0x00,
+      LENGTH = 0x01,
+      RPC_COMMAND = 0x02,
+      RPC_DATA_LENGTH = 0x03,
+      RPC_DATA_1 = 0x04
     };
     HardwareSerial* mSerial;
     std::vector<uint8_t> mBuffer;
@@ -131,22 +131,23 @@ class ObsImprov {
     std::string mDeviceName;
     static const char *HEADER;
     static const uint8_t HEADER_LENGTH;
-    static const char *IMPROV_STARTUP_MESSAGE;
-    static const uint8_t IMPROV_STARTUP_MESSAGE_LENGTH;
     const std::function<bool(const std::string & ssid, const std::string & password)> mInitWifi;
     const std::function<State()> mWifiStatus;
     const std::function<std::string()> mDeviceUrl;
     bool mImprovActive = false;
-    void sendWifiSuccess(Command cmd = WIFI_SETTINGS) const;
+    void sendWifiSuccess(Command cmd = Command::WIFI_SETTINGS) const;
     void sendCurrentState(State state) const;
     void sendErrorState(Error error) const;
-    void sendRpcDeviceInformation() const;
+    void handleRpcGetDeviceInfo() const;
     void appendStringAndLength(std::vector<uint8_t> &response, std::string data) const;
     void sendPayload(Stream *stream, std::vector<uint8_t> payload) const;
     bool isCompleteImprovMessage(std::vector<uint8_t> buffer) const;
     bool isValidImprovMessage(std::vector<uint8_t> buffer) const;
     void handleImprovMessage(std::vector<uint8_t> buffer);
 
+    void handleRpcWifiSettings(std::vector<uint8_t> &buffer) const;
+
+    void handleRpcGetCurrentState() const;
 };
 
 

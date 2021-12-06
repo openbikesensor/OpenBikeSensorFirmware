@@ -76,90 +76,95 @@ void ObsImprov::handle(char c) {
   }
 }
 
-bool ObsImprov::isActive() {
+bool ObsImprov::isActive() const {
   return mImprovActive;
 }
 
 void ObsImprov::handleImprovMessage(std::vector<uint8_t> buffer) {
-  if (buffer[TYPE_OFFSET] == RPC_COMMAND) {
+  if (buffer[static_cast<int>(Offset::TYPE)] == static_cast<int>(Type::RPC_COMMAND)) {
     log_d("received RPC command 0x%02x", buffer[2]);
-    switch (buffer[RPC_COMMAND_OFFSET]) {
-      case WIFI_SETTINGS: {
-        const std::string ssid((char *) &buffer.data()[5], (size_t) buffer.data()[4]);
-        const std::string password((char *) &buffer.data()[6 + buffer[4]], (size_t) buffer.data()[5 + buffer[4]]);
-        log_i("received wifi ssid: %s.", ssid.c_str());
-        if (mInitWifi(ssid, password)) {
-          sendCurrentState(PROVISIONED);
-          sendWifiSuccess();
-        } else {
-          sendErrorState(ERROR_UNABLE_TO_CONNECT);
-        }
+    switch (static_cast<Command>(buffer[static_cast<int>(Offset::RPC_COMMAND)])) {
+      case Command::WIFI_SETTINGS:
+        handleRpcWifiSettings(buffer);
         break;
-      }
-      case GET_CURRENT_STATE: {
-        State state = mWifiStatus();
-        log_i("report current state -> 0x%02x", state);
-        sendCurrentState(state);
-        if (state == PROVISIONED) {
-          sendWifiSuccess(GET_CURRENT_STATE);
-        }
+      case Command::GET_CURRENT_STATE:
+        handleRpcGetCurrentState();
         break;
-      }
-      case GET_DEVICE_INFO: {
-        log_i("report device info.");
-        sendRpcDeviceInformation();
+      case Command::GET_DEVICE_INFO:
+        handleRpcGetDeviceInfo();
         break;
-      }
-      default: {
-        log_w("Unsupported improv rpc command 0x%02x ignored.", buffer[2]);
-      }
+      default:
+        log_w("Unsupported improv rpc command 0x%02x ignored.",
+              buffer[static_cast<int>(Offset::RPC_COMMAND)]);
     }
   } else {
-    log_w("Unsupported improv message type 0x%02x ignored.", buffer[2]);
+    log_w("Unsupported improv message type 0x%02x ignored.",
+          buffer[static_cast<int>(Offset::TYPE)]);
   }
 }
 
+void ObsImprov::handleRpcGetCurrentState() const {
+  State state = mWifiStatus();
+  log_i("get current state -> 0x%02x", state);
+  sendCurrentState(state);
+  if (state == State::PROVISIONED) {
+    sendWifiSuccess(Command::GET_CURRENT_STATE);
+  }
+}
 
-void ObsImprov::sendRpcDeviceInformation() const {
+void ObsImprov::handleRpcWifiSettings(std::vector<uint8_t> &buffer) const {
+  const std::string ssid((char *) &buffer.data()[5], (size_t) buffer.data()[4]);
+  const std::string password((char *) &buffer.data()[6 + buffer[4]], (size_t) buffer.data()[5 + buffer[4]]);
+  log_i("received wifi ssid: %s.", ssid.c_str());
+  if (mInitWifi(ssid, password)) {
+    sendCurrentState(State::PROVISIONED);
+    sendWifiSuccess();
+  } else {
+    sendErrorState(Error::UNABLE_TO_CONNECT);
+  }
+}
+
+void ObsImprov::handleRpcGetDeviceInfo() const {
+  log_i("get device info.");
   std::vector<uint8_t> response;
-  response.push_back(RPC_RESULT);
+  response.push_back(static_cast<int>(Type::RPC_RESULT));
   response.push_back(0x00 /* LENGTH, to be set */);
-  response.push_back(GET_DEVICE_INFO);
+  response.push_back(static_cast<int>(Command::GET_DEVICE_INFO));
   response.push_back(0x00 /* LENGTH payload to be set */);
   appendStringAndLength(response, mFirmwareName);
   appendStringAndLength(response, mFirmwareVersion);
   appendStringAndLength(response, mHardwareVariant);
   appendStringAndLength(response, mDeviceName);
-  response[LENGTH_OFFSET] = response.size() - 2;
-  response[RPC_DATA_LENGTH_OFFSET] = response.size() - 4;
+  response[static_cast<int>(Offset::LENGTH)] = response.size() - 2;
+  response[static_cast<int>(Offset::RPC_DATA_LENGTH)] = response.size() - 4;
   sendPayload(mSerial, response);
 }
 
 void ObsImprov::sendCurrentState(State state) const {
   std::vector<uint8_t> response;
-  response.push_back(CURRENT_STATE);
+  response.push_back(static_cast<int>(Type::CURRENT_STATE));
   response.push_back(0x01 /* LENGTH */);
-  response.push_back(state);
+  response.push_back(static_cast<int>(state));
   sendPayload(mSerial, response);
 }
 
 void ObsImprov::sendErrorState(Error error) const {
   std::vector<uint8_t> response;
-  response.push_back(ERROR_STATE);
+  response.push_back(static_cast<int>(Type::ERROR_STATE));
   response.push_back(0x01 /* LENGTH */);
-  response.push_back(error);
+  response.push_back(static_cast<int>(error));
   sendPayload(mSerial, response);
 }
 
 void ObsImprov::sendWifiSuccess(Command cmd) const {
   std::vector<uint8_t> response;
-  response.push_back(RPC_RESULT); // TYPE
+  response.push_back(static_cast<int>(Type::RPC_RESULT));
   response.push_back(0x00 /* */); // LENGTH
-  response.push_back(cmd); // TYPE
+  response.push_back(static_cast<int>(cmd));
   response.push_back(0x00 /* */); // LENGTH
   appendStringAndLength(response, mDeviceUrl());
-  response[LENGTH_OFFSET] = response.size() - 2;
-  response[RPC_DATA_LENGTH_OFFSET] = response.size() - 4;
+  response[static_cast<int>(Offset::LENGTH)] = response.size() - 2;
+  response[static_cast<int>(Offset::RPC_DATA_LENGTH)] = response.size() - 4;
   sendPayload(mSerial, response);
 }
 
