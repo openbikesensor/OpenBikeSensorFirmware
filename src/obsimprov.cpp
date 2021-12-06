@@ -32,10 +32,10 @@ void ObsImprov::setDeviceInfo(const std::string &firmwareName,
                               const std::string &firmwareVersion,
                               const std::string &hardwareVariant,
                               const std::string &deviceName) {
-  mFirmwareName = firmwareName;
-  mFirmwareVersion = firmwareVersion;
-  mHardwareVariant = hardwareVariant;
-  mDeviceName = deviceName;
+  mFirmwareName.assign(firmwareName);
+  mFirmwareVersion.assign(firmwareVersion);
+  mHardwareVariant.assign(hardwareVariant);
+  mDeviceName.assign(deviceName);
 }
 
 void ObsImprov::handle() {
