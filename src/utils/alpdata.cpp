@@ -74,7 +74,7 @@ void AlpData::update(SSD1306DisplayDevice *display) {
     if (written < ALP_DATA_MIN_FILE_SIZE) {
       displayHttpClientError(display, written);
     } else {
-      log_e("Read %d bytes - all god! %s", written, newLastModified.c_str());
+      log_e("Read %d bytes - all good! %s", written, newLastModified.c_str());
       SD.remove(ALP_DATA_FILE_NAME);
       SD.rename(ALP_NEW_DATA_FILE_NAME, ALP_DATA_FILE_NAME);
       saveLastModified(newLastModified);

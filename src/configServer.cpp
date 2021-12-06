@@ -595,6 +595,11 @@ void beginPages() {
 static int ticks;
 static void progressTick() {
   displayTest->drawWaitBar(5, ticks++);
+  // Warning! This might cause the WiFi connection to be established
+  // in parallel.
+  if (obsImprov) {
+    obsImprov->handle();
+  }
 }
 
 static void createHttpServer() {
