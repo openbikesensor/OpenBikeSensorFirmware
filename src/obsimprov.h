@@ -144,10 +144,9 @@ class ObsImprov {
     bool isCompleteImprovMessage(std::vector<uint8_t> buffer) const;
     bool isValidImprovMessage(std::vector<uint8_t> buffer) const;
     void handleImprovMessage(std::vector<uint8_t> buffer);
-
     void handleRpcWifiSettings(std::vector<uint8_t> &buffer) const;
-
     void handleRpcGetCurrentState() const;
+    void handleImprovBody();
 };
 
 

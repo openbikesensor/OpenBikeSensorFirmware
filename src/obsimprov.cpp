@@ -55,29 +55,33 @@ void ObsImprov::handle(char c) {
     }
   } else {
     mBuffer.push_back(c);
-    if (isCompleteImprovMessage(mBuffer)) {
-      if (isValidImprovMessage(mBuffer)) {
-        mImprovActive = true;
-        handleImprovMessage(mBuffer);
-        if (mSerial->peek() == SEPARATOR) {
-          mSerial->read();
-        }
-      } else {
-        log_w("ignoring invalid message.");
-        ESP_LOG_BUFFER_HEXDUMP(__FILE__, mBuffer.data(), mBuffer.size(), ESP_LOG_WARN);
-      }
-      mHeaderPos = 0;
-      mBuffer.clear();
-    } else if (mBuffer.size() > 256) {
-      log_w("Garbage data on serial, ignoring.");
-      mHeaderPos = 0;
-      mBuffer.clear();
-    }
+    handleImprovBody();
   }
 }
 
 bool ObsImprov::isActive() const {
   return mImprovActive;
+}
+
+void ObsImprov::handleImprovBody() {
+  if (isCompleteImprovMessage(mBuffer)) {
+    if (isValidImprovMessage(mBuffer)) {
+      mImprovActive = true;
+      handleImprovMessage(mBuffer);
+      if (mSerial->peek() == SEPARATOR) {
+        mSerial->read();
+      }
+    } else {
+      log_w("ignoring invalid message.");
+      ESP_LOG_BUFFER_HEXDUMP(__FILE__, mBuffer.data(), mBuffer.size(), ESP_LOG_WARN);
+    }
+    mHeaderPos = 0;
+    mBuffer.clear();
+  } else if (mBuffer.size() > 256) {
+    log_w("Garbage data on serial, ignoring.");
+    mHeaderPos = 0;
+    mBuffer.clear();
+  }
 }
 
 void ObsImprov::handleImprovMessage(std::vector<uint8_t> buffer) {
