@@ -495,7 +495,7 @@ static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<vo
 
 bool configServerWasConnectedViaHttpFlag = false;
 
-static void tryWiFiConnect(const ObsConfig *obsConfig);
+static void tryWiFiConnect();
 static uint16_t countFilesInRoot();
 static String ensureSdIsAvailable();
 static void moveToUploaded(const String &fileName);
@@ -713,7 +713,7 @@ static void wifiConectedActions() {
   log_i("Connected to %s, IP: %s",
         WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
   if (dnsServer) { // was used to announce AP ip
-    dnsServer->stop();
+    dnsServer->start(53, "obs.local", WiFi.localIP());
   }
   updateDisplay(displayTest);
   MDNS.begin("obs");
@@ -734,7 +734,7 @@ bool initWifi(const std::string & ssid, const std::string & password) {
   displayTest->showTextOnGrid(0, 2, "Connecting (IMPROV)...");
 
   WiFi.disconnect();
-  tryWiFiConnect(theObsConfig);
+  tryWiFiConnect();
   bool connected = WiFiClass::status() == WL_CONNECTED;
   if (connected) {
     theObsConfig->saveConfig();
@@ -798,7 +798,7 @@ void startServer(ObsConfig *obsConfig) {
   displayTest->showTextOnGrid(1, 1,
                               theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID));
 
-  tryWiFiConnect(obsConfig);
+  tryWiFiConnect();
 
   if (WiFiClass::status() != WL_CONNECTED) {
     CreateWifiSoftAP();
@@ -812,7 +812,7 @@ void startServer(ObsConfig *obsConfig) {
   createImprovServer();
 }
 
-static void tryWiFiConnect(const ObsConfig *obsConfig) {
+static void tryWiFiConnect() {
   if (!WiFiGenericClass::mode(WIFI_MODE_STA)) {
     log_e("Failed to enable WiFi station mode.");
   }
@@ -834,14 +834,15 @@ static void tryWiFiConnect(const ObsConfig *obsConfig) {
       theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_SSID),
       theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_PASSWORD));
     log_d("WiFi status after begin is %d", status);
+    status = static_cast<wl_status_t>(WiFi.waitForConnectResult());
     while(status != WL_CONNECTED && (( millis() - startTime) <= timeout)) {
       log_d("WiFi status after wait is %d", status);
       if (status >= WL_CONNECT_FAILED) {
-        log_d("WiFi resetting connection for retry.");
+        log_i("WiFi resetting connection for retry. (status 0x%02x))", status);
         WiFi.disconnect(true, true);
         break;
       } else if (status == WL_NO_SSID_AVAIL) {
-        log_d("WiFi SSID not found - delay.");
+        log_i("WiFi SSID not found - delay (status 0x%02x))", status);
         delay(250);// WiFi.scanNetworks(false);
       }
       delay(250);
