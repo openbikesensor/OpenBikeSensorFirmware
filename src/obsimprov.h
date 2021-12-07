@@ -25,10 +25,8 @@
 #define OPENBIKESENSORFIRMWARE_OBSIMPROV_H
 
 /* TODO:
- *  - https://github.com/esphome/esp-web-tools/issues/135
  *  - provide short documentation (on index.html?)
  *  - refactor as lib?
- *  - smooth display after wifi connect via improve (initWifi)
  */
 
 #include <HardwareSerial.h>
