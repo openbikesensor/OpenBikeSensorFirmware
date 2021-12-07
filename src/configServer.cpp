@@ -499,6 +499,7 @@ static void tryWiFiConnect(const ObsConfig *obsConfig);
 static uint16_t countFilesInRoot();
 static String ensureSdIsAvailable();
 static void moveToUploaded(const String &fileName);
+static void createImprovServer();
 
 String getIp() {
   if (WiFiClass::status() != WL_CONNECTED) {
@@ -592,11 +593,6 @@ void beginPages() {
 static int ticks;
 static void progressTick() {
   displayTest->drawWaitBar(5, ticks++);
-  // Warning! This might cause the WiFi connection to be established
-  // in parallel.
-  if (obsImprov) {
-    obsImprov->handle();
-  }
 }
 
 static void createHttpServer() {
@@ -780,12 +776,6 @@ void startServer(ObsConfig *obsConfig) {
   OBS_ID_SHORT = "OBS-" + String((uint16_t)(ESP.getEfuseMac() >> 32), HEX);
   OBS_ID_SHORT.toUpperCase();
 
-  obsImprov = new ObsImprov(initWifi, getWifiStatus, getDeviceUrl, &Serial);
-  obsImprov->setDeviceInfo("OpenBikeSensor", OBSVersion,
-                           ESP.getChipModel(),
-                           OBS_ID.c_str());
-  obsImprov->handle();
-
   displayTest->clear();
   displayTest->showTextOnGrid(0, 0, "Ver.:");
   displayTest->showTextOnGrid(1, 0, OBSVersion);
@@ -795,7 +785,6 @@ void startServer(ObsConfig *obsConfig) {
                               theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID));
 
   tryWiFiConnect(obsConfig);
-  obsImprov->handle();
 
   if (WiFiClass::status() != WL_CONNECTED) {
     CreateWifiSoftAP();
@@ -811,19 +800,24 @@ void startServer(ObsConfig *obsConfig) {
   MDNS.begin("obs");
 
   TimeUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
-  obsImprov->handle();
   if (!voltageMeter) {
     voltageMeter = new VoltageMeter();
   }
-  obsImprov->handle();
 
   if (SD.begin() && WiFiClass::status() == WL_CONNECTED) {
     AlpData::update(displayTest);
   }
-  obsImprov->handle();
 
   log_i("About to create http server.");
   createHttpServer();
+  createImprovServer();
+}
+
+void createImprovServer() {
+  obsImprov = new ObsImprov(initWifi, getWifiStatus, getDeviceUrl, &Serial);
+  obsImprov->setDeviceInfo("OpenBikeSensor", OBSVersion,
+                           ESP.getChipModel(),
+                           OBS_ID.c_str());
 }
 
 static void tryWiFiConnect(const ObsConfig *obsConfig) {
