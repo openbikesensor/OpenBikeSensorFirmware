@@ -499,7 +499,6 @@ static void tryWiFiConnect(const ObsConfig *obsConfig);
 static uint16_t countFilesInRoot();
 static String ensureSdIsAvailable();
 static void moveToUploaded(const String &fileName);
-static void createImprovServer();
 
 String getIp() {
   if (WiFiClass::status() != WL_CONNECTED) {
@@ -596,6 +595,7 @@ static void progressTick() {
 }
 
 static void createHttpServer() {
+  log_i("About to create http server.");
   if (!Https::existsCertificate()) {
     displayTest->clear();
     displayTest->showTextOnGrid(0, 2, "Creating ssl cert,");
@@ -708,9 +708,24 @@ bool CreateWifiSoftAP() {
   return softAccOK;
 }
 
+/* Actions to be taken when we get internet. */
+static void wifiConectedActions() {
+  log_i("Connected to %s, IP: %s",
+        WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
+  if (dnsServer) { // was used to announce AP ip
+    dnsServer->stop();
+  }
+  updateDisplay(displayTest);
+  MDNS.begin("obs");
+  TimeUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
+  if (SD.begin() && WiFiClass::status() == WL_CONNECTED) {
+    AlpData::update(displayTest);
+  }
+}
+
 /* callback function called if wifi data is received via improv */
 bool initWifi(const std::string & ssid, const std::string & password) {
-  log_w("Received WiFi credentials for SSID '%s'", ssid.c_str());
+  log_i("Received WiFi credentials for SSID '%s'", ssid.c_str());
   theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_SSID, ssid);
   theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_PASSWORD, password);
   displayTest->clear();
@@ -720,30 +735,19 @@ bool initWifi(const std::string & ssid, const std::string & password) {
 
   WiFi.disconnect();
   tryWiFiConnect(theObsConfig);
-  bool success = false;
-  if (WiFiClass::status() == WL_CONNECTED) {
+  bool connected = WiFiClass::status() == WL_CONNECTED;
+  if (connected) {
     theObsConfig->saveConfig();
-    success = true;
-    // TODO: Cleanup!!
-    updateDisplay(displayTest);
-
-    MDNS.begin("obs");
-    TimeUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
-    if (!voltageMeter) {
-      voltageMeter = new VoltageMeter();
-    }
-    if (SD.begin() && WiFiClass::status() == WL_CONNECTED) {
-      AlpData::update(displayTest);
-    }
+    wifiConectedActions();
   } else {
     CreateWifiSoftAP();
     displayTest->showTextOnGrid(0, 4, "Connect failed.");
   }
-  return success;
+  return connected;
 }
 
 /* Callback for improv - status of device */
-ObsImprov::State getWifiStatus() {
+static ObsImprov::State improvCallbackGetWifiStatus() {
   ObsImprov::State result;
   if (WiFiClass::status() == WL_CONNECTED) {
     result = ObsImprov::State::PROVISIONED;
@@ -753,7 +757,7 @@ ObsImprov::State getWifiStatus() {
   return result;
 }
 
-std::string getDeviceUrl() {
+static std::string improvCallbackGetDeviceUrl() {
   std::string url = "";
   if (WiFiClass::status() == WL_CONNECTED) {
     theObsConfig->saveConfig();
@@ -763,6 +767,16 @@ std::string getDeviceUrl() {
   }
   log_d("Device URL: '%s'", url.c_str());
   return url;
+}
+
+static void createImprovServer() {
+  obsImprov = new ObsImprov(initWifi,
+                            improvCallbackGetWifiStatus,
+                            improvCallbackGetDeviceUrl,
+                            &Serial);
+  obsImprov->setDeviceInfo("OpenBikeSensor", OBSVersion,
+                           ESP.getChipModel(),
+                           OBS_ID.c_str());
 }
 
 void startServer(ObsConfig *obsConfig) {
@@ -789,45 +803,21 @@ void startServer(ObsConfig *obsConfig) {
   if (WiFiClass::status() != WL_CONNECTED) {
     CreateWifiSoftAP();
     touchConfigServerHttp(); // side effect do not allow track upload via button
+    MDNS.begin("obs");
   } else {
-    log_i("Connected to %s, IP: %s",
-          WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
-
-    displayTest->showTextOnGrid(0, 2, "IP:");
-    displayTest->showTextOnGrid(1, 2, WiFi.localIP().toString().c_str());
+    wifiConectedActions();
   }
 
-  MDNS.begin("obs");
-
-  TimeUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
-  if (!voltageMeter) {
-    voltageMeter = new VoltageMeter();
-  }
-
-  if (SD.begin() && WiFiClass::status() == WL_CONNECTED) {
-    AlpData::update(displayTest);
-  }
-
-  log_i("About to create http server.");
   createHttpServer();
   createImprovServer();
-}
-
-void createImprovServer() {
-  obsImprov = new ObsImprov(initWifi, getWifiStatus, getDeviceUrl, &Serial);
-  obsImprov->setDeviceInfo("OpenBikeSensor", OBSVersion,
-                           ESP.getChipModel(),
-                           OBS_ID.c_str());
 }
 
 static void tryWiFiConnect(const ObsConfig *obsConfig) {
   if (!WiFiGenericClass::mode(WIFI_MODE_STA)) {
     log_e("Failed to enable WiFi station mode.");
   }
-  const char* hostname
-    = obsConfig->getProperty<const char *>(ObsConfig::PROPERTY_OBS_NAME);
-  if (!WiFi.setHostname(hostname)) {
-    log_e("Failed to set hostname to %s.", hostname);
+  if (!WiFi.setHostname("obs")) {
+    log_e("Failed to set hostname to 'obs'.");
   }
   if (theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID).isEmpty()) {
     log_w("No wifi SID set - will not try to connect.");
@@ -845,7 +835,6 @@ static void tryWiFiConnect(const ObsConfig *obsConfig) {
       theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_PASSWORD));
     log_d("WiFi status after begin is %d", status);
     while(status != WL_CONNECTED && (( millis() - startTime) <= timeout)) {
-      status = static_cast<wl_status_t>(WiFi.waitForConnectResult());
       log_d("WiFi status after wait is %d", status);
       if (status >= WL_CONNECT_FAILED) {
         log_d("WiFi resetting connection for retry.");
@@ -856,6 +845,7 @@ static void tryWiFiConnect(const ObsConfig *obsConfig) {
         delay(250);// WiFi.scanNetworks(false);
       }
       delay(250);
+      status = static_cast<wl_status_t>(WiFi.waitForConnectResult());
     }
   }
 }
