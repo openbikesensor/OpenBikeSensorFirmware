@@ -144,8 +144,8 @@ void ObsConfig::makeSureSystemDefaultsAreSet() {
   ensureSet(data, PROPERTY_BLUETOOTH, false);
   data[PROPERTY_OFFSET][0] = data[PROPERTY_OFFSET][0] | 35;
   data[PROPERTY_OFFSET][1] = data[PROPERTY_OFFSET][1] | 35;
-  if (ensureSet(data, PROPERTY_WIFI_SSID, "Freifunk")) {
-    data[PROPERTY_WIFI_PASSWORD] = "Freifunk";
+  if (ensureSet(data, PROPERTY_WIFI_SSID, "")) {
+    data[PROPERTY_WIFI_PASSWORD] = "";
   }
   ensureSet(data, PROPERTY_PORTAL_URL, "https://openbikesensor.hlrs.de");
   ensureSet(data, PROPERTY_HTTP_PIN, ""); // we choose and save a new default when we need it
@@ -404,8 +404,8 @@ void ObsConfig::parseOldJsonDocument(DynamicJsonDocument &doc) {
     offsets.push_back(offsetTemp);
   }
   setOffsets(0, offsets);
-  setProperty(0, PROPERTY_WIFI_SSID, doc["ssid"] | String("Freifunk"));
-  setProperty(0, PROPERTY_WIFI_PASSWORD, doc["password"] | String("Freifunk"));
+  setProperty(0, PROPERTY_WIFI_SSID, doc["ssid"] | String(""));
+  setProperty(0, PROPERTY_WIFI_PASSWORD, doc["password"] | String(""));
   setProperty(0, PROPERTY_PORTAL_TOKEN, doc["obsUserID"] | String("5e8f2f43e7e3b3668ca13151"));
   setProperty(0, PROPERTY_DISPLAY_CONFIG, doc["displayConfig"] | DisplaySimple);
   setProperty(0, PROPERTY_CONFIRMATION_TIME_SECONDS, doc["confirmationTimeWindow"] | 5);

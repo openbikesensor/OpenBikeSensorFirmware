@@ -26,6 +26,8 @@
 #include "OpenBikeSensorFirmware.h"
 
 #include "SPIFFS.h"
+#include "obsimprov.h"
+#include <rom/rtc.h>
 
 #ifndef BUILD_NUMBER
 #define BUILD_NUMBER "local"
@@ -34,7 +36,7 @@
 
 // --- Global variables ---
 // Version only change the "vN.M" part if needed.
-const char *OBSVersion = "v0.10" BUILD_NUMBER;
+const char *OBSVersion = "v0.11" BUILD_NUMBER;
 
 const uint8_t LEFT_SENSOR_ID = 1;
 const uint8_t RIGHT_SENSOR_ID = 0;
@@ -101,7 +103,7 @@ int lastMeasurements = 0 ;
 uint8_t batteryPercentage();
 void serverLoop();
 void handleButtonInServerMode();
-void loadConfig(ObsConfig &cfg);
+bool loadConfig(ObsConfig &cfg);
 
 // The BMP280 can keep up to 3.4MHz I2C speed, so no need for an individual slower speed
 void switch_wire_speed_to_VL53(){
@@ -193,7 +195,6 @@ static void buttonBluetooth(const DataSet *dataSet, uint16_t measureIndex) {
 
 void setup() {
   Serial.begin(115200);
-
   log_i("openbikesensor.org - OBS/%s", OBSVersion);
 
   //##############################################################
@@ -237,7 +238,7 @@ void setup() {
   // Load, print and save config
   //##############################################################
   ObsConfig cfg; // this one is valid in setup!
-  loadConfig(cfg);
+  bool configIsNew = loadConfig(cfg);
 
   //##############################################################
   // Handle SD
@@ -269,8 +270,17 @@ void setup() {
   // Check, if the button is pressed
   // Enter configuration mode and enable OTA
   //##############################################################
+  bool triggerServerMode = false;
+  if (Serial.peek() == 'I') {
+    log_i("IMPROV char detected on serial, will start in server mode.");
+    triggerServerMode = true;
+  }
+  if (configIsNew) {
+    log_i("Config was freshly generated, will start in server mode.");
+    triggerServerMode = true;
+  }
 
-  if (button.read() == HIGH || (!config.simRaMode && displayError != 0)) {
+  if (button.read() == HIGH || (!config.simRaMode && displayError != 0) || triggerServerMode) {
     displayTest->showTextOnGrid(2, displayTest->newLine(), "Start Server");
     ESP_ERROR_CHECK_WITHOUT_ABORT(
       esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
@@ -546,7 +556,8 @@ uint8_t batteryPercentage() {
   return result;
 }
 
-void loadConfig(ObsConfig &cfg) {
+bool loadConfig(ObsConfig &cfg) {
+  bool isNew = false;
   displayTest->showTextOnGrid(2, displayTest->newLine(), "Config... ");
 
   if (!SPIFFS.begin(true)) {
@@ -572,6 +583,7 @@ void loadConfig(ObsConfig &cfg) {
     f.close();
     SD.remove("/obs.json");
     delay(5000);
+    isNew = true;
   } else {
     log_d("No configuration init from SD. SD: %d File: %d", SD.begin(), (SD.begin() && SD.exists("/obs.json")));
   }
@@ -579,7 +591,7 @@ void loadConfig(ObsConfig &cfg) {
   log_i("Load cfg");
   if (!cfg.loadConfig()) {
     displayTest->showTextOnGrid(2, displayTest->currentLine(), "Config...RESET");
-    delay(5000); // resetting cfg once, wait a moment
+    isNew = true;
   }
 
   cfg.printConfig();
@@ -607,4 +619,5 @@ void loadConfig(ObsConfig &cfg) {
            config.sensorOffsets[LEFT_SENSOR_ID],
            config.sensorOffsets[RIGHT_SENSOR_ID]);
   displayTest->showTextOnGrid(2, displayTest->currentLine(), buffer);
+  return isNew;
 }
