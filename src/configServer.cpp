@@ -1767,6 +1767,13 @@ static void handleSd(HTTPRequest *req, HTTPResponse *res) {
       }
     }
     file.close();
+    if (counter > 0) {
+      html += "<hr/>";
+      html += "<li class=\"file\"><input class='small' type='checkbox' id='select-all' "
+              "onclick='Array.prototype.slice.call(document.getElementsByClassName(\"small\")).filter("
+                             "e=>!e.disabled).forEach(e=>e.checked=checked)"
+              "'> select/deselect all</li>";
+    }
     html += "</ul>";
 
     if (path != "/") {
