@@ -352,7 +352,7 @@ static const char* const configIndex =
   "<hr>"
   "Override Privacy when Pushing the Button<input type='checkbox' name='overridePrivacy' {overridePrivacy}>"
   "<h3>Upload User Data</h3>"
-  "<input name='hostname' placeholder='API Url' value='{hostname}'>"
+  "<input name='hostname' placeholder='API URL' value='{hostname}'>"
   "<hr>"
   "<input name='obsUserID' placeholder='API Key' value='{userId}' >"
   "<h3>Operation</h3>"
