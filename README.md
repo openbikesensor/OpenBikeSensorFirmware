@@ -18,7 +18,8 @@
 [![Contributors](https://img.shields.io/github/contributors/openbikesensor/OpenBikeSensorFirmware)](https://github.com/openbikesensor/OpenBikeSensorFirmware/contributors)
 [![quality gate](https://sonarcloud.io/api/project_badges/measure?project=openbikesensor_OpenBikeSensorFirmware&metric=alert_status)](https://sonarcloud.io/dashboard?id=openbikesensor_OpenBikeSensorFirmware)
 [![bugs](https://sonarcloud.io/api/project_badges/measure?project=openbikesensor_OpenBikeSensorFirmware&metric=bugs)](https://sonarcloud.io/project/issues?id=openbikesensor_OpenBikeSensorFirmware&resolved=false&types=BUG)
-[![Slack](https://img.shields.io/badge/Slack-chat-success)](https://www.openbikesensor.org/slack/)
+[![Discourse](https://img.shields.io/discourse/users?server=https%3A%2F%2Fforum.openbikesensor.org%2F)](https://forum.openbikesensor.org/)
+[![Discourse](https://img.shields.io/discourse/topics?server=https%3A%2F%2Fforum.openbikesensor.org%2F)](https://forum.openbikesensor.org/)
 
 
 Platform for measuring and collecting data on a bicycle.
