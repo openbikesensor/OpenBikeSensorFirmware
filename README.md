@@ -20,6 +20,7 @@
 [![bugs](https://sonarcloud.io/api/project_badges/measure?project=openbikesensor_OpenBikeSensorFirmware&metric=bugs)](https://sonarcloud.io/project/issues?id=openbikesensor_OpenBikeSensorFirmware&resolved=false&types=BUG)
 [![Discourse](https://img.shields.io/discourse/users?server=https%3A%2F%2Fforum.openbikesensor.org%2F)](https://forum.openbikesensor.org/)
 [![Discourse](https://img.shields.io/discourse/topics?server=https%3A%2F%2Fforum.openbikesensor.org%2F)](https://forum.openbikesensor.org/)
+[![Matrix](https://img.shields.io/matrix/openbikesensor:matrix.org)](https://matrix.to/#/#openbikesensor:matrix.org)
 
 
 Platform for measuring and collecting data on a bicycle.
