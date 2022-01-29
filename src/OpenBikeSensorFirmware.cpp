@@ -26,7 +26,6 @@
 #include "OpenBikeSensorFirmware.h"
 
 #include "SPIFFS.h"
-#include "obsimprov.h"
 #include <rom/rtc.h>
 
 #ifndef BUILD_NUMBER
