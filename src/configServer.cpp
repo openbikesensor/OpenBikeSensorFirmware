@@ -2251,6 +2251,7 @@ static void handleSettingSecurityAction(HTTPRequest * req, HTTPResponse * res) {
   const auto pin = getParameter(params, "pin");
   if (pin && pin.length() > 3) {
     theObsConfig->setProperty(0, ObsConfig::PROPERTY_HTTP_PIN, pin);
+    theObsConfig->saveConfig();
   }
   sendRedirect(res, "/settings/security");
 }
