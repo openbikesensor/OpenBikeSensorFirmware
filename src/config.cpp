@@ -147,7 +147,7 @@ void ObsConfig::makeSureSystemDefaultsAreSet() {
   if (ensureSet(data, PROPERTY_WIFI_SSID, "")) {
     data[PROPERTY_WIFI_PASSWORD] = "";
   }
-  ensureSet(data, PROPERTY_PORTAL_URL, "https://openbikesensor.hlrs.de");
+  ensureSet(data, PROPERTY_PORTAL_URL, "https://portal.openbikesensor.org");
   ensureSet(data, PROPERTY_HTTP_PIN, ""); // we choose and save a new default when we need it
 
   const String &token = getProperty<const char*>(PROPERTY_PORTAL_TOKEN);
