@@ -21,6 +21,7 @@
  * see <http://www.gnu.org/licenses/>.
  */
 
+#include <WiFi.h>
 #include "obsimprov.h"
 
 const char *ObsImprov::HEADER = "IMPROV\01";
@@ -97,6 +98,9 @@ void ObsImprov::handleImprovMessage(std::vector<uint8_t> buffer) {
       case Command::GET_DEVICE_INFO:
         handleRpcGetDeviceInfo();
         break;
+      case Command::GET_WIFI_NETWORKS:
+        handleRpcGetWifiNetworks();
+        break;
       default:
         log_w("Unsupported improv rpc command 0x%02x ignored.",
               buffer[static_cast<int>(Offset::RPC_COMMAND)]);
@@ -141,6 +145,30 @@ void ObsImprov::handleRpcGetDeviceInfo() const {
   appendStringAndLength(response, mDeviceName);
   response[static_cast<int>(Offset::LENGTH)] = response.size() - 2;
   response[static_cast<int>(Offset::RPC_DATA_LENGTH)] = response.size() - 4;
+  sendPayload(mSerial, response);
+}
+
+void ObsImprov::handleRpcGetWifiNetworks() const {
+  log_i("scan Networks.");
+  std::vector<uint8_t> response;
+  int n = WiFi.scanNetworks();
+  for (int i = 0; i < n; ++i) {
+    response.push_back(static_cast<int>(Type::RPC_RESULT));
+    response.push_back(0x00 /* LENGTH, to be set */);
+    response.push_back(static_cast<int>(Command::GET_WIFI_NETWORKS));
+    response.push_back(0x00 /* LENGTH payload to be set */);
+    appendStringAndLength(response, WiFi.SSID(i).c_str());
+    appendStringAndLength(response, String(WiFi.RSSI(i)).c_str());
+    appendStringAndLength(response, WiFi.encryptionType(i) == WIFI_AUTH_OPEN ? "NO" : "YES");
+    response[static_cast<int>(Offset::LENGTH)] = response.size() - 2;
+    response[static_cast<int>(Offset::RPC_DATA_LENGTH)] = response.size() - 4;
+    sendPayload(mSerial, response);
+    response.clear();
+  }
+  response.push_back(static_cast<int>(Type::RPC_RESULT));
+  response.push_back(0x02);
+  response.push_back(static_cast<int>(Command::GET_WIFI_NETWORKS));
+  response.push_back(0x00);
   sendPayload(mSerial, response);
 }
 

@@ -104,7 +104,8 @@ class ObsImprov {
     enum class Command : uint8_t {
       WIFI_SETTINGS = 0x01,
       GET_CURRENT_STATE = 0x02,
-      GET_DEVICE_INFO = 0x03
+      GET_DEVICE_INFO = 0x03,
+      GET_WIFI_NETWORKS = 0x04
     };
     enum class Error : uint8_t {
       NOBE = 0x00,
@@ -144,6 +145,7 @@ class ObsImprov {
     void handleImprovMessage(std::vector<uint8_t> buffer);
     void handleRpcWifiSettings(std::vector<uint8_t> &buffer) const;
     void handleRpcGetCurrentState() const;
+    void handleRpcGetWifiNetworks() const;
     void handleImprovBody();
 };
 
