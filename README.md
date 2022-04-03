@@ -56,6 +56,15 @@ documentation with different variants in the former
 For a more none technical description of the process switch to
 https://www.openbikesensor.org/docs/firmware/.
 
+### Updating to 0.14.x
+Updating to 0.14.x will require you to download the latest release
+``firmware.bin`` and flash it using the **file upload** section in
+the firmware update screen.
+
+The reason for this is that Github changed their SSL Certificate Root
+and the old Firmware did not trust the new certicate. Once you are
+at 0.14.x, updates will work as usual again.
+
 ### Step By Step with version v0.7.x and above
 
 1. Check if the Flash App is already installed. Go to _Update Flash App_ 
