@@ -136,7 +136,7 @@ const char *const trustedRootCACertificates =
   "vEsXCS+0yx5DaMkHJ8HSXPfqIbloEpw8nL+e/IBcm2PN7EeqJSdnoDfzAIJ9VNep\n"
   "+OkuE6N36B9K\n"
   "-----END CERTIFICATE-----\n"
-  // new github root CA 2022-03-15
+  // DigiCert Global Root CA (new github root CA 2022-03-15)
   "-----BEGIN CERTIFICATE-----\n"
   "MIIDrzCCApegAwIBAgIQCDvgVpBCRrGhdWrJWZHHSjANBgkqhkiG9w0BAQUFADBh\n"
   "MQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3\n"
