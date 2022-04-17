@@ -27,7 +27,6 @@
 
 #include <Arduino.h>
 #include <cstdint>
-#include <ctime>
 
 class Gps;
 
@@ -57,6 +56,8 @@ class GpsRecord {
     uint8_t getSatellitesUsed() const;
     uint8_t getFixStatusFlags() const;
     GPS_FIX getFixStatus() const;
+    uint32_t getTow() const;
+    uint32_t getWeek() const;
 
   protected:
     /* Clear all collected data */
@@ -64,6 +65,7 @@ class GpsRecord {
 
     /* Store tow and related date time data. */
     void setTow(uint32_t tow);
+    void setWeek(uint32_t tow);
 
     void setPosition(int32_t lon, int32_t lat, int32_t height);
 
@@ -80,6 +82,7 @@ class GpsRecord {
      * merge records together.
      */
     uint32_t mCollectTow = 0;
+    uint32_t mCollectWeek = 0; // mainly debug
     /* deg, scale 1e-7 */
     int32_t mLongitude;
     /* deg, scale 1e-7 */

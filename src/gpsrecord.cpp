@@ -46,6 +46,10 @@ void GpsRecord::setTow(uint32_t tow) {
   mCollectTow = tow;
 }
 
+void GpsRecord::setWeek(uint32_t week) {
+  mCollectWeek = week;
+}
+
 void GpsRecord::setPosition(int32_t lon, int32_t lat, int32_t height) {
   mLongitude = lon;
   mLatitude = lat;
@@ -73,6 +77,14 @@ void GpsRecord::setHdop(uint16_t hDop) {
 
 bool GpsRecord::isAllSet() const {
   return mPositionSet && mVelocitySet && mInfoSet && mHdopSet;
+}
+
+uint32_t GpsRecord::getTow() const {
+  return mCollectTow;
+}
+
+uint32_t GpsRecord::getWeek() const {
+  return mCollectWeek;
 }
 
 String GpsRecord::getAltitudeMetersString() const {

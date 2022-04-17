@@ -68,6 +68,8 @@ class Gps {
     /* Collected informational messages as String. */
     String getMessages() const;
 
+    String popMessage();
+
     /* Clears the collected informational messages. */
     void resetMessages();
 
@@ -486,6 +488,8 @@ class Gps {
     /* last time, when the ESP clock was adjusted to the GPR UTC time,
      * in millis ticker. */
     uint32_t mLastTimeTimeSet = 0;
+    /* GPS week as received with time. */
+    uint32_t mLastGpsWeek = 0;
     /* Number of bytes sent for alp request. */
     uint32_t mAlpBytesSent = 0;
     /* If true a outdated gps cfg was detected. */

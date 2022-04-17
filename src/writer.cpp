@@ -21,6 +21,7 @@
  * see <http://www.gnu.org/licenses/>.
  */
 
+#include <utils/timeutils.h>
 #include "writer.h"
 #include "utils/file.h"
 
@@ -191,8 +192,16 @@ bool CSVFileWriter::append(DataSet &set) {
     return true;
   }
 
+  time_t theTime;
+  if (set.gpsRecord.getTow() != 0 && set.gpsRecord.getWeek() != 0) {
+    theTime = TimeUtils::toTime(set.gpsRecord.getWeek(), set.gpsRecord.getTow() / 1000);
+    // TODO: Force adjust filename if week changes and  set.gpsRecord.getTow() is not small via mFinalFileName = false;
+  } else {
+    theTime = set.time;
+  }
   tm time;
-  localtime_r(&(set.time), &time);
+  localtime_r(&(theTime), &time);
+  // localtime_r(&(set.time), &time);
   char date[32];
   snprintf(date, sizeof(date),
     "%02d.%02d.%04d;%02d:%02d:%02d;%u;",
@@ -266,11 +275,17 @@ bool CSVFileWriter::append(DataSet &set) {
     csv += "DEV: Right interrupt adjusted : ";
     csv += sensorManager->getNumberOfInterruptAdjustments(RIGHT_SENSOR_ID);
   } else if (time.tm_sec >= 20 && time.tm_sec < 40) {
-    String msg = gps.getMessage(time.tm_sec - 20);
+    String msg = gps.popMessage();
     if (!msg.isEmpty()) {
       csv += "DEV: GPS: ";
       csv += ObsUtils::encodeForCsvField(msg);
     }
+  } else if (time.tm_sec == 40) {
+    csv += "DBG GPS Time: " +
+      TimeUtils::dateTimeToString(TimeUtils::toTime(set.gpsRecord.getWeek(), set.gpsRecord.getTow() / 1000));
+  } else if (time.tm_sec == 41) {
+    csv += "DBG CPU Time: " +
+           TimeUtils::dateTimeToString();
   }
 // #endif
   csv += ";";
