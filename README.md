@@ -18,13 +18,14 @@
 [![Contributors](https://img.shields.io/github/contributors/openbikesensor/OpenBikeSensorFirmware)](https://github.com/openbikesensor/OpenBikeSensorFirmware/contributors)
 [![quality gate](https://sonarcloud.io/api/project_badges/measure?project=openbikesensor_OpenBikeSensorFirmware&metric=alert_status)](https://sonarcloud.io/dashboard?id=openbikesensor_OpenBikeSensorFirmware)
 [![bugs](https://sonarcloud.io/api/project_badges/measure?project=openbikesensor_OpenBikeSensorFirmware&metric=bugs)](https://sonarcloud.io/project/issues?id=openbikesensor_OpenBikeSensorFirmware&resolved=false&types=BUG)
-[![Slack](https://img.shields.io/badge/Slack-chat-success)](https://www.openbikesensor.org/slack/)
+[![Discourse](https://img.shields.io/discourse/users?server=https%3A%2F%2Fforum.openbikesensor.org%2F)](https://forum.openbikesensor.org/)
+[![Discourse](https://img.shields.io/discourse/topics?server=https%3A%2F%2Fforum.openbikesensor.org%2F)](https://forum.openbikesensor.org/)
+[![Matrix](https://img.shields.io/matrix/openbikesensor:matrix.org)](https://matrix.to/#/#openbikesensor:matrix.org)
 
 
-Platform for measuring data on a bicycle and collecting it.
+Platform for measuring and collecting data on a bicycle.
 Currently, we measure the distance with either HC-SR04 or JSN-SR04T 
 ultrasonic sensors connected to an ESP32.
-
 
 ## Description
 
@@ -39,10 +40,32 @@ You can use this to feed data to the
 [SimRa](https://www.mcc.tu-berlin.de/menue/forschung/projekte/simra/) App or
 any other app collecting heart-rate BLE data. 
 
+## Initial ESP installation
+
+There are various ways to flash the ESP, if you are an expert feel
+free to choose whatever way you want. The official way to install
+the firmware is via a browser. To do this open
+https://install.openbikesensor.org/ with either your Chrome or Edge browser
+and follow up from there. A more none technical documentation can be 
+found at https://www.openbikesensor.org/docs/firmware/. The old technical 
+documentation with different variants in the former
+[documentation on github](https://github.com/openbikesensor/OpenBikeSensorFirmware/blob/v0.10.676/docs/software/firmware/initial_flash.md).
 
 ## Updating
 
-### Step By Step version v0.7.x ff
+For a more none technical description of the process switch to
+https://www.openbikesensor.org/docs/firmware/.
+
+### Updating to 0.14.x
+Updating to 0.14.x will require you to download the latest release
+``firmware.bin`` and flash it using the **file upload** section in
+the firmware update screen.
+
+The reason for this is that Github changed their SSL Certificate Root
+and the old Firmware did not trust the new certicate. Once you are
+at 0.14.x, updates will work as usual again.
+
+### Step By Step with version v0.7.x and above
 
 1. Check if the Flash App is already installed. Go to _Update Flash App_ 
    if no, or an outdated version is installed, push _Update to vX.Y.ZZZ_. 
@@ -88,59 +111,21 @@ than one or two minutes after the upload was completed.
 The About page gives you some insight of the current partitioning a more 
 detailed documentation will come. 
 
-### from v0.6.x, changing the partition schema
+### older versions
 
-The version v0.6.x is the version that introduced the new partitioning 
-schema. This version is small enough to run in the old schema but also 
-brings the needed logic to migrate to the new schema. 
-
-To trigger the migration do the following steps. 
-
-1. make sure you have a recent v0.6.x, currently v0.6.556
-1. make sure you have the recent Flash App (v0.1.22) installed. You can
-   install this version directly in the OBS UI "Update Flash App" -> 
-   "Update to v0.1.x".
-1. to trigger the repartitioning, install the v0.6.x again, 
-   via OBS UI "Update Firmware", either via "Update to v0.6.x"
-   or if no v0.6.x is offered via "File Upload". Make sure to use 
-   a v.0.6.x version. Older versions will not be able to handle 
-   the new update mechanism and newer versions do not fit
-   in the old partitioning. This will take a bit longer than
-   a usual reboot, one or two minutes.
-1. with the reboot now the partitioning is changed, and you can
-   start installing v0.7.x ff. You can also observe this
-   by looking at the about page. Check _OTA-0 Partition Size:_ 
-   this should be around 3.5mb it holds the OBS firmware, and
-   _OTA-1 Partition Size:_ which is only 256kb and holds the 
-   small Flash App thai is now responsible for the update of 
-   the OBS firmware from data stored on the SD Card.
+Updates from older versions are described in the former
+[documentation on github](https://github.com/openbikesensor/OpenBikeSensorFirmware/blob/v0.11.706/README.md)
+and on https://www.openbikesensor.org/docs/firmware/. Consider making a backup
+and start with a fresh installation.
 
 
-### from v0.5.x or earlier
-
-With version v0.6 a new update path was introduced. To allow updating, 
-to versions of v0.6 or newer you at least have to have version v0.6 installed.
-
-The update process is as usual, download the latest v0.6.x from GitHub
-and use the "Update Firmware" functionality in server mode. See above 
-for the next steps. 
-
-### from v0.2.x or earlier
-
-update functionality. For the 1st flashing of the firmware or the update
-from a version prior v0.3.x you have to plug in USB.
-See [flash documentation](https://github.com/openbikesensor/OpenBikeSensorFirmware/blob/master/docs/software/firmware/initial_flash.md)   
-for a documentation how to do a manual flash it if you do not want to 
-set up an IDE as described below.
-
-
-## Find the documentation
+## Find the more documentation
 
 You can find the OpenBikeSensor documentation under:
 * [openbikesensor.org](https://www.openbikesensor.org/)
 
 
-## Getting Started
+## Getting Started Coding
 
 1. You need a OpenBikeSensor in order to try work on the Firmware. [Head over to our Hardware Guide to assemble one](https://www.openbikesensor.org/docs/hardware/).
 2. Clone this repo: `git clone https://github.com/openbikesensor/OpenBikeSensorFirmware.git` and `cd` into it.

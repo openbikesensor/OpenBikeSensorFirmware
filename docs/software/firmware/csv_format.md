@@ -1,4 +1,4 @@
-# Format specification for the internal CVS format
+# Format specification for the internal CSV format
 
 ## Encoding
 

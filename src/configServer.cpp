@@ -38,6 +38,7 @@
 #include "Firmware.h"
 #include "utils/https.h"
 #include "utils/timeutils.h"
+#include "obsimprov.h"
 
 using namespace httpsserver;
 
@@ -56,6 +57,7 @@ static SSLCert * serverSslCert;
 static String OBS_ID;
 static String OBS_ID_SHORT;
 static DNSServer *dnsServer;
+static ObsImprov *obsImprov = nullptr;
 
 // TODO
 //  - Fix CSS Style for mobile && desktop
@@ -350,9 +352,9 @@ static const char* const configIndex =
   "<hr>"
   "Override Privacy when Pushing the Button<input type='checkbox' name='overridePrivacy' {overridePrivacy}>"
   "<h3>Upload User Data</h3>"
-  "<input name='hostname' placeholder='hostname' value='{hostname}'>"
+  "<input name='hostname' placeholder='API URL' value='{hostname}'>"
   "<hr>"
-  "<input name='obsUserID' placeholder='API ID' value='{userId}' >"
+  "<input name='obsUserID' placeholder='API Key' value='{userId}' >"
   "<h3>Operation</h3>"
   "Enable Bluetooth <input type='checkbox' name='bluetooth' {bluetooth}>"
   "<hr>"
@@ -493,10 +495,51 @@ static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<vo
 
 bool configServerWasConnectedViaHttpFlag = false;
 
-static void tryWiFiConnect(const ObsConfig *obsConfig);
+static void tryWiFiConnect();
 static uint16_t countFilesInRoot();
 static String ensureSdIsAvailable();
 static void moveToUploaded(const String &fileName);
+
+String getIp() {
+  if (WiFiClass::status() != WL_CONNECTED) {
+    return WiFi.softAPIP().toString();
+  } else {
+    return WiFi.localIP().toString();
+  }
+}
+
+void updateDisplay(SSD1306DisplayDevice * const display, String action = "") {
+  if (action.isEmpty()) {
+    display->showTextOnGrid(0, 0, "Ver.:");
+    display->showTextOnGrid(1, 0, OBSVersion);
+
+    if (WiFiClass::status() == WL_CONNECTED) {
+      display->showTextOnGrid(0, 1, "SSID:");
+      display->showTextOnGrid(1, 1, WiFi.SSID());
+      display->showTextOnGrid(0, 2, "IP:");
+      display->showTextOnGrid(1, 2, WiFi.localIP().toString());
+    } else if (WiFiGenericClass::getMode() == WIFI_MODE_AP || WiFiGenericClass::getMode() == WIFI_MODE_APSTA) {
+      // OK??
+      display->showTextOnGrid(0, 1, "AP: " + WiFi.softAPSSID());
+      display->showTextOnGrid(0, 2, "IP:");
+      display->showTextOnGrid(1, 2, WiFi.softAPIP().toString());
+      display->showTextOnGrid(0, 3, "Pass:");
+      display->showTextOnGrid(1, 3, "12345678");
+    } else {
+      log_w("Unexpected wifi mode %d ", WiFiGenericClass::getMode());
+    }
+  } else {
+    displayTest->showTextOnGrid(0, 0,
+                                theObsConfig->getProperty<String>(ObsConfig::PROPERTY_OBS_NAME));
+    displayTest->showTextOnGrid(0, 1, "IP:");
+    display->showTextOnGrid(1, 1, getIp());
+    displayTest->showTextOnGrid(1, 2, "");
+    displayTest->showTextOnGrid(0, 2, action);
+    displayTest->showTextOnGrid(0, 3, "");
+    displayTest->showTextOnGrid(1, 3, "");
+  }
+}
+
 
 void registerPages(HTTPServer * httpServer) {
   httpServer->setDefaultNode(new ResourceNode("", HTTP_GET, handleNotFound));
@@ -552,15 +595,16 @@ static void progressTick() {
 }
 
 static void createHttpServer() {
+  log_i("About to create http server.");
   if (!Https::existsCertificate()) {
-    displayTest->showTextOnGrid(1, 4, "");
-    displayTest->showTextOnGrid(0, 5, "");
-    displayTest->showTextOnGrid(0, 4, "Creating ssl cert!");
+    displayTest->clear();
+    displayTest->showTextOnGrid(0, 2, "Creating ssl cert,");
+    displayTest->showTextOnGrid(0, 3, "be patient.");
   }
   serverSslCert = Https::getCertificate(progressTick);
   server = new HTTPSServer(serverSslCert, 443, 2);
-  displayTest->clearProgressBar(5);
-  displayTest->showTextOnGrid(0, 4, "");
+  displayTest->clear();
+  updateDisplay(displayTest);
   insecureServer = new HTTPServer(80, 2);
 
   beginPages();
@@ -597,18 +641,7 @@ String replaceDefault(String html, const String& subTitle, const String& action 
   html = replaceHtml(html, "{subtitle}", subTitle);
   html = replaceHtml(html, "{action}", action);
   displayTest->clear();
-  displayTest->showTextOnGrid(0, 0,
-                              theObsConfig->getProperty<String>(ObsConfig::PROPERTY_OBS_NAME));
-  displayTest->showTextOnGrid(0, 1, "IP:");
-  String ip;
-  if (WiFiGenericClass::getMode() == WIFI_MODE_STA) {
-    ip = WiFi.localIP().toString();
-  } else {
-    ip = WiFi.softAPIP().toString();
-  }
-  displayTest->showTextOnGrid(1, 1, ip);
-  displayTest->showTextOnGrid(0, 2, "Menu");
-  displayTest->showTextOnGrid(1, 2, subTitle);
+  updateDisplay(displayTest, "Menu: " + subTitle);
   return html;
 }
 
@@ -649,30 +682,17 @@ static void handleNotFound(HTTPRequest * req, HTTPResponse * res) {
   res->print(footer);
 }
 
-String getIp() {
-  if (WiFiClass::status() != WL_CONNECTED) {
-    return WiFi.softAPIP().toString();
-  } else {
-    return WiFi.localIP().toString();
-  }
-}
-
 bool CreateWifiSoftAP() {
   bool softAccOK;
   WiFi.disconnect();
-  Serial.print(F("Initalize SoftAP "));
+  log_i("Initialize SoftAP");
   String apName = OBS_ID;
   String APPassword = "12345678";
-  softAccOK  =  WiFi.softAP(apName.c_str(), APPassword.c_str(), 1, 0, 1); // Passwortlänge mindestens 8 Zeichen !
+  softAccOK  =  WiFi.softAP(apName.c_str(), APPassword.c_str(), 1, 0, 1);
   delay(2000); // Without delay I've seen the IP address blank
   /* Soft AP network parameters */
   IPAddress apIP(172, 20, 0, 1);
   IPAddress netMsk(255, 255, 255, 0);
-
-  displayTest->showTextOnGrid(0, 1, "AP:");
-  displayTest->showTextOnGrid(1, 1, "");
-  displayTest->showTextOnGrid(0, 2, apName.c_str());
-
 
   WiFi.softAPConfig(apIP, apIP, netMsk);
   if (softAccOK) {
@@ -680,18 +700,83 @@ bool CreateWifiSoftAP() {
     // with "*" we get a lot of requests from all sort of apps,
     // use obs.local here
     dnsServer->start(53, "obs.local", apIP);
-
     log_i("AP successful IP: %s", apIP.toString().c_str());
-
-    displayTest->showTextOnGrid(0, 3, "Pass:");
-    displayTest->showTextOnGrid(1, 3, APPassword);
-
-    displayTest->showTextOnGrid(0, 4, "IP:");
-    displayTest->showTextOnGrid(1, 4, WiFi.softAPIP().toString());
   } else {
     log_e("Soft AP Error. Name: %s Pass: %s", apName.c_str(), APPassword.c_str());
   }
+  updateDisplay(displayTest);
   return softAccOK;
+}
+
+/* Actions to be taken when we get internet. */
+static void wifiConectedActions() {
+  log_i("Connected to %s, IP: %s",
+        WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
+  if (dnsServer) { // was used to announce AP ip
+    dnsServer->start(53, "obs.local", WiFi.localIP());
+  }
+  updateDisplay(displayTest);
+  MDNS.begin("obs");
+  TimeUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
+  if (SD.begin() && WiFiClass::status() == WL_CONNECTED) {
+    AlpData::update(displayTest);
+  }
+}
+
+/* callback function called if wifi data is received via improv */
+bool initWifi(const std::string & ssid, const std::string & password) {
+  log_i("Received WiFi credentials for SSID '%s'", ssid.c_str());
+  theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_SSID, ssid);
+  theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_PASSWORD, password);
+  displayTest->clear();
+  displayTest->showTextOnGrid(0, 1, "SSID:");
+  displayTest->showTextOnGrid(1, 1, ssid.c_str());
+  displayTest->showTextOnGrid(0, 2, "Connecting (IMPROV)...");
+
+  WiFi.disconnect();
+  tryWiFiConnect();
+  bool connected = WiFiClass::status() == WL_CONNECTED;
+  if (connected) {
+    theObsConfig->saveConfig();
+    wifiConectedActions();
+  } else {
+    CreateWifiSoftAP();
+    displayTest->showTextOnGrid(0, 4, "Connect failed.");
+  }
+  return connected;
+}
+
+/* Callback for improv - status of device */
+static ObsImprov::State improvCallbackGetWifiStatus() {
+  ObsImprov::State result;
+  if (WiFiClass::status() == WL_CONNECTED) {
+    result = ObsImprov::State::PROVISIONED;
+  } else  { // not sure for STATE_PROVISIONING
+    result = ObsImprov::State::READY;
+  }
+  return result;
+}
+
+static std::string improvCallbackGetDeviceUrl() {
+  std::string url = "";
+  if (WiFiClass::status() == WL_CONNECTED) {
+    theObsConfig->saveConfig();
+    url += "http://";
+    url += WiFi.localIP().toString().c_str();
+    url += + "/";
+  }
+  log_d("Device URL: '%s'", url.c_str());
+  return url;
+}
+
+static void createImprovServer() {
+  obsImprov = new ObsImprov(initWifi,
+                            improvCallbackGetWifiStatus,
+                            improvCallbackGetDeviceUrl,
+                            &Serial);
+  obsImprov->setDeviceInfo("OpenBikeSensor", OBSVersion,
+                           ESP.getChipModel(),
+                           OBS_ID.c_str());
 }
 
 void startServer(ObsConfig *obsConfig) {
@@ -713,67 +798,56 @@ void startServer(ObsConfig *obsConfig) {
   displayTest->showTextOnGrid(1, 1,
                               theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID));
 
-  tryWiFiConnect(obsConfig);
+  tryWiFiConnect();
 
   if (WiFiClass::status() != WL_CONNECTED) {
     CreateWifiSoftAP();
     touchConfigServerHttp(); // side effect do not allow track upload via button
+    MDNS.begin("obs");
   } else {
-    Serial.println("");
-    Serial.print("Connected to ");
-    Serial.println(WiFi.SSID());
-    Serial.print("IP address: ");
-    Serial.println(WiFi.localIP());
-
-    displayTest->showTextOnGrid(0, 2, "IP:");
-    displayTest->showTextOnGrid(1, 2, WiFi.localIP().toString().c_str());
+    wifiConectedActions();
   }
 
-  MDNS.begin("obs");
-
-  TimeUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
-  if (!voltageMeter) {
-    voltageMeter = new VoltageMeter();
-  }
-
-  if (SD.begin() && WiFiClass::status() == WL_CONNECTED) {
-    AlpData::update(displayTest);
-  }
-
-  log_i("About to create http server.");
   createHttpServer();
+  createImprovServer();
 }
 
-static void tryWiFiConnect(const ObsConfig *obsConfig) {
+static void tryWiFiConnect() {
   if (!WiFiGenericClass::mode(WIFI_MODE_STA)) {
     log_e("Failed to enable WiFi station mode.");
   }
-  const char* hostname
-    = obsConfig->getProperty<const char *>(ObsConfig::PROPERTY_OBS_NAME);
-  if (!WiFi.setHostname(hostname)) {
-    log_e("Failed to set hostname to %s.", hostname);
+  if (!WiFi.setHostname("obs")) {
+    log_e("Failed to set hostname to 'obs'.");
+  }
+  if (theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID).isEmpty()) {
+    log_w("No wifi SID set - will not try to connect.");
+    return;
   }
 
   const auto startTime = millis();
   const uint16_t timeout = 10000;
   // Connect to WiFi network
   while ((WiFiClass::status() != WL_CONNECTED) && (( millis() - startTime) <= timeout)) {
-    log_d("Trying to connect to %s",
+    log_i("Trying to connect to %s",
       theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_SSID));
     wl_status_t status = WiFi.begin(
       theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_SSID),
       theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_PASSWORD));
     log_d("WiFi status after begin is %d", status);
     status = static_cast<wl_status_t>(WiFi.waitForConnectResult());
-    log_d("WiFi status after wait is %d", status);
-    if (status >= WL_CONNECT_FAILED) {
-      log_d("WiFi resetting connection for retry.");
-      WiFi.disconnect(true, true);
-    } else if (status == WL_NO_SSID_AVAIL){
-      log_d("WiFi SSID not found - try rescan.");
-      WiFi.scanNetworks(false);
+    while(status != WL_CONNECTED && (( millis() - startTime) <= timeout)) {
+      log_d("WiFi status after wait is %d", status);
+      if (status >= WL_CONNECT_FAILED) {
+        log_i("WiFi resetting connection for retry. (status 0x%02x))", status);
+        WiFi.disconnect(true, true);
+        break;
+      } else if (status == WL_NO_SSID_AVAIL) {
+        log_i("WiFi SSID not found - delay (status 0x%02x))", status);
+        delay(250);// WiFi.scanNetworks(false);
+      }
+      delay(250);
+      status = static_cast<wl_status_t>(WiFi.waitForConnectResult());
     }
-    delay(250);
   }
 }
 
@@ -832,7 +906,9 @@ static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
   String page;
   gps.pollStatistics(); // takes ~100ms!
 
-  res->print("<h3>ESP32</h3>"); // SPDIFF
+  res->print("<h3>ESP32</h3>");
+  res->print(keyValue("Chip Model", ESP.getChipModel()));
+  res->print(keyValue("Chip Revision", ESP.getChipRevision()));
   res->print(keyValue("Heap size", ObsUtils::toScaledByteString(ESP.getHeapSize())));
   res->print(keyValue("Free heap", ObsUtils::toScaledByteString(ESP.getFreeHeap())));
   res->print(keyValue("Min. free heap", ObsUtils::toScaledByteString(ESP.getMinFreeHeap())));
@@ -1691,6 +1767,13 @@ static void handleSd(HTTPRequest *req, HTTPResponse *res) {
       }
     }
     file.close();
+    if (counter > 0) {
+      html += "<hr/>";
+      html += "<li class=\"file\"><input class='small' type='checkbox' id='select-all' "
+              "onclick='Array.prototype.slice.call(document.getElementsByClassName(\"small\")).filter("
+                             "e=>!e.disabled).forEach(e=>e.checked=checked)"
+              "'> select/deselect all</li>";
+    }
     html += "</ul>";
 
     if (path != "/") {
@@ -1866,6 +1949,9 @@ void configServerHandle() {
   insecureServer->loop();
   if (dnsServer) {
     dnsServer->processNextRequest();
+  }
+  if (obsImprov) {
+    obsImprov->handle();
   }
 }
 
@@ -2165,6 +2251,7 @@ static void handleSettingSecurityAction(HTTPRequest * req, HTTPResponse * res) {
   const auto pin = getParameter(params, "pin");
   if (pin && pin.length() > 3) {
     theObsConfig->setProperty(0, ObsConfig::PROPERTY_HTTP_PIN, pin);
+    theObsConfig->saveConfig();
   }
   sendRedirect(res, "/settings/security");
 }

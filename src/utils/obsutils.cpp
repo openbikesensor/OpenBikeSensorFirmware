@@ -98,17 +98,7 @@ String ObsUtils::toScaledByteString(uint64_t size) {
 }
 
 void ObsUtils::logHexDump(const uint8_t *buffer, uint16_t length) {
-  String debug;
-  char buf[16];
-  for (int i = 0; i < length; i++) {
-    if (i % 16 == 0) {
-      snprintf(buf, 8, "\n%04X  ", i);
-      debug += buf;
-    }
-    snprintf(buf, 8, "%02X ", buffer[i]);
-    debug += buf;
-  }
-  log_e("%s", debug.c_str());
+  ESP_LOG_BUFFER_HEXDUMP(__FILE__, buffer, length, ESP_LOG_WARN);
 }
 
 String ObsUtils::sha256ToString(byte *sha256) {
