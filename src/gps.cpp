@@ -872,7 +872,7 @@ void Gps::parseUbxMessage() {
             mGpsBuffer.navDop.iTow, mGpsBuffer.navDop.gDop, mGpsBuffer.navDop.pDop,
             mGpsBuffer.navDop.tDop, mGpsBuffer.navDop.vDop, mGpsBuffer.navDop.hDop,
             mGpsBuffer.navDop.nDop, mGpsBuffer.navDop.eDop);
-      if (prepareGpsData(mGpsBuffer.navSol.iTow)) {
+      if (prepareGpsData(mGpsBuffer.navDop.iTow)) {
         mIncomingGpsRecord.setHdop(mGpsBuffer.navDop.hDop);
         checkGpsDataState();
       }
@@ -882,6 +882,15 @@ void Gps::parseUbxMessage() {
       log_v("SOL: iTOW: %u, gpsFix: %d, flags: %02x, numSV: %d, pDop: %04d.",
             mGpsBuffer.navSol.iTow, mGpsBuffer.navSol.gpsFix, mGpsBuffer.navSol.flags,
             mGpsBuffer.navSol.numSv, mGpsBuffer.navSol.pDop);
+      if (mGpsBuffer.navSol.flags & 4) { // WKNSET
+        if (mLastGpsWeek != mGpsBuffer.navSol.week) {
+          // debugging #294
+          addStatisticsMessage(String("NAVSOL gps week changed: ")
+                               + mLastGpsWeek + " -> " + mGpsBuffer.navSol.week
+                               + " at " + TimeUtils::dateTimeToString());
+        }
+        mLastGpsWeek = mGpsBuffer.navSol.week;
+      }
       if (prepareGpsData(mGpsBuffer.navSol.iTow)) {
         mIncomingGpsRecord.setInfo(mGpsBuffer.navSol.numSv, mGpsBuffer.navSol.gpsFix, mGpsBuffer.navSol.flags);
         checkGpsDataState();
@@ -1027,15 +1036,20 @@ void Gps::parseUbxMessage() {
 }
 
 void Gps::handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps &message, const uint32_t receivedMs, const uint32_t delayMs) {
-  log_i("TIMEGPS: iTOW: %u, fTOW: %d, week %d, leapS: %d, valid: 0x%02x (%s%s%s) , tAcc %uns, DATE: %s, delay %dms",
+  log_i("TIMEGPS: iTOW: %u, fTOW: %d, week %d, leapS: %d, valid: 0x%02x (%s%s%s), tAcc %uns, DATE: %s, delay %dms",
         message.iTow, message.fTow, message.week, message.leapS, message.valid,
         message.valid & 1 ? "TOW" : "",
-        message.valid & 2 ? " WEEK " : "",
-        message.valid & 4 ? " GPS" : "",
+        message.valid & 2 ? " WEEK" : "",
+        message.valid & 4 ? " UTC" : "",
         message.tAcc,
         TimeUtils::dateTimeToString(TimeUtils::toTime(message.week, message.iTow / 1000)).c_str(),
         delayMs);
   if (message.valid & 2) {
+    if (mLastGpsWeek != message.week) {
+      // debugging #294
+      addStatisticsMessage(String("TIMEGPS gps week changed: ")
+                           + mLastGpsWeek + " -> " + message.week);
+    }
     mLastGpsWeek = message.week;
   }
   if ((message.valid & 0x03) == 0x03  // WEEK && TOW
