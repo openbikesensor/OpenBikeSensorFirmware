@@ -28,9 +28,7 @@
 #include <list>
 
 #include "_IBluetoothService.h"
-#include "ClosePassService.h"
 #include "DeviceInfoService.h"
-#include "DistanceService.h"
 #include "HeartRateService.h"
 #include "BatteryService.h"
 #include "ObsService.h"

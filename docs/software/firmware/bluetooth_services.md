@@ -12,8 +12,6 @@ grand_parent: Software
 | Device Info | `0000180A-0000-1000-8000-00805F9B34FB` | General information about the bluetooth device                     |
 | OBS         | `1FE7FAF9-CE63-4236-0004-000000000000` | Reports distance sensor readings and confirmed close passes        |
 | Heart Rate  | `0000180D-0000-1000-8000-00805F9B34FB` | Transmits the current distance by acting like a heart rate monitor |
-| Distance    | `1FE7FAF9-CE63-4236-0001-000000000000` | Transmits the current distance every 50ms                          |
-| Close Pass  | `1FE7FAF9-CE63-4236-0003-000000000000` | Detects and transmits possible close passes                        |
 
 
 ## Device Info Service
@@ -72,32 +70,3 @@ the millisecond counter on the OBS likely is restarted.
 | --------------- | -------------------------------------- | ---------------- | ----------------------------------------- |
 | Heart Rate      | `00002a37-0000-1000-8000-00805f9b34fb` | `NOTIFY`         | Minimum distance measured over 1/2 second |
 
-
-## Distance Service
-- *Description:* Transmits the current distance every 50ms
-- *UUID:* `1FE7FAF9-CE63-4236-0001-000000000000`
-
-Might get removed soon, prefer the "OBS Service".
-
-| Characteristic | UUID                                   | Property         | Value                                            |
-| -------------- | -------------------------------------- | ---------------- | ------------------------------------------------ |
-| Distance 50 ms | `1FE7FAF9-CE63-4236-0001-000000000001` | `READ`, `NOTIFY` | Current distance of all sensors with a timestamp |
-
-The format of the transmitted string is `"timestamp;[leftSensor1, leftSensor2, ...];[rightSensor1, rightSensor2, ...]"`, e.g. `"43567893;100,30;400"` or `"43567893;100;"`.
-The list of sensor values for one side might be empty, but the entire transmitted string can be safely split on `";"` and each sensor value list safely on `","`.
-
-
-## Close Pass Service
-- *Description:* Detects and transmits possible close passes
-- *UUID:* `1FE7FAF9-CE63-4236-0003-000000000000`
-
-Might get removed soon, prefer the "OBS Service".
-
-| Characteristic      | UUID                                   | Property        | Value                                                                               |
-| ------------------- | -------------------------------------- | --------------- | ----------------------------------------------------------------------------------- |
-| Close Pass Events   | `1FE7FAF9-CE63-4236-0003-000000000002` | `READ`,`NOTIFY` | Notifies of new close pass events                                                   |
-
-The format of the transmitted string for the *Close Pass Events* is `"timestamp;eventName;[payload1, payload2, ...]"`, e.g. `"43567893;button;123"`.
-The following events are defined:
-* `button`: Triggered using a physical button
-  * Payload: last distance value
