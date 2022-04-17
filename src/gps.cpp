@@ -576,6 +576,15 @@ String Gps::getMessages() const {
   return theGpsMessage;
 }
 
+String Gps::popMessage() {
+  String theGpsMessage = "";
+  if (mMessages.size() > 0) {
+    theGpsMessage = mMessages[0];
+    mMessages.erase(mMessages.begin());
+  }
+  return theGpsMessage;
+}
+
 String Gps::getMessage(uint16_t idx) const {
   String theGpsMessage = "";
   if (mMessages.size() > idx) {
@@ -1053,8 +1062,8 @@ void Gps::handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps &message, const uin
     mLastGpsWeek = message.week;
   }
   if ((message.valid & 0x03) == 0x03  // WEEK && TOW
-      && delayMs < 80
-      && message.tAcc < (80 * 1000 * 1000 /* 80ms */)
+      && delayMs < 20
+      && message.tAcc < (20 * 1000 * 1000 /* 20ms */)
       && (mLastTimeTimeSet == 0
           || (mLastTimeTimeSet + (2 * 60 * 1000 /* 2 minutes */)) < receivedMs)) {
     String oldTime = TimeUtils::dateTimeToString();
@@ -1063,7 +1072,8 @@ void Gps::handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps &message, const uin
     if (oldTime != newTime) {
       log_i("TIMEGPS set: %s -> %s", oldTime.c_str(), newTime.c_str());
       addStatisticsMessage(String("TIMEGPS set: ")
-                           + oldTime + " -> " + newTime + " " + String(delayMs) + "ms.");
+                           + oldTime + " -> " + newTime + " delay " + String(delayMs)
+                           + "ms. tAcc:" + String(message.tAcc) + "ns");
     }
     if (mLastTimeTimeSet == 0) {
       mLastTimeTimeSet = receivedMs;

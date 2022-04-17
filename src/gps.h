@@ -68,6 +68,8 @@ class Gps {
     /* Collected informational messages as String. */
     String getMessages() const;
 
+    String popMessage();
+
     /* Clears the collected informational messages. */
     void resetMessages();
 

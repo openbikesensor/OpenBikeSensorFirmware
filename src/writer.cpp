@@ -275,7 +275,7 @@ bool CSVFileWriter::append(DataSet &set) {
     csv += "DEV: Right interrupt adjusted : ";
     csv += sensorManager->getNumberOfInterruptAdjustments(RIGHT_SENSOR_ID);
   } else if (time.tm_sec >= 20 && time.tm_sec < 40) {
-    String msg = gps.getMessage(time.tm_sec - 20);
+    String msg = gps.popMessage();
     if (!msg.isEmpty()) {
       csv += "DEV: GPS: ";
       csv += ObsUtils::encodeForCsvField(msg);
@@ -283,6 +283,9 @@ bool CSVFileWriter::append(DataSet &set) {
   } else if (time.tm_sec == 40) {
     csv += "DBG GPS Time: " +
       TimeUtils::dateTimeToString(TimeUtils::toTime(set.gpsRecord.getWeek(), set.gpsRecord.getTow() / 1000));
+  } else if (time.tm_sec == 41) {
+    csv += "DBG CPU Time: " +
+           TimeUtils::dateTimeToString();
   }
 // #endif
   csv += ";";
