@@ -27,6 +27,7 @@
 #include <Stream.h>
 #include <vector>
 #include <FS.h>
+#include <functional>
 
 
 class StringStream : public Stream {

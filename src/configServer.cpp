@@ -1031,7 +1031,7 @@ static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
 
   page += "<h3>Display / Button</h3>";
   page += keyValue("Button State", digitalRead(PUSHBUTTON_PIN));
-  page += keyValue("Display i2c last error", Wire.lastError());
+  page += keyValue("Display i2c last error", Wire.getWriteError());
   page += keyValue("Display i2c speed", Wire.getClock() / 1000, "KHz");
   page += keyValue("Display i2c timeout", Wire.getTimeOut(), "ms");
 
