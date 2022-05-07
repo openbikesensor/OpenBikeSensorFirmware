@@ -164,9 +164,12 @@ void Gps::configureGpsModule() {
     0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x17
   };
-  sendAndWaitForAck(UBX_MSG::CFG_CFG, UBX_CFG_CFG_SAVE, sizeof(UBX_CFG_CFG_SAVE));
+  if (sendAndWaitForAck(UBX_MSG::CFG_CFG, UBX_CFG_CFG_SAVE, sizeof(UBX_CFG_CFG_SAVE))) {
+    addStatisticsMessage("OBS: Did update GPS settings.");
+  } else {
+    addStatisticsMessage("OBS: Failed to save updated GPS settings.");
+  }
   handle(20);
-  addStatisticsMessage("OBS: Did update GPS settings.");
   log_i("Config GPS done!");
 }
 
