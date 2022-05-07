@@ -375,6 +375,9 @@ bool Gps::handle() {
   int data;
   while ((data = mSerial.read()) >= 0) {
     bytesProcessed++;
+#ifdef GPS_LOW_LEVEL_DEBUGGING
+    log_w("GPS in: 0x%02x", data);
+#endif
     if (encode(data)) {
       gotGpsData = true;
       if (bytesProcessed > 1024) {
