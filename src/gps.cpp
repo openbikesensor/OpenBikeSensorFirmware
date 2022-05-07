@@ -267,8 +267,8 @@ bool Gps::setMessageInterval(UBX_MSG msgId, uint8_t seconds, bool waitForAck) {
  */
 bool Gps::setBaud() {
   mSerial.end();
-  mSerial.begin(115200, SERIAL_8N1);
   mSerial.setRxBufferSize(512);
+  mSerial.begin(115200, SERIAL_8N1);
   while(mSerial.read() >= 0) ;
 
   if (checkCommunication()) {
