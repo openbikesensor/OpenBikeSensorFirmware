@@ -313,7 +313,7 @@ bool Gps::setBaud() {
 /* Send a "ping" message to the gps module and check,
  * if we get a response. */
 bool Gps::checkCommunication() {
-  return sendAndWaitForAck(UBX_MSG::CFG_RINV);
+  return sendAndWaitForAck(UBX_MSG::CFG_RINV) || mAckReceived || mNakReceived;
 }
 
 bool Gps::sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer, size_t size) {
