@@ -321,7 +321,8 @@ bool Gps::checkCommunication() {
 
 bool Gps::sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer, size_t size) {
   const int tries = 3;
-  const int timeoutMs = 1000;
+  // we had the case see https://github.com/openbikesensor/OpenBikeSensorFirmware/issues/309
+  const int timeoutMs = 3000;
 
   bool result = false;
   for (int i = 0; i < tries; i++) {
