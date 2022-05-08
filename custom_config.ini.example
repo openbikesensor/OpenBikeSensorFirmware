@@ -14,7 +14,8 @@ build_flags =
 ; aditional logoutput from 0 (node) over 3 (default info) to 5 debug
     -DCORE_DEBUG_LEVEL=3
 ; build with development option
-    -D DEVELOP
+; warning this causes the configuration including the wifi credentials to be sent to serial
+    -DDEVELOP
 ; http lib loglevel
     -DHTTPS_LOGLEVEL=3
 
