@@ -600,9 +600,6 @@ bool loadConfig(ObsConfig &cfg) {
   cfg.fill(config);
 
   // Setup display, this is not the right place ;)
-  if(config.devConfig & ShowGrid) {
-    displayTest->showGrid(true);
-  }
   if (config.displayConfig & DisplayInvert) {
     displayTest->invert();
   } else {

@@ -197,8 +197,7 @@ static const char* const navigationIndex =
   "<input type=button onclick=\"window.location.href='/sd'\" class=btn value='Show SD Card Contents'>"
   "<input type=button onclick=\"window.location.href='/about'\" class=btn value='About'>"
   "<input type=button onclick=\"window.location.href='/delete'\" class=btn value='Delete'>"
-  "<input type=button onclick=\"window.location.href='/reboot'\" class=btn value='Reboot'>"
-  "{dev}";
+  "<input type=button onclick=\"window.location.href='/reboot'\" class=btn value='Reboot'>";
 
 static const char* const httpsRedirect =
   "<h3>HTTPS</h3>"
@@ -291,19 +290,6 @@ updateFirmwareList();
 <input type='submit' name='version' id='version' class=btn value='Update' />
 <h3>File Upload</h3>
 )"""";
-
-
-
-// #########################################
-// Development Index
-// #########################################
-
-static const char* const devIndex =
-  "<h3>Display</h3>"
-  "Show Grid<br><input type='checkbox' name='showGrid' {showGrid}>"
-  "Print WLAN password to serial<br><input type='checkbox' name='printWifiPassword' {printWifiPassword}>"
-  "<input type=submit class=btn value=Save>"
-  "<hr>";
 
 // #########################################
 // Config
@@ -561,10 +547,7 @@ void registerPages(HTTPServer * httpServer) {
   httpServer->registerNode(new ResourceNode("/updateSdUrl", HTTP_POST, handleFirmwareUpdateSdUrlAction));
   httpServer->registerNode(new ResourceNode("/delete", HTTP_GET, handleDelete));
   httpServer->registerNode(new ResourceNode("/delete", HTTP_POST, handleDeleteAction));
-#ifdef DEVELOP
-  httpServer->registerNode(new ResourceNode("/settings/development/action", HTTP_GET, handleDevAction));
-    httpServer->registerNode(new ResourceNode("/settings/development", HTTP_GET, handleDev));
-#endif
+  httpServer->registerNode(new ResourceNode("/privacy_action", HTTP_POST, handlePrivacyAction));
   httpServer->registerNode(new ResourceNode("/privacy_action", HTTP_POST, handlePrivacyAction));
   httpServer->registerNode(new ResourceNode("/gps", HTTP_GET, handleGps));
   httpServer->registerNode(new ResourceNode("/upload", HTTP_GET, handleUpload));
@@ -858,11 +841,6 @@ static void handleIndex(HTTPRequest *, HTTPResponse * res) {
 // ###############################################################
   String html = createPage(navigationIndex);
   html = replaceDefault(html, "Navigation");
-#ifdef DEVELOP
-  html.replace("{dev}", development);
-#else
-  html.replace("{dev}", "");
-#endif
   sendHtml(res, html);
 }
 
@@ -924,7 +902,7 @@ static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
 #ifdef DEVELOP
     "true"
 #else
-                   "false"
+    "false"
 #endif
   );
 #ifdef CONFIG_LOG_DEFAULT_LEVEL
@@ -1271,34 +1249,6 @@ static void handleConfig(HTTPRequest *, HTTPResponse * res) {
 
   sendHtml(res, html);
 }
-
-#ifdef DEVELOP
-static void handleDevAction(HTTPRequest *req, HTTPResponse *res) {
-  auto params = req->getParams();
-  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DEVELOPER, ShowGrid,
-                                   getParameter(params, "showGrid") == "on");
-  theObsConfig->setBitMaskProperty(0, ObsConfig::PROPERTY_DEVELOPER, PrintWifiPassword,
-                                   getParameter(params, "printWifiPassword") == "on");
-  theObsConfig->saveConfig();
-  sendRedirect(res, "/settings/development");
-}
-
-static void handleDev(HTTPRequest *, HTTPResponse *res) {
-  String html = createPage(devIndex);
-  html = replaceDefault(html, "Development Setting", "/settings/development/action");
-
-  // SHOWGRID
-  bool showGrid = theObsConfig->getBitMaskProperty(
-    0, ObsConfig::PROPERTY_DEVELOPER, ShowGrid);
-  html.replace("{showGrid}", showGrid ? "checked" : "");
-
-  bool printWifiPassword = theObsConfig->getBitMaskProperty(
-    0, ObsConfig::PROPERTY_DEVELOPER, PrintWifiPassword);
-  html.replace("{printWifiPassword}", printWifiPassword ? "checked" : "");
-
-  sendHtml(res, html);
-}
-#endif
 
 /* Upload tracks found on SD card to the portal server->
  * This method also takes care to give appropriate feedback

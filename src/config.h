@@ -73,7 +73,6 @@ struct Config {
   uint displayConfig;
   bool bluetooth;
   bool simRaMode;
-  int devConfig;
   int privacyConfig;
   int confirmationTimeWindow;
   std::vector<PrivacyArea> privacyAreas;
@@ -135,7 +134,6 @@ class ObsConfig {
     static const String PROPERTY_DISPLAY_CONFIG;
     static const String PROPERTY_CONFIRMATION_TIME_SECONDS;
     static const String PROPERTY_PRIVACY_CONFIG;
-    static const String PROPERTY_DEVELOPER;
     static const String PROPERTY_SELECTED_PRESET;
     static const String PROPERTY_PRIVACY_AREA;
     static const String PROPERTY_PA_LAT;

@@ -47,7 +47,6 @@ const String ObsConfig::PROPERTY_PORTAL_TOKEN = String("portalToken");
 const String ObsConfig::PROPERTY_DISPLAY_CONFIG = String("displayConfig");
 const String ObsConfig::PROPERTY_CONFIRMATION_TIME_SECONDS = String("confirmationTimeSeconds");
 const String ObsConfig::PROPERTY_PRIVACY_CONFIG = String("privacyConfig");
-const String ObsConfig::PROPERTY_DEVELOPER = String("devConfig");
 const String ObsConfig::PROPERTY_SELECTED_PRESET = String("selectedPreset");
 const String ObsConfig::PROPERTY_PRIVACY_AREA = String("privacyArea");
 const String ObsConfig::PROPERTY_PA_LAT = String("lat");
@@ -168,7 +167,6 @@ void ObsConfig::makeSureSystemDefaultsAreSet() {
   if (getProperty<int>(PROPERTY_CONFIRMATION_TIME_SECONDS) == 0) {
     data[PROPERTY_CONFIRMATION_TIME_SECONDS] = 5;
   }
-  ensureSet(data, PROPERTY_DEVELOPER, 0);
   ensureSet(data, PROPERTY_SELECTED_PRESET, 0);
   if (!data.containsKey(PROPERTY_PRIVACY_AREA)) {
     data.createNestedArray(PROPERTY_PRIVACY_AREA);
@@ -365,7 +363,6 @@ void ObsConfig::fill(Config &cfg) const {
   cfg.privacyConfig = getProperty<int>(PROPERTY_PRIVACY_CONFIG);
   cfg.bluetooth = getProperty<bool>(PROPERTY_BLUETOOTH);
   cfg.simRaMode = getProperty<bool>(PROPERTY_SIM_RA);
-  cfg.devConfig = getProperty<int>(PROPERTY_DEVELOPER);
   cfg.privacyAreas.clear();
   if (selectedProfile != 0) { // not sure if we ever support PAs per profile.
     for (int i = 0; i < jsonData["obs"][selectedProfile][PROPERTY_PRIVACY_AREA].size(); i++) {
@@ -412,7 +409,6 @@ void ObsConfig::parseOldJsonDocument(DynamicJsonDocument &doc) {
   setProperty(0, PROPERTY_PRIVACY_CONFIG, doc["privacyConfig"] | AbsolutePrivacy);
   setProperty(0, PROPERTY_BLUETOOTH, doc["bluetooth"] | false);
   setProperty(0, PROPERTY_SIM_RA, doc["simRaMode"] | false);
-  setProperty(0, PROPERTY_DEVELOPER, doc["devConfig"] | 0);
 
   int numPrivacyAreas = doc["numPrivacyAreas"] | 0;
   // Append new values to the privacy-vector

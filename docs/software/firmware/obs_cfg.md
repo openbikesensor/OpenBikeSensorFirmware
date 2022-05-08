@@ -32,8 +32,6 @@ relevant put the order of the array content.
             "bluetooth": true,
           // time window for overtake measurement confirmation
             "confirmationTimeSeconds": 4,
-          // Bitfield for some internal developer features 
-            "devConfig": 0,
           // Bitfield display config, see DisplayOptions for details, 
           // as noted all subject to change!
             "displayConfig": 15,
