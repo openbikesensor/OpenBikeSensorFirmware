@@ -548,7 +548,6 @@ void registerPages(HTTPServer * httpServer) {
   httpServer->registerNode(new ResourceNode("/delete", HTTP_GET, handleDelete));
   httpServer->registerNode(new ResourceNode("/delete", HTTP_POST, handleDeleteAction));
   httpServer->registerNode(new ResourceNode("/privacy_action", HTTP_POST, handlePrivacyAction));
-  httpServer->registerNode(new ResourceNode("/privacy_action", HTTP_POST, handlePrivacyAction));
   httpServer->registerNode(new ResourceNode("/gps", HTTP_GET, handleGps));
   httpServer->registerNode(new ResourceNode("/upload", HTTP_GET, handleUpload));
   httpServer->registerNode(new ResourceNode("/settings/privacy", HTTP_GET, handlePrivacy));
