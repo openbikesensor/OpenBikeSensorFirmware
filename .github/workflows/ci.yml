@@ -117,7 +117,7 @@ jobs:
 
     - name: Package firmware
       run: |
-        cp ~/.platformio/packages/framework-arduinoespressif32/tools/sdk/bin/bootloader_dio_40m.bin 0x01000.bin
+        cp ~/.platformio/packages/framework-arduinoespressif32/sdk/esp32/bin/bootloader_dio_40m.bin 0x01000.bin
         cp bin/.pio/build/esp32dev/partitions.bin 0x08000.bin
         cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin 0x0e000.bin
         cp bin/.pio/build/esp32dev/firmware.bin 0x10000.bin
