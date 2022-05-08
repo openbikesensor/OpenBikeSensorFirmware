@@ -163,6 +163,7 @@ jobs:
           LICENSE-ARDUINO-ESP32.md
           LICENSE-OpenSans.txt
           LICENSE
+          sonarqube-out/build-wrapper-dump.json
         if-no-files-found: error
 
     - name: Upload Build Asset Initial Flash
