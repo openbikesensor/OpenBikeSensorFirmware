@@ -207,6 +207,12 @@ bool ObsConfig::setProperty(int profile, String const &key, T const &value) {
   return true; // value == oldValue;
 }
 
+bool ObsConfig::setProperty(int profile, String const &key, int const &value) {
+  auto oldValue = jsonData["obs"][profile][key];
+  jsonData["obs"][profile][key] = value;
+  return value == oldValue;
+}
+
 bool ObsConfig::setProperty(int profile, String const &key, String const &value) {
   auto oldValue = jsonData["obs"][profile][key];
   jsonData["obs"][profile][key] = value;

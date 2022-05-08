@@ -100,6 +100,7 @@ class ObsConfig {
 
     bool setProperty(int profile, const String &key, std::string const &value);
     bool setProperty(int profile, const String &key, String const &value);
+    bool setProperty(int profile, const String &key, int const &value);
     template<typename T> bool setProperty(int profile, const String &key, T const &value);
     bool setOffsets(int profile, std::vector<int> const &value);
 
