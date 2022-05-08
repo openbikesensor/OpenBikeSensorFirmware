@@ -139,7 +139,7 @@ jobs:
         sed -i 's|\.pio/|bin/.pio/|g' \
             sonarqube-out/build-wrapper-dump.json
         # replace gcc with our script that reports the fake arch "le32-unknown-nacl"
-        sed -i "s|/github/home/.platformio/packages/toolchain-xtensa32/bin/xtensa-esp32-elf-g..|`pwd`/.github/fake-cc|g" \
+        sed -i "s|/github/home/.platformio/packages/toolchain-xtensa-esp32/bin/xtensa-esp32-elf-g..|`pwd`/.github/fake-cc|g" \
             sonarqube-out/build-wrapper-dump.json
         ./sonarqube/sonar-scanner-${{ env.SONAR_SCANNER_VERSION }}-linux/bin/sonar-scanner \
           -Dsonar.host.url=https://sonarcloud.io \
