@@ -32,12 +32,17 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-    # could use a container with sq tools already installed
-       image: infinitecoding/platformio-for-ci:latest
+    # could use a container with sq & pio tools already installed
+       image: python:3-buster
     steps:
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
+
+    - name: Install PlatformIO
+      run: |
+        pip install --upgrade pip
+        pip install -U PlatformIO
 
     - name: Prepare source
       run: |
