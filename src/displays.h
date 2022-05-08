@@ -74,6 +74,7 @@ class DisplayDevice {
 class SSD1306DisplayDevice : public DisplayDevice {
   private:
     void handleHighlight();
+    void displaySimple(uint16_t value);
     SSD1306* m_display;
     String gridText[ 4 ][ 6 ];
     uint8_t mLastProgress = 255;

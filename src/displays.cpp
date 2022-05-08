@@ -43,112 +43,95 @@ void SSD1306DisplayDevice::showNumButtonPressed() {
   this->prepareTextOnGrid(1, 5, "press");
 }
 
+void SSD1306DisplayDevice::displaySimple(uint16_t value) {
+  if (value == MAX_SENSOR_VALUE) {
+    this->prepareTextOnGrid(0, 0,
+                            "", HUGE_FONT, -7, -7);
+  } else {
+    this->prepareTextOnGrid(0, 0,
+                            ObsUtils::to3DigitString(value), HUGE_FONT, -7, -7);
+  }
+  this->prepareTextOnGrid(3, 2, "cm", MEDIUM_FONT, -7, -5);
+}
+
 void SSD1306DisplayDevice::showValues(
   HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2, uint16_t minDistanceToConfirm,  int16_t batteryPercentage,
   int16_t TemperaturValue, int lastMeasurements, boolean insidePrivacyArea,
   double speed, uint8_t satellites) {
 
   handleHighlight();
-  // Show sensor1, when DisplaySimple or DisplayLeft is configured
-  if (config.displayConfig & DisplaySimple || config.displayConfig & DisplayLeft) {
-    uint16_t value1 = sensor1.minDistance;
-    if (minDistanceToConfirm != MAX_SENSOR_VALUE) {
-      value1 = minDistanceToConfirm;
-    }
 
-    String loc1 = sensor1.sensorLocation;
-    if (insidePrivacyArea) {
-      loc1 = "(" + loc1 + ")";
-    }
-
-    // Do not show location, when DisplaySimple is configured
-    if (!(config.displayConfig & DisplaySimple)) {
-      this->prepareTextOnGrid(0, 0, loc1);
-    }
-
-    if (value1 == MAX_SENSOR_VALUE) {
-      this->prepareTextOnGrid(0, 1, "---", LARGE_FONT);
-    } else {
-      String val = String(value1);
-      if (value1 <= 9) {
-        val = "00" + val;
-      } else if (value1 >= 10 && value1 <= 99) {
-        val = "0" + val;
-      }
-
-      this->prepareTextOnGrid(0, 1, val, LARGE_FONT);
-    }
-
-    if (config.displayConfig & DisplaySimple) {
-      this->prepareTextOnGrid(2, 2, "cm", MEDIUM_FONT,5,0);
-    }
+  uint16_t value1 = sensor1.minDistance;
+  if (minDistanceToConfirm != MAX_SENSOR_VALUE) {
+    value1 = minDistanceToConfirm;
   }
-
-  if (!(config.displayConfig & DisplaySimple)) {
-
+  if (config.displayConfig & DisplaySimple) {
+    displaySimple(value1);
+  } else {
+    if (config.displayConfig & DisplayLeft) {
+      String loc1 = sensor1.sensorLocation;
+      if (insidePrivacyArea) {
+        loc1 = "(" + loc1 + ")";
+      }
+      this->prepareTextOnGrid(0, 0, loc1);
+      if (value1 == MAX_SENSOR_VALUE) {
+        this->prepareTextOnGrid(0, 1, "---", LARGE_FONT);
+      } else {
+        this->prepareTextOnGrid(0, 1,
+                                ObsUtils::to3DigitString(value1), LARGE_FONT);
+      }
+    }
     // Show sensor2, when DisplayRight is configured
     if (config.displayConfig & DisplayRight) {
       uint16_t value2 = sensor2.distance;
       String loc2 = sensor2.sensorLocation;
-
       this->prepareTextOnGrid(3, 0, loc2);
       if (value2 == MAX_SENSOR_VALUE || value2 == 0) {
-        this->prepareTextOnGrid(2, 1, "---", LARGE_FONT,5,0);
+        this->prepareTextOnGrid(2, 1, "---", LARGE_FONT, 5, 0);
       } else {
-        String val = String(value2);
-        if (value2 <= 9) {
-          val = "00" + val;
-        } else if (value2 <= 99) {
-          val = "0" + val;
-        }
-        this->prepareTextOnGrid(2, 1, val, LARGE_FONT,5,0);
+        this->prepareTextOnGrid(2, 1,
+                                ObsUtils::to3DigitString(value2), LARGE_FONT, 5, 0);
       }
     }
-    if (config.displayConfig & DisplayDistanceDetail) {
-      const int bufSize = 64;
-      char buffer[bufSize];
+  } // NOT SIMPLE
+  if (config.displayConfig & DisplayDistanceDetail) {
+    const int bufSize = 64;
+    char buffer[bufSize];
 // #ifdef NERD_SENSOR_DISTANCE
       snprintf(buffer, bufSize - 1, "%03d|%02d|%03d", sensor1.rawDistance,
         lastMeasurements, sensor2.rawDistance);
 // #endif
 #ifdef NERD_HEAP
-      snprintf(buffer, bufSize - 1, "%03d|%02d|%uk", sensor1.rawDistance,
-               lastMeasurements, ESP.getFreeHeap() / 1024);
+    snprintf(buffer, bufSize - 1, "%03d|%02d|%uk", sensor1.rawDistance,
+             lastMeasurements, ESP.getFreeHeap() / 1024);
 #endif
 #ifdef NERD_VOLT
-      snprintf(buffer, bufSize - 1, "%03d|%02d|%3.2fV", sensor1.rawDistance,
-               lastMeasurements, voltageMeter->read());
+    snprintf(buffer, bufSize - 1, "%03d|%02d|%3.2fV", sensor1.rawDistance,
+             lastMeasurements, voltageMeter->read());
 #endif
 #ifdef NERD_GPS
-      snprintf(buffer, bufSize - 1, "%02ds|%s|%03u",
-               satellites,
-               gps.getHdopAsString().c_str(), gps.getLastNoiseLevel() );
+    snprintf(buffer, bufSize - 1, "%02ds|%s|%03u",
+             satellites,
+             gps.getHdopAsString().c_str(), gps.getLastNoiseLevel() );
 #endif
-      this->prepareTextOnGrid(0, 4, buffer, MEDIUM_FONT);
-    } else if (config.displayConfig & DisplayNumConfirmed) {
-      showNumButtonPressed();
-      showNumConfirmed();
-    } else {
-      // Show GPS info, when DisplaySatellites is configured
-      if (config.displayConfig & DisplaySatellites) {
-        showGPS(satellites);
-      }
+    this->prepareTextOnGrid(0, 4, buffer, MEDIUM_FONT);
+  } else if (config.displayConfig & DisplayNumConfirmed) {
+    showNumButtonPressed();
+    showNumConfirmed();
+  } else {
+    // Show GPS info, when DisplaySatellites is configured
+    if (config.displayConfig & DisplaySatellites) {
+      showGPS(satellites);
+    }
 
-      // Show velocity, when DisplayVelocity is configured
-      if (config.displayConfig & DisplayVelocity) {
-        showSpeed(speed);
-      }
-
-
+    // Show velocity, when DisplayVelocity is configured
+    if (config.displayConfig & DisplayVelocity) {
+      showSpeed(speed);
     }
   }
-  // Show Batterie voltage
-  #warning not checked if colliding with other stuff
-
   if (batteryPercentage >= -1) {
     showBatterieValue(batteryPercentage);
   }
-
   if (!(config.displayConfig & DisplaySimple)){
     if(BMP280_active == true)
       showTemperatureValue(TemperaturValue);

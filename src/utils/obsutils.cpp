@@ -110,3 +110,13 @@ String ObsUtils::sha256ToString(byte *sha256) {
   }
   return String(hash_print);
 }
+
+String ObsUtils::to3DigitString(uint32_t value) {
+  String val = String(value);
+  if (value <= 9) {
+    val = "00" + val;
+  } else if (value >= 10 && value <= 99) {
+    val = "0" + val;
+  } // no overflow
+  return val;
+}

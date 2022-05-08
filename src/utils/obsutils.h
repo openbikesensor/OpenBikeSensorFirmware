@@ -41,6 +41,7 @@ class ObsUtils {
     static String encodeForUrl(const String &url);
     static String toScaledByteString(uint64_t size);
     static void logHexDump(const uint8_t *buffer, uint16_t length);
+    static String to3DigitString(uint32_t value);
 
 };
 
