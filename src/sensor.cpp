@@ -253,7 +253,9 @@ void HCSR04SensorManager::sendTriggerToSensor(uint8_t sensorId) {
   sensor->end = MEASUREMENT_IN_PROGRESS; // will be updated with LOW signal
   sensor->numberOfTriggers++;
   sensor->measurementRead = false;
-  sensor->trigger = sensor->start = micros(); // will be updated with HIGH signal
+  const uint32_t now = micros();
+  sensor->trigger = now; // will be updated with HIGH signal
+  sensor->start = now;
   digitalWrite(sensor->triggerPin, HIGH);
   // 10us are specified but some sensors are more stable with 20us according
   // to internet reports
