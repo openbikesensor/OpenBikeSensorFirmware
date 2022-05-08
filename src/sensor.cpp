@@ -21,7 +21,6 @@
  * see <http://www.gnu.org/licenses/>.
  */
 
-#include <rom/queue.h>
 #include "sensor.h"
 #include "FunctionalInterrupt.h"
 /*
