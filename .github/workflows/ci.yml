@@ -107,6 +107,7 @@ jobs:
            cp /github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/bin/bootloader_dio_40m.bin 0x01000.bin
         else 
            echo could not find bootloader_dio_40m.bin, new location?
+           find /github/home/.platformio/ -name "bootloader_dio_40m.bin"
            exit 1
         fi
         cp bin/.pio/build/esp32dev/partitions.bin 0x08000.bin
