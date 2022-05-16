@@ -101,9 +101,9 @@ jobs:
 
     - name: Package firmware
       run: |
-        if [[ -f "/github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/bin/bootloader_dio_40m.bin" ]]; then
+        if [ -f "/github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/bin/bootloader_dio_40m.bin" ]; then
            cp /github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/bin/bootloader_dio_40m.bin 0x01000.bin
-        elif [[ -f "/github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/bin/bootloader_dio_40m.bin" ]]; then
+        elif [ -f "/github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/bin/bootloader_dio_40m.bin" ]; then
            cp /github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/bin/bootloader_dio_40m.bin 0x01000.bin
         else 
            echo could not find bootloader_dio_40m.bin, new location?

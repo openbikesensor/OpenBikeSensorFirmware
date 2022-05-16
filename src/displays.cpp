@@ -98,8 +98,8 @@ void SSD1306DisplayDevice::showValues(
     const int bufSize = 64;
     char buffer[bufSize];
 // #ifdef NERD_SENSOR_DISTANCE
-    snprintf(buffer, bufSize - 1, "%03d|%02d|%04.1f", sensor1.rawDistance,
-             lastMeasurements, gps.getSpeed()); // sensor2.rawDistance);
+    snprintf(buffer, bufSize - 1, "%03d|%02d|%03d", sensor1.rawDistance,
+             lastMeasurements, sensor2.rawDistance);
 // #endif
 #ifdef NERD_HEAP
     snprintf(buffer, bufSize - 1, "%03d|%02d|%uk", sensor1.rawDistance,
