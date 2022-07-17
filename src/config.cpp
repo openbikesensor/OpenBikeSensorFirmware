@@ -155,9 +155,9 @@ void ObsConfig::makeSureSystemDefaultsAreSet() {
     setProperty(0, PROPERTY_PORTAL_TOKEN, "");
   }
   ensureSet(data, PROPERTY_PORTAL_TOKEN, "");
-  ensureSet(data, PROPERTY_DISPLAY_CONFIG, DisplaySimple);
+  ensureSet(data, PROPERTY_DISPLAY_CONFIG, (DisplaySimple | DisplayDistanceDetail));
   if (getProperty<int>(PROPERTY_DISPLAY_CONFIG) == 0) {
-    data[PROPERTY_DISPLAY_CONFIG] = DisplaySimple;
+    data[PROPERTY_DISPLAY_CONFIG] = (DisplaySimple | DisplayDistanceDetail);
   }
   ensureSet(data, PROPERTY_PRIVACY_CONFIG, AbsolutePrivacy);
   if (getProperty<int>(PROPERTY_PRIVACY_CONFIG) == 0) {
@@ -410,7 +410,7 @@ void ObsConfig::parseOldJsonDocument(DynamicJsonDocument &doc) {
   setProperty(0, PROPERTY_WIFI_SSID, doc["ssid"] | String(""));
   setProperty(0, PROPERTY_WIFI_PASSWORD, doc["password"] | String(""));
   setProperty(0, PROPERTY_PORTAL_TOKEN, doc["obsUserID"] | String("5e8f2f43e7e3b3668ca13151"));
-  setProperty(0, PROPERTY_DISPLAY_CONFIG, doc["displayConfig"] | DisplaySimple);
+  setProperty(0, PROPERTY_DISPLAY_CONFIG, doc["displayConfig"] | (DisplaySimple | DisplayDistanceDetail));
   setProperty(0, PROPERTY_CONFIRMATION_TIME_SECONDS, doc["confirmationTimeWindow"] | 5);
   setProperty(0, PROPERTY_PRIVACY_CONFIG, doc["privacyConfig"] | AbsolutePrivacy);
   setProperty(0, PROPERTY_BLUETOOTH, doc["bluetooth"] | false);
