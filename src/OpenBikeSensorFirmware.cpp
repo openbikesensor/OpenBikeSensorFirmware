@@ -591,6 +591,7 @@ bool loadConfig(ObsConfig &cfg) {
   if (!cfg.loadConfig()) {
     displayTest->showTextOnGrid(2, displayTest->currentLine(), "Config...RESET");
     isNew = true;
+    cfg.saveConfig(); // save the new config - next boot will allow obs mode
   }
 
   cfg.printConfig();
