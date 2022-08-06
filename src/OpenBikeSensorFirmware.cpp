@@ -23,6 +23,7 @@
 
 #include <utils/obsutils.h>
 #include <utils/button.h>
+#include <utils/timeutils.h>
 #include "OpenBikeSensorFirmware.h"
 
 #include "SPIFFS.h"

@@ -87,6 +87,10 @@ bool Firmware::downloadToFlash(String url,
         written += read;
       }
       log_i("Got %d bytes", written);
+    } else {
+      log_e("Got http status: %d", status);
+      http.end();
+      return false;
     }
   }
   http.end();

@@ -1601,7 +1601,7 @@ static void handleFlashFileUpdateAction(HTTPRequest *req, HTTPResponse *res) {
 static void handleDeleteFiles(HTTPRequest *req, HTTPResponse * res) {
   const auto params = extractParameters(req);
   String path = getParameter(params, "path");
-  if (path != "trash") {
+  if (path != "/trash") {
     SD.mkdir("/trash");
   }
   bool moveToRoot = !getParameter(params, "move").isEmpty();
@@ -1617,7 +1617,7 @@ static void handleDeleteFiles(HTTPRequest *req, HTTPResponse * res) {
     if (param.first == "delete") {
       String file = param.second;
 
-      String fullName = path + (path.length() > 1 ? "/" : "") + file;
+      String fullName = path + (path.endsWith("/") ? "" : "/") + file;
 
       html += ObsUtils::encodeForXmlText(file) + " &#10140; ";
       if (moveToRoot) {
@@ -1679,6 +1679,10 @@ static void handleSd(HTTPRequest *req, HTTPResponse *res) {
     displayTest->showTextOnGrid(0, 3, "Path:");
     displayTest->showTextOnGrid(1, 3, path);
 
+    if (!path.endsWith("/")) {
+      path += "/";
+    }
+
 // Iterate over directories
     File child = file.openNextFile();
     uint16_t counter = 0;
@@ -1690,7 +1694,6 @@ static void handleSd(HTTPRequest *req, HTTPResponse *res) {
         TimeUtils::dateTimeToString(child.getLastWrite())
         + " - " + ObsUtils::toScaledByteString(child.size()));
 
-      fileName = fileName.substring(int(fileName.lastIndexOf("/") + 1));
       fileName = ObsUtils::encodeForXmlAttribute(fileName);
       bool isDirectory = child.isDirectory();
       html +=
@@ -1700,7 +1703,7 @@ static void handleSd(HTTPRequest *req, HTTPResponse *res) {
          + "<input class='small' type='checkbox' value='" + fileName + "' name='delete'"
          + String(isDirectory ? "disabled" : "")
          + "><a href=\"/sd?path="
-         + String(child.name())
+         + path + String(child.name())
          + "\">"
          + String(isDirectory ? "&#x1F4C1;" : "&#x1F4C4;")
          + fileName
@@ -1726,7 +1729,8 @@ static void handleSd(HTTPRequest *req, HTTPResponse *res) {
     html += "</ul>";
 
     if (path != "/") {
-      String back = path.substring(0, path.lastIndexOf('/'));
+      String back = path.substring(
+        0, path.lastIndexOf('/', path.length() - 2));
       if (back.isEmpty()) {
         back = "/";
       }
@@ -1738,12 +1742,12 @@ static void handleSd(HTTPRequest *req, HTTPResponse *res) {
     }
 
     if (counter > 0) {
-      if (path == "/uploaded") {
+      if (path == "/uploaded/") {
         html += "<hr /><p>Move for new upload will move selected files to the root directory, where "
                 "they will be considered as new tracks and uploaded to the portal with the next "
                 "Track upload.</p><input type='submit' class='btn' name='move' value='Move for new upload' />";
       }
-      if (path == "/trash") {
+      if (path == "/trash/") {
         html += "<hr /><input type='submit' class='btn' value='Delete Selected' />";
       } else {
         html += "<hr /><input type='submit' class='btn' value='Move to Trash' />";
