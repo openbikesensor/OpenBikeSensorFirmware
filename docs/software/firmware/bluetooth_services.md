@@ -44,7 +44,7 @@ of the obs. The value returned is the timer value at the time of the read.
 
 *Sensor Distance* delivers the time of the left measurement with the current values of
 the left and right sensor. Content is time uint32, left uint16, right uint16. Left
-and right values are in cm, a value of 0xfff means no measurement. The message is
+and right values are in cm, a value of `0xffff` means no measurement. The message is
 sent immediately after the measure, so you can assume that the reported time
 is current at the ESP.
 
