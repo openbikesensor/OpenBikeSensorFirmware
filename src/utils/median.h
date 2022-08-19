@@ -24,6 +24,8 @@
 #ifndef OPENBIKESENSORFIRMWARE_MEDIAN_H
 #define OPENBIKESENSORFIRMWARE_MEDIAN_H
 
+#include <algorithm>
+
 template<typename T> class Median {
 
   public:
