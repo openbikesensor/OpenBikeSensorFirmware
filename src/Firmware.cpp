@@ -72,7 +72,7 @@ bool Firmware::downloadToFlash(String url,
     size_t size = http.getSize();
     log_i("http size: %d. ", size);
     log_i("Will access Stream:, free heap %dkb", ESP.getFreeHeap() / 1024);
-    if (status == 200) {
+    if (status == HTTP_CODE_OK) {
       Update.begin();
       Update.onProgress([progress, size](size_t pos, size_t all) {
         progress(pos, size);

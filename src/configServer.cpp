@@ -913,9 +913,7 @@ static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
   res->print(page);
   page.clear();
 
-  esp_chip_info_t ci;
-  esp_chip_info(&ci);
-  page += keyValue("Cores", String(ci.cores));
+  page += keyValue("Cores", ESP.getChipCores());
   page += keyValue("CPU frequency", ESP.getCpuFreqMHz(), "MHz");
 
   page += keyValue("SPIFFS size", ObsUtils::toScaledByteString(SPIFFS.totalBytes()));
