@@ -20,11 +20,11 @@
 #
 name: OpenBikeSensor - CI
 on:
-  # Trigger when pushing in master or pull requests, and when creating
+  # Trigger when pushing in main or pull requests, and when creating
   # a pull request.
   push:
     branches:
-      - master
+      - main
   pull_request:
     types: [opened, synchronize, reopened]
 
@@ -45,7 +45,7 @@ jobs:
         echo GITHUB Ref: ${{ github.ref }}
         VERSION_STRING=`grep "const char \*OBSVersion =" src/OpenBikeSensorFirmware.cpp`
         MAJOR=`echo ${VERSION_STRING} | cut -f2 -d\"`
-        if [ "${{ github.ref }}" = "refs/heads/master" ]
+        if [ "${{ github.ref }}" = "refs/heads/main" ]
         then
           PATCH=${GITHUB_RUN_NUMBER}
           SEPARATOR=.
