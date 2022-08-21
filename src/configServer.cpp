@@ -883,6 +883,10 @@ static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
   String page;
   gps.pollStatistics(); // takes ~100ms!
 
+  res->print("<h3>OBS</h3>");
+  res->print(keyValue("Firmware version", OBSVersion));
+  res->print(keyValue("lite", isObsLite ? "true" : "false"));
+
   res->print("<h3>ESP32</h3>");
   res->print(keyValue("Chip Model", ESP.getChipModel()));
   res->print(keyValue("Chip Revision", ESP.getChipRevision()));

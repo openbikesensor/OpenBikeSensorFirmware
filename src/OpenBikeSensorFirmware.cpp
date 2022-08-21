@@ -61,6 +61,8 @@ SSD1306DisplayDevice* displayTest;
 HCSR04SensorManager* sensorManager;
 static BluetoothManager* bluetoothManager;
 
+bool isObsLite = false;
+
 Gps gps;
 
 static const long BLUETOOTH_INTERVAL_MILLIS = 100;
@@ -213,7 +215,7 @@ void setup() {
   Wire.beginTransmission(displayAddress);
   byte displayError = Wire.endTransmission();
   if (displayError != 0) {
-    Serial.println("Display not found");
+    log_e("Display not found got %d", displayError);
   }
   displayTest = new SSD1306DisplayDevice;
 
@@ -232,6 +234,11 @@ void setup() {
     displayTest->showTextOnGrid(2, displayTest->newLine(), "LOW BAT");
     displayTest->showTextOnGrid(2, displayTest->newLine(), "WARNING!");
     delay(5000);
+  }
+
+  if (voltageMeter->isZeroOnly()) {
+    log_i("VoltageMeter is pulled to GND - I'm a OBS-lite!");
+    isObsLite = true;
   }
 
   //##############################################################

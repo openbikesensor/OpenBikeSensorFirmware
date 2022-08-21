@@ -83,6 +83,10 @@ bool VoltageMeter::hasReadings() {
   return read() > VoltageMeter::BATTERY_NO_READ_LEVEL;
 }
 
+bool VoltageMeter::isZeroOnly() const {
+  return readZeroOnly;
+}
+
 double VoltageMeter::read() {
   return esp_adc_cal_raw_to_voltage(readSmoothed(), &adc_chars)
     * 3.0 / 2000.0; // voltage divider @ OSB PCB
@@ -115,6 +119,12 @@ int VoltageMeter::readSmoothed() {
   return lastSmoothedReading;
 }
 
-int VoltageMeter::readRaw() const {
-  return adc1_get_raw(mBatteryAdcChannel);
+int VoltageMeter::readRaw() {
+  int raw = adc1_get_raw(mBatteryAdcChannel);
+  if (readZeroOnly && raw !=0) {
+    readZeroOnly = false;
+    log_i("Read 1st none zero value %d from Adc channel %d.",
+          raw, mBatteryAdcChannel);
+  }
+  return raw;
 }
