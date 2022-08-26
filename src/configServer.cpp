@@ -1315,7 +1315,7 @@ void uploadTracks(HTTPResponse *res) {
       if (res) {
         res->print(friendlyFileName);
       }
-      const boolean uploaded = uploader.upload(file.name());
+      const boolean uploaded = uploader.upload((String("/") + file.name()));
       file.close();
       if (uploaded) {
         moveToUploaded(fileName);
