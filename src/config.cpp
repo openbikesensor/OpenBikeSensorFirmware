@@ -380,6 +380,23 @@ void ObsConfig::fill(Config &cfg) const {
   }
 }
 
+void ObsConfig::fillObsLite(Config &cfg) {
+  strlcpy(cfg.obsName,
+          (String("OpenBikeSensor-lite-") + String((uint16_t)(ESP.getEfuseMac() >> 32))).c_str(),
+          sizeof(cfg.obsName));
+  cfg.sensorOffsets.clear();
+  cfg.sensorOffsets.push_back(0);
+  cfg.sensorOffsets.push_back(0);
+  cfg.obsUserID[0] = 0;
+  cfg.hostname[0] = 0;
+  cfg.displayConfig = 0;
+  cfg.confirmationTimeWindow = 5;
+  cfg.privacyConfig = 0;
+  cfg.bluetooth =true;
+  cfg.simRaMode = false;
+  cfg.privacyAreas.clear();
+}
+
 bool ObsConfig::parseJson(const String &json) {
   bool result = false;
   resetJson();

@@ -358,8 +358,12 @@ bool Gps::sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer, size_t size
 
 /* Will delay for the given number of ms and handle GPS if needed. */
 void Gps::handle(uint32_t milliSeconds) {
-  const auto end = millis() + milliSeconds;
-  while (end > millis()) {
+  handleUntil(millis() + milliSeconds);
+}
+
+/* Will delay for the given number of ms and handle GPS if needed. */
+void Gps::handleUntil(uint64_t endTimeMs) {
+  while (endTimeMs > millis()) {
     if (!handle()) {
       delay(1);
     }

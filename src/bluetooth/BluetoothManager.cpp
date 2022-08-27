@@ -40,7 +40,9 @@ void BluetoothManager::init(
 
   services.push_back(new DeviceInfoService);
   services.push_back(new HeartRateService);
-  services.push_back(new BatteryService(batteryPercentage));
+  if (batteryPercentage) {
+    services.push_back(new BatteryService(batteryPercentage));
+  }
   services.push_back(new ObsService(leftOffset, rightOffset, trackId));
 
   for (auto &service : services) {

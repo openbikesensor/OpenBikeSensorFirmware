@@ -118,6 +118,7 @@ class ObsConfig {
     String getProfileName(int profile); // = getProperty(profile, "name")
 
     void fill(Config &cfg) const;
+    static void fillObsLite(Config &cfg);
     /* free memory allocated by json document. */
     void releaseJson();
     String asJsonString() const;

@@ -87,6 +87,8 @@ class Gps {
 
     void handle(uint32_t milliSeconds);
 
+    void handleUntil(uint64_t endTimeMs);
+
     static PrivacyArea newPrivacyArea(double latitude, double longitude, int radius);
 
     void enableSbas();
