@@ -585,8 +585,6 @@ static void createHttpServer() {
   }
   serverSslCert = Https::getCertificate(progressTick);
   server = new HTTPSServer(serverSslCert, 443, 2);
-  displayTest->clear();
-  updateDisplay(displayTest);
   insecureServer = new HTTPServer(80, 2);
 
   beginPages();
