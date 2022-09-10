@@ -39,6 +39,7 @@
 #include "utils/https.h"
 #include "utils/timeutils.h"
 #include "obsimprov.h"
+#include <esp_system.h>
 
 using namespace httpsserver;
 
@@ -764,13 +765,14 @@ static void createImprovServer() {
 void startServer(ObsConfig *obsConfig) {
   theObsConfig = obsConfig;
 
-  const uint64_t chipid_num = ESP.getEfuseMac();
-  String esp_chipid = String((uint16_t)(chipid_num >> 32), HEX);
-  esp_chipid += String((uint32_t)chipid_num, HEX);
-  esp_chipid.toUpperCase();
-  OBS_ID = "OpenBikeSensor-" + esp_chipid;
-  OBS_ID_SHORT = "OBS-" + String((uint16_t)(ESP.getEfuseMac() >> 32), HEX);
-  OBS_ID_SHORT.toUpperCase();
+  uint8_t mac[6];
+  esp_efuse_mac_get_default(mac);
+
+  char ssid[28];
+  snprintf(esp_chipid, sizeof(esp_chipid), "OpenBikeSensor-%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);  
+
+  OBS_ID = String(ssid);
+  OBS_ID_SHORT = "OBS-" + OBS_ID.substring(15,19);
 
   displayTest->clear();
   displayTest->showTextOnGrid(0, 0, "Ver.:");
