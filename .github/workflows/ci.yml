@@ -114,10 +114,18 @@ jobs:
         cp /github/home/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin 0x0e000.bin
         cp bin/.pio/build/esp32dev/firmware.bin 0x10000.bin
         cp bin/.pio/build/esp32dev/firmware.bin firmware.bin
+        esptool.py --trace  --chip esp32 merge_bin --output merged.bin  \
+            --flash_freq 80m --flash_mode dio --flash_size 4MB \
+            0x01000 0x01000.bin \
+            0x08000 0x08000.bin \
+            0x0e000 0x0e000.bin \
+            0x10000 0x10000.bin
+        esptool.py --chip esp32 image_info --version 2 merged.bin
         cp src/fonts/LICENSE.txt LICENSE-OpenSans.txt
         wget --no-verbose -O COPYRIGHT-ESP.html https://docs.espressif.com/projects/esp-idf/en/latest/esp32/COPYRIGHT.html
         wget --no-verbose -O LICENSE-ARDUINO-ESP32.md https://github.com/espressif/arduino-esp32/raw/master/LICENSE.md
         zip --junk-paths obs-${{ env.OBS_VERSION }}-initial-flash.zip \
+          merged.bin \
           0x*.bin \
           COPYRIGHT-ESP.html \
           LICENSE-ARDUINO-ESP32.md \
@@ -173,6 +181,7 @@ jobs:
       with:
         name: obs-${{ env.OBS_VERSION }}-initial-flash
         path: |
+          merged.bin
           0x*.bin
           COPYRIGHT-ESP.html
           LICENSE-ARDUINO-ESP32.md
