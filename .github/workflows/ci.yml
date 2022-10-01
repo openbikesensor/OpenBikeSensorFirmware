@@ -114,36 +114,28 @@ jobs:
         cp /github/home/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin 0x0e000.bin
         cp bin/.pio/build/esp32dev/firmware.bin 0x10000.bin
         cp bin/.pio/build/esp32dev/firmware.bin firmware.bin
-        ls -l /github/home/.platformio/packages/tool-esptoolpy/esptool.py 
-        ls -l /github/home/.platformio/packages/framework-arduinoespressif32/tools/esptool.py
-        id 
-        chmod +x /github/home/.platformio/packages/framework-arduinoespressif32/tools/esptool.py
-        chmod +x /github/home/.platformio/packages/tool-esptoolpy/esptool.py
-        echo /github/home/.platformio/packages/tool-esptoolpy/esptool.py 
-        /github/home/.platformio/packages/tool-esptoolpy/esptool.py version
-        echo /github/home/.platformio/packages/framework-arduinoespressif32/tools/esptool.py 
-        /github/home/.platformio/packages/framework-arduinoespressif32/tools/esptool.py version
         ESPTOOL=/github/home/.platformio/packages/tool-esptoolpy/esptool.py
-        ${ESPTOOL} version
-        ${ESPTOOL} --trace --chip esp32 merge_bin --output merged.bin  \
-            --flash_freq keep --flash_mode dio --flash_size 4MB \
-            0x01000 0x01000.bin \
-            0x08000 0x08000.bin \
-            0x0e000 0x0e000.bin \
-            0x10000 0x10000.bin
+        chmod +x ${ESPTOOL}
+        # CMD to create a merged binary (still missing flash.app)
+        # ${ESPTOOL} --trace --chip esp32 merge_bin --output merged.bin  \
+        #    --flash_freq keep --flash_mode dio --flash_size 4MB \
+        #    0x01000 0x01000.bin \
+        #    0x08000 0x08000.bin \
+        #    0x0e000 0x0e000.bin \
+        #    0x10000 0x10000.bin
+        echo Original bootloader params
+        ${ESPTOOL} --chip esp32 image_info --version 2 0x01000.bin || echo image_info for original bootloader failed
         mv 0x01000.bin 0x01000.bin.org
         ${ESPTOOL} --trace  --chip esp32 merge_bin --output 0x01000.bin  \
             --flash_freq keep --flash_mode dio --flash_size 4MB \
             --target-offset 0x01000 \
             0x01000 0x01000.bin.org
-        ${ESPTOOL} --chip esp32 image_info --version 2 0x01000.bin.org || echo image_info failed
+        echo OpenBikeSensor bootloader params
         ${ESPTOOL} --chip esp32 image_info --version 2 0x01000.bin || echo image_info failed
-        
         cp src/fonts/LICENSE.txt LICENSE-OpenSans.txt
         wget --no-verbose -O COPYRIGHT-ESP.html https://docs.espressif.com/projects/esp-idf/en/latest/esp32/COPYRIGHT.html
         wget --no-verbose -O LICENSE-ARDUINO-ESP32.md https://github.com/espressif/arduino-esp32/raw/master/LICENSE.md
         zip --junk-paths obs-${{ env.OBS_VERSION }}-initial-flash.zip \
-          merged.bin \
           0x*.bin \
           COPYRIGHT-ESP.html \
           LICENSE-ARDUINO-ESP32.md \
@@ -199,7 +191,6 @@ jobs:
       with:
         name: obs-${{ env.OBS_VERSION }}-initial-flash
         path: |
-          merged.bin
           0x*.bin
           COPYRIGHT-ESP.html
           LICENSE-ARDUINO-ESP32.md
