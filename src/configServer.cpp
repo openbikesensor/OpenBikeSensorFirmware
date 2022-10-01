@@ -1307,7 +1307,7 @@ void uploadTracks(HTTPResponse *res) {
   File root = SDFileSystem.open("/");
   File file = root.openNextFile();
   while (file) {
-    const String fileName(file.name());
+    const String fileName(String("/") + file.name());
     log_d("Upload file: %s", fileName.c_str());
     if (!file.isDirectory()
         && fileName.endsWith(CSVFileWriter::EXTENSION)) {
@@ -1319,7 +1319,7 @@ void uploadTracks(HTTPResponse *res) {
       if (res) {
         res->print(friendlyFileName);
       }
-      const boolean uploaded = uploader.upload(file.name());
+      const boolean uploaded = uploader.upload(fileName);
       file.close();
       if (uploaded) {
         moveToUploaded(fileName);

@@ -37,7 +37,7 @@ require any additional hardware (like a smartphone).
 Starting with version v0.3 the firmware also exposes the measured data via 
 [BLE bluetooth](https://github.com/openbikesensor/OpenBikeSensorFirmware/blob/master/docs/software/firmware/bluetooth_services.md).
 You can use this to feed data to the
-[SimRa](https://www.mcc.tu-berlin.de/menue/forschung/projekte/simra/) App or
+[SimRa](https://www.tu.berlin/mcc/forschung/projekte) App or
 any other app collecting heart-rate BLE data. 
 
 ## Initial ESP installation
@@ -155,3 +155,7 @@ You can find the OpenBikeSensor documentation under:
     You should have received a copy of the GNU Lesser General Public License
     along with the OpenBikeSensor Website and Documentation. If not, see
     <http://www.gnu.org/licenses/>.
+
+## Supporters
+
+[JetBrains supports the development with one license for their IDEs.](https://jb.gg/OpenSource) 
