@@ -125,13 +125,12 @@ jobs:
         /github/home/.platformio/packages/framework-arduinoespressif32/tools/esptool.py version
         ESPTOOL=/github/home/.platformio/packages/tool-esptoolpy/esptool.py
         ${ESPTOOL} version
-        ${ESPTOOL} --trace  --chip esp32 merge_bin --output merged.bin  \
+        ${ESPTOOL} --trace --chip esp32 merge_bin --output merged.bin  \
             --flash_freq keep --flash_mode dio --flash_size 4MB \
             0x01000 0x01000.bin \
             0x08000 0x08000.bin \
             0x0e000 0x0e000.bin \
             0x10000 0x10000.bin
-        ${ESPTOOL} --chip esp32 image_info --version 2 merged.bin
         mv 0x01000.bin 0x01000.bin.org
         ${ESPTOOL} --trace  --chip esp32 merge_bin --output 0x01000.bin  \
             --flash_freq keep --flash_mode dio --flash_size 4MB \
