@@ -134,10 +134,10 @@ jobs:
         mv 0x01000.bin 0x01000.bin.org
         ${ESPTOOL} --trace  --chip esp32 merge_bin --output 0x01000.bin  \
             --flash_freq keep --flash_mode dio --flash_size 4MB \
-            --target-offset 0x01000
+            --target-offset 0x01000 \
             0x01000 0x01000.bin.org
-        ${ESPTOOL} --chip esp32 image_info --version 2 0x01000.bin.org
-        ${ESPTOOL} --chip esp32 image_info --version 2 0x01000.bin
+        ${ESPTOOL} --chip esp32 image_info --version 2 0x01000.bin.org || echo image_info failed
+        ${ESPTOOL} --chip esp32 image_info --version 2 0x01000.bin || echo image_info failed
         
         cp src/fonts/LICENSE.txt LICENSE-OpenSans.txt
         wget --no-verbose -O COPYRIGHT-ESP.html https://docs.espressif.com/projects/esp-idf/en/latest/esp32/COPYRIGHT.html
