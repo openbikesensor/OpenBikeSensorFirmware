@@ -117,6 +117,8 @@ jobs:
         ls -l /github/home/.platformio/packages/tool-esptoolpy/esptool.py 
         ls -l /github/home/.platformio/packages/framework-arduinoespressif32/tools/esptool.py
         id 
+        chmod +x /github/home/.platformio/packages/framework-arduinoespressif32/tools/esptool.py
+        chmod +x /github/home/.platformio/packages/tool-esptoolpy/esptool.py
         echo /github/home/.platformio/packages/tool-esptoolpy/esptool.py 
         /github/home/.platformio/packages/tool-esptoolpy/esptool.py version
         echo /github/home/.platformio/packages/framework-arduinoespressif32/tools/esptool.py 
