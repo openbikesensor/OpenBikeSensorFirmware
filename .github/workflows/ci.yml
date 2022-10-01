@@ -114,6 +114,9 @@ jobs:
         cp /github/home/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin 0x0e000.bin
         cp bin/.pio/build/esp32dev/firmware.bin 0x10000.bin
         cp bin/.pio/build/esp32dev/firmware.bin firmware.bin
+        ls -l /github/home/.platformio/packages/tool-esptoolpy/esptool.py 
+        ls -l /github/home/.platformio/packages/framework-arduinoespressif32/tools/esptool.py
+        id 
         echo /github/home/.platformio/packages/tool-esptoolpy/esptool.py 
         /github/home/.platformio/packages/tool-esptoolpy/esptool.py version
         echo /github/home/.platformio/packages/framework-arduinoespressif32/tools/esptool.py 
