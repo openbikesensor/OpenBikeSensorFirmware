@@ -79,7 +79,7 @@ bool BMP280_active = false;
 
 // --- Local variables ---
 unsigned long measureInterval = 1000;
-unsigned long timeOfMinimum = esp_timer_get_time(); //  millis();
+unsigned long timeOfMinimum = millis();
 unsigned long startTimeMillis = 0;
 unsigned long currentTimeMillis = millis();
 
