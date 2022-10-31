@@ -201,7 +201,7 @@ jobs:
     - name: Generate changelog
       id: changelog
       if: ${{ env.OBS_PREPARE_RELEASE == 'true' }}
-      uses: metcalfc/changelog-generator@v3.0.0
+      uses: metcalfc/changelog-generator@v4.0.1
       with:
         myToken: ${{ secrets.GITHUB_TOKEN }}
 
