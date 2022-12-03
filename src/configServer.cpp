@@ -515,14 +515,14 @@ void updateDisplay(SSD1306DisplayDevice * const display, String action = "") {
       log_w("Unexpected wifi mode %d ", WiFiGenericClass::getMode());
     }
   } else {
-    displayTest->showTextOnGrid(0, 0,
-                                theObsConfig->getProperty<String>(ObsConfig::PROPERTY_OBS_NAME));
-    displayTest->showTextOnGrid(0, 1, "IP:");
+    display->showTextOnGrid(0, 0,
+                               theObsConfig->getProperty<String>(ObsConfig::PROPERTY_OBS_NAME));
+    display->showTextOnGrid(0, 1, "IP:");
     display->showTextOnGrid(1, 1, getIp());
-    displayTest->showTextOnGrid(1, 2, "");
-    displayTest->showTextOnGrid(0, 2, action);
-    displayTest->showTextOnGrid(0, 3, "");
-    displayTest->showTextOnGrid(1, 3, "");
+    display->showTextOnGrid(1, 2, "");
+    display->showTextOnGrid(0, 2, action);
+    display->showTextOnGrid(0, 3, "");
+    display->showTextOnGrid(1, 3, "");
   }
 }
 
@@ -573,15 +573,15 @@ void beginPages() {
 
 static int ticks;
 static void progressTick() {
-  displayTest->drawWaitBar(5, ticks++);
+  obsDisplay->drawWaitBar(5, ticks++);
 }
 
 static void createHttpServer() {
   log_i("About to create http server.");
   if (!Https::existsCertificate()) {
-    displayTest->clear();
-    displayTest->showTextOnGrid(0, 2, "Creating ssl cert,");
-    displayTest->showTextOnGrid(0, 3, "be patient.");
+    obsDisplay->clear();
+    obsDisplay->showTextOnGrid(0, 2, "Creating ssl cert,");
+    obsDisplay->showTextOnGrid(0, 3, "be patient.");
   }
   serverSslCert = Https::getCertificate(progressTick);
   server = new HTTPSServer(serverSslCert, 443, 2);
@@ -620,8 +620,8 @@ String replaceDefault(String html, const String& subTitle, const String& action 
   html = replaceHtml(html, "{version}", OBSVersion);
   html = replaceHtml(html, "{subtitle}", subTitle);
   html = replaceHtml(html, "{action}", action);
-  displayTest->clear();
-  updateDisplay(displayTest, "Menu: " + subTitle);
+  obsDisplay->clear();
+  updateDisplay(obsDisplay, "Menu: " + subTitle);
   return html;
 }
 
@@ -684,7 +684,7 @@ bool CreateWifiSoftAP() {
   } else {
     log_e("Soft AP Error. Name: %s Pass: %s", apName.c_str(), APPassword.c_str());
   }
-  updateDisplay(displayTest);
+  updateDisplay(obsDisplay);
   return softAccOK;
 }
 
@@ -695,11 +695,11 @@ static void wifiConectedActions() {
   if (dnsServer) { // was used to announce AP ip
     dnsServer->start(53, "obs.local", WiFi.localIP());
   }
-  updateDisplay(displayTest);
+  updateDisplay(obsDisplay);
   MDNS.begin("obs");
   TimeUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
   if (SD.begin() && WiFiClass::status() == WL_CONNECTED) {
-    AlpData::update(displayTest);
+    AlpData::update(obsDisplay);
   }
 }
 
@@ -708,10 +708,10 @@ bool initWifi(const std::string & ssid, const std::string & password) {
   log_i("Received WiFi credentials for SSID '%s'", ssid.c_str());
   theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_SSID, ssid);
   theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_PASSWORD, password);
-  displayTest->clear();
-  displayTest->showTextOnGrid(0, 1, "SSID:");
-  displayTest->showTextOnGrid(1, 1, ssid.c_str());
-  displayTest->showTextOnGrid(0, 2, "Connecting (IMPROV)...");
+  obsDisplay->clear();
+  obsDisplay->showTextOnGrid(0, 1, "SSID:");
+  obsDisplay->showTextOnGrid(1, 1, ssid.c_str());
+  obsDisplay->showTextOnGrid(0, 2, "Connecting (IMPROV)...");
 
   WiFi.disconnect();
   tryWiFiConnect();
@@ -721,7 +721,7 @@ bool initWifi(const std::string & ssid, const std::string & password) {
     wifiConectedActions();
   } else {
     CreateWifiSoftAP();
-    displayTest->showTextOnGrid(0, 4, "Connect failed.");
+    obsDisplay->showTextOnGrid(0, 4, "Connect failed.");
   }
   return connected;
 }
@@ -770,13 +770,13 @@ void startServer(ObsConfig *obsConfig) {
   OBS_ID_SHORT = "OBS-" + String((uint16_t)(ESP.getEfuseMac() >> 32), HEX);
   OBS_ID_SHORT.toUpperCase();
 
-  displayTest->clear();
-  displayTest->showTextOnGrid(0, 0, "Ver.:");
-  displayTest->showTextOnGrid(1, 0, OBSVersion);
+  obsDisplay->clear();
+  obsDisplay->showTextOnGrid(0, 0, "Ver.:");
+  obsDisplay->showTextOnGrid(1, 0, OBSVersion);
 
-  displayTest->showTextOnGrid(0, 1, "SSID:");
-  displayTest->showTextOnGrid(1, 1,
-                              theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID));
+  obsDisplay->showTextOnGrid(0, 1, "SSID:");
+  obsDisplay->showTextOnGrid(1, 1,
+                             theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID));
 
   tryWiFiConnect();
 
@@ -1266,8 +1266,8 @@ void uploadTracks(HTTPResponse *res) {
       res->setStatusCode(500);
       res->print(sdErrorMessage);
     }
-    displayTest->showTextOnGrid(0, 3, "Error:");
-    displayTest->showTextOnGrid(0, 4, sdErrorMessage);
+    obsDisplay->showTextOnGrid(0, 3, "Error:");
+    obsDisplay->showTextOnGrid(0, 4, sdErrorMessage);
     return;
   }
 
@@ -1288,8 +1288,8 @@ void uploadTracks(HTTPResponse *res) {
       html += footer;
       res->print(html);
     }
-    displayTest->showTextOnGrid(0, 3, "Error:");
-    displayTest->showTextOnGrid(0, 4, "API Key not set");
+    obsDisplay->showTextOnGrid(0, 3, "Error:");
+    obsDisplay->showTextOnGrid(0, 4, "API Key not set");
     return;
   }
 
@@ -1308,8 +1308,8 @@ void uploadTracks(HTTPResponse *res) {
       const String friendlyFileName = ObsUtils::stripCsvFileName(fileName);
       currentFileIndex++;
 
-      displayTest->showTextOnGrid(0, 4, friendlyFileName);
-      displayTest->drawProgressBar(3, currentFileIndex, numberOfFiles);
+      obsDisplay->showTextOnGrid(0, 4, friendlyFileName);
+      obsDisplay->drawProgressBar(3, currentFileIndex, numberOfFiles);
       if (res) {
         res->print(friendlyFileName);
       }
@@ -1331,7 +1331,7 @@ void uploadTracks(HTTPResponse *res) {
         res->print(html);
       }
       html.clear();
-      displayTest->clearProgressBar(5);
+      obsDisplay->clearProgressBar(5);
     } else {
       file.close();
     }
@@ -1339,13 +1339,13 @@ void uploadTracks(HTTPResponse *res) {
   }
   root.close();
 
-  displayTest->clearProgressBar(3);
-  displayTest->showTextOnGrid(0, 4, "");
-  displayTest->showTextOnGrid(1, 3, "Upload done.");
-  displayTest->showTextOnGrid(0, 5, "OK:");
-  displayTest->showTextOnGrid(1, 5, String(okCount));
-  displayTest->showTextOnGrid(2, 5, "Failed:");
-  displayTest->showTextOnGrid(3, 5, String(failedCount));
+  obsDisplay->clearProgressBar(3);
+  obsDisplay->showTextOnGrid(0, 4, "");
+  obsDisplay->showTextOnGrid(1, 3, "Upload done.");
+  obsDisplay->showTextOnGrid(0, 5, "OK:");
+  obsDisplay->showTextOnGrid(1, 5, String(okCount));
+  obsDisplay->showTextOnGrid(2, 5, "Failed:");
+  obsDisplay->showTextOnGrid(3, 5, String(failedCount));
   if (res) {
     html += "</div><h3>...all files done</h3/>";
     html += keyValue("OK", okCount);
@@ -1530,7 +1530,7 @@ static void handleFlashUpdate(HTTPRequest *, HTTPResponse * res) {
 }
 
 void updateProgress(size_t pos, size_t all) {
-  displayTest->drawProgressBar(4, pos, all);
+  obsDisplay->drawProgressBar(4, pos, all);
 }
 
 static void handleFlashUpdateUrlAction(HTTPRequest * req, HTTPResponse * res) {
@@ -1541,11 +1541,11 @@ static void handleFlashUpdateUrlAction(HTTPRequest * req, HTTPResponse * res) {
   Firmware f(String("OBS/") + String(OBSVersion));
   sensorManager->detachInterrupts();
   if (f.downloadToFlash(url, updateProgress)) {
-    displayTest->showTextOnGrid(0, 3, "Success!");
+    obsDisplay->showTextOnGrid(0, 3, "Success!");
     sendRedirect(res, "/updatesd");
   } else {
-    displayTest->showTextOnGrid(0, 3, "Error");
-    displayTest->showTextOnGrid(0, 4, f.getLastMessage());
+    obsDisplay->showTextOnGrid(0, 3, "Error");
+    obsDisplay->showTextOnGrid(0, 4, f.getLastMessage());
     sendRedirect(res, "/about");
   }
   sensorManager->attachInterrupts();
@@ -1557,7 +1557,7 @@ static void handleFlashFileUpdateAction(HTTPRequest *req, HTTPResponse *res) {
   sensorManager->detachInterrupts();
   Update.begin();
   Update.onProgress([](size_t pos, size_t all) {
-    displayTest->drawProgressBar(4, pos, all);
+    obsDisplay->drawProgressBar(4, pos, all);
   });
   while (parser.nextField()) {
     if (parser.getFieldName() != "upload") {
@@ -1578,14 +1578,14 @@ static void handleFlashFileUpdateAction(HTTPRequest *req, HTTPResponse *res) {
     log_i("Done reading");
     if (Update.end(true)) {
       sendHtml(res, "Flash App update successful!");
-      displayTest->showTextOnGrid(0, 3, "Success...");
+      obsDisplay->showTextOnGrid(0, 3, "Success...");
       const esp_partition_t *running = esp_ota_get_running_partition();
       esp_ota_set_boot_partition(running);
     } else {
       String errorMsg = Update.errorString();
       log_e("Update: %s", errorMsg.c_str());
-      displayTest->showTextOnGrid(0, 3, "Error");
-      displayTest->showTextOnGrid(0, 4, errorMsg);
+      obsDisplay->showTextOnGrid(0, 3, "Error");
+      obsDisplay->showTextOnGrid(0, 4, errorMsg);
       res->setStatusCode(500);
       res->setStatusText("Invalid data!");
       res->print(errorMsg);
@@ -1672,8 +1672,8 @@ static void handleSd(HTTPRequest *req, HTTPResponse *res) {
     html += "<ul class=\"directory-listing\">";
     sendHtml(res, html);
     html.clear();
-    displayTest->showTextOnGrid(0, 3, "Path:");
-    displayTest->showTextOnGrid(1, 3, path);
+    obsDisplay->showTextOnGrid(0, 3, "Path:");
+    obsDisplay->showTextOnGrid(1, 3, path);
 
     if (!path.endsWith("/")) {
       path += "/";
@@ -1683,7 +1683,7 @@ static void handleSd(HTTPRequest *req, HTTPResponse *res) {
     File child = file.openNextFile();
     uint16_t counter = 0;
     while (child) {
-      displayTest->drawWaitBar(5, counter++);
+      obsDisplay->drawWaitBar(5, counter++);
 
       auto fileName = String(child.name());
       auto fileTip = ObsUtils::encodeForXmlAttribute(
@@ -1751,7 +1751,7 @@ static void handleSd(HTTPRequest *req, HTTPResponse *res) {
     }
     html += footer;
     res->print(html);
-    displayTest->clearProgressBar(5);
+    obsDisplay->clearProgressBar(5);
     return;
   }
 
@@ -1822,12 +1822,12 @@ static uint16_t countFilesInRoot() {
     if (!file.isDirectory()
         && String(file.name()).endsWith(CSVFileWriter::EXTENSION)) {
       numberOfFiles++;
-      displayTest->drawWaitBar(4, numberOfFiles);
+      obsDisplay->drawWaitBar(4, numberOfFiles);
     }
     file = root.openNextFile();
   }
   root.close();
-  displayTest->clearProgressBar(4);
+  obsDisplay->clearProgressBar(4);
   return numberOfFiles;
 }
 
@@ -1857,15 +1857,15 @@ static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<vo
     res->setHeader("WWW-Authenticate", std::string("Basic realm=\"") + OBS_ID_SHORT.c_str() + "\"");
     res->println("401: See OBS display");
 
-    displayTest->clearProgressBar(5);
-    displayTest->cleanGridCell(0, 3);
-    displayTest->cleanGridCell(0, 4);
-    displayTest->cleanGridCell(1, 3);
-    displayTest->cleanGridCell(1, 4);
-    displayTest->showTextOnGrid(1,3, httpPin, MEDIUM_FONT);
+    obsDisplay->clearProgressBar(5);
+    obsDisplay->cleanGridCell(0, 3);
+    obsDisplay->cleanGridCell(0, 4);
+    obsDisplay->cleanGridCell(1, 3);
+    obsDisplay->cleanGridCell(1, 4);
+    obsDisplay->showTextOnGrid(1, 3, httpPin, MEDIUM_FONT);
     // No call denies access to protected handler function.
   } else {
-    displayTest->cleanGridCell(1, 3);
+    obsDisplay->cleanGridCell(1, 3);
     // Everything else will be allowed, so we call next()
     next();
   }
@@ -1967,8 +1967,8 @@ static void handleFirmwareUpdateSdUrlAction(HTTPRequest * req, HTTPResponse * re
   log_i("OBS Firmware URL is '%s'", url.c_str());
 
   if (!mkSdFlashDir()) {
-    displayTest->showTextOnGrid(0, 3, "Error");
-    displayTest->showTextOnGrid(0, 4, "mkdir 'sdflash' failed");
+    obsDisplay->showTextOnGrid(0, 3, "Error");
+    obsDisplay->showTextOnGrid(0, 4, "mkdir 'sdflash' failed");
     sendRedirect(res, "/");
     return;
   }
@@ -1982,20 +1982,20 @@ static void handleFirmwareUpdateSdUrlAction(HTTPRequest * req, HTTPResponse * re
   }
   if (firmwareError.isEmpty()) {
     Firmware::switchToFlashApp();
-    displayTest->showTextOnGrid(0, 3, "Success...");
+    obsDisplay->showTextOnGrid(0, 3, "Success...");
     sendRedirect(res, "/reboot");
   } else {
     log_e("Abort update action %s.", firmwareError.c_str());
-    displayTest->showTextOnGrid(0, 3, "Error");
-    displayTest->showTextOnGrid(0, 4, firmwareError);
+    obsDisplay->showTextOnGrid(0, 3, "Error");
+    obsDisplay->showTextOnGrid(0, 4, firmwareError);
     sendRedirect(res, "/");
   }
 }
 
 static void handleFirmwareUpdateSdAction(HTTPRequest * req, HTTPResponse * res) {
   if (!mkSdFlashDir()) {
-    displayTest->showTextOnGrid(0, 3, "Error");
-    displayTest->showTextOnGrid(0, 4, "mkdir 'sdflash' failed!");
+    obsDisplay->showTextOnGrid(0, 3, "Error");
+    obsDisplay->showTextOnGrid(0, 4, "mkdir 'sdflash' failed!");
     sendHtml(res, "mkdir 'sdflash' failed!");
     return;
   }
@@ -2016,19 +2016,19 @@ static void handleFirmwareUpdateSdAction(HTTPRequest * req, HTTPResponse * res) 
     while (!parser.endOfField()) {
       byte buffer[256];
       size_t len = parser.read(buffer, 256);
-      displayTest->drawWaitBar(4, tick++);
+      obsDisplay->drawWaitBar(4, tick++);
       log_v("Read data %d", len);
       pos += len;
       if (newFile.write(buffer, len) != len) {
-        displayTest->showTextOnGrid(0, 3, "Write Error");
-        displayTest->showTextOnGrid(0, 4, (String("Failed @") + String(pos)).c_str());
+        obsDisplay->showTextOnGrid(0, 3, "Write Error");
+        obsDisplay->showTextOnGrid(0, 4, (String("Failed @") + String(pos)).c_str());
         res->setStatusCode(500);
         res->setStatusText((String("Failed to write @") + String(pos)).c_str());
         res->print((String("Failed to write @") + String(pos)).c_str());
         return;
       }
     }
-    displayTest->clearProgressBar(4);
+    obsDisplay->clearProgressBar(4);
     log_i("Done reading");
     newFile.close();
     String firmwareError = Firmware::checkSdFirmware();
@@ -2036,8 +2036,8 @@ static void handleFirmwareUpdateSdAction(HTTPRequest * req, HTTPResponse * res) 
       firmwareError += "Flash App not installed!";
     }
     if (firmwareError.isEmpty()) { //true to set the size to the current progress
-      displayTest->showTextOnGrid(0, 3, "Success...");
-      displayTest->showTextOnGrid(0, 4, "...will reboot");
+      obsDisplay->showTextOnGrid(0, 3, "Success...");
+      obsDisplay->showTextOnGrid(0, 4, "...will reboot");
       if (Firmware::switchToFlashApp()) {
         sendHtml(res, "Upload ok, will reboot!");
         res->finalize();
@@ -2051,8 +2051,8 @@ static void handleFirmwareUpdateSdAction(HTTPRequest * req, HTTPResponse * res) 
       }
     } else {
       log_e("Update: %s", firmwareError.c_str());
-      displayTest->showTextOnGrid(0, 3, "Error");
-      displayTest->showTextOnGrid(0, 4, firmwareError);
+      obsDisplay->showTextOnGrid(0, 3, "Error");
+      obsDisplay->showTextOnGrid(0, 4, firmwareError);
       res->setStatusCode(500);
       res->setStatusText(firmwareError.c_str());
       res->print(firmwareError);
