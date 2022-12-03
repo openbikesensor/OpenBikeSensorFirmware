@@ -52,7 +52,7 @@ extern int numButtonReleased;
 extern Config config;
 
 
-extern SSD1306DisplayDevice* displayTest;
+extern SSD1306DisplayDevice* obsDisplay;
 
 extern HCSR04SensorManager* sensorManager;
 

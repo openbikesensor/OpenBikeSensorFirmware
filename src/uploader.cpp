@@ -83,7 +83,7 @@ bool Uploader::uploadFile(File &file) {
     mp.last();
     const size_t contentLength = mp.predictSize();
     mp.setProgressListener([contentLength](size_t pos) {
-      displayTest->drawProgressBar(5, pos, contentLength);
+      obsDisplay->drawProgressBar(5, pos, contentLength);
     });
 
     int httpCode = https.sendRequest("POST", &mp, contentLength);
