@@ -71,9 +71,8 @@ bool Uploader::uploadFile(File &file) {
   if (https.begin(mWiFiClient, mPortalUrl + "/api/tracks")) { // HTTPS
     https.addHeader("Authorization", "OBSUserId " + mPortalUserToken);
     https.addHeader("Content-Type", "application/json");
-
-    String displayFileName = ObsUtils::stripCsvFileName(file.name());
-    String fileName = String(file.name()).substring(1);
+    const String fileName = file.name();
+    const String displayFileName = ObsUtils::stripCsvFileName(fileName);
     MultipartStream mp(&https);
     MultipartDataString title("title", "AutoUpload " + displayFileName);
     mp.add(title);
