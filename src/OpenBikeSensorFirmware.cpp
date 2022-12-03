@@ -367,9 +367,9 @@ void serverLoop() {
 void handleButtonInServerMode() {
   button.handle();
   if (!configServerWasConnectedViaHttp()) {
-    displayTest->showTextOnGrid(0, 3, "Press the button for");
-    displayTest->showTextOnGrid(0, 4, "automatic track upload.");
     if (button.gotPressed()) {
+      displayTest->showTextOnGrid(0, 3, "Press the button for");
+      displayTest->showTextOnGrid(0, 4, "automatic track upload.");
       displayTest->clearProgressBar(5);
     } else if (button.getPreviousStateMillis() > 0 && button.getState() == HIGH) {
       const uint32_t buttonPressedMs = button.getCurrentStateMillis();
