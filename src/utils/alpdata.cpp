@@ -46,12 +46,13 @@ void AlpData::update(SSD1306DisplayDevice *display) {
     log_d("Next Update: %s",
           TimeUtils::dateTimeToString(lastWrite + 4 * 24 * 60 * 60).c_str());
     f.close();
+    display->showTextOnGrid(0, 5, "ALP not checked.");
     return;
   }
   f.close();
   log_d("Existing file last write %s", TimeUtils::dateTimeToString(f.getLastWrite()).c_str());
   log_d("Existing file is from %s", lastModified.c_str());
-  display->showTextOnGrid(0, 5, "ALP data ...");
+  display->showTextOnGrid(0, 5, "ALP data...");
 
   HTTPClient httpClient;
   httpClient.begin(ALP_DOWNLOAD_URL);
@@ -81,7 +82,7 @@ void AlpData::update(SSD1306DisplayDevice *display) {
       display->showTextOnGrid(0, 5, "ALP data updated!");
     }
   } else if (httpCode == 304) { // Not-Modified
-    display->showTextOnGrid(0,5, "ALP data up to date.");
+    display->showTextOnGrid(0, 5, "ALP data was up to date.");
     log_i("All fine, not modified!");
   } else if (httpCode > 0) {
     display->showTextOnGrid(0,4, String("ALP data failed ") + String(httpCode).c_str());
