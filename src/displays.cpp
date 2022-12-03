@@ -246,7 +246,7 @@ uint8_t SSD1306DisplayDevice::newLine() {
 
 uint8_t SSD1306DisplayDevice::scrollUp() {
   for (uint8_t i = 0; i < 5; i++) {
-    prepareTextOnGrid(2, i, displayTest->get_gridTextofCell(2, i + 1));
+    prepareTextOnGrid(2, i, obsDisplay->get_gridTextofCell(2, i + 1));
   }
   m_display->display();
   return mCurrentLine--;

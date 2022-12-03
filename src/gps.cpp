@@ -555,10 +555,10 @@ void Gps::showWaitStatus(SSD1306DisplayDevice const * display) const {
   }
 
   if (satellitesString[1].isEmpty()) {
-    displayTest->showTextOnGrid(2, display->currentLine(), satellitesString[0]);
+    obsDisplay->showTextOnGrid(2, display->currentLine(), satellitesString[0]);
   } else {
-    displayTest->showTextOnGrid(2, display->currentLine() - 1, satellitesString[0]);
-    displayTest->showTextOnGrid(2, display->currentLine(), satellitesString[1]);
+    obsDisplay->showTextOnGrid(2, display->currentLine() - 1, satellitesString[0]);
+    obsDisplay->showTextOnGrid(2, display->currentLine(), satellitesString[1]);
   }
 }
 

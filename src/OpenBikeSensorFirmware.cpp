@@ -57,7 +57,7 @@ Button button(PUSHBUTTON_PIN);
 
 Config config;
 
-SSD1306DisplayDevice* displayTest;
+SSD1306DisplayDevice* obsDisplay;
 HCSR04SensorManager* sensorManager;
 static BluetoothManager* bluetoothManager;
 
@@ -85,7 +85,7 @@ bool BMP280_active = false;
 
 // --- Local variables ---
 unsigned long measureInterval = 1000;
-unsigned long timeOfMinimum = esp_timer_get_time(); //  millis();
+unsigned long timeOfMinimum = millis();
 unsigned long startTimeMillis = 0;
 unsigned long currentTimeMillis = millis();
 
@@ -145,7 +145,7 @@ void setupSensors() {
 
 static void setupBluetooth(const String &trackUniqueIdentifier) {
   if (config.bluetooth) {
-    displayTest->showTextOnGrid(2, displayTest->newLine(), "Bluetooth ..");
+    obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "Bluetooth ..");
     bluetoothManager = new BluetoothManager;
     bluetoothManager->init(
       config.obsName,
@@ -154,7 +154,7 @@ static void setupBluetooth(const String &trackUniqueIdentifier) {
       voltageMeter->hasReadings() ? batteryPercentage : nullptr,
       trackUniqueIdentifier);
     bluetoothManager->activateBluetooth();
-    displayTest->showTextOnGrid(2, displayTest->currentLine(), "Bluetooth up");
+    obsDisplay->showTextOnGrid(2, obsDisplay->currentLine(), "Bluetooth up");
   } else {
     bluetoothManager = nullptr;
     ESP_ERROR_CHECK_WITHOUT_ABORT(
@@ -234,22 +234,22 @@ void setup() {
   } else {
     hasDisplay = true;
   }
-  displayTest = new SSD1306DisplayDevice;
+  obsDisplay = new SSD1306DisplayDevice;
 
   switch_wire_speed_to_SSD1306();
 
-  displayTest->showLogo(true);
-  displayTest->showTextOnGrid(2, displayTest->startLine(), OBSVersion);
+  obsDisplay->showLogo(true);
+  obsDisplay->showTextOnGrid(2, obsDisplay->startLine(), OBSVersion);
 
   voltageMeter = new VoltageMeter; // takes a moment, so do it here
   if (voltageMeter->hasReadings()) {
-    displayTest->showTextOnGrid(2, displayTest->newLine(),
+    obsDisplay->showTextOnGrid(2, obsDisplay->newLine(),
                                 "Battery: " + String(voltageMeter->read(), 1) + "V");
     delayForDisplay(333); // Added for user experience
   }
   if (voltageMeter->isWarningLevel()) {
-    displayTest->showTextOnGrid(2, displayTest->newLine(), "LOW BAT");
-    displayTest->showTextOnGrid(2, displayTest->newLine(), "WARNING!");
+    obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "LOW BAT");
+    obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "WARNING!");
     delayForDisplay(5000);
   }
 
@@ -284,11 +284,11 @@ static void setupObs() {
   // Handle SD
   //##############################################################
   int8_t sdCount = 0;
-  displayTest->showTextOnGrid(2, displayTest->newLine(), "SD...");
+  obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "SD...");
   while (!SD.begin()) {
     sdCount++;
-    displayTest->showTextOnGrid(2,
-      displayTest->currentLine(), "SD... error " + String(sdCount));
+    obsDisplay->showTextOnGrid(2,
+                               obsDisplay->currentLine(), "SD... error " + String(sdCount));
     if (config.simRaMode || button.read() == HIGH || sdCount > 2 || isObsLite) {
       break;
     }
@@ -296,7 +296,7 @@ static void setupObs() {
   }
 
   if (SD.begin()) {
-    displayTest->showTextOnGrid(2, displayTest->currentLine(), "SD... OK");
+    obsDisplay->showTextOnGrid(2, obsDisplay->currentLine(), "SD... OK");
     hasSdCard = 1;
   } else {
     hasSdCard = 0;
@@ -328,7 +328,7 @@ static void setupObs() {
   }
 
   if (triggerServerMode) {
-    displayTest->showTextOnGrid(2, displayTest->newLine(), "Start Server");
+    obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "Start Server");
     ESP_ERROR_CHECK_WITHOUT_ABORT(
       esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
 
@@ -349,7 +349,7 @@ static void setupObs() {
   // Prepare CSV file
   //##############################################################
 
-  displayTest->showTextOnGrid(2, displayTest->newLine(), "CSV file...");
+  obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "CSV file...");
   const String trackUniqueIdentifier = ObsUtils::createTrackUuid();
 
 
@@ -357,9 +357,9 @@ static void setupObs() {
     writer = new CSVFileWriter;
     writer->setFileName();
     writer->writeHeader(trackUniqueIdentifier);
-    displayTest->showTextOnGrid(2, displayTest->currentLine(), "CSV file... OK");
+    obsDisplay->showTextOnGrid(2, obsDisplay->currentLine(), "CSV file... OK");
   } else {
-    displayTest->showTextOnGrid(2, displayTest->currentLine(), "CSV. skipped");
+    obsDisplay->showTextOnGrid(2, obsDisplay->currentLine(), "CSV. skipped");
   }
 
   gps.handle();
@@ -376,26 +376,26 @@ static void setupObs() {
   setupBluetooth(trackUniqueIdentifier);
 
   setupGps();
-  displayTest->clear();
+  obsDisplay->clear();
 }
 
 void setupGps() {
-  displayTest->showTextOnGrid(2, displayTest->newLine(), "Wait for GPS");
-  displayTest->newLine();
+  obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "Wait for GPS");
+  obsDisplay->newLine();
   gps.handle();
   gps.setStatisticsIntervalInSeconds(1); // get regular updates.
 
-  while (!gps.hasFix(displayTest)) {
+  while (!gps.hasFix(obsDisplay)) {
     currentTimeMillis = millis();
     gps.handle();
     sensorManager->pollDistancesAlternating();
     reportBluetooth();
-    gps.showWaitStatus(displayTest);
+    gps.showWaitStatus(obsDisplay);
     if (button.read() == HIGH
         || (config.simRaMode && !gps.moduleIsAlive()) // no module && simRaMode
       ) {
       log_d("Skipped get GPS...");
-      displayTest->showTextOnGrid(2, displayTest->currentLine(), "...skipped");
+      obsDisplay->showTextOnGrid(2, obsDisplay->currentLine(), "...skipped");
       break;
     }
   }
@@ -406,6 +406,7 @@ void setupGps() {
   gps.enableSbas();
   gps.handle(1100); // Added for user experience
   gps.pollStatistics();
+  obsDisplay->clear();
 }
 
 void serverLoop() {
@@ -419,12 +420,12 @@ void handleButtonInServerMode() {
   button.handle();
   if (!configServerWasConnectedViaHttp()) {
     if (button.gotPressed()) {
-      displayTest->clearProgressBar(5);
-      displayTest->showTextOnGrid(0, 3, "Press the button for");
-      displayTest->showTextOnGrid(0, 4, "automatic track upload.");
+      obsDisplay->showTextOnGrid(0, 3, "Press the button for");
+      obsDisplay->showTextOnGrid(0, 4, "automatic track upload.");
+      obsDisplay->clearProgressBar(5);
     } else if (button.getPreviousStateMillis() > 0 && button.getState() == HIGH) {
       const uint32_t buttonPressedMs = button.getCurrentStateMillis();
-      displayTest->drawProgressBar(5, buttonPressedMs, LONG_BUTTON_PRESS_TIME_MS);
+      obsDisplay->drawProgressBar(5, buttonPressedMs, LONG_BUTTON_PRESS_TIME_MS);
       if (buttonPressedMs > LONG_BUTTON_PRESS_TIME_MS) {
         uploadTracks();
       }
@@ -505,7 +506,7 @@ void loop() {
 
     if (lastDisplayInterval != (currentTimeMillis / DISPLAY_INTERVAL_MILLIS)) {
       lastDisplayInterval = currentTimeMillis / DISPLAY_INTERVAL_MILLIS;
-      displayTest->showValues(
+      obsDisplay->showValues(
         sensorManager->m_sensors[LEFT_SENSOR_ID],
         sensorManager->m_sensors[RIGHT_SENSOR_ID],
         minDistanceToConfirm,
@@ -521,7 +522,7 @@ void loop() {
     reportBluetooth();
     if (button.gotPressed()) { // after button was released, detect long press here
       // immediate user feedback - we start the action
-      displayTest->highlight();
+      obsDisplay->highlight();
 
       transmitConfirmedData = true;
       numButtonReleased++;
@@ -605,27 +606,27 @@ uint8_t batteryPercentage() {
 
 bool loadConfig(ObsConfig &cfg) {
   bool isNew = false;
-  displayTest->showTextOnGrid(2, displayTest->newLine(), "Config... ");
+  obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "Config... ");
 
   if (!SPIFFS.begin(true)) {
     log_e("An Error has occurred while mounting SPIFFS");
-    displayTest->showTextOnGrid(2, displayTest->currentLine(), "Config... error ");
-    displayTest->showTextOnGrid(2, displayTest->newLine(), "Please reboot!");
+    obsDisplay->showTextOnGrid(2, obsDisplay->currentLine(), "Config... error ");
+    obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "Please reboot!");
     while (true) {
       delay(1000);
     }
   }
 
   if (SD.begin() && SD.exists("/obs.json")) {
-    displayTest->showTextOnGrid(2, displayTest->currentLine(), "Init from SD.");
+    obsDisplay->showTextOnGrid(2, obsDisplay->currentLine(), "Init from SD.");
     log_i("Configuration init from SD.");
     delay(1000);
     File f = SD.open("/obs.json");
     if (cfg.loadConfig(f)) {
       cfg.saveConfig();
-      displayTest->showTextOnGrid(2, displayTest->newLine(), "done.");
+      obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "done.");
     } else {
-      displayTest->showTextOnGrid(2, displayTest->newLine(), "format error.");
+      obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "format error.");
     }
     f.close();
     SD.remove("/obs.json");
@@ -637,7 +638,7 @@ bool loadConfig(ObsConfig &cfg) {
 
   log_i("Load cfg");
   if (!cfg.loadConfig()) {
-    displayTest->showTextOnGrid(2, displayTest->currentLine(), "Config...RESET");
+    obsDisplay->showTextOnGrid(2, obsDisplay->currentLine(), "Config...RESET");
     isNew = true;
     cfg.saveConfig(); // save the new config - next boot will allow obs mode
   }
@@ -650,12 +651,12 @@ bool loadConfig(ObsConfig &cfg) {
 
   // Setup display, this is not the right place ;)
   if (config.displayConfig & DisplayInvert) {
-    displayTest->invert();
+    obsDisplay->invert();
   } else {
-    displayTest->normalDisplay();
+    obsDisplay->normalDisplay();
   }
   if (config.displayConfig & DisplayFlip) {
-    displayTest->flipScreen();
+    obsDisplay->flipScreen();
   }
 
   delay(333); // Added for user experience
@@ -663,6 +664,6 @@ bool loadConfig(ObsConfig &cfg) {
   snprintf(buffer, sizeof(buffer), "<%02d| - |%02d>",
            config.sensorOffsets[LEFT_SENSOR_ID],
            config.sensorOffsets[RIGHT_SENSOR_ID]);
-  displayTest->showTextOnGrid(2, displayTest->currentLine(), buffer);
+  obsDisplay->showTextOnGrid(2, obsDisplay->currentLine(), buffer);
   return isNew;
 }
