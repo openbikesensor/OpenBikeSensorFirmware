@@ -275,13 +275,15 @@ class SSD1306DisplayDevice : public DisplayDevice {
     }
 
     void clearProgressBar(uint8_t y) {
-      clearTextLine(y);
-      uint16_t rowOffset = y * 10 + 3;
-      m_display->setColor(BLACK);
-      m_display->fillRect(12, rowOffset, 104, 8);
-      m_display->setColor(WHITE);
-      m_display->display();
-      mLastProgress = UINT8_MAX;
+      if (UINT8_MAX != mLastProgress) {
+        clearTextLine(y);
+        uint16_t rowOffset = y * 10 + 3;
+        m_display->setColor(BLACK);
+        m_display->fillRect(12, rowOffset, 104, 8);
+        m_display->setColor(WHITE);
+        m_display->display();
+        mLastProgress = UINT8_MAX;
+      }
     }
 
     void clearTextLine(uint8_t y) {
