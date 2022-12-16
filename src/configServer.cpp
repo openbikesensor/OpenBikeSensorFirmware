@@ -1602,10 +1602,18 @@ static void handleDeleteFiles(HTTPRequest *req, HTTPResponse * res) {
   }
   bool moveToRoot = !getParameter(params, "move").isEmpty();
 
-  String html = replaceDefault(header, "Delete Files");
-  html += "<h3>Deleting files</h3>";
-  html += "<div>In: " + ObsUtils::encodeForXmlText(path);
-  html += "</div><br /><div>";
+  String html;
+  if (moveToRoot) {
+    html = replaceDefault(header, "Move to /");
+    html += "<h3>Moving files</h3>";
+    html += "<div>In: " + ObsUtils::encodeForXmlText(path);
+    html += "</div><br /><div>";
+  } else {
+    html = replaceDefault(header, "Delete Files");
+    html += "<h3>Deleting files</h3>";
+    html += "<div>In: " + ObsUtils::encodeForXmlText(path);
+    html += "</div><br /><div>";
+  }
   sendHtml(res, html);
   html.clear();
 
