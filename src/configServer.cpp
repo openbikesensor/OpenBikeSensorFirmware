@@ -343,8 +343,6 @@ static const char* const configIndex =
   "<input name='obsUserID' placeholder='API Key' value='{userId}' >"
   "<h3>Operation</h3>"
   "Enable Bluetooth <input type='checkbox' name='bluetooth' {bluetooth}>"
-  "<hr>"
-  "SimRa Mode <input type='checkbox' name='simRaMode' {simRaMode}>"
   "<input type=submit class=btn value=Save>";
 
 static const char* const privacyIndexPostfix =
@@ -1155,8 +1153,6 @@ static void handleConfigSave(HTTPRequest * req, HTTPResponse * res) {
                             atoi(getParameter(params, "confirmationTimeWindow").c_str()));
   theObsConfig->setProperty(0, ObsConfig::PROPERTY_BLUETOOTH,
                             (bool) (getParameter(params, "bluetooth") == "on"));
-  theObsConfig->setProperty(0, ObsConfig::PROPERTY_SIM_RA,
-                            (bool) (getParameter(params, "simRaMode") == "on"));
   theObsConfig->setProperty(0, ObsConfig::PROPERTY_PORTAL_TOKEN,
                             getParameter(params, "obsUserID"));
   theObsConfig->setProperty(0, ObsConfig::PROPERTY_PORTAL_URL,
@@ -1227,8 +1223,6 @@ static void handleConfig(HTTPRequest *, HTTPResponse * res) {
 
   html = replaceHtml(html, "{bluetooth}",
                theObsConfig->getProperty<bool>(ObsConfig::PROPERTY_BLUETOOTH) ? "checked" : "");
-  html = replaceHtml(html, "{simRaMode}",
-               theObsConfig->getProperty<bool>(ObsConfig::PROPERTY_SIM_RA) ? "checked" : "");
 
   const uint privacyConfig = (uint) theObsConfig->getProperty<int>(
     ObsConfig::PROPERTY_PRIVACY_CONFIG);
