@@ -82,6 +82,7 @@ unsigned long measureInterval = 1000;
 unsigned long timeOfMinimum = millis();
 unsigned long startTimeMillis = 0;
 unsigned long currentTimeMillis = millis();
+static uint32_t lastLoopGpsTow = 0;
 
 uint16_t minDistanceToConfirm = MAX_SENSOR_VALUE;
 uint16_t minDistanceToConfirmIndex = 0;
@@ -296,7 +297,13 @@ void setup() {
   }
   SPIFFS.end();
   WiFiGenericClass::mode(WIFI_OFF);
+  obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "Start GPS...");
   gps.begin();
+  if (gps.getValidMessageCount() > 0) {
+    obsDisplay->showTextOnGrid(2, obsDisplay->currentLine(), "Start GPS OK");
+  } else {
+    obsDisplay->showTextOnGrid(2, obsDisplay->currentLine(), "Start GPS ??");
+  }
 
   //##############################################################
   // Prepare CSV file
@@ -354,6 +361,7 @@ void setup() {
   gps.enableSbas();
   gps.handle(1100); // Added for user experience
   gps.pollStatistics();
+  lastLoopGpsTow = gps.getCurrentGpsRecord().getTow();
   obsDisplay->clear();
 }
 
@@ -401,21 +409,15 @@ void writeDataset(const uint8_t confirmationSensorID, DataSet *dataset) {
 
 void loop() {
   log_i("loop()");
-
-  auto* currentSet = new DataSet;
   //specify which sensors value can be confirmed by pressing the button, should be configurable
   const uint8_t confirmationSensorID = LEFT_SENSOR_ID;
-  gps.handle(); // needs <=1ms
 
-  currentTimeMillis = millis();
-  if (startTimeMillis == 0) {
-    startTimeMillis = (currentTimeMillis / measureInterval) * measureInterval;
-  }
+  currentTimeMillis = startTimeMillis = millis();
+  auto* currentSet = new DataSet;
   currentSet->time = time(nullptr);
   currentSet->millis = currentTimeMillis;
   currentSet->batteryLevel = voltageMeter->read();
   currentSet->isInsidePrivacyArea = gps.isInsidePrivacyArea();
-  currentSet->gpsRecord = gps.getCurrentGpsRecord();
 
   lastMeasurements = sensorManager->m_sensors[confirmationSensorID].numberOfTriggers;
   sensorManager->reset();
@@ -430,11 +432,10 @@ void loop() {
   }
 
   int loops = 0;
-  // do this for the time specified by measureInterval, e.g. 1s
-  while ((currentTimeMillis - startTimeMillis) < measureInterval) {
+  // do loop until we receive a new GPS record
+  while (lastLoopGpsTow == gps.getCurrentGpsRecord().getTow()) {
     loops++;
 
-    currentTimeMillis = millis();
     button.handle(currentTimeMillis);
     if (sensorManager->pollDistancesAlternating()) {
       // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
@@ -452,7 +453,6 @@ void loop() {
         timeOfMinimum = currentTimeMillis;
       }
     }
-    gps.handle();
 
     if (lastDisplayInterval != (currentTimeMillis / DISPLAY_INTERVAL_MILLIS)) {
       lastDisplayInterval = currentTimeMillis / DISPLAY_INTERVAL_MILLIS;
@@ -492,8 +492,16 @@ void loop() {
 
     if(BMP280_active == true)  TemperatureValue = bmp280.readTemperature();
 
-    yield(); //
+    gps.handle();
+    // exit if we are in the loop for more than measureInterval ms. (no GPS trigger)
+    if ((currentTimeMillis - startTimeMillis) > measureInterval) {
+      break;
+    }
+    currentTimeMillis = millis();
   } // end measureInterval while
+
+  currentSet->gpsRecord = gps.getCurrentGpsRecord();
+  lastLoopGpsTow = currentSet->gpsRecord.getTow();
 
   // Write the minimum values of the while-loop to a set
   for (auto & m_sensor : sensorManager->m_sensors) {
@@ -541,11 +549,9 @@ void loop() {
       transmitConfirmedData = false;
     }
   }
-  log_d("Time in loop: %lums %d inner loops, %d measures, %s , %d",
+  log_d("Time in loop: %lums %d inner loops, %d measures, %s, TOW: %d",
         currentTimeMillis - startTimeMillis, loops, lastMeasurements,
-        TimeUtils::timeToString().c_str(), millis());
-  // synchronize to full measureIntervals
-  startTimeMillis = (currentTimeMillis / measureInterval) * measureInterval;
+        TimeUtils::timeToString().c_str(), lastLoopGpsTow);
 }
 
 uint8_t batteryPercentage() {
