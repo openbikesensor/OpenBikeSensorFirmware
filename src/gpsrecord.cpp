@@ -23,9 +23,10 @@
 
 #include "gpsrecord.h"
 
-/* Clear all collected data */
-void GpsRecord::reset() {
-  mCollectTow = 0;
+void GpsRecord::reset(uint32_t tow, uint32_t gpsWeek, uint32_t createdAtMillisTicks) {
+  mCollectTow = tow;
+  mCollectWeek = gpsWeek;
+  mCreatedAtMillisTicks = createdAtMillisTicks;
   mLatitude = 0;
   mLongitude = 0;
   mCourseOverGround = 0;
@@ -39,11 +40,6 @@ void GpsRecord::reset() {
   mVelocitySet = false;
   mInfoSet = false;
   mHdopSet = false;
-}
-
-/* Store tow and related date time data. */
-void GpsRecord::setTow(uint32_t tow) {
-  mCollectTow = tow;
 }
 
 void GpsRecord::setWeek(uint32_t week) {
@@ -146,6 +142,10 @@ uint8_t GpsRecord::getSatellitesUsed() const {
 
 GpsRecord::GPS_FIX GpsRecord::getFixStatus() const {
   return mFixStatus;
+}
+
+uint32_t GpsRecord::getCreatedAtMillisTicks() const {
+  return mCreatedAtMillisTicks;
 }
 
 uint8_t GpsRecord::getFixStatusFlags() const {

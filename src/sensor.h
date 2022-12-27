@@ -94,7 +94,7 @@ class HCSR04SensorManager {
   public:
     HCSR04SensorManager() {}
     virtual ~HCSR04SensorManager() {}
-    void reset();
+    void reset(uint32_t startMillisTicks);
     void registerSensor(const HCSR04SensorInfo &, uint8_t idx);
     void setOffsets(std::vector<uint16_t>);
     void setPrimarySensor(uint8_t idx);

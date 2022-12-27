@@ -171,7 +171,7 @@ void HCSR04SensorManager::attachInterrupts() {
   }
 }
 
-void HCSR04SensorManager::reset() {
+void HCSR04SensorManager::reset(uint32_t startMillisTicks) {
   for (auto & sensor : m_sensors) {
     sensor.minDistance = MAX_SENSOR_VALUE;
     memset(&(sensor.echoDurationMicroseconds), 0, sizeof(sensor.echoDurationMicroseconds));
@@ -180,7 +180,7 @@ void HCSR04SensorManager::reset() {
   lastReadingCount = 0;
   lastSensor = 1 - primarySensor;
   memset(&(startOffsetMilliseconds), 0, sizeof(startOffsetMilliseconds));
-  startReadingMilliseconds = millis();
+  startReadingMilliseconds = startMillisTicks;
 }
 
 void HCSR04SensorManager::setOffsets(std::vector<uint16_t> offsets) {

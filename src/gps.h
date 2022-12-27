@@ -92,6 +92,8 @@ class Gps {
     void enableSbas();
 
     GpsRecord getCurrentGpsRecord() const;
+    GpsRecord getIncomingGpsRecord() const;
+    bool currentTowEquals(uint32_t tow) const;
 
     int32_t getValidMessageCount() const;
 
@@ -481,7 +483,7 @@ class Gps {
     uint16_t mLastNoiseLevel;
     AlpData mAlpData;
     bool mAidIniSent = false;
-    /* record that is exposed to the client */
+    /* record that was last received */
     GpsRecord mCurrentGpsRecord;
     /* record that is currently filled with data. */
     GpsRecord mIncomingGpsRecord;
@@ -534,9 +536,12 @@ class Gps {
 
     bool setMessageInterval(UBX_MSG msgId, uint8_t seconds, bool waitForAck = true);
 
-    bool prepareGpsData(uint32_t tow);
-
-    void checkGpsDataState();
+    /* Make sure fresh GPS data can be added to the current internal record.
+     * Add TOW and millis ticks to the record if not already set,
+     * force record switch and creation of a new record if tow existed
+     * but changed.
+     */
+    bool prepareGpsData(uint32_t tow, uint32_t messageStartedMillisTicks);
 
     void softResetGps();
 

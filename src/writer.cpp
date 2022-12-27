@@ -193,12 +193,17 @@ bool CSVFileWriter::append(DataSet &set) {
   }
 
   time_t theTime;
-  if (set.gpsRecord.getTow() != 0 && set.gpsRecord.getWeek() != 0) {
+  if (set.gpsRecord.getTow() != 0 || set.gpsRecord.getWeek() != 0) { // if there is any time info from GPS take it!
     theTime = TimeUtils::toTime(set.gpsRecord.getWeek(), set.gpsRecord.getTow() / 1000);
     // TODO: Force adjust filename if week changes and  set.gpsRecord.getTow() is not small via mFinalFileName = false;
   } else {
     theTime = set.time;
   }
+  auto recordMillis = set.gpsRecord.getCreatedAtMillisTicks();
+  if (recordMillis == 0) {
+    recordMillis = set.millis; // set this at all?
+  }
+
   tm time;
   localtime_r(&(theTime), &time);
   // localtime_r(&(set.time), &time);
@@ -206,7 +211,7 @@ bool CSVFileWriter::append(DataSet &set) {
   snprintf(date, sizeof(date),
     "%02d.%02d.%04d;%02d:%02d:%02d;%u;",
     time.tm_mday, time.tm_mon + 1, time.tm_year + 1900,
-    time.tm_hour, time.tm_min, time.tm_sec, set.millis);
+    time.tm_hour, time.tm_min, time.tm_sec, recordMillis);
 
   csv += date;
   csv += set.comment;
@@ -280,12 +285,19 @@ bool CSVFileWriter::append(DataSet &set) {
       csv += "DEV: GPS: ";
       csv += ObsUtils::encodeForCsvField(msg);
     }
-  } else if (time.tm_sec == 40) {
-    csv += "DBG GPS Time: " +
-      TimeUtils::dateTimeToString(TimeUtils::toTime(set.gpsRecord.getWeek(), set.gpsRecord.getTow() / 1000));
-  } else if (time.tm_sec == 41) {
-    csv += "DBG CPU Time: " +
-           TimeUtils::dateTimeToString();
+//  } else if (time.tm_sec == 40) {
+//    csv += "DBG GPS Time: " +
+//      TimeUtils::dateTimeToString(TimeUtils::toTime(set.gpsRecord.getWeek(), set.gpsRecord.getTow() / 1000));
+//  } else if (time.tm_sec == 41) {
+//    csv += "DBG RTC Time: " +
+//           TimeUtils::dateTimeToString();
+  } else {
+    csv += "TIMING: TOW " + String(set.gpsRecord.getTow()) +
+           " GPSms: " + String(set.gpsRecord.getCreatedAtMillisTicks()) +
+           " SETms: " + String(set.millis) +
+           " GPS Time: " +
+              TimeUtils::dateTimeToString(TimeUtils::toTime(set.gpsRecord.getWeek(), set.gpsRecord.getTow() / 1000)) +
+           " RTC Time: " + TimeUtils::dateTimeToString(set.time);
   }
 // #endif
   csv += ";";

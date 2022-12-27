@@ -82,7 +82,6 @@ unsigned long measureInterval = 1000;
 unsigned long timeOfMinimum = millis();
 unsigned long startTimeMillis = 0;
 unsigned long currentTimeMillis = millis();
-static uint32_t lastLoopGpsTow = 0;
 
 uint16_t minDistanceToConfirm = MAX_SENSOR_VALUE;
 uint16_t minDistanceToConfirmIndex = 0;
@@ -105,6 +104,7 @@ uint8_t batteryPercentage();
 void serverLoop();
 void handleButtonInServerMode();
 bool loadConfig(ObsConfig &cfg);
+void copyCollectedSensorData(DataSet *set);
 
 // The BMP280 can keep up to 3.4MHz I2C speed, so no need for an individual slower speed
 void switch_wire_speed_to_VL53(){
@@ -361,7 +361,6 @@ void setup() {
   gps.enableSbas();
   gps.handle(1100); // Added for user experience
   gps.pollStatistics();
-  lastLoopGpsTow = gps.getCurrentGpsRecord().getTow();
   obsDisplay->clear();
 }
 
@@ -411,16 +410,24 @@ void loop() {
   log_i("loop()");
   //specify which sensors value can be confirmed by pressing the button, should be configurable
   const uint8_t confirmationSensorID = LEFT_SENSOR_ID;
-
-  currentTimeMillis = startTimeMillis = millis();
   auto* currentSet = new DataSet;
-  currentSet->time = time(nullptr);
-  currentSet->millis = currentTimeMillis;
+
+  /* only Timeinfo is reliably set until now! */
+  GpsRecord incoming = gps.getIncomingGpsRecord();
+  // GPS time is leading
+  startTimeMillis = incoming.getCreatedAtMillisTicks();
+  auto thisLoopTow = incoming.getTow();
+  if (startTimeMillis == 0 && thisLoopTow == 0) { // no GPS
+    log_i("NO GPS??");
+    startTimeMillis = millis();
+    thisLoopTow = startTimeMillis / 100; // FIXME: Useful?
+  }
+  currentSet->time = time(nullptr); // needed?
+  currentSet->millis = millis(); // currentTimeMillis; // needed? debugging!
   currentSet->batteryLevel = voltageMeter->read();
-  currentSet->isInsidePrivacyArea = gps.isInsidePrivacyArea();
 
   lastMeasurements = sensorManager->m_sensors[confirmationSensorID].numberOfTriggers;
-  sensorManager->reset();
+  sensorManager->reset(startTimeMillis);
 
   // if the detected minimum was measured more than 5s ago, it is discarded and cannot be confirmed
   int timeDelta = (int) (currentTimeMillis - timeOfMinimum);
@@ -432,11 +439,12 @@ void loop() {
   }
 
   int loops = 0;
-  // do loop until we receive a new GPS record
-  while (lastLoopGpsTow == gps.getCurrentGpsRecord().getTow()) {
+  // do loop until gps clock ticks
+  while (gps.currentTowEquals(thisLoopTow)) {
     loops++;
-
+    currentTimeMillis = millis();
     button.handle(currentTimeMillis);
+    gps.handle();
     if (sensorManager->pollDistancesAlternating()) {
       // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
       const uint16_t reading = sensorManager->sensorValues[confirmationSensorID];
@@ -453,7 +461,7 @@ void loop() {
         timeOfMinimum = currentTimeMillis;
       }
     }
-
+    gps.handle();
     if (lastDisplayInterval != (currentTimeMillis / DISPLAY_INTERVAL_MILLIS)) {
       lastDisplayInterval = currentTimeMillis / DISPLAY_INTERVAL_MILLIS;
       obsDisplay->showValues(
@@ -468,7 +476,7 @@ void loop() {
         gps.getValidSatellites()
       );
     }
-
+    gps.handle();
     reportBluetooth();
     if (button.gotPressed()) { // after button was released, detect long press here
       // immediate user feedback - we start the action
@@ -481,7 +489,7 @@ void loop() {
         datasetToConfirm->confirmedDistancesIndex.push_back(minDistanceToConfirmIndex);
         buttonBluetooth(datasetToConfirm, minDistanceToConfirmIndex);
         datasetToConfirm = nullptr;
-      } else { // confirming a overtake without left measure
+      } else { // confirming an overtake without left measure
         currentSet->confirmedDistances.push_back(MAX_SENSOR_VALUE);
         currentSet->confirmedDistancesIndex.push_back(
           sensorManager->getCurrentMeasureIndex());
@@ -492,36 +500,36 @@ void loop() {
 
     if(BMP280_active == true)  TemperatureValue = bmp280.readTemperature();
 
+    yield();
     gps.handle();
     // exit if we are in the loop for more than measureInterval ms. (no GPS trigger)
-    if ((currentTimeMillis - startTimeMillis) > measureInterval) {
+    if ((currentTimeMillis - startTimeMillis) > (measureInterval + 50)) { // use none GPS Mode??
+      log_i("Force break: start %d now %d took %d", startTimeMillis, currentTimeMillis, currentTimeMillis - startTimeMillis);
       break;
     }
-    currentTimeMillis = millis();
   } // end measureInterval while
 
   currentSet->gpsRecord = gps.getCurrentGpsRecord();
-  lastLoopGpsTow = currentSet->gpsRecord.getTow();
-
-  // Write the minimum values of the while-loop to a set
-  for (auto & m_sensor : sensorManager->m_sensors) {
-    currentSet->sensorValues.push_back(m_sensor.minDistance);
+  currentSet->isInsidePrivacyArea = gps.isInsidePrivacyArea();
+  if (currentSet->gpsRecord.getTow() == thisLoopTow) {
+    copyCollectedSensorData(currentSet);
+    log_i("NEW SET: TOW: %u GPSms: %u, SETms: %u, GPS Time: %s, SET Time: %s, innerLoops: %d, buffer: %d, write time %ums",
+          currentSet->gpsRecord.getTow(), currentSet->gpsRecord.getCreatedAtMillisTicks(),
+          currentSet->millis,
+          TimeUtils::dateTimeToString(TimeUtils::toTime(currentSet->gpsRecord.getWeek(), currentSet->gpsRecord.getTow() / 1000)).c_str(),
+          TimeUtils::dateTimeToString(currentSet->time).c_str(),
+          loops, dataBuffer.size(), writer->getWriteTimeMillis());
+    dataBuffer.push(currentSet);
+  } else {
+    // If we lost time somewhere so GPS data is wrong!
+    log_e("There is something wrong expected TOW: %d != gps tow: %d",
+          thisLoopTow, currentSet->gpsRecord.getTow());
+    if (datasetToConfirm == currentSet) {
+      datasetToConfirm = nullptr;
+      minDistanceToConfirm = MAX_SENSOR_VALUE;
+    }
   }
-  currentSet->measurements = sensorManager->lastReadingCount;
-  memcpy(&(currentSet->readDurationsRightInMicroseconds),
-    &(sensorManager->m_sensors[0].echoDurationMicroseconds), currentSet->measurements * sizeof(int32_t));
-  memcpy(&(currentSet->readDurationsLeftInMicroseconds),
-    &(sensorManager->m_sensors[1].echoDurationMicroseconds), currentSet->measurements * sizeof(int32_t));
-  memcpy(&(currentSet->startOffsetMilliseconds),
-    &(sensorManager->startOffsetMilliseconds), currentSet->measurements * sizeof(uint16_t));
 
-#ifdef DEVELOP
-  log_i("min. distance: %dcm, loops %d",
-        currentSet->sensorValues[confirmationSensorID],
-        loops);
-#endif
-
-  dataBuffer.push(currentSet);
   // convert all data that does not wait for confirmation.
   while ((!dataBuffer.isEmpty() && dataBuffer.first() != datasetToConfirm) || dataBuffer.isFull()) {
     DataSet* dataset = dataBuffer.shift();
@@ -551,7 +559,20 @@ void loop() {
   }
   log_d("Time in loop: %lums %d inner loops, %d measures, %s, TOW: %d",
         currentTimeMillis - startTimeMillis, loops, lastMeasurements,
-        TimeUtils::timeToString().c_str(), lastLoopGpsTow);
+        TimeUtils::timeToString().c_str(), thisLoopTow);
+}
+
+void copyCollectedSensorData(DataSet *set) {// Write the minimum values of the while-loop to a set
+  for (auto & m_sensor : sensorManager->m_sensors) {
+    set->sensorValues.push_back(m_sensor.minDistance);
+  }
+  set->measurements = sensorManager->lastReadingCount;
+  memcpy(&(set->readDurationsRightInMicroseconds),
+         &(sensorManager->m_sensors[0].echoDurationMicroseconds), set->measurements * sizeof(int32_t));
+  memcpy(&(set->readDurationsLeftInMicroseconds),
+         &(sensorManager->m_sensors[1].echoDurationMicroseconds), set->measurements * sizeof(int32_t));
+  memcpy(&(set->startOffsetMilliseconds),
+         &(sensorManager->startOffsetMilliseconds), set->measurements * sizeof(uint16_t));
 }
 
 uint8_t batteryPercentage() {
