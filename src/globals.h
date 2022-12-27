@@ -43,6 +43,8 @@ class HCSR04SensorManager;
 // Version
 extern const char *OBSVersion;
 
+extern bool isObsLite;
+
 // PINs
 extern const int PUSHBUTTON_PIN;
 

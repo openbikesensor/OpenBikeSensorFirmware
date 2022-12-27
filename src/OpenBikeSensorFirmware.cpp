@@ -61,6 +61,12 @@ SSD1306DisplayDevice* obsDisplay;
 HCSR04SensorManager* sensorManager;
 static BluetoothManager* bluetoothManager;
 
+// we collect available hardware here - to be moved in an own spot!
+bool isObsLite = false;
+int hasDisplay = -1;
+int hasGps = -1;
+int hasSdCard = -1;
+
 Gps gps;
 
 static const long BLUETOOTH_INTERVAL_MILLIS = 100;
@@ -105,6 +111,10 @@ void serverLoop();
 void handleButtonInServerMode();
 bool loadConfig(ObsConfig &cfg);
 
+static void setupGps();
+static void setupObs();
+static void setupObsLite();
+
 // The BMP280 can keep up to 3.4MHz I2C speed, so no need for an individual slower speed
 void switch_wire_speed_to_VL53(){
 	Wire.setClock(400000);
@@ -133,15 +143,15 @@ void setupSensors() {
   sensorManager->setPrimarySensor(LEFT_SENSOR_ID);
 }
 
-static void setupBluetooth(const ObsConfig &cfg, const String &trackUniqueIdentifier) {
-  if (cfg.getProperty<bool>(ObsConfig::PROPERTY_BLUETOOTH)) {
+static void setupBluetooth(const String &trackUniqueIdentifier) {
+  if (config.bluetooth) {
     obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "Bluetooth ..");
     bluetoothManager = new BluetoothManager;
     bluetoothManager->init(
-      cfg.getProperty<String>(ObsConfig::PROPERTY_OBS_NAME),
+      config.obsName,
       config.sensorOffsets[LEFT_SENSOR_ID],
       config.sensorOffsets[RIGHT_SENSOR_ID],
-      batteryPercentage,
+      voltageMeter->hasReadings() ? batteryPercentage : nullptr,
       trackUniqueIdentifier);
     bluetoothManager->activateBluetooth();
     obsDisplay->showTextOnGrid(2, obsDisplay->currentLine(), "Bluetooth up");
@@ -163,6 +173,12 @@ static void reportBluetooth() {
       currentTimeMillis,
       sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
       sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median());
+  }
+}
+
+static void delayForDisplay(uint32_t ms) {
+  if (hasDisplay != 0) {
+    delay(ms);
   }
 }
 
@@ -204,7 +220,7 @@ void setup() {
   pinMode(PUSHBUTTON_PIN, INPUT);
   pinMode(BatterieVoltage_PIN, INPUT);
   pinMode(GPS_POWER_PIN, OUTPUT);
-  digitalWrite(GPS_POWER_PIN,HIGH);
+  digitalWrite(GPS_POWER_PIN, HIGH);
 
   //##############################################################
   // Setup display
@@ -213,7 +229,10 @@ void setup() {
   Wire.beginTransmission(displayAddress);
   byte displayError = Wire.endTransmission();
   if (displayError != 0) {
-    Serial.println("Display not found");
+    log_e("Display not found got %d", displayError);
+    hasDisplay = false;
+  } else {
+    hasDisplay = true;
   }
   obsDisplay = new SSD1306DisplayDevice;
 
@@ -226,14 +245,35 @@ void setup() {
   if (voltageMeter->hasReadings()) {
     obsDisplay->showTextOnGrid(2, obsDisplay->newLine(),
                                 "Battery: " + String(voltageMeter->read(), 1) + "V");
-    delay(333); // Added for user experience
+    delayForDisplay(333); // Added for user experience
   }
   if (voltageMeter->isWarningLevel()) {
     obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "LOW BAT");
     obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "WARNING!");
-    delay(5000);
+    delayForDisplay(5000);
   }
 
+  if (voltageMeter->isZeroOnly()) {
+    log_i("VoltageMeter is pulled to GND - I'm a OBS-lite!");
+    isObsLite = true;
+    setupObsLite();
+  } else {
+    setupObs();
+  }
+}
+
+static void setupObsLite() {
+  hasSdCard = false;
+  hasGps = false;
+  hasDisplay = false;
+  WiFiGenericClass::mode(WIFI_OFF);
+  ObsConfig::fillObsLite(config);
+  setupSensors();
+  const String trackUniqueIdentifier = ObsUtils::createTrackUuid();
+  setupBluetooth(trackUniqueIdentifier);
+}
+
+static void setupObs() {
   //##############################################################
   // Load, print and save config
   //##############################################################
@@ -249,14 +289,17 @@ void setup() {
     sdCount++;
     obsDisplay->showTextOnGrid(2,
                                obsDisplay->currentLine(), "SD... error " + String(sdCount));
-    if (config.simRaMode || button.read() == HIGH || sdCount > 10) {
+    if (config.simRaMode || button.read() == HIGH || sdCount > 2 || isObsLite) {
       break;
     }
-    delay(200);
+    delay(500);
   }
 
   if (SD.begin()) {
     obsDisplay->showTextOnGrid(2, obsDisplay->currentLine(), "SD... OK");
+    hasSdCard = 1;
+  } else {
+    hasSdCard = 0;
   }
   delay(333); // Added for user experience
 
@@ -270,17 +313,21 @@ void setup() {
   // Check, if the button is pressed
   // Enter configuration mode and enable OTA
   //##############################################################
-  bool triggerServerMode = false;
+  bool triggerServerMode = true;
   if (Serial.peek() == 'I') {
     log_i("IMPROV char detected on serial, will start in server mode.");
-    triggerServerMode = true;
-  }
-  if (configIsNew) {
+  } else if (configIsNew) {
     log_i("Config was freshly generated, will start in server mode.");
-    triggerServerMode = true;
+  } else if (hasDisplay != 1 && !(config.simRaMode || isObsLite)) {
+    log_i("No display detected and not in simRaMode or OBS-lite, will start in server mode.");
+  } else if (button.read() == HIGH) {
+    log_i("Button is pressed, will start in server mode.");
+  } else {
+    log_i("Will start in road mode.");
+    triggerServerMode = false;
   }
 
-  if (button.read() == HIGH || (!config.simRaMode && displayError != 0) || triggerServerMode) {
+  if (triggerServerMode) {
     obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "Start Server");
     ESP_ERROR_CHECK_WITHOUT_ABORT(
       esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
@@ -306,7 +353,7 @@ void setup() {
   const String trackUniqueIdentifier = ObsUtils::createTrackUuid();
 
 
-  if (SD.begin()) {
+  if (hasSdCard) {
     writer = new CSVFileWriter;
     writer->setFileName();
     writer->writeHeader(trackUniqueIdentifier);
@@ -326,8 +373,13 @@ void setup() {
 
   gps.handle();
 
-  setupBluetooth(cfg, trackUniqueIdentifier);
+  setupBluetooth(trackUniqueIdentifier);
 
+  setupGps();
+  obsDisplay->clear();
+}
+
+void setupGps() {
   obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "Wait for GPS");
   obsDisplay->newLine();
   gps.handle();
@@ -400,8 +452,6 @@ void writeDataset(const uint8_t confirmationSensorID, DataSet *dataset) {
 }
 
 void loop() {
-  log_i("loop()");
-
   auto* currentSet = new DataSet;
   //specify which sensors value can be confirmed by pressing the button, should be configurable
   const uint8_t confirmationSensorID = LEFT_SENSOR_ID;
@@ -507,11 +557,9 @@ void loop() {
   memcpy(&(currentSet->startOffsetMilliseconds),
     &(sensorManager->startOffsetMilliseconds), currentSet->measurements * sizeof(uint16_t));
 
-#ifdef DEVELOP
   log_i("min. distance: %dcm, loops %d",
         currentSet->sensorValues[confirmationSensorID],
         loops);
-#endif
 
   dataBuffer.push(currentSet);
   // convert all data that does not wait for confirmation.

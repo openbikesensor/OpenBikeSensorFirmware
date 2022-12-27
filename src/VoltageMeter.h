@@ -37,6 +37,8 @@ class VoltageMeter {
     int8_t readPercentage();
     bool hasReadings();
     bool isWarningLevel();
+    /* If only zero is read, pin is pulled to GND. */
+    bool isZeroOnly() const;
 
   private:
     /* This one is typically NOT used, our ESP32 dos have
@@ -55,7 +57,8 @@ class VoltageMeter {
     esp_adc_cal_characteristics_t adc_chars;
     int16_t lastSmoothedReading;
     int readSmoothed();
-    int readRaw() const;
+    int readRaw();
+    bool readZeroOnly = true;
 };
 
 
