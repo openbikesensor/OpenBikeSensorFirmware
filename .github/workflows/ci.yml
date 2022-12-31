@@ -101,13 +101,15 @@ jobs:
 
     - name: Package firmware
       run: |
-        if [ -f "/github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/bin/bootloader_dio_40m.bin" ]; then
-           cp /github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/bin/bootloader_dio_40m.bin 0x01000.bin
+        set -euxo pipefail
+        if [ -f "/github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/bin/bootloader_dio_40m.elf" ]; then
+           cp /github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/bin/bootloader_dio_40m.elf 0x01000.elf
         elif [ -f "/github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/bin/bootloader_dio_40m.bin" ]; then
            cp /github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/bin/bootloader_dio_40m.bin 0x01000.bin
         else 
            echo could not find bootloader_dio_40m.bin, new location?
-           find /github/home/.platformio/ -name "bootloader_dio_40m.bin"
+           find /github/home/.platformio/ -name "bootloader*.bin"
+           find /github/home/.platformio/ -name "bootloader*.elf"
            exit 1
         fi
         cp bin/.pio/build/esp32dev/partitions.bin 0x08000.bin
@@ -123,11 +125,15 @@ jobs:
         #    0x08000 0x08000.bin \
         #    0x0e000 0x0e000.bin \
         #    0x10000 0x10000.bin
-        echo Original bootloader params
-        ${ESPTOOL} --chip esp32 image_info --version 2 0x01000.bin || echo image_info for original bootloader failed
+        ${ESPTOOL} --trace --chip esp32 elf2image \
+            --dont-append-digest \
+            --flash_freq 40m --flash_mode dio \
+            0x01000.elf
+        echo Original bootloader params after elf2image
+        ${ESPTOOL} --chip esp32 image_info --version 2 0x01000.bin || echo image_info for converted bootloader failed
         mv 0x01000.bin 0x01000.bin.org
-        ${ESPTOOL} --trace  --chip esp32 merge_bin --output 0x01000.bin  \
-            --flash_freq keep --flash_mode dio --flash_size 4MB \
+        ${ESPTOOL} --trace --chip esp32 merge_bin --output 0x01000.bin  \
+            --flash_freq 40m --flash_mode dio --flash_size 4MB \
             --target-offset 0x01000 \
             0x01000 0x01000.bin.org
         echo OpenBikeSensor bootloader params
