@@ -101,7 +101,7 @@ jobs:
 
     - name: Package firmware
       run: |
-        set -euxo pipefail
+        set -eux
         if [ -f "/github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/bin/bootloader_dio_40m.elf" ]; then
            cp /github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/bin/bootloader_dio_40m.elf 0x01000.elf
         elif [ -f "/github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/bin/bootloader_dio_40m.bin" ]; then
