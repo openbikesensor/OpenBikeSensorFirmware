@@ -1182,13 +1182,13 @@ bool Gps::prepareGpsData(uint32_t tow, uint32_t messageStartedMillisTicks) {
   if (mIncomingGpsRecord.mCollectTow == tow) {
     // fine already prepared
   } else if (mIncomingGpsRecord.mCollectTow == 0) {
+    // new tow
     mIncomingGpsRecord.reset(tow, mLastGpsWeek, messageStartedMillisTicks);
-  } else if ((int32_t) (mIncomingGpsRecord.mCollectTow - tow) > 0) {
-    // FIXME: Error handling!
-    log_e("Data already published: %d",
-          mCurrentGpsRecord.mCollectTow);
-    result = false;
   } else {
+    if (mIncomingGpsRecord.mCollectTow > tow) {
+      log_e("TOW getting smaller -  published: %d, received: %d",
+            mIncomingGpsRecord.mCollectTow, tow);
+    }
     if (!mIncomingGpsRecord.isAllSet()) {
       log_w("Had to switch incomplete record tow: %d"
             " pos: %d, info: %d, hdop: %d, vel: %d, started at %d",
