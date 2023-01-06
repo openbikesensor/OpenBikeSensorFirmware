@@ -407,7 +407,7 @@ void writeDataset(const uint8_t confirmationSensorID, DataSet *dataset) {
 }
 
 void loop() {
-  log_i("loop()");
+  log_d("loop()");
   //specify which sensors value can be confirmed by pressing the button, should be configurable
   const uint8_t confirmationSensorID = LEFT_SENSOR_ID;
   auto* currentSet = new DataSet;
@@ -504,7 +504,7 @@ void loop() {
     gps.handle();
     // exit if we are in the loop for more than measureInterval ms. (no GPS trigger)
     if ((currentTimeMillis - startTimeMillis) > (measureInterval + 50)) { // use none GPS Mode??
-      log_i("Force break: start %d now %d took %d", startTimeMillis, currentTimeMillis, currentTimeMillis - startTimeMillis);
+      log_i("Force break: start %d now %d took %dms", startTimeMillis, currentTimeMillis, currentTimeMillis - startTimeMillis);
       break;
     }
   } // end measureInterval while

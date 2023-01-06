@@ -139,7 +139,7 @@ class HCSR04SensorManager {
     static uint32_t microsSince(uint32_t a);
     static uint16_t millisSince(uint16_t milliseconds);
     static void updateStatistics(HCSR04SensorInfo * const sensor);
-    uint16_t startReadingMilliseconds = 0;
+    uint32_t startReadingMilliseconds = 0;
     uint8_t primarySensor = 1;
     uint8_t lastSensor;
 };
