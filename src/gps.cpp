@@ -367,6 +367,7 @@ void Gps::handle(uint32_t milliSeconds) {
 }
 
 bool Gps::handle() {
+  auto now = millis();
   const int bytesAvailable = mSerial.available();
   // log if there is a lot of data in the input buffer for serial data.
   if (bytesAvailable > 250) {
@@ -397,6 +398,12 @@ bool Gps::handle() {
       }
     }
   }
+
+  auto between = now - mMessageStarted;
+  if (between > 20 & bytesProcessed > 0) {
+    log_w("Long delay between gps handle: %dms received %d(%d) bytes took %dms", between, bytesProcessed, bytesAvailable, millis() - now);
+  }
+
   if (mSerial.available() == 0) {
     mMessageStarted = millis(); // buffer empty next message might already start now
   }
