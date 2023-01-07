@@ -202,6 +202,8 @@ jobs:
           LICENSE-ARDUINO-ESP32.md
           LICENSE-OpenSans.txt
           LICENSE
+          fake-cc.log
+          sonarqube-out/build-wrapper-dump.json
         if-no-files-found: error
 
     - name: Generate changelog

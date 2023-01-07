@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo fake-cc running with args "$@" >> fake-cc.log
+
 /github/home/.platformio/packages/toolchain-xtensa32/bin/xtensa-esp32-elf-g++ \
   "$@" 2>&1 \
   | sed 's|: xtensa-esp32-elf|: le32-unknown-nacl|g' \
