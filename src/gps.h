@@ -541,7 +541,7 @@ class Gps {
      * force record switch and creation of a new record if tow existed
      * but changed.
      */
-    bool prepareGpsData(uint32_t tow, uint32_t messageStartedMillisTicks);
+    void prepareGpsData(uint32_t tow, uint32_t messageStartedMillisTicks);
 
     void softResetGps();
 
