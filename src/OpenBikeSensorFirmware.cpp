@@ -250,7 +250,7 @@ void setup() {
     sdCount++;
     obsDisplay->showTextOnGrid(2,
                                obsDisplay->currentLine(), "SD... error " + String(sdCount));
-    if (config.simRaMode || button.read() == HIGH || sdCount > 10) {
+    if (button.read() == HIGH || sdCount > 10) {
       break;
     }
     delay(200);
@@ -281,7 +281,7 @@ void setup() {
     triggerServerMode = true;
   }
 
-  if (button.read() == HIGH || (!config.simRaMode && displayError != 0) || triggerServerMode) {
+  if (button.read() == HIGH || triggerServerMode) {
     obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "Start Server");
     ESP_ERROR_CHECK_WITHOUT_ABORT(
       esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
@@ -346,9 +346,7 @@ void setup() {
     sensorManager->pollDistancesAlternating();
     reportBluetooth();
     gps.showWaitStatus(obsDisplay);
-    if (button.read() == HIGH
-        || (config.simRaMode && !gps.moduleIsAlive()) // no module && simRaMode
-      ) {
+    if (button.read() == HIGH) {
       log_d("Skipped get GPS...");
       obsDisplay->showTextOnGrid(2, obsDisplay->currentLine(), "...skipped");
       break;
