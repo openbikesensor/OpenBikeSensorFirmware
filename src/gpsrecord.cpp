@@ -115,7 +115,7 @@ String GpsRecord::toScaledString(const int32_t value, const uint16_t scale) {
   }
   char buffer[32];
   const int32_t scl = pow10[scale];
-  snprintf(buffer, sizeof(buffer), "%d.%0*d", value / scl, scale, value % scl );
+  snprintf(buffer, sizeof(buffer), "%d.%0*d", value / scl, scale, abs(value % scl) );
   return String(buffer);
 }
 
