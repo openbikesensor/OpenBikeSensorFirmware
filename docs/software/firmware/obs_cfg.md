@@ -72,8 +72,6 @@ relevant put the order of the array content.
             "privacyConfig": 10,
           // Active preset - always 0 as of today
             "selectedPreset": 0,
-          // Selects if the SimRa mode is activated
-            "simRa": false,
           // Password of your Wi-Fi where the OBS should log into in server mode
             "wifiPassword": "swordfish",
           // SSID of your Wi-Fi where the OBS should log into in server mode

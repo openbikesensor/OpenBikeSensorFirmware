@@ -39,7 +39,6 @@ const String ObsConfig::PROPERTY_OBS_NAME = String("obsName");
 const String ObsConfig::PROPERTY_NAME = String("name");
 const String ObsConfig::PROPERTY_BLUETOOTH = String("bluetooth");
 const String ObsConfig::PROPERTY_OFFSET = String("offset");
-const String ObsConfig::PROPERTY_SIM_RA = String("simRa");
 const String ObsConfig::PROPERTY_WIFI_SSID = String("wifiSsid");
 const String ObsConfig::PROPERTY_WIFI_PASSWORD = String("wifiPassword");
 const String ObsConfig::PROPERTY_PORTAL_URL = String("portalUrl");
@@ -139,7 +138,6 @@ void ObsConfig::makeSureSystemDefaultsAreSet() {
   JsonObject data = jsonData["obs"][0];
   ensureSet(data, PROPERTY_OBS_NAME, "OpenBikeSensor-" + String((uint16_t)(ESP.getEfuseMac() >> 32), 16));
   ensureSet(data, PROPERTY_NAME, "default");
-  ensureSet(data, PROPERTY_SIM_RA, false);
   ensureSet(data, PROPERTY_BLUETOOTH, false);
   data[PROPERTY_OFFSET][0] = data[PROPERTY_OFFSET][0] | 35;
   data[PROPERTY_OFFSET][1] = data[PROPERTY_OFFSET][1] | 35;
@@ -205,6 +203,12 @@ bool ObsConfig::setProperty(int profile, String const &key, T const &value) {
   // auto oldValue = jsonData["obs"][profile][key];
   jsonData["obs"][profile][key] = value;
   return true; // value == oldValue;
+}
+
+bool ObsConfig::setProperty(int profile, String const &key, bool const &value) {
+  auto oldValue = jsonData["obs"][profile][key];
+  jsonData["obs"][profile][key] = value;
+  return value == oldValue;
 }
 
 bool ObsConfig::setProperty(int profile, String const &key, int const &value) {
@@ -368,7 +372,6 @@ void ObsConfig::fill(Config &cfg) const {
   cfg.confirmationTimeWindow = getProperty<int>(PROPERTY_CONFIRMATION_TIME_SECONDS);
   cfg.privacyConfig = getProperty<int>(PROPERTY_PRIVACY_CONFIG);
   cfg.bluetooth = getProperty<bool>(PROPERTY_BLUETOOTH);
-  cfg.simRaMode = getProperty<bool>(PROPERTY_SIM_RA);
   cfg.privacyAreas.clear();
   if (selectedProfile != 0) { // not sure if we ever support PAs per profile.
     for (int i = 0; i < jsonData["obs"][selectedProfile][PROPERTY_PRIVACY_AREA].size(); i++) {
@@ -414,7 +417,6 @@ void ObsConfig::parseOldJsonDocument(DynamicJsonDocument &doc) {
   setProperty(0, PROPERTY_CONFIRMATION_TIME_SECONDS, doc["confirmationTimeWindow"] | 5);
   setProperty(0, PROPERTY_PRIVACY_CONFIG, doc["privacyConfig"] | AbsolutePrivacy);
   setProperty(0, PROPERTY_BLUETOOTH, doc["bluetooth"] | false);
-  setProperty(0, PROPERTY_SIM_RA, doc["simRaMode"] | false);
 
   int numPrivacyAreas = doc["numPrivacyAreas"] | 0;
   // Append new values to the privacy-vector
