@@ -418,9 +418,8 @@ void loop() {
   startTimeMillis = incoming.getCreatedAtMillisTicks();
   auto thisLoopTow = incoming.getTow();
   if (startTimeMillis == 0 && thisLoopTow == 0) { // no GPS
-    log_i("NO GPS??");
-    startTimeMillis = millis();
-    thisLoopTow = startTimeMillis / 100; // FIXME: Useful?
+    thisLoopTow = millis() / 1000;
+    startTimeMillis = thisLoopTow * 1000;
   }
   currentSet->time = time(nullptr); // needed?
   currentSet->millis = millis(); // currentTimeMillis; // needed? debugging!
@@ -513,12 +512,13 @@ void loop() {
   currentSet->isInsidePrivacyArea = gps.isInsidePrivacyArea();
   if (currentSet->gpsRecord.getTow() == thisLoopTow) {
     copyCollectedSensorData(currentSet);
-    log_i("NEW SET: TOW: %u GPSms: %u, SETms: %u, GPS Time: %s, SET Time: %s, innerLoops: %d, buffer: %d, write time %ums",
+    log_i("NEW SET: TOW: %u GPSms: %u, SETms: %u, GPS Time: %s, SET Time: %s, innerLoops: %d, buffer: %d, write time %3ums, loop time: %4ums, measurements: %2d",
           currentSet->gpsRecord.getTow(), currentSet->gpsRecord.getCreatedAtMillisTicks(),
           currentSet->millis,
           TimeUtils::dateTimeToString(TimeUtils::toTime(currentSet->gpsRecord.getWeek(), currentSet->gpsRecord.getTow() / 1000)).c_str(),
           TimeUtils::dateTimeToString(currentSet->time).c_str(),
-          loops, dataBuffer.size(), writer->getWriteTimeMillis());
+          loops, dataBuffer.size(), writer->getWriteTimeMillis(),
+          currentTimeMillis - startTimeMillis, lastMeasurements);
     dataBuffer.push(currentSet);
   } else {
     // If we lost time somewhere so GPS data is wrong!
