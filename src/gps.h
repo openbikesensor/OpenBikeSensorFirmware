@@ -94,7 +94,7 @@ class Gps {
     GpsRecord getCurrentGpsRecord() const;
     GpsRecord getIncomingGpsRecord() const;
     bool currentTowEquals(uint32_t tow) const;
-
+    bool hasTowTicks() const;
     int32_t getValidMessageCount() const;
 
     int32_t getMessagesWithFailedCrcCount() const;
@@ -512,7 +512,7 @@ class Gps {
 
     void sendUbx(UBX_MSG ubxMsgId, const uint8_t *payload = {}, uint16_t length = 0);
 
-    bool sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer = {}, size_t size = 0);
+    bool sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer = {}, size_t size = 0, const uint16_t timeoutMs = 200);
 
     void parseUbxMessage();
 

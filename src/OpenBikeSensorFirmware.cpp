@@ -405,22 +405,25 @@ void writeDataset(const uint8_t confirmationSensorID, DataSet *dataset) {
 }
 
 void loop() {
-  log_d("loop()");
+  log_v("loop()");
   //specify which sensors value can be confirmed by pressing the button, should be configurable
   const uint8_t confirmationSensorID = LEFT_SENSOR_ID;
   auto* currentSet = new DataSet;
+  uint32_t thisLoopTow;
 
-  /* only Timeinfo is reliably set until now! */
-  GpsRecord incoming = gps.getIncomingGpsRecord();
-  // GPS time is leading
-  startTimeMillis = incoming.getCreatedAtMillisTicks();
-  auto thisLoopTow = incoming.getTow();
-  if (startTimeMillis == 0 && thisLoopTow == 0) { // no GPS
-    thisLoopTow = millis() / 1000;
-    startTimeMillis = thisLoopTow * 1000;
+  if (gps.hasTowTicks()) {
+    /* only Timeinfo is reliably set until now! */
+    GpsRecord incoming = gps.getIncomingGpsRecord();
+    // GPS time is leading
+    startTimeMillis = incoming.getCreatedAtMillisTicks();
+    thisLoopTow = incoming.getTow();
+    currentSet->time = TimeUtils::toTime(incoming.getWeek(), thisLoopTow / 1000);
+  } else {
+    startTimeMillis = (millis() / 1000) * 1000;
+    currentSet->time = time(nullptr);
+    thisLoopTow = 0;
   }
-  currentSet->time = time(nullptr); // needed?
-  currentSet->millis = millis(); // currentTimeMillis; // needed? debugging!
+  currentSet->millis = startTimeMillis;
   currentSet->batteryLevel = voltageMeter->read();
 
   lastMeasurements = sensorManager->m_sensors[confirmationSensorID].numberOfTriggers;
@@ -430,7 +433,7 @@ void loop() {
   int timeDelta = (int) (currentTimeMillis - timeOfMinimum);
   if (datasetToConfirm != nullptr &&
       timeDelta > (config.confirmationTimeWindow * 1000)) {
-    log_i("minimum %dcm unconfirmed - resetting", minDistanceToConfirm);
+    log_d("minimum %dcm unconfirmed - resetting", minDistanceToConfirm);
     minDistanceToConfirm = MAX_SENSOR_VALUE;
     datasetToConfirm = nullptr;
   }
@@ -440,6 +443,10 @@ void loop() {
   while (gps.currentTowEquals(thisLoopTow)) {
     loops++;
     currentTimeMillis = millis();
+    // No GPS Mode:
+    if (thisLoopTow == 0 && ((startTimeMillis / 1000) != (currentTimeMillis / 1000)) ) {
+      break;
+    }
     button.handle(currentTimeMillis);
     gps.handle();
     if (sensorManager->pollDistancesAlternating()) {
@@ -497,20 +504,14 @@ void loop() {
 
     if(BMP280_active == true)  TemperatureValue = bmp280.readTemperature();
 
-    yield();
     gps.handle();
-    // exit if we are in the loop for more than measureInterval ms. (no GPS trigger)
-    if ((currentTimeMillis - startTimeMillis) > (measureInterval + 50)) { // use none GPS Mode??
-      log_i("Force break: start %d now %d took %dms", startTimeMillis, currentTimeMillis, currentTimeMillis - startTimeMillis);
-      break;
-    }
   } // end measureInterval while
 
   currentSet->gpsRecord = gps.getCurrentGpsRecord();
   currentSet->isInsidePrivacyArea = gps.isInsidePrivacyArea();
   if (currentSet->gpsRecord.getTow() == thisLoopTow) {
     copyCollectedSensorData(currentSet);
-    log_i("NEW SET: TOW: %u GPSms: %u, SETms: %u, GPS Time: %s, SET Time: %s, innerLoops: %d, buffer: %d, write time %3ums, loop time: %4ums, measurements: %2d",
+    log_d("NEW SET: TOW: %u GPSms: %u, SETms: %u, GPS Time: %s, SET Time: %s, innerLoops: %d, buffer: %d, write time %3ums, loop time: %4ums, measurements: %2d",
           currentSet->gpsRecord.getTow(), currentSet->gpsRecord.getCreatedAtMillisTicks(),
           currentSet->millis,
           TimeUtils::dateTimeToString(TimeUtils::toTime(currentSet->gpsRecord.getWeek(), currentSet->gpsRecord.getTow() / 1000)).c_str(),
@@ -551,7 +552,7 @@ void loop() {
     // In this case the dataset is kept until we know if there are further
     // confirmed values in the set to be written.
     if (dataBuffer.isEmpty() || dataBuffer.first()->confirmedDistancesIndex.empty()) {
-      log_i("Confirmed data flushed to sd.");
+      log_d("Confirmed data flushed to sd.");
       transmitConfirmedData = false;
     }
   }

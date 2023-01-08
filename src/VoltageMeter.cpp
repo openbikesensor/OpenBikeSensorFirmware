@@ -105,7 +105,7 @@ int8_t VoltageMeter::readPercentage() {
   } else {
     percentage = 0;
   }
-  log_d("VoltageMeter: %.2fV %d%%", voltage, percentage);
+  log_v("VoltageMeter: %.2fV %d%%", voltage, percentage);
   return percentage;
 }
 
