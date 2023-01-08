@@ -41,6 +41,8 @@ void Gps::begin() {
   pollStatistics();
   if (mLastTimeTimeSet == 0) {
     setMessageInterval(UBX_MSG::NAV_TIMEGPS, 1);
+  } else {
+    setMessageInterval(UBX_MSG::NAV_TIMEGPS, 240);
   }
 }
 
