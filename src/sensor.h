@@ -94,7 +94,7 @@ class HCSR04SensorManager {
   public:
     HCSR04SensorManager() {}
     virtual ~HCSR04SensorManager() {}
-    void reset();
+    void reset(uint32_t startMillisTicks);
     void registerSensor(const HCSR04SensorInfo &, uint8_t idx);
     void setOffsets(std::vector<uint16_t>);
     void setPrimarySensor(uint8_t idx);
@@ -139,7 +139,7 @@ class HCSR04SensorManager {
     static uint32_t microsSince(uint32_t a);
     static uint16_t millisSince(uint16_t milliseconds);
     static void updateStatistics(HCSR04SensorInfo * const sensor);
-    uint16_t startReadingMilliseconds = 0;
+    uint32_t startReadingMilliseconds = 0;
     uint8_t primarySensor = 1;
     uint8_t lastSensor;
 };

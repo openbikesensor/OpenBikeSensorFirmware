@@ -41,6 +41,8 @@ void Gps::begin() {
   pollStatistics();
   if (mLastTimeTimeSet == 0) {
     setMessageInterval(UBX_MSG::NAV_TIMEGPS, 1);
+  } else {
+    setMessageInterval(UBX_MSG::NAV_TIMEGPS, 240);
   }
 }
 
@@ -103,7 +105,7 @@ void Gps::configureGpsModule() {
   log_d("Start CFG");
   // INF messages via UBX only
   const uint8_t UBX_CFG_INF_UBX[] = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0xef, 0x00, 0x00, 0x00, 0x00,
   };
   sendAndWaitForAck(UBX_MSG::CFG_INF, UBX_CFG_INF_UBX, sizeof(UBX_CFG_INF_UBX));
 
@@ -164,7 +166,8 @@ void Gps::configureGpsModule() {
     0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x17
   };
-  if (sendAndWaitForAck(UBX_MSG::CFG_CFG, UBX_CFG_CFG_SAVE, sizeof(UBX_CFG_CFG_SAVE))) {
+  // write cfg takes longer.
+  if (sendAndWaitForAck(UBX_MSG::CFG_CFG, UBX_CFG_CFG_SAVE, sizeof(UBX_CFG_CFG_SAVE), 3000)) {
     addStatisticsMessage("OBS: Did update GPS settings.");
   } else {
     addStatisticsMessage("OBS: Failed to save updated GPS settings.");
@@ -178,7 +181,9 @@ void Gps::softResetGps() {
   handle();
   const uint8_t UBX_CFG_RST[] = {0x00, 0x00, 0x02, 0x00}; // WARM START
 //  const uint8_t UBX_CFG_RST[] = {0xFF, 0xFF, 0x02, 0x00}; // Cold START
-  sendAndWaitForAck(UBX_MSG::CFG_RST, UBX_CFG_RST, 4);
+  // we had the case where the reset took several seconds
+  // see https://github.com/openbikesensor/OpenBikeSensorFirmware/issues/309
+  sendAndWaitForAck(UBX_MSG::CFG_RST, UBX_CFG_RST, 4, 5000);
   handle(200);
 }
 
@@ -208,7 +213,8 @@ void Gps::enableSbas() {// Enable SBAS subsystem!
 void Gps::enableAlpIfDataIsAvailable() {
   if (AlpData::available()) {
     log_i("Enable ALP");
-    setMessageInterval(UBX_MSG::AID_ALPSRV, 1);
+    // don't wait for ack - newer modules do not support this old ALPSRV
+    setMessageInterval(UBX_MSG::AID_ALPSRV, 1, false);
     handle(100);
   } else {
     log_w("Disable ALP - no data!");
@@ -260,6 +266,9 @@ bool Gps::setMessageInterval(UBX_MSG msgId, uint8_t seconds, bool waitForAck) {
   } else {
     result = true;
     sendUbx(UBX_MSG::CFG_MSG, ubxCfgMsg, sizeof(ubxCfgMsg));
+  }
+  if (!result) {
+    log_e("Failed for CFG_MSG of 0x%04x!", msgId);
   }
   return result;
 }
@@ -319,16 +328,14 @@ bool Gps::checkCommunication() {
   return sendAndWaitForAck(UBX_MSG::CFG_RINV) || mAckReceived || mNakReceived;
 }
 
-bool Gps::sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer, size_t size) {
-  const int tries = 3;
-  // we had the case see https://github.com/openbikesensor/OpenBikeSensorFirmware/issues/309
-  const int timeoutMs = 3000;
+bool Gps::sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer, size_t size, const uint16_t timeoutMs) {
+  const int tries = 2;
+  auto start = millis();
 
   bool result = false;
   for (int i = 0; i < tries; i++) {
     handle();
-
-    const auto start = millis();
+    auto const loopStart = millis();
     mNakReceived = false;
     mAckReceived = false;
     mLastAckMsgId = 0;
@@ -337,7 +344,7 @@ bool Gps::sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer, size_t size
     mSerial.flush();
     handle();
     while (mLastAckMsgId != (uint16_t) ubxMsgId
-      && millis() - start < timeoutMs) {
+      && millis() - loopStart < timeoutMs) {
       if (!handle()) {
         delay(1);
       }
@@ -346,12 +353,12 @@ bool Gps::sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer, size_t size
       result = mAckReceived;
       break;
     }
-    log_e("Retry to send 0x%04x", ubxMsgId);
+    log_w("Retry to send 0x%04x after %dms.", ubxMsgId, millis() - loopStart);
   }
   if (result) {
-    log_d("Success in sending cfg. 0x%04x", ubxMsgId);
+    log_d("Success in sending cfg. 0x%04x took %dms", ubxMsgId, millis() - start);
   } else {
-    log_e("Failed to send cfg. 0x%04x NAK: %d ", ubxMsgId, mNakReceived);
+    log_e("Failed to send cfg. 0x%04x NAK: %d after %dms", ubxMsgId, mNakReceived, millis() - start);
   }
   return result;
 }
@@ -367,11 +374,23 @@ void Gps::handle(uint32_t milliSeconds) {
 }
 
 bool Gps::handle() {
-  const int bytesAvailable = mSerial.available();
-  // log if there is a lot of data in the input buffer for serial data.
-  if (bytesAvailable > 250) {
+  auto handleStart = millis();
+  auto messageStarted = mMessageStarted;
+  auto lastCallDelayMs = handleStart - messageStarted;
+  const auto bytesAvailable = mSerial.available();
+
+  if (bytesAvailable > 0 && lastCallDelayMs > 600) { // we would get only old data
+    addStatisticsMessage(String("readGPSData(clear: ") + String(bytesAvailable)
+                         + " bytes in buffer, lastCall " + String(lastCallDelayMs)
+                         + "ms ago, at " + TimeUtils::dateTimeToString() + ")");
+    mMessageStarted = handleStart;
+    for (int i = 0; i < bytesAvailable; i++) {
+      mSerial.read();
+    }
+    handleStart = millis();
+  } else if (bytesAvailable > 250) {
     addStatisticsMessage(String("readGPSData(av: ") + String(bytesAvailable)
-                         + " bytes in buffer, lastCall " + String(millis() - mMessageStarted)
+                         + " bytes in buffer, lastCall " + String(lastCallDelayMs)
                          + "ms ago, at " + TimeUtils::dateTimeToString() + ")");
   }
   boolean gotGpsData = false;
@@ -384,17 +403,22 @@ bool Gps::handle() {
 #endif
     if (encode(data)) {
       gotGpsData = true;
-      if (bytesProcessed > 1024) {
+      if (bytesProcessed > 2048) {
         log_e("break after %d bytes", bytesProcessed);
         break;
       }
     }
   }
+  auto between = handleStart - messageStarted;
+  // ~150ms is needed if we write to SD
+  if (between > 160 && bytesProcessed > 0 || bytesProcessed > 1024) {
+    addStatisticsMessage(String("readGPSData(longDelay: ") + String(between)
+      + "ms received " + String(bytesProcessed) + "(" + String(bytesAvailable) + ") in " + String(millis() - handleStart) + "ms)");
+  }
   if (mSerial.available() == 0) {
     mMessageStarted = millis(); // buffer empty next message might already start now
   }
   // TODO: Add dead device detection re-init if no data for 60 seconds...
-
   return gotGpsData;
 }
 
@@ -888,10 +912,8 @@ void Gps::parseUbxMessage() {
             mGpsBuffer.navDop.iTow, mGpsBuffer.navDop.gDop, mGpsBuffer.navDop.pDop,
             mGpsBuffer.navDop.tDop, mGpsBuffer.navDop.vDop, mGpsBuffer.navDop.hDop,
             mGpsBuffer.navDop.nDop, mGpsBuffer.navDop.eDop);
-      if (prepareGpsData(mGpsBuffer.navDop.iTow)) {
-        mIncomingGpsRecord.setHdop(mGpsBuffer.navDop.hDop);
-        checkGpsDataState();
-      }
+      prepareGpsData(mGpsBuffer.navDop.iTow, mMessageStarted);
+      mIncomingGpsRecord.setHdop(mGpsBuffer.navDop.hDop);
     }
       break;
     case (uint16_t) UBX_MSG::NAV_SOL: {
@@ -906,11 +928,10 @@ void Gps::parseUbxMessage() {
                                + " at " + TimeUtils::dateTimeToString());
         }
         mLastGpsWeek = mGpsBuffer.navSol.week;
+        mIncomingGpsRecord.setWeek(mLastGpsWeek);
       }
-      if (prepareGpsData(mGpsBuffer.navSol.iTow)) {
-        mIncomingGpsRecord.setInfo(mGpsBuffer.navSol.numSv, mGpsBuffer.navSol.gpsFix, mGpsBuffer.navSol.flags);
-        checkGpsDataState();
-      }
+      prepareGpsData(mGpsBuffer.navDop.iTow, mMessageStarted);
+      mIncomingGpsRecord.setInfo(mGpsBuffer.navSol.numSv, mGpsBuffer.navSol.gpsFix, mGpsBuffer.navSol.flags);
     }
       break;
     case (uint16_t) UBX_MSG::NAV_VELNED: {
@@ -918,27 +939,24 @@ void Gps::parseUbxMessage() {
             " speedAcc: %d, cAcc: %d",
             mGpsBuffer.navVelned.iTow, mGpsBuffer.navVelned.speed, mGpsBuffer.navVelned.gSpeed,
             mGpsBuffer.navVelned.heading, mGpsBuffer.navVelned.sAcc, mGpsBuffer.navVelned.cAcc);
-      if (prepareGpsData(mGpsBuffer.navSol.iTow)) {
-        mIncomingGpsRecord.setVelocity(mGpsBuffer.navVelned.gSpeed, mGpsBuffer.navVelned.heading);
-        checkGpsDataState();
-      }
+      prepareGpsData(mGpsBuffer.navDop.iTow, mMessageStarted);
+      mIncomingGpsRecord.setVelocity(mGpsBuffer.navVelned.gSpeed, mGpsBuffer.navVelned.heading);
     }
       break;
     case (uint16_t) UBX_MSG::NAV_POSLLH: {
-      log_v("POSLLH: iTOW: %u lon: %d lat: %d height: %d hMsl %d, hAcc %d, vAcc %d delay %dms",
+      log_d("POSLLH: iTOW: %u lon: %d lat: %d height: %d hMsl %d, hAcc %d, vAcc %d delay %dms",
             mGpsBuffer.navPosllh.iTow, mGpsBuffer.navPosllh.lon, mGpsBuffer.navPosllh.lat,
             mGpsBuffer.navPosllh.height, mGpsBuffer.navPosllh.hMsl, mGpsBuffer.navPosllh.hAcc,
             mGpsBuffer.navPosllh.vAcc, delayMs);
-      if (prepareGpsData(mGpsBuffer.navSol.iTow)) {
-        mIncomingGpsRecord.setPosition(mGpsBuffer.navPosllh.lon, mGpsBuffer.navPosllh.lat, mGpsBuffer.navPosllh.hMsl);
-        checkGpsDataState();
-      }
+      prepareGpsData(mGpsBuffer.navDop.iTow, mMessageStarted);
+      mIncomingGpsRecord.setPosition(mGpsBuffer.navPosllh.lon, mGpsBuffer.navPosllh.lat, mGpsBuffer.navPosllh.hMsl);
     }
       break;
     case (uint16_t) UBX_MSG::NAV_TIMEGPS:
       handleUbxNavTimeGps(mGpsBuffer.navTimeGps, receivedMs, delayMs);
       break;
     case (uint16_t) UBX_MSG::NAV_TIMEUTC: {
+      prepareGpsData(mGpsBuffer.navTimeUtc.iTow, mMessageStarted);
       log_d("TIMEUTC: iTOW: %u acc: %uns nano: %d %04u-%02u-%02uT%02u:%02u:%02u valid 0x%02x delay %dms",
             mGpsBuffer.navTimeUtc.iTow, mGpsBuffer.navTimeUtc.tAcc, mGpsBuffer.navTimeUtc.nano,
             mGpsBuffer.navTimeUtc.year, mGpsBuffer.navTimeUtc.month, mGpsBuffer.navTimeUtc.day,
@@ -947,6 +965,7 @@ void Gps::parseUbxMessage() {
     }
       break;
     case (uint16_t) UBX_MSG::NAV_SBAS: {
+      prepareGpsData(mGpsBuffer.navSbas.iTow, mMessageStarted);
       log_d("SBAS: iTOW: %u geo: %u, mode: %u, sys: %u, service: %02x, cnt: %d",
             mGpsBuffer.navSbas.iTow, mGpsBuffer.navSbas.geo, mGpsBuffer.navSbas.mode,
             mGpsBuffer.navSbas.sys, mGpsBuffer.navSbas.service, mGpsBuffer.navSbas.cnt);
@@ -1052,6 +1071,7 @@ void Gps::parseUbxMessage() {
 }
 
 void Gps::handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps &message, const uint32_t receivedMs, const uint32_t delayMs) {
+  prepareGpsData(message.iTow, mMessageStarted);
   log_i("TIMEGPS: iTOW: %u, fTOW: %d, week %d, leapS: %d, valid: 0x%02x (%s%s%s), tAcc %uns, DATE: %s, delay %dms",
         message.iTow, message.fTow, message.week, message.leapS, message.valid,
         message.valid & 1 ? "TOW" : "",
@@ -1085,7 +1105,7 @@ void Gps::handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps &message, const uin
     if (mLastTimeTimeSet == 0) {
       mLastTimeTimeSet = receivedMs;
       // This triggers another NAV-TIMEGPS message!
-      setMessageInterval(UBX_MSG::NAV_TIMEGPS, 240); // every 4 minutes
+      setMessageInterval(UBX_MSG::NAV_TIMEGPS, 240, false); // every 4 minutes
     } else {
       mLastTimeTimeSet = receivedMs;
     }
@@ -1170,40 +1190,44 @@ void Gps::resetMessages() {
 }
 
 /* Prepare the GPS data record for incoming data for the given tow. */
-bool Gps::prepareGpsData(uint32_t tow) {
-  bool result = true;
+void Gps::prepareGpsData(uint32_t tow, uint32_t messageStartedMillisTicks) {
   if (mIncomingGpsRecord.mCollectTow == tow) {
     // fine already prepared
   } else if (mIncomingGpsRecord.mCollectTow == 0) {
-    mIncomingGpsRecord.setTow(tow);
-    mIncomingGpsRecord.setWeek(mLastGpsWeek);
-  } else if ((int32_t) (mIncomingGpsRecord.mCollectTow - tow) > 0) {
-    log_e("Data already published: %d",
-          mCurrentGpsRecord.mCollectTow);
-    result = false;
+    // new tow
+    mIncomingGpsRecord.reset(tow, mLastGpsWeek, messageStartedMillisTicks);
   } else {
+    if (mIncomingGpsRecord.mCollectTow > tow) {
+      log_e("TOW getting smaller -  published: %d, received: %d",
+            mIncomingGpsRecord.mCollectTow, tow);
+    }
     if (!mIncomingGpsRecord.isAllSet()) {
       log_w("Had to switch incomplete record tow: %d"
-            " pos: %d, info: %d, hdop: %d, vel: %d",
+            " pos: %d, info: %d, hdop: %d, vel: %d, started at %d",
             mIncomingGpsRecord.mCollectTow,
             mIncomingGpsRecord.mPositionSet,
             mIncomingGpsRecord.mInfoSet,
             mIncomingGpsRecord.mHdopSet,
-            mIncomingGpsRecord.mVelocitySet);
+            mIncomingGpsRecord.mVelocitySet,
+            mIncomingGpsRecord.mCreatedAtMillisTicks);
     }
     mCurrentGpsRecord = mIncomingGpsRecord;
-    mIncomingGpsRecord.reset();
-    mIncomingGpsRecord.setTow(tow);
+    mIncomingGpsRecord.reset(tow, mLastGpsWeek, messageStartedMillisTicks);
   }
-  return result;
 }
 
-void Gps::checkGpsDataState() {
-  if (mIncomingGpsRecord.isAllSet()) {
-    mCurrentGpsRecord = mIncomingGpsRecord;
-    mIncomingGpsRecord.reset();
-  }
+GpsRecord Gps::getIncomingGpsRecord() const {
+  return mIncomingGpsRecord;
 }
+
+bool Gps::currentTowEquals(uint32_t tow) const {
+  return mIncomingGpsRecord.mCollectTow == tow;
+};
+
+bool Gps::hasTowTicks() const {
+  return mIncomingGpsRecord.mCollectTow != 0
+    || mIncomingGpsRecord.mCollectTow != mCurrentGpsRecord.mCollectTow;
+};
 
 GpsRecord Gps::getCurrentGpsRecord() const {
   return mCurrentGpsRecord;

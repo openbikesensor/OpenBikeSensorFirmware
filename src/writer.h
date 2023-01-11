@@ -65,10 +65,10 @@ class FileWriter {
     virtual bool append(DataSet &) = 0;
     bool appendString(const String &s);
     bool flush();
+    unsigned long getWriteTimeMillis() const;
 
   protected:
     uint16_t getBufferLength() const;
-    unsigned long getWriteTimeMillis() const;
 
   private:
     static void storeTrackNumber(int trackNumber);

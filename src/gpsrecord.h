@@ -58,14 +58,14 @@ class GpsRecord {
     GPS_FIX getFixStatus() const;
     uint32_t getTow() const;
     uint32_t getWeek() const;
+    uint32_t getCreatedAtMillisTicks() const;
 
   protected:
     /* Clear all collected data */
-    void reset();
+    void reset(uint32_t tow, uint32_t gpsWeek, uint32_t createdAtMillisTicks);
 
     /* Store tow and related date time data. */
-    void setTow(uint32_t tow);
-    void setWeek(uint32_t tow);
+    void setWeek(uint32_t gpsWeek);
 
     void setPosition(int32_t lon, int32_t lat, int32_t height);
 
@@ -82,7 +82,7 @@ class GpsRecord {
      * merge records together.
      */
     uint32_t mCollectTow = 0;
-    uint32_t mCollectWeek = 0; // mainly debug
+    uint32_t mCollectWeek = 0;
     /* deg, scale 1e-7 */
     int32_t mLongitude;
     /* deg, scale 1e-7 */
@@ -99,6 +99,7 @@ class GpsRecord {
     bool mVelocitySet = false;
     bool mInfoSet = false;
     bool mHdopSet = false;
+    uint32_t mCreatedAtMillisTicks;
     static const int32_t pow10[10];
     static String toScaledString(int32_t value, uint16_t scale);
 
