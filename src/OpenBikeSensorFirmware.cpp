@@ -36,7 +36,7 @@
 
 // --- Global variables ---
 // Version only change the "vN.M" part if needed.
-const char *OBSVersion = "v0.17" BUILD_NUMBER;
+const char *OBSVersion = "v0.18" BUILD_NUMBER;
 
 const uint8_t LEFT_SENSOR_ID = 1;
 const uint8_t RIGHT_SENSOR_ID = 0;
