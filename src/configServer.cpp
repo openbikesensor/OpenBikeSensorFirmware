@@ -39,6 +39,9 @@
 #include "utils/https.h"
 #include "utils/timeutils.h"
 #include "obsimprov.h"
+#include <WiFi.h>
+#include <WiFiMulti.h>
+#include <esp_arduino_version.h>
 
 using namespace httpsserver;
 
@@ -56,8 +59,9 @@ static HTTPServer * insecureServer;
 static SSLCert * serverSslCert;
 static String OBS_ID;
 static String OBS_ID_SHORT;
-static DNSServer *dnsServer;
+static DNSServer *dnsServer = nullptr;
 static ObsImprov *obsImprov = nullptr;
+static WiFiMulti wifiMulti;
 
 // TODO
 //  - Fix CSS Style for mobile && desktop
@@ -230,16 +234,10 @@ static const char* const rebootIndex =
 // Wifi
 // #########################################
 
-static const char* const wifiSettingsIndex =
-  "<script>"
-  "function resetPassword() { document.getElementById('pass').value = ''; }"
-  "</script>"
-  "<h3>Settings</h3>"
-  "SSID"
-  "<input name=ssid placeholder='ssid' value='{ssid}'>"
-  "Password"
-  "<input id=pass name=pass placeholder='password' type='Password' value='{password}' onclick='resetPassword()'>"
-  "<input type=submit class=btn value=Save>";
+static const char* const wifiSettingsIndexPostfix =
+  "<input type='submit' class='btn' value='Save'>"
+;
+
 
 static const char* const backupIndex =
   "<p>This backups and restores the device configuration incl. the Basic Config, Privacy Zones and Wifi Settings.</p>"
@@ -446,6 +444,7 @@ static void handleBackup(HTTPRequest * req, HTTPResponse * res);
 static void handleBackupDownload(HTTPRequest * req, HTTPResponse * res);
 static void handleBackupRestore(HTTPRequest * req, HTTPResponse * res);
 static void handleWifi(HTTPRequest * req, HTTPResponse * res);
+static void handleWifiDeleteAction(HTTPRequest * req, HTTPResponse * res);
 static void handleWifiSave(HTTPRequest * req, HTTPResponse * res);
 static void handleConfig(HTTPRequest * req, HTTPResponse * res);
 static void handleConfigSave(HTTPRequest * req, HTTPResponse * res);
@@ -478,6 +477,7 @@ static void handleHttpAction(HTTPRequest *req, HTTPResponse *res);
 static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<void()> next);
 
 bool configServerWasConnectedViaHttpFlag = false;
+bool wifiNetworkIsTrusted = false;
 
 static void tryWiFiConnect();
 static uint16_t countFilesInRoot();
@@ -535,6 +535,7 @@ void registerPages(HTTPServer * httpServer) {
   httpServer->registerNode(new ResourceNode("/settings/restore", HTTP_POST, handleBackupRestore));
   httpServer->registerNode(new ResourceNode("/settings/wifi", HTTP_GET, handleWifi));
   httpServer->registerNode(new ResourceNode("/settings/wifi/action", HTTP_POST, handleWifiSave));
+  httpServer->registerNode(new ResourceNode("/settings/wifi/delete", HTTP_POST, handleWifiDeleteAction));
   httpServer->registerNode(new ResourceNode("/settings/general", HTTP_GET, handleConfig));
   httpServer->registerNode(new ResourceNode("/settings/general/action", HTTP_POST, handleConfigSave));
   httpServer->registerNode(new ResourceNode("/updateFlash", HTTP_GET, handleFlashUpdate));
@@ -562,10 +563,13 @@ void registerPages(HTTPServer * httpServer) {
 
 void beginPages() {
   registerPages(server);
-
-  insecureServer->registerNode(new ResourceNode("/cert", HTTP_GET, handleDownloadCert));
-  insecureServer->registerNode(new ResourceNode("/http", HTTP_POST, handleHttpAction));
-  insecureServer->setDefaultNode(new ResourceNode("", HTTP_GET,  handleHttpsRedirect));
+  if (wifiNetworkIsTrusted) {
+    registerPages(insecureServer);
+  } else {
+    insecureServer->registerNode(new ResourceNode("/cert", HTTP_GET, handleDownloadCert));
+    insecureServer->registerNode(new ResourceNode("/http", HTTP_POST, handleHttpAction));
+    insecureServer->setDefaultNode(new ResourceNode("", HTTP_GET, handleHttpsRedirect));
+  }
   insecureServer->setDefaultHeader("Server", std::string("OBS/") + OBSVersion);
 }
 
@@ -672,7 +676,9 @@ bool CreateWifiSoftAP() {
   IPAddress apIP(172, 20, 0, 1);
   IPAddress netMsk(255, 255, 255, 0);
 
+  WiFi.softAPsetHostname("obs");
   WiFi.softAPConfig(apIP, apIP, netMsk);
+  WiFi.softAPsetHostname("obs");
   if (softAccOK) {
     dnsServer = new DNSServer();
     // with "*" we get a lot of requests from all sort of apps,
@@ -687,17 +693,33 @@ bool CreateWifiSoftAP() {
 }
 
 /* Actions to be taken when we get internet. */
-static void wifiConectedActions() {
+static void wifiConnectedActions() {
   log_i("Connected to %s, IP: %s",
         WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
   if (dnsServer) { // was used to announce AP ip
     dnsServer->start(53, "obs.local", WiFi.localIP());
   }
   updateDisplay(obsDisplay);
-  MDNS.begin("obs");
-  TimeUtils::setClockByNtp(WiFi.gatewayIP().toString().c_str());
+  if (MDNS.begin("obs")) {
+    log_i("MDNS responder started");
+  } else {
+    log_e("Error setting up MDNS responder!");
+  }
+  if (WiFiClass::status() == WL_CONNECTED) {
+    TimeUtils::setClockByNtpAndWait(WiFi.gatewayIP().toString().c_str());
+  }
   if (SD.begin() && WiFiClass::status() == WL_CONNECTED) {
     AlpData::update(obsDisplay);
+  }
+
+  String ssid = WiFi.SSID();
+  int configs = theObsConfig->getNumberOfWifiConfigs();
+  for (int i = 0; i < configs; i++) {
+    auto wifiConfig = theObsConfig->getWifiConfig(i);
+    if (ssid == wifiConfig.ssid) {
+      wifiNetworkIsTrusted = wifiConfig.trusted;
+      break;
+    }
   }
 }
 
@@ -716,7 +738,7 @@ bool initWifi(const std::string & ssid, const std::string & password) {
   bool connected = WiFiClass::status() == WL_CONNECTED;
   if (connected) {
     theObsConfig->saveConfig();
-    wifiConectedActions();
+    wifiConnectedActions();
   } else {
     CreateWifiSoftAP();
     obsDisplay->showTextOnGrid(0, 4, "Connect failed.");
@@ -783,52 +805,43 @@ void startServer(ObsConfig *obsConfig) {
     touchConfigServerHttp(); // side effect do not allow track upload via button
     MDNS.begin("obs");
   } else {
-    wifiConectedActions();
+    wifiConnectedActions();
   }
 
   createHttpServer();
   createImprovServer();
 }
 
-static void tryWiFiConnect() {
-  if (!WiFiGenericClass::mode(WIFI_MODE_STA)) {
-    log_e("Failed to enable WiFi station mode.");
-  }
-  if (!WiFi.setHostname("obs")) {
-    log_e("Failed to set hostname to 'obs'.");
-  }
-  if (theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID).isEmpty()) {
+static void setWifiMultiAps() {
+  if (theObsConfig->getNumberOfWifiConfigs() == 0) {
     log_w("No wifi SID set - will not try to connect.");
     return;
   }
-
-  const auto startTime = millis();
-  const uint16_t timeout = 10000;
-  // Connect to WiFi network
-  while ((WiFiClass::status() != WL_CONNECTED) && (( millis() - startTime) <= timeout)) {
-    log_i("Trying to connect to %s",
-      theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_SSID));
-    wl_status_t status = WiFi.begin(
-      theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_SSID),
-      theObsConfig->getProperty<const char *>(ObsConfig::PROPERTY_WIFI_PASSWORD));
-    log_d("WiFi status after begin is %d", status);
-    status = static_cast<wl_status_t>(WiFi.waitForConnectResult());
-    while(status != WL_CONNECTED && (( millis() - startTime) <= timeout)) {
-      log_d("WiFi status after wait is %d", status);
-      if (status >= WL_CONNECT_FAILED) {
-        log_i("WiFi resetting connection for retry. (status 0x%02x))", status);
-        WiFi.disconnect(true, true);
-        break;
-      } else if (status == WL_NO_SSID_AVAIL) {
-        log_i("WiFi SSID not found - delay (status 0x%02x))", status);
-        delay(250);// WiFi.scanNetworks(false);
-      }
-      delay(250);
-      status = static_cast<wl_status_t>(WiFi.waitForConnectResult());
-    }
+  for (int i = 0; i < theObsConfig->getNumberOfWifiConfigs(); i++) {
+    WifiConfig wifiConfig = theObsConfig->getWifiConfig(i);
+    log_i("Adding wifi SID %s", wifiConfig.ssid.c_str());
+    wifiMulti.addAP(wifiConfig.ssid.c_str(), wifiConfig.password.c_str());
   }
 }
 
+static void tryWiFiConnect() {
+  if (WiFiClass::setHostname("obs")) {
+    log_e("Failed to set hostname to 'obs'.");
+  }
+  if (theObsConfig->getNumberOfWifiConfigs() == 0) {
+    log_w("No wifi SID set - will not try to connect.");
+    return;
+  }
+  setWifiMultiAps();
+
+  log_w("Connection to wifi.");
+  if (wifiMulti.run(10000) == WL_CONNECTED) {
+    log_i("Connected to wifi SID: %s strength %ddBm ip: %s.",
+          WiFi.SSID().c_str(), WiFi.RSSI(), WiFi.localIP().toString().c_str());
+  } else {
+    log_w("Failed to connect to wifi.");
+  }
+}
 
 static void handleIndex(HTTPRequest *, HTTPResponse * res) {
 // ###############################################################
@@ -872,6 +885,43 @@ static String appVersion(const esp_partition_t *partition) {
   }
 }
 
+static String wifiSatusAsString() {
+  switch (WiFiClass::status()) {
+    case WL_NO_SHIELD:
+      return "No WiFi shield";
+    case WL_IDLE_STATUS:
+      return "Idle";
+    case WL_NO_SSID_AVAIL:
+      return "No SSID available";
+    case WL_SCAN_COMPLETED:
+      return "Scan completed";
+    case WL_CONNECTED:
+      return "Connected";
+    case WL_CONNECT_FAILED:
+      return "Connection failed";
+    case WL_CONNECTION_LOST:
+      return "Connection lost";
+    case WL_DISCONNECTED:
+      return "Disconnected";
+    default:
+      return "Unknown";
+  }
+}
+
+static String wifiModeAsString() {
+switch (WiFiClass::getMode()) {
+    case WIFI_OFF:
+      return "Off";
+    case WIFI_STA:
+      return "Station";
+    case WIFI_AP:
+      return "Access Point";
+    case WIFI_AP_STA:
+      return "Access Point and Station";
+    default:
+      return "Unknown";
+  }
+}
 
 static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
   res->setHeader("Content-Type", "text/html");
@@ -890,6 +940,9 @@ static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
   res->print(keyValue("Chip id", chipId));
   res->print(keyValue("FlashApp Version", Firmware::getFlashAppVersion()));
   res->print(keyValue("IDF Version", esp_get_idf_version()));
+  res->print(keyValue("Arduino Version", ESP_ARDUINO_VERSION_MAJOR + String(".") +
+                                          ESP_ARDUINO_VERSION_MINOR + String(".") +
+                                          ESP_ARDUINO_VERSION_PATCH));
 
   res->print(keyValue("App size", ObsUtils::toScaledByteString(ESP.getSketchSize())));
   res->print(keyValue("App space", ObsUtils::toScaledByteString(ESP.getFreeSketchSpace())));
@@ -1007,11 +1060,29 @@ static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
   page += keyValue("Display i2c timeout", Wire.getTimeOut(), "ms");
 
   page += "<h3>WiFi</h3>";
-  page += keyValue("Local IP", WiFi.localIP().toString());
-  page += keyValue("AP IP", WiFi.softAPIP().toString());
-  page += keyValue("Gateway IP", WiFi.gatewayIP().toString());
-  page += keyValue("Hostname", WiFi.getHostname());
-  page += keyValue("SSID", WiFi.SSID());
+  page += keyValue("Mode", wifiModeAsString());
+  if (WiFiGenericClass::getMode() == WIFI_MODE_AP || WiFiGenericClass::getMode() == WIFI_MODE_APSTA) {
+    page += keyValue("AP SSID", WiFi.softAPSSID());
+    page += keyValue("AP Hostname", WiFi.softAPgetHostname());
+    page += keyValue("AP IP", WiFi.softAPIP().toString());
+    page += keyValue("AP MAC", WiFi.softAPmacAddress());
+    page += keyValue("AP BSSID", WiFi.softAPmacAddress());
+    page += keyValue("AP Clients", WiFi.softAPgetStationNum());
+  } else {
+    page += keyValue("SSID", WiFi.SSID());
+    page += keyValue("Hostname", WiFiClass::getHostname());
+    page += keyValue("Local IP", WiFi.localIP().toString());
+    page += keyValue("Gateway IP", WiFi.gatewayIP().toString());
+    page += keyValue("Subnet Mask", WiFi.subnetMask().toString());
+    page += keyValue("MAC", WiFi.macAddress());
+    page += keyValue("RSSI", WiFi.RSSI(), "dBm");
+    page += keyValue("DNS", WiFi.dnsIP().toString());
+    page += keyValue("Status", wifiSatusAsString());
+    page += keyValue("AutoConnect", WiFi.getAutoConnect() == 0 ? "Disabled" : "Enabled");
+    page += keyValue("AutoReconnect", WiFi.getAutoReconnect() == 0 ? "Disabled" : "Enabled");
+    page += keyValue("BSSID", WiFi.BSSIDstr());
+  }
+  page += keyValue("Channel", WiFi.channel());
 
   page += "<h3>HTTP</h3>";
   page += keyValue("User Agent", req->getHeader("user-agent").c_str());
@@ -1098,31 +1169,105 @@ static void handleBackupRestore(HTTPRequest * req, HTTPResponse * res) {
 
 
 static void handleWifi(HTTPRequest *, HTTPResponse * res) {
-  String html = createPage(wifiSettingsIndex);
-  html = replaceDefault(html, "WiFi", "/settings/wifi/action");
-
-  // Form data
-  html = replaceHtml(html, "{ssid}", theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID));
-  if (theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID).length() > 0) {
-    html = replaceHtml(html, "{password}", "******");
-  } else {
-    html = replaceHtml(html, "{password}", "");
+  String page;
+  page = "<br />Please note that the WiFi password is stored as plain Text on the OBS"
+      " and can be read by anyone with access to the device. ";
+  for (int idx = 0; idx < theObsConfig->getNumberOfWifiConfigs(); ++idx) {
+    auto wifi = theObsConfig->getWifiConfig(idx);
+    page += "<h3>WiFi #" + String(idx + 1) + "</h3>";
+    const String &index = String(idx);
+    page += "SSID<input name='ssid" + index + "' value='"
+            + ObsUtils::encodeForXmlAttribute(wifi.ssid) + "' />";
+    page += "Password<input name='pass" + index + "' type='password' value='******'"
+            " onclick='value=\"\"' />";
+    page += "Private<input name='private" + index + "' type='checkbox' "
+            + String(wifi.trusted ? "checked" : "") + " />";
+    page += "<a class='deleteWifi' href='/settings/wifi/delete?erase=" + index + "'>&#x2716;</a>";
   }
+
+  page += "<h3>New WiFi</h3>";
+  page += "SSID<input name='newSSID' placeholder='ssid' />";
+  page += "Password<input type='password' name='newPassword' placeholder='secret' />";
+  page += "Radius (m)<input type='checkbox' name='newPrivate' />";
+  page += "<small>Select private only for trusted, none public networks, others on the same net will be able to "
+          "control your device. Allows direct, unencrypted access to the device.</small>";
+
+  String html = createPage(page, wifiSettingsIndexPostfix);
+  html = replaceDefault(html, "WiFi Settings", "/settings/wifi/action");
+
+  log_i("Page %s", page.c_str());
+
   sendHtml(res, html);
 }
 
-static void handleWifiSave(HTTPRequest * req, HTTPResponse * res) {
-  const auto params = extractParameters(req);
-  const auto ssid = getParameter(params, "ssid");
-  if (ssid) {
-    theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_SSID, ssid);
+static void handleWifiDeleteAction(HTTPRequest *req, HTTPResponse *res) {
+  String erase = getParameter(req, "erase");
+  if (erase != "") {
+    theObsConfig->removeWifiConfig(atoi(erase.c_str()));
+    theObsConfig->saveConfig();
   }
-  const auto password = getParameter(params, "pass");
-  if (password != "******") {
-    theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_PASSWORD, password);
-  }
-  theObsConfig->saveConfig();
   sendRedirect(res, "/settings/wifi");
+}
+
+static bool updateWifi(const std::vector<std::pair<String, String>> &params) {
+  bool modified = false;
+  for (int pos = 0; pos < theObsConfig->getNumberOfWifiConfigs(); ++pos) {
+    String idx = String(pos);
+    String ssid = getParameter(params, "ssid" + idx);
+    String password = getParameter(params, "pass" + idx);
+    bool trusted = getParameter(params, "private" + idx) == "on";
+
+    auto oldWifi = theObsConfig->getWifiConfig(pos);
+    if (password == "******") {
+      password = oldWifi.password;
+    }
+    if ((ssid != oldWifi.ssid) || (password != oldWifi.password) || (trusted != oldWifi.trusted)) {
+      log_i("Update wifi %d!", pos);
+      WifiConfig newWifiConfig;
+      newWifiConfig.password = password;
+      newWifiConfig.ssid = ssid;
+      newWifiConfig.trusted = trusted;
+      theObsConfig->setWifiConfig(pos, newWifiConfig);
+      modified = true;
+    }
+  }
+  return modified;
+}
+
+
+static bool addWifi(const std::vector<std::pair<String, String>> &params) {
+  bool modified = false;
+
+  String ssid = getParameter(params, "newSSID");
+  String password = getParameter(params, "newPassword");
+  bool trusted = getParameter(params, "newPrivate") == "on";
+
+  if ((ssid != "") && (password != "")) {
+    log_i("New wifi!");
+    WifiConfig newWifiConfig;
+    newWifiConfig.password = password;
+    newWifiConfig.ssid = ssid;
+    newWifiConfig.trusted = trusted;
+    theObsConfig->addWifiConfig(newWifiConfig);
+    modified = true;
+  }
+  return modified;
+}
+
+static void handleWifiSave(HTTPRequest *req, HTTPResponse *res) {
+  const auto params = extractParameters(req);
+  bool modified = false;
+
+  modified = updateWifi(params);
+  if (addWifi(params)) {
+    modified = true;
+  }
+  if (modified) {
+    theObsConfig->saveConfig();
+    sendRedirect(res, "/settings/wifi");
+  } else {
+    sendRedirect(res, "/");
+  }
 }
 
 static void handleConfigSave(HTTPRequest * req, HTTPResponse * res) {

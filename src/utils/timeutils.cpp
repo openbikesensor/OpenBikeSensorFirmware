@@ -161,17 +161,20 @@ void TimeUtils::setClockByGps(uint32_t iTow, int32_t fTow, int16_t week, int8_t 
   timeZone = TIMEZONE_GPS;
 }
 
-void TimeUtils::setClockByNtpAndWait(const char* ntpServer) {
+void TimeUtils::setClockByNtpAndWait(const char* ntpServer, uint32_t timeoutMs) {
   setClockByNtp(ntpServer);
 
-  log_i("Waiting for NTP time sync: ");
-  while (!systemTimeIsSet()) {
-    delay(500);
-    log_i(".");
-    yield();
+  log_i("Waiting %dms for NTP time sync. ", timeoutMs);
+  const uint32_t startMs = millis();
+  const uint32_t endMs = startMs + timeoutMs;
+  while (!systemTimeIsSet() && (millis() < endMs)) {
+    delay(100);
   }
-  timeZone = TIMEZONE_UTC;
-  log_i("NTP time set got %s.", dateTimeToString(time(nullptr)).c_str());
+  if (systemTimeIsSet()) {
+    log_i("System time is set after %ums via NTP to %s.", millis() - startMs, dateTimeToString().c_str());
+  } else {
+    log_e("System time could not be set via NTP after %ums starting with %s.", millis() - startMs, dateTimeToString().c_str());
+  }
 }
 
 bool TimeUtils::systemTimeIsSet() {

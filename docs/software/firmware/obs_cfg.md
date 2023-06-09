@@ -72,10 +72,21 @@ relevant put the order of the array content.
             "privacyConfig": 10,
           // Active preset - always 0 as of today
             "selectedPreset": 0,
-          // Password of your Wi-Fi where the OBS should log into in server mode
+          // Deprecated: Password of your Wi-Fi where the OBS should log into in server mode
             "wifiPassword": "swordfish",
-          // SSID of your Wi-Fi where the OBS should log into in server mode
-            "wifiSsid": "obs-cloud"
+          // Deprecated: SSID of your Wi-Fi where the OBS should log into in server mode
+            "wifiSsid": "obs-cloud",
+          // Array with multiple Wi-Fi networks to be used in client mode
+            "wifiNetworks": [
+                {
+                    // Password of your Wi-Fi where the OBS should log into in client mode
+                    "wifiPassword": "swordfish",
+                    // SSID of your Wi-Fi where the OBS should log into in client mode
+                    "wifiSsid": "obs-cloud",
+                    // if true obs will allow unprotected access in this network
+                    "wifiPrivate": true
+                }
+            ]          
         }
     ]
 }
