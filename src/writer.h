@@ -44,7 +44,7 @@ struct DataSet {
   uint16_t confirmed = 0;
   String marked;
   bool invalidMeasurement = false;
-  bool isInsidePrivacyArea;
+  bool isInsidePrivacyArea = false;
   uint8_t factor = MICRO_SEC_TO_CM_DIVIDER;
   uint8_t measurements;
 

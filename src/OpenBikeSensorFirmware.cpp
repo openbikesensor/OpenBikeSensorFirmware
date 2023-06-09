@@ -541,8 +541,12 @@ void loop() {
     delete dataset;
   }
 
-  if (transmitConfirmedData) {
-    // After confirmation make sure it will be written to SD card directly
+  // After confirmation make sure it will be written to SD card directly
+  if (transmitConfirmedData ||
+    // also write if we are inside a privacy area ...
+    (currentSet->isInsidePrivacyArea
+    // ... and privacy mode does not require to write all sets
+      && (config.privacyConfig & AbsolutePrivacy) || (config.privacyConfig & OverridePrivacy))) {
     // so no confirmed sets might be lost
     if (writer) {
       writer->flush();
