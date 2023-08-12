@@ -128,11 +128,7 @@ static void IRAM_ATTR isr(HCSR04SensorInfo* const sensor) {
   // mechanism we should see a similar delay.
   if (sensor->end == MEASUREMENT_IN_PROGRESS) {
     const uint32_t now = micros();
-    if (HIGH == digitalRead(sensor->echoPin)) {
-      sensor->start = now;
-    } else { // LOW
-      sensor->end = now;
-    }
+    sensor->end = now;
   }
 }
 
@@ -147,9 +143,9 @@ static void IRAM_ATTR isr1() {
 void HCSR04SensorManager::attachSensorInterrupt(uint8_t idx) {
   // bad bad bad ....
   if (idx == 0) {
-    attachInterrupt(TOF_SENSOR[idx]->echoPin, isr0, CHANGE);
+    attachInterrupt(TOF_SENSOR[idx]->echoPin, isr0, FALLING);
   } else {
-    attachInterrupt(TOF_SENSOR[idx]->echoPin, isr1, CHANGE);
+    attachInterrupt(TOF_SENSOR[idx]->echoPin, isr1, FALLING);
   }
 
   // a solution like below leads to crashes with:
@@ -334,6 +330,7 @@ bool HCSR04SensorManager::collectSensorResult(uint8_t sensorId) {
     sensor->echoDurationMicroseconds[lastReadingCount] = -1;
   } else {
     duration = microsBetween(start, end);
+
     sensor->echoDurationMicroseconds[lastReadingCount] = duration;
   }
   uint16_t dist;
