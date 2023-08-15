@@ -1058,7 +1058,6 @@ static void handleBackupDownload(HTTPRequest *, HTTPResponse * res) {
 
 static void handleBackupRestore(HTTPRequest * req, HTTPResponse * res) {
   HTTPMultipartBodyParser parser(req);
-  sensorManager->detachInterrupts();
 
   while(parser.nextField()) {
 
@@ -1093,7 +1092,6 @@ static void handleBackupRestore(HTTPRequest * req, HTTPResponse * res) {
       res->print("ERROR");
     }
   }
-  sensorManager->attachInterrupts();
 }
 
 
@@ -1533,7 +1531,6 @@ static void handleFlashUpdateUrlAction(HTTPRequest * req, HTTPResponse * res) {
   log_i("Flash App Url is '%s'", url.c_str());
 
   Firmware f(String("OBS/") + String(OBSVersion));
-  sensorManager->detachInterrupts();
   if (f.downloadToFlash(url, updateProgress)) {
     obsDisplay->showTextOnGrid(0, 3, "Success!");
     sendRedirect(res, "/updatesd");
@@ -1542,13 +1539,11 @@ static void handleFlashUpdateUrlAction(HTTPRequest * req, HTTPResponse * res) {
     obsDisplay->showTextOnGrid(0, 4, f.getLastMessage());
     sendRedirect(res, "/about");
   }
-  sensorManager->attachInterrupts();
 }
 
 static void handleFlashFileUpdateAction(HTTPRequest *req, HTTPResponse *res) {
   // TODO: Add some assertions, cleanup with handleFlashUpdateUrlAction
   HTTPMultipartBodyParser parser(req);
-  sensorManager->detachInterrupts();
   Update.begin();
   Update.onProgress([](size_t pos, size_t all) {
     obsDisplay->drawProgressBar(4, pos, all);
@@ -1585,7 +1580,6 @@ static void handleFlashFileUpdateAction(HTTPRequest *req, HTTPResponse *res) {
       res->print(errorMsg);
     }
   }
-  sensorManager->attachInterrupts();
 }
 
 static void handleDeleteFiles(HTTPRequest *req, HTTPResponse * res) {
