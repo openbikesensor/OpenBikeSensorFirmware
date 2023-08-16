@@ -2,6 +2,8 @@
 #define TOFMANAGER_H
 
 #include <Arduino.h>
+#include <cstdint>
+#include <atomic>
 
 #include "utils/median.h"
 
@@ -21,16 +23,17 @@ typedef struct {
   gpio_num_t echoPin;
 
   /* timestamp when the trigger signal was sent in microseconds */
-  volatile uint32_t trigger = 0;
+  std::atomic_uint_least64_t trigger{0};
   /* timestamp when the reading was started in microseconds */
-  volatile uint32_t start = 0;
+  std::atomic_uint_least64_t start{0};
   /* timestamp when the reading was complete in microseconds
    * if end == 0 - a measurement is in progress */
-  volatile uint32_t end = 0;
+  std::atomic_uint_least64_t end{0};
 
   volatile uint32_t interrupt_count = 0;
   uint32_t started_measurements = 0;
   uint32_t successful_measurements = 0;
+  uint32_t lost_signals = 0;
 } LLSensor;
 
 /* low-level TOF sensor manager
@@ -62,13 +65,13 @@ class TOFManager {
     ~TOFManager();
 
     void startMeasurement(uint8_t sensorId);
-    void disableMeasurements();
+    void disableMeasurement(uint8_t sensor_idx);
     void attachSensorInterrupt(uint8_t idx);
     boolean isSensorReady(uint8_t sensorId);
     boolean isMeasurementComplete(uint8_t sensor_idx);
 
     uint8_t primarySensor = 1;
-    uint8_t currentSensor = 0;
+    volatile uint8_t currentSensor = 0;
 
     void sendData(uint8_t sensor_idx);
     static void sensorTaskFunction(void *parameter);

@@ -40,6 +40,8 @@
 #include "utils/timeutils.h"
 #include "obsimprov.h"
 
+typedef std::basic_string<char> obs_string;
+
 using namespace httpsserver;
 
 static const char *const HTML_ENTITY_FAILED_CROSS = "&#x274C;";
@@ -419,7 +421,7 @@ static String getParameter(const std::vector<std::pair<String,String>> &params, 
 
 
 static String getParameter(HTTPRequest *req, const String& name, const String&  def = "") {
-  std::string value;
+  obs_string value;
   if (req->getParams()->getQueryParameter(name.c_str(), value)) {
     return String(value.c_str());
   }
@@ -557,7 +559,7 @@ void registerPages(HTTPServer * httpServer) {
   httpServer->registerNode(new ResourceNode("/settings/security", HTTP_POST, handleSettingSecurityAction));
 
   httpServer->addMiddleware(&accessFilter);
-  httpServer->setDefaultHeader("Server", std::string("OBS/") + OBSVersion);
+  httpServer->setDefaultHeader("Server", obs_string("OBS/") + OBSVersion);
 }
 
 void beginPages() {
@@ -566,7 +568,7 @@ void beginPages() {
   insecureServer->registerNode(new ResourceNode("/cert", HTTP_GET, handleDownloadCert));
   insecureServer->registerNode(new ResourceNode("/http", HTTP_POST, handleHttpAction));
   insecureServer->setDefaultNode(new ResourceNode("", HTTP_GET,  handleHttpsRedirect));
-  insecureServer->setDefaultHeader("Server", std::string("OBS/") + OBSVersion);
+  insecureServer->setDefaultHeader("Server", obs_string("OBS/") + OBSVersion);
 }
 
 static int ticks;
@@ -702,7 +704,7 @@ static void wifiConectedActions() {
 }
 
 /* callback function called if wifi data is received via improv */
-bool initWifi(const std::string & ssid, const std::string & password) {
+bool initWifi(const obs_string & ssid, const obs_string & password) {
   log_i("Received WiFi credentials for SSID '%s'", ssid.c_str());
   theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_SSID, ssid);
   theObsConfig->setProperty(0, ObsConfig::PROPERTY_WIFI_PASSWORD, password);
@@ -735,8 +737,8 @@ static ObsImprov::State improvCallbackGetWifiStatus() {
   return result;
 }
 
-static std::string improvCallbackGetDeviceUrl() {
-  std::string url = "";
+static obs_string improvCallbackGetDeviceUrl() {
+  obs_string url = "";
   if (WiFiClass::status() == WL_CONNECTED) {
     theObsConfig->saveConfig();
     url += "http://";
@@ -881,7 +883,7 @@ static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
 
   res->print("<h3>ESP32</h3>");
   res->print(keyValue("Chip Model", ESP.getChipModel()));
-  res->print(keyValue("Chip Revision", ESP.getChipRevision()));
+  res->print(keyValue("Chip Revision", (uint32_t) ESP.getChipRevision()));
   res->print(keyValue("Heap size", ObsUtils::toScaledByteString(ESP.getHeapSize())));
   res->print(keyValue("Free heap", ObsUtils::toScaledByteString(ESP.getFreeHeap())));
   res->print(keyValue("Min. free heap", ObsUtils::toScaledByteString(ESP.getMinFreeHeap())));
@@ -909,8 +911,8 @@ static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
   res->print(page);
   page.clear();
 
-  page += keyValue("Cores", ESP.getChipCores());
-  page += keyValue("CPU frequency", ESP.getCpuFreqMHz(), "MHz");
+  page += keyValue("Cores", (const uint32_t) ESP.getChipCores());
+  page += keyValue("CPU frequency", (const uint32_t) ESP.getCpuFreqMHz(), "MHz");
 
   page += keyValue("SPIFFS size", ObsUtils::toScaledByteString(SPIFFS.totalBytes()));
   page += keyValue("SPIFFS used", ObsUtils::toScaledByteString(SPIFFS.usedBytes()));
@@ -973,12 +975,12 @@ static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
   page += keyValue("SD fs used", ObsUtils::toScaledByteString(SD.usedBytes()));
 
   page += "<h3>TOF Sensors</h3>";
-  page += keyValue("Left Sensor raw", sensorManager->getRawMedianDistance(LEFT_SENSOR_ID), "cm");
+  page += keyValue("Left Sensor raw", (const uint32_t) sensorManager->getMedianRawDistance(LEFT_SENSOR_ID), "cm");
   page += keyValue("Left Sensor max duration", sensorManager->getMaxDurationUs(LEFT_SENSOR_ID), "&#xB5;s");
   page += keyValue("Left Sensor min duration", sensorManager->getMinDurationUs(LEFT_SENSOR_ID), "&#xB5;s");
   page += keyValue("Left Sensor last start delay", sensorManager->getLastDelayTillStartUs(LEFT_SENSOR_ID), "&#xB5;s");
   page += keyValue("Left Sensor signal errors", sensorManager->getNoSignalReadings(LEFT_SENSOR_ID));
-  page += keyValue("Right Sensor raw", sensorManager->getRawMedianDistance(RIGHT_SENSOR_ID), "cm");
+  page += keyValue("Right Sensor raw", (const uint32_t) sensorManager->getMedianRawDistance(RIGHT_SENSOR_ID), "cm");
   page += keyValue("Right Sensor max duration", sensorManager->getMaxDurationUs(RIGHT_SENSOR_ID), "&#xB5;s");
   page += keyValue("Right Sensor min duration", sensorManager->getMinDurationUs(RIGHT_SENSOR_ID), "&#xB5;s");
   page += keyValue("Right Sensor last start delay", sensorManager->getLastDelayTillStartUs(RIGHT_SENSOR_ID), "&#xB5;s");
@@ -993,18 +995,18 @@ static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
   page += keyValue("GPS hdop", gps.getCurrentGpsRecord().getHdopString());
   page += keyValue("GPS fix", String(gps.getCurrentGpsRecord().getFixStatus(), 16));
   page += keyValue("GPS fix flags", String(gps.getCurrentGpsRecord().getFixStatusFlags(), 16));
-  page += keyValue("GPS satellites", gps.getValidSatellites());
+  page += keyValue("GPS satellites",(const uint32_t) gps.getValidSatellites());
   page += keyValue("GPS uptime", gps.getUptime(), "ms");
-  page += keyValue("GPS noise level", gps.getLastNoiseLevel());
+  page += keyValue("GPS noise level", (const uint32_t) gps.getLastNoiseLevel());
   page += keyValue("GPS baud rate", gps.getBaudRate());
   page += keyValue("GPS ALP bytes", gps.getNumberOfAlpBytesSent());
   page += keyValue("GPS messages", gps.getMessagesHtml());
 
   page += "<h3>Display / Button</h3>";
-  page += keyValue("Button State", digitalRead(PUSHBUTTON_PIN));
-  page += keyValue("Display i2c last error", Wire.getWriteError());
+  page += keyValue("Button State",(const int32_t) digitalRead(PUSHBUTTON_PIN));
+  page += keyValue("Display i2c last error", (const uint32_t) Wire.getWriteError());
   page += keyValue("Display i2c speed", Wire.getClock() / 1000, "KHz");
-  page += keyValue("Display i2c timeout", Wire.getTimeOut(), "ms");
+  page += keyValue("Display i2c timeout",(const uint32_t) Wire.getTimeOut(), "ms");
 
   page += "<h3>WiFi</h3>";
   page += keyValue("Local IP", WiFi.localIP().toString());
@@ -1340,8 +1342,8 @@ void uploadTracks(HTTPResponse *res) {
   obsDisplay->showTextOnGrid(3, 5, String(failedCount));
   if (res) {
     html += "</div><h3>...all files done</h3/>";
-    html += keyValue("OK", okCount);
-    html += keyValue("Failed", failedCount);
+    html += keyValue("OK",(const uint32_t) okCount);
+    html += keyValue("Failed", (const uint32_t) failedCount);
     html += "<input type=button onclick=\"window.location.href='/'\" class='btn' value='OK' />";
     html += footer;
     res->print(html);
@@ -1850,7 +1852,7 @@ static void accessFilter(HTTPRequest * req, HTTPResponse * res, std::function<vo
     res->setStatusCode(401);
     res->setStatusText("Unauthorized");
     res->setHeader("Content-Type", "text/plain");
-    res->setHeader("WWW-Authenticate", std::string("Basic realm=\"") + OBS_ID_SHORT.c_str() + "\"");
+    res->setHeader("WWW-Authenticate", obs_string("Basic realm=\"") + OBS_ID_SHORT.c_str() + "\"");
     res->println("401: See OBS display");
 
     obsDisplay->clearProgressBar(5);

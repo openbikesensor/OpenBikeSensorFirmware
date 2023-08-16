@@ -55,7 +55,7 @@ void SSD1306DisplayDevice::displaySimple(uint16_t value) {
 }
 
 void SSD1306DisplayDevice::showValues(
-  HCSR04SensorInfo* sensor1, HCSR04SensorInfo* sensor2, uint16_t minDistanceToConfirm,  int16_t batteryPercentage,
+  DistanceSensor* sensor1, DistanceSensor* sensor2, uint16_t minDistanceToConfirm,  int16_t batteryPercentage,
   int16_t TemperaturValue, int lastMeasurements, boolean insidePrivacyArea,
   double speed, uint8_t satellites) {
 

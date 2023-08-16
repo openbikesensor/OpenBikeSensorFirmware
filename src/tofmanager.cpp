@@ -1,6 +1,8 @@
 #include "tofmanager.h"
 #include "sensor.h"
 
+#include <unistd.h>
+
 /* Value of HCSR04SensorInfo::end during an ongoing measurement. */
 #define MEASUREMENT_IN_PROGRESS 0
 
@@ -29,7 +31,7 @@
  * HC-SR04: observed 71ms, docu 60ms
  * JSN-SR04T: observed 58ms
  */
-#define MAX_TIMEOUT_MICRO_SEC 75000
+#define MAX_TIMEOUT_MICRO_SEC 50000
 
 /* The core to run the RT component on */
 #define RT_CORE 0
@@ -86,16 +88,14 @@ void TOFManager::startMeasurement(uint8_t sensorId) {
   sensor->end = MEASUREMENT_IN_PROGRESS; // will be updated with LOW signal
   unsigned long now = esp_timer_get_time();
 
-  sensor->trigger = 0; // will be updated with HIGH signal
-  sensor->start = now;
+  sensor->trigger = now;
+  sensor->start = 0; // will be updated with HIGH signal
 
   gpio_set_level(sensor->triggerPin, 1);
   // 10us are specified but some sensors are more stable with 20us according
   // to internet reports
   usleep(20);
   gpio_set_level(sensor->triggerPin, 0);
-
-  attachSensorInterrupt(sensorId);
 }
 
 /* Checks if the given sensor is ready for a new measurement cycle.
@@ -103,22 +103,23 @@ void TOFManager::startMeasurement(uint8_t sensorId) {
 boolean TOFManager::isSensorReady(uint8_t sensorId) {
   LLSensor* sensor = sensors(sensorId);
   boolean ready = false;
-  const uint32_t now = micros();
-  const uint32_t start = sensor->start;
-  const uint32_t end = sensor->end;
+  auto now = esp_timer_get_time();
+  auto start = sensor->start.load();
+  auto end = sensor->end.load();
+
   if (end != MEASUREMENT_IN_PROGRESS) { // no measurement in flight or just finished
-    const uint32_t startOther = sensors(1 - sensorId)->start;
-    if (   (HCSR04SensorManager::microsBetween(now, end) > SENSOR_QUIET_PERIOD_AFTER_END_MICRO_SEC)
-        && (HCSR04SensorManager::microsBetween(now, start) > SENSOR_QUIET_PERIOD_AFTER_START_MICRO_SEC)
-        && (HCSR04SensorManager::microsBetween(now, startOther) > SENSOR_QUIET_PERIOD_AFTER_OPPOSITE_START_MICRO_SEC)) {
+    auto startOther = sensors(1 - sensorId)->start.load();
+    if ((now - end) > SENSOR_QUIET_PERIOD_AFTER_END_MICRO_SEC
+        && (now - start) > SENSOR_QUIET_PERIOD_AFTER_START_MICRO_SEC
+        && (now - startOther) > SENSOR_QUIET_PERIOD_AFTER_OPPOSITE_START_MICRO_SEC) {
       ready = true;
-    sensors(sensorId)->successful_measurements += 1;
+      sensors(sensorId)->successful_measurements += 1;
     }
-  } else if (HCSR04SensorManager::microsBetween(now, start) > MAX_TIMEOUT_MICRO_SEC) {
+  } else if (now - sensor->trigger > MAX_TIMEOUT_MICRO_SEC) {
     // signal or interrupt was lost altogether this is an error,
     // should we raise a  it?? Now pretend the sensor is ready, hope it helps to give it a trigger.
     ready = true;
-    sensors(sensorId)->successful_measurements += 1;
+    sensors(sensorId)->lost_signals += 1;
   }
   return ready;
 }
@@ -128,7 +129,7 @@ boolean TOFManager::isMeasurementComplete(uint8_t sensor_idx) {
     return true;
   }
   uint32_t now = esp_timer_get_time();
-  if (sensors(sensor_idx)->start + MAX_TIMEOUT_MICRO_SEC < now) {
+  if (sensors(sensor_idx)->trigger + MAX_TIMEOUT_MICRO_SEC < now) {
     return true;
   }
 
@@ -169,6 +170,11 @@ void TOFManager::sensorTaskFunction(void *parameter) {
 }
 
 void TOFManager::init() {
+#if ALONE_ON_CORE
+  esp_timer_init();
+  gpio_install_isr_service(OBS_INTR_FLAG);
+#endif
+
   LLSensor* sensorManaged1 = sensors(0);
   sensorManaged1->triggerPin = GPIO_NUM_25;
   sensorManaged1->echoPin = GPIO_NUM_26;
@@ -179,10 +185,6 @@ void TOFManager::init() {
   sensorManaged2->echoPin = GPIO_NUM_4;
   setupSensor(sensorManaged2, 1);
 
-#if ALONE_ON_CORE
-  esp_timer_init();
-  gpio_install_isr_service(OBS_INTR_FLAG);
-#endif
   ESP_LOGI("tofmanager", "TOFManager init complete");
 }
 
@@ -196,7 +198,6 @@ void TOFManager::sendData(uint8_t sensor_idx) {
   message.start = sensor->start;
   message.end = sensor->end;
   xQueueSendToBack(sensor_queue, &message, portMAX_DELAY);
-  //delete message;
 }
 
 void TOFManager::loop() {
@@ -204,10 +205,12 @@ void TOFManager::loop() {
   currentSensor = primarySensor;
   startMeasurement(primarySensor);
 
-  int statLog = 0;
+  uint32_t statLog = 0;
+  float startLoop = esp_timer_get_time();
 
   while ( true ) {
-    if (statLog > 2048) {
+    if (statLog > 1024) {
+      float spent = ((float)esp_timer_get_time() - startLoop) / 1000000.0;
       ESP_LOGI("tofmanager", "statlog: sensor1->irq_cnt=%u, sensor2->irq_cnt=%u",
         sensors(0)->interrupt_count, sensors(1)->interrupt_count);
       ESP_LOGI("tofmanager", "statlog: success=(%u, %u), started=(%u,%u)",
@@ -215,23 +218,31 @@ void TOFManager::loop() {
         sensors(1)->successful_measurements,
         sensors(0)->started_measurements,
         sensors(1)->started_measurements);
+      ESP_LOGI("tofmanager", "statlog: (s0) trigger-start-end = %x-%x-%x",
+        sensors(0)->trigger.load(), sensors(0)->start.load(), sensors(0)->end.load());
+      if (spent > 0) {
+        ESP_LOGI("tofmanager", "statlog: (%f,%f) started/s",
+          (float)sensors(0)->started_measurements / spent,
+          (float)sensors(0)->started_measurements / spent);
+      }
       statLog = 0;
     }
     statLog += 1;
 
     // wait for sensor
     if (!isMeasurementComplete(currentSensor)) {
-      vTaskDelay(TICK_DELAY);
+      vTaskDelay(1);
+      //taskYIELD();
     } else {
-      sendData(currentSensor);
-
-      // switch to next sensor
+      // switch to next sensor & send out data
       if (currentSensor == primarySensor && isSensorReady(1 - primarySensor)) {
-        disableMeasurements();
+        sendData(currentSensor);
+        disableMeasurement(currentSensor);
         currentSensor = 1 - primarySensor;
         startMeasurement(currentSensor);
       } else if (isSensorReady(primarySensor)) {
-        disableMeasurements();
+        sendData(currentSensor);
+        disableMeasurement(currentSensor);
         currentSensor = primarySensor;
         startMeasurement(primarySensor);
       }
@@ -240,14 +251,14 @@ void TOFManager::loop() {
 }
 
 static void IRAM_ATTR sensorInterrupt(void *isrParam) {
-  LLSensor* sensor = (LLSensor*) isrParam;
   // since the measurement of start and stop use the same interrupt
   // mechanism we should see a similar delay.
-  if (sensor->end == MEASUREMENT_IN_PROGRESS) {
-    sensor->interrupt_count += 1;
+  LLSensor* sensor = (LLSensor*) isrParam;
 
-    if (sensor->trigger == 0) {
-      sensor->trigger = esp_timer_get_time();
+  sensor->interrupt_count += 1;
+  if (sensor->end == MEASUREMENT_IN_PROGRESS) {
+    if (sensor->start == 0) {
+      sensor->start = esp_timer_get_time();
     } else {
       sensor->end = esp_timer_get_time();
     }
@@ -280,8 +291,10 @@ void TOFManager::setupSensor(LLSensor* sensor, uint8_t idx) {
   // gpio_pulldown_dis(sensor->echoPin);
   // gpio_pullup_en(sensor->echoPin); // hint from https://youtu.be/xwsT-e1D9OY?t=354
   // gpio_intr_enable(sensor->echoPin);
-
+;
   // gpio_set_intr_type(sensor->echoPin, GPIO_INTR_NEGEDGE);
+
+  attachSensorInterrupt(idx);
 }
 
 void TOFManager::attachSensorInterrupt(uint8_t idx) {
@@ -294,8 +307,6 @@ void TOFManager::detachInterrupts() {
   }
 }
 
-void TOFManager::disableMeasurements() {
-  for (int i = 0; i < NUMBER_OF_TOF_SENSORS; i ++) {
-    gpio_set_level(sensors(i)->triggerPin, 0);
-  }
+void TOFManager::disableMeasurement(uint8_t idx) {
+  gpio_set_level(sensors(idx)->triggerPin, 0);
 }

@@ -29,6 +29,10 @@
 #include <vector>
 #include <FS.h>
 
+#include <string>
+
+typedef std::basic_string<char> obs_string;
+
 enum DisplayOptions {
   DisplaySatellites = 0x01,  // 1
   DisplayVelocity = 0x02,   // 2

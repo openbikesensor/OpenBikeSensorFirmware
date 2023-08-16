@@ -48,17 +48,11 @@ static const uint16_t MAX_DISTANCE_MEASURED_CM = 320; // candidate to check I co
 static const uint32_t MIN_DURATION_MICRO_SEC = MIN_DISTANCE_MEASURED_CM * MICRO_SEC_TO_CM_DIVIDER;
 const uint32_t MAX_DURATION_MICRO_SEC = MAX_DISTANCE_MEASURED_CM * MICRO_SEC_TO_CM_DIVIDER;
 
-void HCSR04SensorManager::initSensors() {
-  registerSensor(m_sensors[0], 0);
+void DistanceSensorManager::initSensors() {
   m_sensors[0].sensorLocation = "Right";
-
-  registerSensor(m_sensors[1], 1);
   m_sensors[1].sensorLocation = "Left";
 
-  // queue_buffer = new uint8_t[sizeof(LLMessage) * 40];
-  // static_queue = new StaticQueue_t;
-
-  sensor_queue = xQueueCreate( 40, sizeof( LLMessage ) /*, queue_buffer, static_queue */);
+  sensor_queue = xQueueCreate( 40, sizeof( LLMessage ));
   if (sensor_queue == 0) {
     log_e("Oh wow. Sensor queue was not created successfully :(");
   } else {
@@ -68,33 +62,29 @@ void HCSR04SensorManager::initSensors() {
   TOFManager::startupManager(sensor_queue);
 }
 
-void HCSR04SensorManager::registerSensor(const HCSR04SensorInfo& sensorInfo, uint8_t idx) {
-  if (idx >= NUMBER_OF_TOF_SENSORS) {
-    log_e("Can not register sensor for index %d, only %d tof sensors supported", idx, NUMBER_OF_TOF_SENSORS);
-    return;
-  }
-  sensorValues[idx] = MAX_SENSOR_VALUE;
-  m_sensors[idx].median = new Median<uint16_t>(5, MAX_SENSOR_VALUE);
-}
-
-void HCSR04SensorManager::reset(uint32_t startMillisTicks) {
+void DistanceSensorManager::reset(uint32_t startMillisTicks) {
   log_d("Reset");
+
   for (auto & sensor : m_sensors) {
     sensor.minDistance = MAX_SENSOR_VALUE;
     memset(&(sensor.echoDurationMicroseconds), 0, sizeof(sensor.echoDurationMicroseconds));
     sensor.numberOfTriggers = 0;
+    sensor.median = new Median<uint16_t>(5, MAX_SENSOR_VALUE);
+    sensor.rawDistance = MAX_SENSOR_VALUE;
   }
+
+  memset(&(captureOffsetMS), 0, sizeof(captureOffsetMS));
+
   lastReadingCount = 0;
-  memset(&(startOffsetMilliseconds), 0, sizeof(startOffsetMilliseconds));
-  startReadingMilliseconds = startMillisTicks;
+  sensorStartTimestampMS = startMillisTicks;
 }
 
-void HCSR04SensorManager::setOffsets(std::vector<uint16_t> offsets) {
+void DistanceSensorManager::setOffsets(std::vector<uint16_t> offsets) {
   for (size_t idx = 0; idx < NUMBER_OF_TOF_SENSORS; ++idx) {
     if (idx < offsets.size()) {
-      m_sensors[idx].offset = offsets[idx];
+      getSensor(idx)->offset = offsets[idx];
     } else {
-      m_sensors[idx].offset = 0;
+      getSensor(idx)->offset = 0;
     }
   }
 }
@@ -102,7 +92,7 @@ void HCSR04SensorManager::setOffsets(std::vector<uint16_t> offsets) {
 /* Polls for new readings, if sensors are not ready, the
  * method returns false.
  */
-bool HCSR04SensorManager::pollDistancesAlternating() {
+bool DistanceSensorManager::pollDistances() {
   bool newMeasurements = false;
   LLMessage message = {0};
 
@@ -115,36 +105,40 @@ bool HCSR04SensorManager::pollDistancesAlternating() {
   return newMeasurements;
 }
 
+uint16_t DistanceSensorManager::computeDistance(uint32_t travel_time) {
+  uint16_t distance = MAX_SENSOR_VALUE;
+  if (travel_time > MIN_DURATION_MICRO_SEC || travel_time <= MAX_DURATION_MICRO_SEC) {
+    distance = static_cast<uint16_t>(travel_time / MICRO_SEC_TO_CM_DIVIDER);
+  }
+  return distance;
+}
+
+void DistanceSensorManager::proposeMinDistance(DistanceSensor* const sensor, uint16_t distance) {
+ if (distance > 0 && distance < sensor->minDistance) {
+    sensor->minDistance = distance;
+  }
+}
+
 // FIXME
 /* Returns true if there was a no timeout reading. */
-bool HCSR04SensorManager::processSensorMessage(LLMessage* message) {
+bool DistanceSensorManager::processSensorMessage(LLMessage* message) {
   log_d("Processing sensor message from sensor = %i", message->sensor_index);
-  HCSR04SensorInfo* const sensor = &m_sensors[message->sensor_index];
+  DistanceSensor* const sensor = &m_sensors[message->sensor_index];
   bool reading_valid = false;
 
   uint32_t duration = microsBetween(message->start, message->end);
+
+  uint16_t rawDistance = computeDistance(duration);
+
+  sensor->rawDistance = rawDistance;
+  sensor->median->addValue(rawDistance);
+  sensor->distance = computeOffsetDistance(medianMeasure(sensor, rawDistance), sensor->offset);
   sensor->echoDurationMicroseconds[lastReadingCount] = duration;
+  sensor->rawDistance = rawDistance;
 
-  uint16_t distance;
+  captureOffsetMS[lastReadingCount] = millisSince(sensorStartTimestampMS);
 
-  if (duration < MIN_DURATION_MICRO_SEC || duration >= MAX_DURATION_MICRO_SEC) {
-    distance = MAX_SENSOR_VALUE;
-  } else {
-    reading_valid = true;
-    distance = static_cast<uint16_t>(duration / MICRO_SEC_TO_CM_DIVIDER);
-  }
-
-  sensor->rawDistance = distance;
-  sensor->median->addValue(distance);
-  sensorValues[message->sensor_index] =
-    sensor->distance = correctSensorOffset(medianMeasure(sensor, distance), sensor->offset);
-
-  if (sensor->distance > 0 && sensor->distance < sensor->minDistance) {
-    sensor->minDistance = sensor->distance;
-  }
-  sensor->measurementRead = true;
-
-  startOffsetMilliseconds[lastReadingCount] = millisSince(startReadingMilliseconds);
+  proposeMinDistance(sensor, rawDistance);
 
   if(message->sensor_index == 1) {
     if (lastReadingCount < MAX_NUMBER_MEASUREMENTS_PER_INTERVAL - 1) {
@@ -155,20 +149,19 @@ bool HCSR04SensorManager::processSensorMessage(LLMessage* message) {
   return reading_valid;
 }
 
-uint16_t HCSR04SensorManager::getSensorValue(uint8_t sensorIndex) {
-  return sensorValues[sensorIndex];
+uint16_t DistanceSensorManager::getSensorRawDistance(uint8_t sensorIndex) {
+  return getSensor(sensorIndex)->rawDistance;
 }
 
-HCSR04SensorInfo* HCSR04SensorManager::getSensor(uint8_t sensorIndex) {
+DistanceSensor* DistanceSensorManager::getSensor(uint8_t sensorIndex) {
   return &m_sensors[sensorIndex];
 }
 
-boolean HCSR04SensorManager::hasReadings(uint8_t sensorIndex) {
-  // FIXME
-  return false;
+boolean DistanceSensorManager::hasReadings(uint8_t sensorIndex) {
+  return lastReadingCount > 0;
 }
 
-void HCSR04SensorManager::copyData(DataSet* set) {
+void DistanceSensorManager::copyData(DataSet* set) {
   log_d("Let's copy some data.");
   for (int i = 0; i < NUMBER_OF_TOF_SENSORS; i++){
     set->sensorValues.push_back(m_sensors[i].minDistance);
@@ -180,46 +173,52 @@ void HCSR04SensorManager::copyData(DataSet* set) {
   memcpy(&(set->readDurationsLeftInMicroseconds),
          &(m_sensors[1].echoDurationMicroseconds), set->measurements * sizeof(int32_t));
   memcpy(&(set->startOffsetMilliseconds),
-         &(startOffsetMilliseconds), set->measurements * sizeof(uint16_t));
+         &(captureOffsetMS), set->measurements * sizeof(uint16_t));
 }
 
-uint16_t HCSR04SensorManager::getLastValidValue(uint8_t sensorIndex) {
+uint16_t DistanceSensorManager::getLastValidRawDistance(uint8_t sensorIndex) {
   // if there was no measurement of this sensor for the current index, it is the
   // one before. This happens with fast confirmations.
   uint16_t val = 0;
-  // FIXME
+  for (int i = lastReadingCount - 1; i >= 0; i--) {
+    uint16_t maybeVal = getSensor(sensorIndex)->echoDurationMicroseconds[i];
+    if (maybeVal != 0) {
+      val = maybeVal;
+      break;
+    }
+  }
   return val;
 }
 
-uint16_t HCSR04SensorManager::getRawMedianDistance(uint8_t sensorId) {
+uint16_t DistanceSensorManager::getMedianRawDistance(uint8_t sensorId) {
  return m_sensors[sensorId].median->median();
 }
 
-uint32_t HCSR04SensorManager::getMaxDurationUs(uint8_t sensorId) {
+uint32_t DistanceSensorManager::getMaxDurationUs(uint8_t sensorId) {
   return m_sensors[sensorId].maxDurationUs;
 }
 
-uint32_t HCSR04SensorManager::getMinDurationUs(uint8_t sensorId) {
+uint32_t DistanceSensorManager::getMinDurationUs(uint8_t sensorId) {
   return m_sensors[sensorId].minDurationUs;
 }
 
-uint32_t HCSR04SensorManager::getLastDelayTillStartUs(uint8_t sensorId) {
+uint32_t DistanceSensorManager::getLastDelayTillStartUs(uint8_t sensorId) {
   return m_sensors[sensorId].lastDelayTillStartUs;
 }
 
-uint32_t HCSR04SensorManager::getNoSignalReadings(const uint8_t sensorId) {
+uint32_t DistanceSensorManager::getNoSignalReadings(const uint8_t sensorId) {
   return m_sensors[sensorId].numberOfNoSignals;
 }
 
-uint32_t HCSR04SensorManager::getNumberOfLowAfterMeasurement(const uint8_t sensorId) {
+uint32_t DistanceSensorManager::getNumberOfLowAfterMeasurement(const uint8_t sensorId) {
   return m_sensors[sensorId].numberOfLowAfterMeasurement;
 }
 
-uint32_t HCSR04SensorManager::getNumberOfToLongMeasurement(const uint8_t sensorId) {
+uint32_t DistanceSensorManager::getNumberOfToLongMeasurement(const uint8_t sensorId) {
   return m_sensors[sensorId].numberOfToLongMeasurement;
 }
 
-uint32_t HCSR04SensorManager::getNumberOfInterruptAdjustments(const uint8_t sensorId) {
+uint32_t DistanceSensorManager::getNumberOfInterruptAdjustments(const uint8_t sensorId) {
   return m_sensors[sensorId].numberOfInterruptAdjustments;
 }
 
@@ -248,7 +247,7 @@ uint32_t HCSR04SensorManager::getNumberOfInterruptAdjustments(const uint8_t sens
 }
  */
 
-uint16_t HCSR04SensorManager::correctSensorOffset(uint16_t dist, uint16_t offset) {
+uint16_t DistanceSensorManager::computeOffsetDistance(uint16_t dist, uint16_t offset) {
   uint16_t  result;
   if (dist == MAX_SENSOR_VALUE) {
     result = MAX_SENSOR_VALUE;
@@ -260,15 +259,15 @@ uint16_t HCSR04SensorManager::correctSensorOffset(uint16_t dist, uint16_t offset
   return result;
 }
 
-void HCSR04SensorManager::updateStatistics(LLMessage* message) {
-#if 0
-  HCSR04SensorInfo* sensor = m_sensors[message->sensor_index];
+void DistanceSensorManager::updateStatistics(LLMessage* message) {
+#if 1
+  DistanceSensor* sensor = getSensor(message->sensor_index);
 
-  const uint32_t start_delay = message->start - message->trigger;
+  auto start_delay = message->start - message->trigger;
   if (start_delay > 0) {
     sensor->lastDelayTillStartUs = start_delay;
 
-    const uint32_t duration = message->end - message->start;
+    auto duration = message->end - message->start;
     if (duration > sensor->maxDurationUs) {
       sensor->maxDurationUs = duration;
     }
@@ -288,7 +287,7 @@ void HCSR04SensorManager::updateStatistics(LLMessage* message) {
  * We should not use 64bit variables for "start" and "end" because access
  * to 64bit vars is not atomic for our 32bit cpu.
  */
-uint32_t HCSR04SensorManager::microsBetween(uint32_t a, uint32_t b) {
+uint32_t DistanceSensorManager::microsBetween(uint32_t a, uint32_t b) {
   uint32_t result = a - b;
   if (result & 0x80000000) {
     result = -result;
@@ -301,11 +300,11 @@ uint32_t HCSR04SensorManager::microsBetween(uint32_t a, uint32_t b) {
  * so we take care for the overflow. Times we measure are way below the
  * possible maximum.
  */
-uint32_t HCSR04SensorManager::microsSince(uint32_t a) {
+uint32_t DistanceSensorManager::microsSince(uint32_t a) {
   return microsBetween(micros(), a);
 }
 
-uint16_t HCSR04SensorManager::millisSince(uint16_t milliseconds) {
+uint16_t DistanceSensorManager::millisSince(uint16_t milliseconds) {
   uint16_t result = ((uint16_t) millis()) - milliseconds;
   if (result & 0x8000) {
     result = -result;
@@ -313,7 +312,7 @@ uint16_t HCSR04SensorManager::millisSince(uint16_t milliseconds) {
   return result;
 }
 
-uint16_t HCSR04SensorManager::medianMeasure(HCSR04SensorInfo *const sensor, uint16_t value) {
+uint16_t DistanceSensorManager::medianMeasure(DistanceSensor *const sensor, uint16_t value) {
   sensor->distances[sensor->nextMedianDistance] = value;
   sensor->nextMedianDistance++;
 
@@ -330,7 +329,7 @@ uint16_t HCSR04SensorManager::medianMeasure(HCSR04SensorInfo *const sensor, uint
   return median(sensor->distances[0], sensor->distances[1], sensor->distances[2]);
 }
 
-uint16_t HCSR04SensorManager::median(uint16_t a, uint16_t b, uint16_t c) {
+uint16_t DistanceSensorManager::median(uint16_t a, uint16_t b, uint16_t c) {
   if (a < b) {
     if (a >= c) {
       return a;

@@ -58,7 +58,7 @@ Button button(PUSHBUTTON_PIN);
 Config config;
 
 SSD1306DisplayDevice* obsDisplay;
-HCSR04SensorManager* sensorManager;
+DistanceSensorManager* sensorManager;
 #ifdef OBS_BLUETOOTH
 static BluetoothManager* bluetoothManager;
 #endif
@@ -119,7 +119,7 @@ void switch_wire_speed_to_SSD1306(){
 
 // FIXME
 void setupSensors() {
-  sensorManager = new HCSR04SensorManager;
+  sensorManager = new DistanceSensorManager;
   sensorManager->initSensors();
 }
 
@@ -440,9 +440,9 @@ void loop() {
     }
     button.handle(currentTimeMillis);
     gps.handle();
-    if (sensorManager->pollDistancesAlternating()) {
+    if (sensorManager->pollDistances()) {
       // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
-      const uint16_t reading = sensorManager->getLastValidValue(confirmationSensorID);
+      const uint16_t reading = sensorManager->getLastValidRawDistance(confirmationSensorID);
       if (reading > 0 && reading < minDistanceToConfirm) {
         minDistanceToConfirm = reading;
         datasetToConfirm = currentSet;
