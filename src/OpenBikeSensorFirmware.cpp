@@ -484,6 +484,7 @@ void loop() {
       } else { // confirming an overtake without left measure
         if (sensorManager->hasReadings(LEFT_SENSOR_ID)) {
           currentSet->confirmedDistances.push_back(MAX_SENSOR_VALUE);
+          currentSet->confirmedDistancesIndex.push_back(0);
         }
 #ifdef OBS_BLUETOOTH
         buttonBluetooth(currentSet, sensorManager->getCurrentMeasureIndex());
