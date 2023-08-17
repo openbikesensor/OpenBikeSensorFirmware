@@ -39,9 +39,6 @@
 /* Delay to call when we're waiting for work */
 #define TICK_DELAY 1
 
-/* Delay in ticks for when we run out of memory */
-#define OOM_TICK_DELAY 10000
-
 /* Enable init code for running alone */
 #define ALONE_ON_CORE 1
 
@@ -77,7 +74,7 @@
  *    close to the needed 148ms
  */
 
-/* Send echo trigger to the selected sensor and prepare measurement data
+/* Send echo trigger to the sensor `sensorId` and prepare measurement data
  * structures.
  */
 void TOFManager::startMeasurement(uint8_t sensorId) {
@@ -98,7 +95,7 @@ void TOFManager::startMeasurement(uint8_t sensorId) {
   gpio_set_level(sensor->triggerPin, 0);
 }
 
-/* Checks if the given sensor is ready for a new measurement cycle.
+/* Check if the sensor `sensorId` is ready for a new measurement cycle.
  */
 boolean TOFManager::isSensorReady(uint8_t sensorId) {
   LLSensor* sensor = sensors(sensorId);
@@ -124,6 +121,7 @@ boolean TOFManager::isSensorReady(uint8_t sensorId) {
   return ready;
 }
 
+/* Check if the measurement on the given sensor `sensor_idx` is complete. */
 boolean TOFManager::isMeasurementComplete(uint8_t sensor_idx) {
   if (sensors(sensor_idx)->end != MEASUREMENT_IN_PROGRESS) {
     return true;
@@ -136,6 +134,8 @@ boolean TOFManager::isMeasurementComplete(uint8_t sensor_idx) {
   return false;
 }
 
+/* Initialize the sensor manager and start it up. Use this to start the sensor.
+ * This function will start a new FreeRTOS task. */
 void TOFManager::startupManager(QueueHandle_t queue) {
   esp_log_level_set("tofmanager", ESP_LOG_INFO);
   ESP_LOGI("tofmanager","Currently on core %i", xPortGetCoreID());
@@ -144,14 +144,17 @@ void TOFManager::startupManager(QueueHandle_t queue) {
   xTaskCreatePinnedToCore(
     TOFManager::sensorTaskFunction,          /* Task function. */
     "TOFManager",        /* String with name of task. */
-    16 * 1024,            /* Stack size in bytes. */
-    queue,             /* Parameter passed as input of the task */
-    1,                /* Priority of the task. */
-    NULL,             /* Task handle. */
-    RT_CORE           /* the core to run on */
+    16 * 1024,           /* Stack size in bytes. */
+    queue,               /* Parameter passed as input of the task */
+    1,                   /* Priority of the task. */
+    NULL,                /* Task handle. */
+    RT_CORE              /* the core to run on */
   );
 }
 
+/* Main function that will be started by startupManager().
+ * This function will never return. This function is supposed to run in its own
+ * FreeRTOS task. */
 void TOFManager::sensorTaskFunction(void *parameter) {
   esp_log_level_set("tofmanager", ESP_LOG_INFO);
   isr_log_i("tofmanager", "Hello from core %i!", xPortGetCoreID());
@@ -169,6 +172,7 @@ void TOFManager::sensorTaskFunction(void *parameter) {
   sensorManager->loop();
 }
 
+/* Initialize the TOFManager: setup sensor pins and interrupts. */
 void TOFManager::init() {
 #if ALONE_ON_CORE
   esp_timer_init();
@@ -188,6 +192,8 @@ void TOFManager::init() {
   ESP_LOGI("tofmanager", "TOFManager init complete");
 }
 
+/* Looking at a single sensor `sensor_idx`, take its data and
+ * send it off to the high level sensor component. */
 void TOFManager::sendData(uint8_t sensor_idx) {
   LLSensor* sensor = sensors(sensor_idx);
 
@@ -200,6 +206,9 @@ void TOFManager::sendData(uint8_t sensor_idx) {
   xQueueSendToBack(sensor_queue, &message, portMAX_DELAY);
 }
 
+/* The main loop of the TOFManager. This function will never return.
+ * It sequences all measurements and sends their data to the high leve component
+ * of the sensor code. */
 void TOFManager::loop() {
   ESP_LOGI("tofmanager","Entering TOFManager::loop");
   currentSensor = primarySensor;
@@ -254,6 +263,8 @@ void TOFManager::loop() {
   }
 }
 
+/* Sensor interrupt function. Use the `isrParam` to pass in a LLSensor*
+ * Fetch the current phase of that sensor and set it's values. */
 static void IRAM_ATTR sensorInterrupt(void *isrParam) {
   // since the measurement of start and stop use the same interrupt
   // mechanism we should see a similar delay.
@@ -269,6 +280,7 @@ static void IRAM_ATTR sensorInterrupt(void *isrParam) {
   }
 }
 
+/* Set up a single `sensor` including its pins and interrupts. */
 void TOFManager::setupSensor(LLSensor* sensor, uint8_t idx) {
   gpio_config_t io_conf_trigger = {};
   io_conf_trigger.intr_type = GPIO_INTR_DISABLE;
@@ -277,10 +289,6 @@ void TOFManager::setupSensor(LLSensor* sensor, uint8_t idx) {
   io_conf_trigger.pull_down_en = GPIO_PULLDOWN_DISABLE;
   io_conf_trigger.pull_up_en = GPIO_PULLUP_DISABLE;
   gpio_config(&io_conf_trigger);
-  // gpio_pad_select_gpio(sensor->triggerPin);
-  // gpio_set_direction(sensor->triggerPin, GPIO_MODE_OUTPUT);
-  // gpio_pulldown_dis(sensor->triggerPin);
-  // gpio_pullup_dis(sensor->triggerPin);
 
   gpio_config_t io_conf_echo = {};
   io_conf_echo.intr_type = GPIO_INTR_ANYEDGE;
@@ -290,27 +298,23 @@ void TOFManager::setupSensor(LLSensor* sensor, uint8_t idx) {
   io_conf_echo.pull_up_en = GPIO_PULLUP_ENABLE;
   gpio_config(&io_conf_echo);
 
-  // gpio_pad_select_gpio(sensor->echoPin);
-  // gpio_set_direction(sensor->echoPin, GPIO_MODE_INPUT);
-  // gpio_pulldown_dis(sensor->echoPin);
-  // gpio_pullup_en(sensor->echoPin); // hint from https://youtu.be/xwsT-e1D9OY?t=354
-  // gpio_intr_enable(sensor->echoPin);
-;
-  // gpio_set_intr_type(sensor->echoPin, GPIO_INTR_NEGEDGE);
-
   attachSensorInterrupt(idx);
 }
 
+/* Attach the interrupt handler to the pin that belongs to the sensor
+ * designated by `idx`. */
 void TOFManager::attachSensorInterrupt(uint8_t idx) {
   gpio_isr_handler_add(sensors(idx)->echoPin, sensorInterrupt, sensors(idx));
 }
 
+/* Detach all interrupts for our sensors. */
 void TOFManager::detachInterrupts() {
   for (int i = 0; i < NUMBER_OF_TOF_SENSORS; i++) {
     gpio_isr_handler_remove(sensors(i)->echoPin);
   }
 }
 
+/* Disable the measurement on the sensor designated by `idx`. */
 void TOFManager::disableMeasurement(uint8_t idx) {
   gpio_set_level(sensors(idx)->triggerPin, 0);
 }

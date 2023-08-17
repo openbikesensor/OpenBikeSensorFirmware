@@ -5,8 +5,6 @@
 #include <cstdint>
 #include <atomic>
 
-#include "utils/median.h"
-
 typedef struct {
   uint8_t sensor_index; // the global index of the sensor this event occured on
   uint32_t trigger;     // the microseconds since the sensor was triggered
@@ -36,11 +34,13 @@ typedef struct {
   uint32_t lost_signals = 0;
 } LLSensor;
 
+// FIXME unify index parameter names
+
 /* low-level TOF sensor manager
  *
  * This class is responsible for all the low level plumbing: interrupts, timings, pins, etc
  * This class deals exclusively with microseconds. The companion high level interface is
- * HCSR04SensorManager.
+ * DistanceSensorManager. These two parts of the code communicate via a FreeRTOS Queue.
  */
 class TOFManager {
   public:
@@ -52,7 +52,7 @@ class TOFManager {
     void init();
 
     /*
-     * startup()
+     * startupManager()
      *
      * The only thing you ever need to call. This will spawn another task on a different CPU
      * and you won't have to interact with this class at all.
@@ -62,7 +62,7 @@ class TOFManager {
     static void startupManager(QueueHandle_t sensor_queue);
   private:
     TOFManager(QueueHandle_t q, LLSensor* sensors) : m_sensors(sensors), sensor_queue(q) {}
-    ~TOFManager();
+    ~TOFManager(); // FIXME
 
     void startMeasurement(uint8_t sensorId);
     void disableMeasurement(uint8_t sensor_idx);

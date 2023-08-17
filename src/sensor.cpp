@@ -354,4 +354,3 @@ uint16_t DistanceSensorManager::median(uint16_t a, uint16_t b, uint16_t c) {
   }
   return c;
 }
-
