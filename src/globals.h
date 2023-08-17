@@ -37,7 +37,6 @@ class HCSR04SensorManager;
 #include "sensor.h"
 #include "VoltageMeter.h"
 
-#include <string>
 
 // This file should contain declarations of all variables that will be used globally.
 // The variables don't have to be set here, but need to be declared.

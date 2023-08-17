@@ -40,8 +40,6 @@
 #include "utils/timeutils.h"
 #include "obsimprov.h"
 
-typedef std::basic_string<char> obs_string;
-
 using namespace httpsserver;
 
 static const char *const HTML_ENTITY_FAILED_CROSS = "&#x274C;";

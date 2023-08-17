@@ -167,7 +167,7 @@ void DistanceSensorManager::copyData(DataSet* set) {
     set->sensorValues.push_back(m_sensors[i].minDistance);
   }
 
-  set->measurements = sensorManager->lastReadingCount;
+  set->measurements = lastReadingCount;
   memcpy(&(set->readDurationsRightInMicroseconds),
          &(m_sensors[0].echoDurationMicroseconds), set->measurements * sizeof(int32_t));
   memcpy(&(set->readDurationsLeftInMicroseconds),
