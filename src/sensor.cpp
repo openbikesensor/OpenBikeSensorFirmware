@@ -129,18 +129,25 @@ bool DistanceSensorManager::processSensorMessage(LLMessage* message) {
 
   uint32_t duration = microsBetween(message->start, message->end);
 
-  uint16_t rawDistance = computeDistance(duration);
-
-  sensor->rawDistance = rawDistance;
-  sensor->median->addValue(rawDistance);
-  uint16_t offsetDistance = computeOffsetDistance(medianMeasure(sensor, rawDistance), sensor->offset);
-  sensor->distance = offsetDistance;
   sensor->echoDurationMicroseconds[lastReadingCount] = duration;
-  sensor->rawDistance = rawDistance;
+
+  if (duration > MIN_DURATION_MICRO_SEC && duration < MAX_DURATION_MICRO_SEC) {
+    // these values should only be set if we have correct data
+    uint16_t rawDistance = computeDistance(duration);
+    sensor->median->addValue(rawDistance);
+
+    sensor->rawDistance = rawDistance;
+
+    uint16_t offsetDistance = computeOffsetDistance(medianMeasure(sensor, rawDistance), sensor->offset);
+    sensor->distance = offsetDistance;
+    proposeMinDistance(sensor, offsetDistance);
+    reading_valid = true;
+  } else {
+    sensor->rawDistance = MAX_SENSOR_VALUE;
+    sensor->distance = MAX_SENSOR_VALUE;
+  }
 
   captureOffsetMS[lastReadingCount] = millisSince(sensorStartTimestampMS);
-
-  proposeMinDistance(sensor, offsetDistance);
 
   if(message->sensor_index == 1) {
     if (lastReadingCount < MAX_NUMBER_MEASUREMENTS_PER_INTERVAL - 1) {
