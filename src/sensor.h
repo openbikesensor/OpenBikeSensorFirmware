@@ -62,24 +62,38 @@ extern const uint16_t MAX_SENSOR_VALUE;
 const uint8_t NUMBER_OF_TOF_SENSORS = 2;
 
 struct DistanceSensor {
+  // offset from the sensor to the end of the handlebar (cm)
   uint16_t offset = 0;
+  // the distance from the sensor to some object (cm)
   uint16_t rawDistance = 0;
+  // median of the offset distance (cm)
   uint16_t distances[MEDIAN_DISTANCE_MEASURES] = { MAX_SENSOR_VALUE, MAX_SENSOR_VALUE, MAX_SENSOR_VALUE };
+  // index into the previous member
   uint16_t nextMedianDistance = 0;
+  // minimum offset distance the sensor noticed between resets (cm)
   uint16_t minDistance = MAX_SENSOR_VALUE;
+  // current offset distance of the sensor (cm)
   uint16_t distance = MAX_SENSOR_VALUE;
 
+  // UI string that denotes the sensor position
   char const* sensorLocation;
 
+  // an array with all of the time-of-flight measurements since the last reset
   int32_t echoDurationMicroseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
 
+  // a data structure for computing the median offset distance since the last reset (cm)
   Median<uint16_t>*median = nullptr;
 
   // statistics
+
+  // maximum time-of-flight the sensor measured since the last reset (microseconds)
   uint32_t maxDurationUs = 0;
+  // minimum time-of-flight the sensor measured since the last reset (microseconds)
   uint32_t minDurationUs = UINT32_MAX;
+  // internal delay to start metric
   uint32_t lastDelayTillStartUs = 0;
 
+  // FIXME: internal statistics
   // counts how often no echo and also no timeout signal was received
   // should only happen with defect or missing sensors
   uint32_t numberOfNoSignals = 0;
