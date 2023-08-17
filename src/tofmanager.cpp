@@ -31,7 +31,7 @@
  * HC-SR04: observed 71ms, docu 60ms
  * JSN-SR04T: observed 58ms
  */
-#define MAX_TIMEOUT_MICRO_SEC 50000
+#define MAX_TIMEOUT_MICRO_SEC 75000
 
 /* The core to run the RT component on */
 #define RT_CORE 0
@@ -176,13 +176,13 @@ void TOFManager::init() {
 #endif
 
   LLSensor* sensorManaged1 = sensors(0);
-  sensorManaged1->triggerPin = GPIO_NUM_25;
-  sensorManaged1->echoPin = GPIO_NUM_26;
+  sensorManaged1->triggerPin = GPIO_NUM_15;
+  sensorManaged1->echoPin = GPIO_NUM_4;
   setupSensor(sensorManaged1, 0);
 
   LLSensor* sensorManaged2 = sensors(1);
-  sensorManaged2->triggerPin = GPIO_NUM_15;
-  sensorManaged2->echoPin = GPIO_NUM_4;
+  sensorManaged2->triggerPin = GPIO_NUM_25;
+  sensorManaged2->echoPin = GPIO_NUM_26;
   setupSensor(sensorManaged2, 1);
 
   ESP_LOGI("tofmanager", "TOFManager init complete");
@@ -205,29 +205,33 @@ void TOFManager::loop() {
   currentSensor = primarySensor;
   startMeasurement(primarySensor);
 
-  uint32_t statLog = 0;
   float startLoop = esp_timer_get_time();
 
+  // this toggle switches once approx every 8 seconds
+  uint8_t logToggle = 0;
+
   while ( true ) {
-    if (statLog > 1024) {
+    uint8_t newToggle = (esp_timer_get_time() >> 23) & 0x1;
+    if (newToggle != logToggle) {
       float spent = ((float)esp_timer_get_time() - startLoop) / 1000000.0;
-      ESP_LOGI("tofmanager", "statlog: sensor1->irq_cnt=%u, sensor2->irq_cnt=%u",
+      ESP_LOGI("tofmanager", "stats: sensor1->irq_cnt=%u, sensor2->irq_cnt=%u",
         sensors(0)->interrupt_count, sensors(1)->interrupt_count);
-      ESP_LOGI("tofmanager", "statlog: success=(%u, %u), started=(%u,%u)",
+      ESP_LOGI("tofmanager", "stats: success=(%u, %u), started=(%u,%u)",
         sensors(0)->successful_measurements,
         sensors(1)->successful_measurements,
         sensors(0)->started_measurements,
         sensors(1)->started_measurements);
-      ESP_LOGI("tofmanager", "statlog: (s0) trigger-start-end = %x-%x-%x",
+      ESP_LOGI("tofmanager", "stats: (s0) trigger-start-end = %x-%x-%x",
         sensors(0)->trigger.load(), sensors(0)->start.load(), sensors(0)->end.load());
+      ESP_LOGI("tofmanager", "stats: (s1) trigger-start-end = %x-%x-%x",
+        sensors(1)->trigger.load(), sensors(1)->start.load(), sensors(1)->end.load());
       if (spent > 0) {
         ESP_LOGI("tofmanager", "statlog: (%f,%f) started/s",
           (float)sensors(0)->started_measurements / spent,
           (float)sensors(0)->started_measurements / spent);
       }
-      statLog = 0;
+      logToggle = newToggle;
     }
-    statLog += 1;
 
     // wait for sensor
     if (!isMeasurementComplete(currentSensor)) {
