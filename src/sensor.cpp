@@ -69,6 +69,7 @@ void DistanceSensorManager::reset(uint32_t startMillisTicks) {
     sensor.minDistance = MAX_SENSOR_VALUE;
     memset(&(sensor.echoDurationMicroseconds), 0, sizeof(sensor.echoDurationMicroseconds));
     sensor.numberOfTriggers = 0;
+    delete sensor.median;
     sensor.median = new Median<uint16_t>(5, MAX_SENSOR_VALUE);
     sensor.rawDistance = MAX_SENSOR_VALUE;
   }
@@ -114,7 +115,7 @@ uint16_t DistanceSensorManager::computeDistance(uint32_t travel_time) {
 }
 
 void DistanceSensorManager::proposeMinDistance(DistanceSensor* const sensor, uint16_t distance) {
- if (distance > 0 && distance < sensor->minDistance) {
+ if ((distance > 0) && (distance < sensor->minDistance)) {
     sensor->minDistance = distance;
   }
 }
@@ -132,13 +133,14 @@ bool DistanceSensorManager::processSensorMessage(LLMessage* message) {
 
   sensor->rawDistance = rawDistance;
   sensor->median->addValue(rawDistance);
-  sensor->distance = computeOffsetDistance(medianMeasure(sensor, rawDistance), sensor->offset);
+  uint16_t offsetDistance = computeOffsetDistance(medianMeasure(sensor, rawDistance), sensor->offset);
+  sensor->distance = offsetDistance;
   sensor->echoDurationMicroseconds[lastReadingCount] = duration;
   sensor->rawDistance = rawDistance;
 
   captureOffsetMS[lastReadingCount] = millisSince(sensorStartTimestampMS);
 
-  proposeMinDistance(sensor, rawDistance);
+  proposeMinDistance(sensor, offsetDistance);
 
   if(message->sensor_index == 1) {
     if (lastReadingCount < MAX_NUMBER_MEASUREMENTS_PER_INTERVAL - 1) {

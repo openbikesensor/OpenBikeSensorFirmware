@@ -120,6 +120,7 @@ void switch_wire_speed_to_SSD1306(){
 // FIXME
 void setupSensors() {
   sensorManager = new DistanceSensorManager;
+  sensorManager->setOffsets(config.sensorOffsets);
   sensorManager->initSensors();
 }
 
