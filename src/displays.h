@@ -51,7 +51,7 @@ extern const uint8_t TempLogo[];
 #define HUGE_FONT Open_Sans_Regular_Plain_50
 
 // Forward declare classes to build (because there is a cyclic dependency between sensor.h and displays.h)
-class HCSR04SensorInfo;
+class DistanceSensor;
 
 const int CLK = 33; //Set the CLK pin connection to the display
 const int DIO = 25; //Set the DIO pin connection to the display
@@ -317,7 +317,7 @@ class SSD1306DisplayDevice : public DisplayDevice {
     void showNumButtonPressed();
 
     void showValues(
-      HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2,
+      DistanceSensor* sensor1, DistanceSensor* sensor2,
       uint16_t minDistanceToConfirm, int16_t batteryPercentage, int16_t TemperaturValue,
       int lastMeasurements, boolean insidePrivacyArea, double speed, uint8_t satellites);
 

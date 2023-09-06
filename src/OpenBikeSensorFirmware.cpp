@@ -58,13 +58,17 @@ Button button(PUSHBUTTON_PIN);
 Config config;
 
 SSD1306DisplayDevice* obsDisplay;
-HCSR04SensorManager* sensorManager;
+DistanceSensorManager* sensorManager;
+#ifdef OBS_BLUETOOTH
 static BluetoothManager* bluetoothManager;
+#endif
 
 Gps gps;
 
+#ifdef OBS_BLUETOOTH
 static const long BLUETOOTH_INTERVAL_MILLIS = 100;
 static long lastBluetoothInterval = 0;
+#endif
 
 static const long DISPLAY_INTERVAL_MILLIS = 25;
 static long lastDisplayInterval = 0;
@@ -104,7 +108,6 @@ uint8_t batteryPercentage();
 void serverLoop();
 void handleButtonInServerMode();
 bool loadConfig(ObsConfig &cfg);
-void copyCollectedSensorData(DataSet *set);
 
 // The BMP280 can keep up to 3.4MHz I2C speed, so no need for an individual slower speed
 void switch_wire_speed_to_VL53(){
@@ -114,26 +117,14 @@ void switch_wire_speed_to_SSD1306(){
 	Wire.setClock(500000);
 }
 
+// FIXME
 void setupSensors() {
-  sensorManager = new HCSR04SensorManager;
-
-  HCSR04SensorInfo sensorManaged1;
-  sensorManaged1.triggerPin = (config.displayConfig & DisplaySwapSensors) ? 25 : 15;
-  sensorManaged1.echoPin = (config.displayConfig & DisplaySwapSensors) ? 26 : 4;
-  sensorManaged1.sensorLocation = (char*) "Right"; // TODO
-  sensorManager->registerSensor(sensorManaged1, 0);
-
-  HCSR04SensorInfo sensorManaged2;
-  sensorManaged2.triggerPin = (config.displayConfig & DisplaySwapSensors) ? 15 : 25;
-  sensorManaged2.echoPin = (config.displayConfig & DisplaySwapSensors) ? 4 : 26;
-  sensorManaged2.sensorLocation = (char*) "Left"; // TODO
-  sensorManager->registerSensor(sensorManaged2, 1);
-
+  sensorManager = new DistanceSensorManager;
   sensorManager->setOffsets(config.sensorOffsets);
-
-  sensorManager->setPrimarySensor(LEFT_SENSOR_ID);
+  sensorManager->initSensors();
 }
 
+#ifdef OBS_BLUETOOTH
 static void setupBluetooth(const ObsConfig &cfg, const String &trackUniqueIdentifier) {
   if (cfg.getProperty<bool>(ObsConfig::PROPERTY_BLUETOOTH)) {
     obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "Bluetooth ..");
@@ -193,6 +184,7 @@ static void buttonBluetooth(const DataSet *dataSet, uint16_t measureIndex) {
       left, right);
   }
 }
+#endif
 
 void setup() {
   Serial.begin(115200);
@@ -262,12 +254,6 @@ void setup() {
   delay(333); // Added for user experience
 
   //##############################################################
-  // Init HCSR04
-  //##############################################################
-
-  setupSensors();
-
-  //##############################################################
   // Check, if the button is pressed
   // Enter configuration mode and enable OTA
   //##############################################################
@@ -283,8 +269,10 @@ void setup() {
 
   if (button.read() == HIGH || triggerServerMode) {
     obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "Start Server");
+#ifdef OBS_BLUETOOTH
     ESP_ERROR_CHECK_WITHOUT_ABORT(
       esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
+#endif
 
     delay(200);
     startServer(&cfg);
@@ -333,7 +321,9 @@ void setup() {
 
   gps.handle();
 
+#ifdef OBS_BLUETOOTH
   setupBluetooth(cfg, trackUniqueIdentifier);
+#endif
 
   obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "Wait for GPS");
   obsDisplay->newLine();
@@ -343,8 +333,6 @@ void setup() {
   while (!gps.hasFix(obsDisplay)) {
     currentTimeMillis = millis();
     gps.handle();
-    sensorManager->pollDistancesAlternating();
-    reportBluetooth();
     gps.showWaitStatus(obsDisplay);
     if (button.read() == HIGH) {
       log_d("Skipped get GPS...");
@@ -360,12 +348,16 @@ void setup() {
   gps.handle(1100); // Added for user experience
   gps.pollStatistics();
   obsDisplay->clear();
+
+  //##############################################################
+  // Init HCSR04
+  //##############################################################
+  setupSensors();
 }
 
 void serverLoop() {
   gps.handle();
   configServerHandle();
-  sensorManager->pollDistancesAlternating();
   handleButtonInServerMode();
 }
 
@@ -426,7 +418,7 @@ void loop() {
   currentSet->millis = startTimeMillis;
   currentSet->batteryLevel = voltageMeter->read();
 
-  lastMeasurements = sensorManager->m_sensors[confirmationSensorID].numberOfTriggers;
+  lastMeasurements = sensorManager->getSensor(confirmationSensorID)->numberOfTriggers;
   sensorManager->reset(startTimeMillis);
 
   // if the detected minimum was measured more than 5s ago, it is discarded and cannot be confirmed
@@ -449,18 +441,11 @@ void loop() {
     }
     button.handle(currentTimeMillis);
     gps.handle();
-    if (sensorManager->pollDistancesAlternating()) {
+    if (sensorManager->pollDistances()) {
       // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
-      const uint16_t reading = sensorManager->sensorValues[confirmationSensorID];
+      const uint16_t reading = sensorManager->getLastValidRawDistance(confirmationSensorID);
       if (reading > 0 && reading < minDistanceToConfirm) {
         minDistanceToConfirm = reading;
-        minDistanceToConfirmIndex = sensorManager->getCurrentMeasureIndex();
-        // if there was no measurement of this sensor for this index, it is the
-        // one before. This happens with fast confirmations.
-        while (minDistanceToConfirmIndex > 0
-               && sensorManager->m_sensors[confirmationSensorID].echoDurationMicroseconds[minDistanceToConfirmIndex] <= 0) {
-            minDistanceToConfirmIndex--;
-        }
         datasetToConfirm = currentSet;
         timeOfMinimum = currentTimeMillis;
       }
@@ -469,8 +454,8 @@ void loop() {
     if (lastDisplayInterval != (currentTimeMillis / DISPLAY_INTERVAL_MILLIS)) {
       lastDisplayInterval = currentTimeMillis / DISPLAY_INTERVAL_MILLIS;
       obsDisplay->showValues(
-        sensorManager->m_sensors[LEFT_SENSOR_ID],
-        sensorManager->m_sensors[RIGHT_SENSOR_ID],
+        sensorManager->getSensor(LEFT_SENSOR_ID),
+        sensorManager->getSensor(RIGHT_SENSOR_ID),
         minDistanceToConfirm,
         voltageMeter->readPercentage(),
         (int16_t) TemperatureValue,
@@ -481,7 +466,9 @@ void loop() {
       );
     }
     gps.handle();
+#ifdef OBS_BLUETOOTH
     reportBluetooth();
+#endif
     if (button.gotPressed()) { // after button was released, detect long press here
       // immediate user feedback - we start the action
       obsDisplay->highlight();
@@ -491,13 +478,18 @@ void loop() {
       if (datasetToConfirm != nullptr) {
         datasetToConfirm->confirmedDistances.push_back(minDistanceToConfirm);
         datasetToConfirm->confirmedDistancesIndex.push_back(minDistanceToConfirmIndex);
+#ifdef OBS_BLUETOOTH
         buttonBluetooth(datasetToConfirm, minDistanceToConfirmIndex);
+#endif
         datasetToConfirm = nullptr;
       } else { // confirming an overtake without left measure
-        currentSet->confirmedDistances.push_back(MAX_SENSOR_VALUE);
-        currentSet->confirmedDistancesIndex.push_back(
-          sensorManager->getCurrentMeasureIndex());
+        if (sensorManager->hasReadings(LEFT_SENSOR_ID)) {
+          currentSet->confirmedDistances.push_back(MAX_SENSOR_VALUE);
+          currentSet->confirmedDistancesIndex.push_back(0);
+        }
+#ifdef OBS_BLUETOOTH
         buttonBluetooth(currentSet, sensorManager->getCurrentMeasureIndex());
+#endif
       }
       minDistanceToConfirm = MAX_SENSOR_VALUE; // ready for next confirmation
     }
@@ -510,7 +502,7 @@ void loop() {
   currentSet->gpsRecord = gps.getCurrentGpsRecord();
   currentSet->isInsidePrivacyArea = gps.isInsidePrivacyArea();
   if (currentSet->gpsRecord.getTow() == thisLoopTow) {
-    copyCollectedSensorData(currentSet);
+    sensorManager->copyData(currentSet);
     log_d("NEW SET: TOW: %u GPSms: %u, SETms: %u, GPS Time: %s, SET Time: %s, innerLoops: %d, buffer: %d, write time %3ums, loop time: %4ums, measurements: %2d",
           currentSet->gpsRecord.getTow(), currentSet->gpsRecord.getCreatedAtMillisTicks(),
           currentSet->millis,
@@ -563,19 +555,6 @@ void loop() {
   log_d("Time in loop: %lums %d inner loops, %d measures, %s, TOW: %d",
         currentTimeMillis - startTimeMillis, loops, lastMeasurements,
         TimeUtils::timeToString().c_str(), thisLoopTow);
-}
-
-void copyCollectedSensorData(DataSet *set) {// Write the minimum values of the while-loop to a set
-  for (auto & m_sensor : sensorManager->m_sensors) {
-    set->sensorValues.push_back(m_sensor.minDistance);
-  }
-  set->measurements = sensorManager->lastReadingCount;
-  memcpy(&(set->readDurationsRightInMicroseconds),
-         &(sensorManager->m_sensors[0].echoDurationMicroseconds), set->measurements * sizeof(int32_t));
-  memcpy(&(set->readDurationsLeftInMicroseconds),
-         &(sensorManager->m_sensors[1].echoDurationMicroseconds), set->measurements * sizeof(int32_t));
-  memcpy(&(set->startOffsetMilliseconds),
-         &(sensorManager->startOffsetMilliseconds), set->measurements * sizeof(uint16_t));
 }
 
 uint8_t batteryPercentage() {

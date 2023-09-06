@@ -55,13 +55,13 @@ void SSD1306DisplayDevice::displaySimple(uint16_t value) {
 }
 
 void SSD1306DisplayDevice::showValues(
-  HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2, uint16_t minDistanceToConfirm,  int16_t batteryPercentage,
+  DistanceSensor* sensor1, DistanceSensor* sensor2, uint16_t minDistanceToConfirm,  int16_t batteryPercentage,
   int16_t TemperaturValue, int lastMeasurements, boolean insidePrivacyArea,
   double speed, uint8_t satellites) {
 
   handleHighlight();
 
-  uint16_t value1 = sensor1.minDistance;
+  uint16_t value1 = sensor1->minDistance;
   if (minDistanceToConfirm != MAX_SENSOR_VALUE) {
     value1 = minDistanceToConfirm;
   }
@@ -69,7 +69,7 @@ void SSD1306DisplayDevice::showValues(
     displaySimple(value1);
   } else {
     if (config.displayConfig & DisplayLeft) {
-      String loc1 = sensor1.sensorLocation;
+      String loc1 = sensor1->sensorLocation;
       if (insidePrivacyArea) {
         loc1 = "(" + loc1 + ")";
       }
@@ -83,8 +83,8 @@ void SSD1306DisplayDevice::showValues(
     }
     // Show sensor2, when DisplayRight is configured
     if (config.displayConfig & DisplayRight) {
-      uint16_t value2 = sensor2.distance;
-      String loc2 = sensor2.sensorLocation;
+      uint16_t value2 = sensor2->distance;
+      String loc2 = sensor2->sensorLocation;
       this->prepareTextOnGrid(3, 0, loc2);
       if (value2 == MAX_SENSOR_VALUE || value2 == 0) {
         this->prepareTextOnGrid(2, 1, "---", LARGE_FONT, 5, 0);
@@ -98,8 +98,8 @@ void SSD1306DisplayDevice::showValues(
     const int bufSize = 64;
     char buffer[bufSize];
 // #ifdef NERD_SENSOR_DISTANCE
-    snprintf(buffer, bufSize - 1, "%03d|%02d|%03d", sensor1.rawDistance,
-             lastMeasurements, sensor2.rawDistance);
+    snprintf(buffer, bufSize - 1, "%03d|%02d|%03d", sensor1->rawDistance,
+             lastMeasurements, sensor2->rawDistance);
 // #endif
 #ifdef NERD_HEAP
     snprintf(buffer, bufSize - 1, "%03d|%02d|%uk", sensor1.rawDistance,

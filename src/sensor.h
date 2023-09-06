@@ -24,11 +24,14 @@
 #ifndef OBS_SENSOR_H
 #define OBS_SENSOR_H
 
-#include <vector>
 #include <Arduino.h>
+#include <vector>
 
-#include "globals.h"
 #include "utils/median.h"
+
+#include "tofmanager.h"
+
+struct DataSet;
 
 /* About the speed of sound:
    See also http://www.sengpielaudio.com/Rechner-schallgeschw.htm (german)
@@ -58,28 +61,39 @@ extern const uint16_t MAX_SENSOR_VALUE;
 
 const uint8_t NUMBER_OF_TOF_SENSORS = 2;
 
-struct HCSR04SensorInfo {
-  uint8_t triggerPin = 15;
-  uint8_t echoPin = 4;
+struct DistanceSensor {
+  // offset from the sensor to the end of the handlebar (cm)
   uint16_t offset = 0;
+  // the distance from the sensor to some object (cm)
   uint16_t rawDistance = 0;
+  // median of the offset distance (cm)
   uint16_t distances[MEDIAN_DISTANCE_MEASURES] = { MAX_SENSOR_VALUE, MAX_SENSOR_VALUE, MAX_SENSOR_VALUE };
+  // index into the previous member
   uint16_t nextMedianDistance = 0;
+  // minimum offset distance the sensor noticed between resets (cm)
   uint16_t minDistance = MAX_SENSOR_VALUE;
+  // current offset distance of the sensor (cm)
   uint16_t distance = MAX_SENSOR_VALUE;
-  char* sensorLocation;
-  // timestamp when the trigger signal was sent in us micros()
-  uint32_t trigger = 0;
-  volatile uint32_t start = 0;
-  /* if end == 0 - a measurement is in progress */
-  volatile uint32_t end = 1;
 
+  // UI string that denotes the sensor position
+  char const* sensorLocation;
+
+  // an array with all of the time-of-flight measurements since the last reset
   int32_t echoDurationMicroseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
+
+  // a data structure for computing the median offset distance since the last reset (cm)
   Median<uint16_t>*median = nullptr;
+
   // statistics
+
+  // maximum time-of-flight the sensor measured since the last reset (microseconds)
   uint32_t maxDurationUs = 0;
+  // minimum time-of-flight the sensor measured since the last reset (microseconds)
   uint32_t minDurationUs = UINT32_MAX;
+  // internal delay to start metric
   uint32_t lastDelayTillStartUs = 0;
+
+  // FIXME: internal statistics
   // counts how often no echo and also no timeout signal was received
   // should only happen with defect or missing sensors
   uint32_t numberOfNoSignals = 0;
@@ -87,25 +101,21 @@ struct HCSR04SensorInfo {
   uint32_t numberOfToLongMeasurement = 0;
   uint32_t numberOfInterruptAdjustments = 0;
   uint16_t numberOfTriggers = 0;
-  bool measurementRead;
 };
 
-class HCSR04SensorManager {
+class DistanceSensorManager {
   public:
-    HCSR04SensorManager() {}
-    virtual ~HCSR04SensorManager() {}
+    DistanceSensorManager() {}
+    virtual ~DistanceSensorManager() {}
     void reset(uint32_t startMillisTicks);
-    void registerSensor(const HCSR04SensorInfo &, uint8_t idx);
     void setOffsets(std::vector<uint16_t>);
-    void setPrimarySensor(uint8_t idx);
-    void detachInterrupts();
-    void attachInterrupts();
+    void initSensors();
+
     /* Returns the current raw median distance in cm for the
      * given sensor.
      */
-    uint16_t getRawMedianDistance(uint8_t sensorId);
+    uint16_t getMedianRawDistance(uint8_t sensorId);
     /* Index for CSV. */
-    uint16_t getCurrentMeasureIndex();
     uint32_t getMaxDurationUs(uint8_t sensorId);
     uint32_t getMinDurationUs(uint8_t sensorId);
     uint32_t getLastDelayTillStartUs(uint8_t sensorId);
@@ -114,34 +124,41 @@ class HCSR04SensorManager {
     uint32_t getNumberOfToLongMeasurement(const uint8_t sensorId);
     uint32_t getNumberOfInterruptAdjustments(const uint8_t sensorId);
 
-    HCSR04SensorInfo m_sensors[NUMBER_OF_TOF_SENSORS];
-    uint16_t sensorValues[NUMBER_OF_TOF_SENSORS];
-    uint16_t lastReadingCount = 0;
-    uint16_t startOffsetMilliseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
-    bool pollDistancesParallel();
-    bool pollDistancesAlternating();
+    DistanceSensor* getSensor(uint8_t sensorIndex);
+    uint16_t getSensorRawDistance(uint8_t sensorIndex);
+    uint16_t getLastValidRawDistance(uint8_t sensorIndex);
+    boolean hasReadings(uint8_t sensorIndex);
+    void copyData(DataSet* set);
+
+    bool pollDistances();
 
   protected:
+    uint16_t captureOffsetMS[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
+    DistanceSensor m_sensors[NUMBER_OF_TOF_SENSORS];
+    void updateStatistics(LLMessage* message);
+    uint16_t lastReadingCount = 0;
+
+    /* offer a new value for the minimum distance */
+    void proposeMinDistance(DistanceSensor* const sensor, uint16_t distance);
+
+    /* compute the distance to an object considering `travel_time` */
+    uint16_t computeDistance(uint32_t travel_time);
 
   private:
-    void sendTriggerToSensor(uint8_t sensorId);
-    bool collectSensorResult(uint8_t sensorId);
-    void setSensorTriggersToLow();
-    bool collectSensorResults();
-    void attachSensorInterrupt(uint8_t idx);
-    uint32_t getFixedStart(size_t idx, HCSR04SensorInfo * const sensor);
-    boolean isReadyForStart(uint8_t sensorId);
-    void registerReadings();
-    static uint16_t medianMeasure(HCSR04SensorInfo* const sensor, uint16_t value);
+    static uint16_t medianMeasure(DistanceSensor* const sensor, uint16_t value);
     static uint16_t median(uint16_t a, uint16_t b, uint16_t c);
-    static uint16_t correctSensorOffset(uint16_t dist, uint16_t offset);
+    static uint16_t computeOffsetDistance(uint16_t dist, uint16_t offset);
     static uint32_t microsBetween(uint32_t a, uint32_t b);
     static uint32_t microsSince(uint32_t a);
     static uint16_t millisSince(uint16_t milliseconds);
-    static void updateStatistics(HCSR04SensorInfo * const sensor);
-    uint32_t startReadingMilliseconds = 0;
-    uint8_t primarySensor = 1;
-    uint8_t lastSensor;
+
+    bool processSensorMessage(LLMessage* message);
+    uint32_t getFixedStart(size_t idx, DistanceSensor * const sensor);
+    uint32_t sensorStartTimestampMS = 0;
+
+    QueueHandle_t sensor_queue;
+    uint8_t* queue_buffer;
+    StaticQueue_t *static_queue;
 };
 
 #endif

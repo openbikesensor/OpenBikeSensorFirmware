@@ -41,7 +41,6 @@ template<typename T> class Median {
       }
     };
     ~Median() {
-      log_i("Will free Median(%d/%d) -> 0x%lx", size, mid, data);
       delete[] data;
       delete[] temp;
     };

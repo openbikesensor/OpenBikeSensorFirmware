@@ -1,0 +1,320 @@
+#include "tofmanager.h"
+#include "sensor.h"
+
+#include <unistd.h>
+
+/* Value of HCSR04SensorInfo::end during an ongoing measurement. */
+#define MEASUREMENT_IN_PROGRESS 0
+
+/* To avoid that we receive a echo from a former measurement, we do not
+ * start a new measurement within the given time from the start of the
+ * former measurement of the opposite sensor.
+ * High values can lead to the situation that we only poll the
+ * primary sensor for a while!?
+ */
+#define SENSOR_QUIET_PERIOD_AFTER_OPPOSITE_START_MICRO_SEC (30 * 1000)
+
+/* The last end (echo goes to low) of a measurement must be this far
+ * away before a new measurement is started.
+ */
+#define SENSOR_QUIET_PERIOD_AFTER_END_MICRO_SEC (10 * 1000)
+
+/* The last start of a new measurement must be as long ago as given here
+    away, until we start a new measurement.
+   - With 35ms I could get stable readings down to 19cm (new sensor)
+   - With 30ms I could get stable readings down to 25/35cm only (new sensor)
+   - It looked fine with the old sensor for all values
+ */
+#define SENSOR_QUIET_PERIOD_AFTER_START_MICRO_SEC (35 * 1000)
+
+/* This time is maximum echo pin high time if the sensor gets no response
+ * HC-SR04: observed 71ms, docu 60ms
+ * JSN-SR04T: observed 58ms
+ */
+#define MAX_TIMEOUT_MICRO_SEC 75000
+
+/* The core to run the RT component on */
+#define RT_CORE 0
+
+/* Delay to call when we're waiting for work */
+#define TICK_DELAY 1
+
+/* Enable init code for running alone */
+#define ALONE_ON_CORE 1
+
+/* default interrupt flags */
+#define OBS_INTR_FLAG 0
+
+/* Some calculations:
+ *
+ * Assumption:
+ *  Small car length: 4m (average 2017 4,4m, really smallest is 2.3m )
+ *  Speed difference: 100km/h = 27.8m/s
+ *  Max interesting distance: MAX_DISTANCE_MEASURED_CM = 250cm
+ *
+ * Measured:
+ *  MAX_TIMEOUT_MICRO_SEC == ~ 75_000 micro seconds, if the sensor gets no echo
+ *
+ * Time of the overtake process:
+ *  4m / 27.8m/s = 0.143 sec
+ *
+ * We need to have time for 3 measures to get the car
+ *
+ * 0.148 sec / 3 measures = 48 milli seconds pre measure = 48_000 micro_sec
+ *
+ * -> If we wait till MAX_TIMEOUT_MICRO_SEC (75ms) because the right
+ *    sensor has no measure we are to slow. (3x75 = 225ms > 143ms)
+ *
+ *    If we only waif tor the primary (left) sensor we are good again,
+ *    and so trigger one sensor while the other is still in "timeout-state"
+ *    we save some time. Assuming 1st measure is just before the car appears
+ *    besides the sensor:
+ *
+ *    75ms open sensor + 2x SENSOR_QUIET_PERIOD_AFTER_START_MICRO_SEC (35ms) = 145ms which is
+ *    close to the needed 148ms
+ */
+
+/* Send echo trigger to the sensor `sensorId` and prepare measurement data
+ * structures.
+ */
+void TOFManager::startMeasurement(uint8_t sensorId) {
+  LLSensor* sensor = sensors(sensorId);
+
+  sensor->started_measurements += 1;
+
+  sensor->end = MEASUREMENT_IN_PROGRESS; // will be updated with LOW signal
+  unsigned long now = esp_timer_get_time();
+
+  sensor->trigger = now;
+  sensor->start = 0; // will be updated with HIGH signal
+
+  gpio_set_level(sensor->triggerPin, 1);
+  // 10us are specified but some sensors are more stable with 20us according
+  // to internet reports
+  usleep(20);
+  gpio_set_level(sensor->triggerPin, 0);
+}
+
+/* Check if the sensor `sensorId` is ready for a new measurement cycle.
+ */
+boolean TOFManager::isSensorReady(uint8_t sensorId) {
+  LLSensor* sensor = sensors(sensorId);
+  boolean ready = false;
+  auto now = esp_timer_get_time();
+  auto start = sensor->start.load();
+  auto end = sensor->end.load();
+
+  if (end != MEASUREMENT_IN_PROGRESS) { // no measurement in flight or just finished
+    auto startOther = sensors(1 - sensorId)->start.load();
+    if ((now - end) > SENSOR_QUIET_PERIOD_AFTER_END_MICRO_SEC
+        && (now - start) > SENSOR_QUIET_PERIOD_AFTER_START_MICRO_SEC
+        && (now - startOther) > SENSOR_QUIET_PERIOD_AFTER_OPPOSITE_START_MICRO_SEC) {
+      ready = true;
+      sensors(sensorId)->successful_measurements += 1;
+    }
+  } else if (now - sensor->trigger > MAX_TIMEOUT_MICRO_SEC) {
+    // signal or interrupt was lost altogether this is an error,
+    // should we raise a  it?? Now pretend the sensor is ready, hope it helps to give it a trigger.
+    ready = true;
+    sensors(sensorId)->lost_signals += 1;
+  }
+  return ready;
+}
+
+/* Check if the measurement on the given sensor `sensor_idx` is complete. */
+boolean TOFManager::isMeasurementComplete(uint8_t sensor_idx) {
+  if (sensors(sensor_idx)->end != MEASUREMENT_IN_PROGRESS) {
+    return true;
+  }
+  uint32_t now = esp_timer_get_time();
+  if (sensors(sensor_idx)->trigger + MAX_TIMEOUT_MICRO_SEC < now) {
+    return true;
+  }
+
+  return false;
+}
+
+/* Initialize the sensor manager and start it up. Use this to start the sensor.
+ * This function will start a new FreeRTOS task. */
+void TOFManager::startupManager(QueueHandle_t queue) {
+  esp_log_level_set("tofmanager", ESP_LOG_INFO);
+  ESP_LOGI("tofmanager","Currently on core %i", xPortGetCoreID());
+  ESP_LOGI("tofmanager","Switching to core %i", RT_CORE);
+
+  xTaskCreatePinnedToCore(
+    TOFManager::sensorTaskFunction,          /* Task function. */
+    "TOFManager",        /* String with name of task. */
+    16 * 1024,           /* Stack size in bytes. */
+    queue,               /* Parameter passed as input of the task */
+    1,                   /* Priority of the task. */
+    NULL,                /* Task handle. */
+    RT_CORE              /* the core to run on */
+  );
+}
+
+/* Main function that will be started by startupManager().
+ * This function will never return. This function is supposed to run in its own
+ * FreeRTOS task. */
+void TOFManager::sensorTaskFunction(void *parameter) {
+  esp_log_level_set("tofmanager", ESP_LOG_INFO);
+  isr_log_i("tofmanager", "Hello from core %i!", xPortGetCoreID());
+
+  LLSensor* sensors = new LLSensor[2];
+
+  TOFManager* sensorManager = new TOFManager((QueueHandle_t)parameter, sensors);
+
+  if (sensors == 0 || sensorManager == 0) {
+    ESP_LOGE("tofmanager","Error, apparently we've run out of memory (sensors=%x, sensorManager=%x).",
+      sensors, sensorManager);
+  }
+
+  sensorManager->init();
+  sensorManager->loop();
+}
+
+/* Initialize the TOFManager: setup sensor pins and interrupts. */
+void TOFManager::init() {
+#if ALONE_ON_CORE
+  esp_timer_init();
+  gpio_install_isr_service(OBS_INTR_FLAG);
+#endif
+
+  LLSensor* sensorManaged1 = sensors(0);
+  sensorManaged1->triggerPin = GPIO_NUM_15;
+  sensorManaged1->echoPin = GPIO_NUM_4;
+  setupSensor(sensorManaged1, 0);
+
+  LLSensor* sensorManaged2 = sensors(1);
+  sensorManaged2->triggerPin = GPIO_NUM_25;
+  sensorManaged2->echoPin = GPIO_NUM_26;
+  setupSensor(sensorManaged2, 1);
+
+  ESP_LOGI("tofmanager", "TOFManager init complete");
+}
+
+/* Looking at a single sensor `sensor_idx`, take its data and
+ * send it off to the high level sensor component. */
+void TOFManager::sendData(uint8_t sensor_idx) {
+  LLSensor* sensor = sensors(sensor_idx);
+
+  LLMessage message = {0};
+
+  message.sensor_index = sensor_idx;
+  message.trigger = sensor->trigger;
+  message.start = sensor->start;
+  message.end = sensor->end;
+  xQueueSendToBack(sensor_queue, &message, portMAX_DELAY);
+}
+
+/* The main loop of the TOFManager. This function will never return.
+ * It sequences all measurements and sends their data to the high leve component
+ * of the sensor code. */
+void TOFManager::loop() {
+  ESP_LOGI("tofmanager","Entering TOFManager::loop");
+  currentSensor = primarySensor;
+  startMeasurement(primarySensor);
+
+  float startLoop = esp_timer_get_time();
+
+  // this toggle switches once approx every 8 seconds
+  uint8_t logToggle = 0;
+
+  while ( true ) {
+    uint8_t newToggle = (esp_timer_get_time() >> 23) & 0x1;
+    if (newToggle != logToggle) {
+      float spent = ((float)esp_timer_get_time() - startLoop) / 1000000.0;
+      ESP_LOGI("tofmanager", "stats: sensor1->irq_cnt=%u, sensor2->irq_cnt=%u",
+        sensors(0)->interrupt_count, sensors(1)->interrupt_count);
+      ESP_LOGI("tofmanager", "stats: success=(%u, %u), started=(%u,%u)",
+        sensors(0)->successful_measurements,
+        sensors(1)->successful_measurements,
+        sensors(0)->started_measurements,
+        sensors(1)->started_measurements);
+      ESP_LOGI("tofmanager", "stats: (s0) trigger-start-end = %x-%x-%x",
+        sensors(0)->trigger.load(), sensors(0)->start.load(), sensors(0)->end.load());
+      ESP_LOGI("tofmanager", "stats: (s1) trigger-start-end = %x-%x-%x",
+        sensors(1)->trigger.load(), sensors(1)->start.load(), sensors(1)->end.load());
+      if (spent > 0) {
+        ESP_LOGI("tofmanager", "statlog: (%f,%f) started/s",
+          (float)sensors(0)->started_measurements / spent,
+          (float)sensors(0)->started_measurements / spent);
+      }
+      logToggle = newToggle;
+    }
+
+    // wait for sensor
+    if (!isMeasurementComplete(currentSensor)) {
+      vTaskDelay(1);
+      //taskYIELD();
+    } else {
+      // switch to next sensor & send out data
+      if (currentSensor == primarySensor && isSensorReady(1 - primarySensor)) {
+        sendData(currentSensor);
+        disableMeasurement(currentSensor);
+        currentSensor = 1 - primarySensor;
+        startMeasurement(currentSensor);
+      } else if (isSensorReady(primarySensor)) {
+        sendData(currentSensor);
+        disableMeasurement(currentSensor);
+        currentSensor = primarySensor;
+        startMeasurement(primarySensor);
+      }
+    }
+  }
+}
+
+/* Sensor interrupt function. Use the `isrParam` to pass in a LLSensor*
+ * Fetch the current phase of that sensor and set it's values. */
+static void IRAM_ATTR sensorInterrupt(void *isrParam) {
+  // since the measurement of start and stop use the same interrupt
+  // mechanism we should see a similar delay.
+  LLSensor* sensor = (LLSensor*) isrParam;
+
+  sensor->interrupt_count += 1;
+  if (sensor->end == MEASUREMENT_IN_PROGRESS) {
+    if (sensor->start == 0) {
+      sensor->start = esp_timer_get_time();
+    } else {
+      sensor->end = esp_timer_get_time();
+    }
+  }
+}
+
+/* Set up a single `sensor` including its pins and interrupts. */
+void TOFManager::setupSensor(LLSensor* sensor, uint8_t idx) {
+  gpio_config_t io_conf_trigger = {};
+  io_conf_trigger.intr_type = GPIO_INTR_DISABLE;
+  io_conf_trigger.mode = GPIO_MODE_OUTPUT;
+  io_conf_trigger.pin_bit_mask = 1ULL << sensor->triggerPin;
+  io_conf_trigger.pull_down_en = GPIO_PULLDOWN_DISABLE;
+  io_conf_trigger.pull_up_en = GPIO_PULLUP_DISABLE;
+  gpio_config(&io_conf_trigger);
+
+  gpio_config_t io_conf_echo = {};
+  io_conf_echo.intr_type = GPIO_INTR_ANYEDGE;
+  io_conf_echo.mode = GPIO_MODE_INPUT;
+  io_conf_echo.pin_bit_mask = 1ULL << sensor->echoPin;
+  io_conf_echo.pull_down_en = GPIO_PULLDOWN_DISABLE;
+  io_conf_echo.pull_up_en = GPIO_PULLUP_ENABLE;
+  gpio_config(&io_conf_echo);
+
+  attachSensorInterrupt(idx);
+}
+
+/* Attach the interrupt handler to the pin that belongs to the sensor
+ * designated by `idx`. */
+void TOFManager::attachSensorInterrupt(uint8_t idx) {
+  gpio_isr_handler_add(sensors(idx)->echoPin, sensorInterrupt, sensors(idx));
+}
+
+/* Detach all interrupts for our sensors. */
+void TOFManager::detachInterrupts() {
+  for (int i = 0; i < NUMBER_OF_TOF_SENSORS; i++) {
+    gpio_isr_handler_remove(sensors(i)->echoPin);
+  }
+}
+
+/* Disable the measurement on the sensor designated by `idx`. */
+void TOFManager::disableMeasurement(uint8_t idx) {
+  gpio_set_level(sensors(idx)->triggerPin, 0);
+}

@@ -33,6 +33,8 @@
 #include <functional>
 #include <vector>
 
+#include "config.h"
+
 /**
  * Utility class to implement the improv protocol.
  * See protocol documentation at https://www.improv-wifi.com/serial/ for
@@ -57,9 +59,9 @@ class ObsImprov {
      * @param getDeviceUrl if the device wifi is up the url needed to reach
      *                     the device should be returned, a empty string otherwise.
      */
-    ObsImprov(std::function<bool(const std::string & ssid, const std::string & password)> initWifi,
+    ObsImprov(std::function<bool(const obs_string & ssid, const obs_string & password)> initWifi,
               std::function<State()> getWifiStatus,
-              std::function<std::string()> getDeviceUrl,
+              std::function<obs_string()> getDeviceUrl,
                HardwareSerial* serial = &Serial) :
                 mSerial(serial),
                 mInitWifi(initWifi),
@@ -83,10 +85,10 @@ class ObsImprov {
      * Should be called as soon as possible after creating a ObsImprov instance.
      * Empty data is reported upstream if needed earlier.
      */
-    void setDeviceInfo(const std::string & firmwareName,
-                       const std::string & firmwareVersion,
-                       const std::string & hardwareVariant,
-                       const std::string & deviceName);
+    void setDeviceInfo(const obs_string & firmwareName,
+                       const obs_string & firmwareVersion,
+                       const obs_string & hardwareVariant,
+                       const obs_string & deviceName);
 
     /**
      * Returns true if any improv message was received.
@@ -124,21 +126,21 @@ class ObsImprov {
     HardwareSerial* mSerial;
     std::vector<uint8_t> mBuffer;
     uint8_t  mHeaderPos = 0;
-    std::string mFirmwareName;
-    std::string mFirmwareVersion;
-    std::string mHardwareVariant;
-    std::string mDeviceName;
+    obs_string mFirmwareName = "";
+    obs_string mFirmwareVersion = "";
+    obs_string mHardwareVariant = "";
+    obs_string mDeviceName = "";
     static const char *HEADER;
     static const uint8_t HEADER_LENGTH;
-    const std::function<bool(const std::string & ssid, const std::string & password)> mInitWifi;
+    const std::function<bool(const obs_string & ssid, const obs_string & password)> mInitWifi;
     const std::function<State()> mWifiStatus;
-    const std::function<std::string()> mDeviceUrl;
+    const std::function<obs_string()> mDeviceUrl;
     bool mImprovActive = false;
     void sendWifiSuccess(Command cmd = Command::WIFI_SETTINGS) const;
     void sendCurrentState(State state) const;
     void sendErrorState(Error error) const;
     void handleRpcGetDeviceInfo() const;
-    void appendStringAndLength(std::vector<uint8_t> &response, std::string data) const;
+    void appendStringAndLength(std::vector<uint8_t> &response, obs_string data) const;
     void sendPayload(Stream *stream, std::vector<uint8_t> payload) const;
     bool isCompleteImprovMessage(std::vector<uint8_t> buffer) const;
     bool isValidImprovMessage(std::vector<uint8_t> buffer) const;
