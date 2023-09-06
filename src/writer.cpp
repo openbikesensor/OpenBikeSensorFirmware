@@ -101,9 +101,10 @@ bool FileWriter::appendString(const String &s) {
 
 bool FileWriter::flush() {
   bool result;
-#ifdef DEVELOP
-  Serial.printf("Writing to concrete file.\n");
-#endif
+  if (mBuffer.isEmpty()) {
+    return true;
+  }
+  log_v("Writing to concrete file.");
   const auto start = millis();
   result = FileUtil::appendFile(SD, mFileName.c_str(), mBuffer.c_str() );
   mBuffer.clear();
@@ -111,9 +112,7 @@ bool FileWriter::flush() {
   if (!mFinalFileName) {
     correctFilename();
   }
-#ifdef DEVELOP
-  Serial.printf("Writing to concrete file done took %lums.\n", mWriteTimeMillis);
-#endif
+  log_v("Writing to concrete file done took %lums.", mWriteTimeMillis);
   return result;
 }
 
