@@ -1188,7 +1188,7 @@ static void handleWifi(HTTPRequest *, HTTPResponse * res) {
   page += "<h3>New WiFi</h3>";
   page += "SSID<input name='newSSID' placeholder='ssid' />";
   page += "Password<input type='password' name='newPassword' placeholder='secret' />";
-  page += "Radius (m)<input type='checkbox' name='newPrivate' />";
+  page += "Private<input type='checkbox' name='newPrivate' />";
   page += "<small>Select private only for trusted, none public networks, others on the same net will be able to "
           "control your device. Allows direct, unencrypted access to the device.</small>";
 
