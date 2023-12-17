@@ -161,27 +161,10 @@ void SSD1306DisplayDevice::showBatterieValue(int16_t input_val){
        xlocation += 1;
      }
 
-    //cleanGridCellcomplete(3,0);
-
-/*     if(input_val == -1){
-      cleanBattery(x_offset_batterie_logo, y_offset_batterie_logo);
-      m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo6);
-      m_display->setColor(BLACK);
-      this->showTextOnGrid(3, 0, " " + String(0) + "%", Dialog_plain_8,3,0);
-      m_display->setColor(WHITE);
-      m_display->display();
-      this->showTextOnGrid(3, 0, "calc", Dialog_plain_8,6,0);
-    }else{
-      m_display->setColor(BLACK);
-      this->showTextOnGrid(3, 0, "calc", Dialog_plain_8,6,0);
-      m_display->setColor(WHITE);
-      m_display->display();
-    } */
 		if(input_val >= 0){
 			String val = String(input_val);
       //showLogo(true);
       this->showTextOnGrid(xlocation, 0, val + "%", TINY_FONT, 6, 0);
-       //m_display[0]->drawXbm(192, 0, 8, 9, BatterieLogo1);
 
        if(input_val > 90){
          cleanBattery(x_offset_batterie_logo, y_offset_batterie_logo);
