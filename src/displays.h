@@ -60,18 +60,7 @@ const int DIO = 25; //Set the DIO pin connection to the display
 
 extern bool BMP280_active;
 
-class DisplayDevice {
-  public:
-    DisplayDevice() {}
-    virtual ~DisplayDevice() {}
-    virtual void invert() = 0;
-    virtual void normalDisplay() = 0;
-    //virtual void drawString(int16_t, int16_t, String) = 0;
-    virtual void clear() = 0;
-};
-
-
-class SSD1306DisplayDevice : public DisplayDevice {
+class SSD1306DisplayDevice {
   private:
     void handleHighlight();
     void displaySimple(uint16_t value);
@@ -84,7 +73,7 @@ class SSD1306DisplayDevice : public DisplayDevice {
     bool mHighlighted = false;
 
   public:
-    SSD1306DisplayDevice() : DisplayDevice() {
+    SSD1306DisplayDevice() {
       m_display = new SSD1306(0x3c, 21, 22); // ADDRESS, SDA, SCL
       m_display->init();
       m_display->setBrightness(255);
