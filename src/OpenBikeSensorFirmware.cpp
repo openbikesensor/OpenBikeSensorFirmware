@@ -57,7 +57,7 @@ Button button(PUSHBUTTON_PIN);
 
 Config config;
 
-SSD1306DisplayDevice* obsDisplay;
+DisplayDevice* obsDisplay;
 HCSR04SensorManager* sensorManager;
 static BluetoothManager* bluetoothManager;
 
@@ -209,7 +209,7 @@ void setup() {
   if (displayError != 0) {
     Serial.println("Display not found");
   }
-  obsDisplay = new SSD1306DisplayDevice;
+  obsDisplay = new DisplayDevice;
 
   obsDisplay->showLogo(true);
   obsDisplay->showTextOnGrid(2, obsDisplay->startLine(), OBSVersion);
