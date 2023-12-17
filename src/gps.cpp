@@ -545,7 +545,7 @@ PrivacyArea Gps::newPrivacyArea(double latitude, double longitude, int radius) {
   return newPrivacyArea;
 }
 
-bool Gps::hasFix(SSD1306DisplayDevice *display) const {
+bool Gps::hasFix(DisplayDevice *display) const {
   bool result = false;
   if (mCurrentGpsRecord.hasValidFix() && mLastTimeTimeSet) {
     log_d("Got location...");
@@ -563,7 +563,7 @@ int32_t Gps::getMessagesWithFailedCrcCount() const {
   return mMessagesWithFailedCrcReceived;
 }
 
-void Gps::showWaitStatus(SSD1306DisplayDevice const * display) const {
+void Gps::showWaitStatus(DisplayDevice const * display) const {
   String satellitesString[2];
   if (mValidMessagesReceived == 0) { // could not get any valid char from GPS module
     satellitesString[0] = "OFF?";
