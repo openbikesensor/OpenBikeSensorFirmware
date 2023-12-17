@@ -23,7 +23,7 @@
 
 #include "displays.h"
 
-#include "fonts/fonts.h"
+#include "fonts/logos.h"
 
 void DisplayDevice::showNumConfirmed() {
   String val = String(confirmedMeasurements);
@@ -46,10 +46,10 @@ void DisplayDevice::showNumButtonPressed() {
 void DisplayDevice::displaySimple(uint16_t value) {
   if (value == MAX_SENSOR_VALUE) {
     this->prepareTextOnGrid(0, 0,
-                            "", HUGE_FONT, -7, -7);
+                            "", HUGE_FONT, -7, 0);
   } else {
     this->prepareTextOnGrid(0, 0,
-                            ObsUtils::to3DigitString(value), HUGE_FONT, -7, -7);
+                            ObsUtils::to3DigitString(value), HUGE_FONT, -7, 0);
   }
   this->prepareTextOnGrid(3, 2, "cm", MEDIUM_FONT, -7, -5);
 }
@@ -137,7 +137,7 @@ void DisplayDevice::showValues(
       showTemperatureValue(TemperaturValue);
   }
 
-  m_display->display();
+  m_display->updateDisplay();
 
 }
 
@@ -161,45 +161,44 @@ void DisplayDevice::showBatterieValue(int16_t input_val){
        xlocation += 1;
      }
 
-		if(input_val >= 0){
-			String val = String(input_val);
+     if(input_val >= 0){
+       String val = String(input_val);
       //showLogo(true);
       this->showTextOnGrid(xlocation, 0, val + "%", TINY_FONT, 6, 0);
 
        if(input_val > 90){
          cleanBattery(x_offset_batterie_logo, y_offset_batterie_logo);
-         m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo1);
+         m_display->drawXBM(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo1);
        }else if (input_val > 70)
        {
          cleanBattery(x_offset_batterie_logo, y_offset_batterie_logo);
-         m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo2);
+         m_display->drawXBM(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo2);
        }else if (input_val> 50)
        {
          cleanBattery(x_offset_batterie_logo, y_offset_batterie_logo);
-         m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo3);
+         m_display->drawXBM(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo3);
        }else if (input_val > 30)
        {
          cleanBattery(x_offset_batterie_logo, y_offset_batterie_logo);
-         m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo4);
+         m_display->drawXBM(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo4);
        }else if (input_val >10)
        {
          cleanBattery(x_offset_batterie_logo, y_offset_batterie_logo);
-         m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo5);
+         m_display->drawXBM(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo5);
        }else
        {
          cleanBattery(x_offset_batterie_logo, y_offset_batterie_logo);
-         m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo6);
+         m_display->drawXBM(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo6);
        }
 
 		}
-    //m_display->display();
 	}
 
 void DisplayDevice::showTemperatureValue(int16_t input_val){
     uint8_t x_offset_temp_logo = 30;
     uint8_t y_offset_temp_logo = 2;
     cleanTemperatur(x_offset_temp_logo,y_offset_temp_logo);
-    m_display->drawXbm(x_offset_temp_logo, y_offset_temp_logo, 8, 9, TempLogo);
+    m_display->drawXBM(x_offset_temp_logo, y_offset_temp_logo, 8, 9, TempLogo);
     String val = String(input_val);
     this->showTextOnGrid(1, 0, val + "°C", TINY_FONT);
 }
@@ -231,7 +230,7 @@ uint8_t DisplayDevice::scrollUp() {
   for (uint8_t i = 0; i < 5; i++) {
     prepareTextOnGrid(2, i, obsDisplay->get_gridTextofCell(2, i + 1));
   }
-  m_display->display();
+  m_display->updateDisplay();
   return mCurrentLine--;
 }
 
@@ -242,22 +241,14 @@ uint8_t DisplayDevice::startLine() {
 void DisplayDevice::highlight(uint32_t highlightTimeMillis) {
   mHighlightTill = millis() + highlightTimeMillis;
   if (!mHighlighted) {
-    if (mInverted) {
-      m_display->normalDisplay();
-    } else {
-      m_display->invertDisplay();
-    }
+    setInversion(!mInverted);
     mHighlighted = true;
   }
 }
 
 void DisplayDevice::handleHighlight() {
   if (mHighlighted && mHighlightTill < millis()) {
-    if (mInverted) {
-      m_display->invertDisplay();
-    } else {
-      m_display->normalDisplay();
-    }
+    setInversion(mInverted);
     mHighlighted = false;
   }
 }
