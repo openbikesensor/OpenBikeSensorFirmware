@@ -27,6 +27,7 @@
 #include "OpenBikeSensorFirmware.h"
 
 #include "SPIFFS.h"
+#include "displays.h"
 #include <rom/rtc.h>
 
 #ifndef BUILD_NUMBER
@@ -90,8 +91,6 @@ bool transmitConfirmedData = false;
 CircularBuffer<DataSet*, 10> dataBuffer;
 
 FileWriter* writer;
-
-const uint8_t displayAddress = 0x3c;
 
 // Enable dev-mode. Allows to
 // - set wifi config
@@ -202,14 +201,7 @@ void setup() {
   //##############################################################
   // Setup display
   //##############################################################
-  Wire.begin();
-	Wire.setClock(500000);
-  Wire.beginTransmission(displayAddress);
-  byte displayError = Wire.endTransmission();
-  if (displayError != 0) {
-    Serial.println("Display not found");
-  }
-  obsDisplay = new DisplayDevice;
+  obsDisplay = new DisplayDevice(DisplayDevice::detectVariant());
 
   obsDisplay->showLogo(true);
   obsDisplay->showTextOnGrid(2, obsDisplay->startLine(), OBSVersion);
