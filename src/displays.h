@@ -25,6 +25,7 @@
 #define OBS_DISPLAYS_H
 
 #include <Arduino.h>
+#include <Wire.h>
 #include <U8g2lib.h>
 
 #include "config.h"
@@ -34,9 +35,13 @@
 #include "fonts/fonts.h"
 #include "sensor.h"
 
-
 #define BLACK 0
 #define WHITE 1
+
+#define SSD1306_I2C_ADDRESS (0x78 >> 1)
+#define G98_I2C_ADDRESS (0x00 >> 1) // TODO: find out the actual I2C adress
+
+#define WIRE Wire
 
 extern const uint8_t BatterieLogo1[];
 extern const uint8_t TempLogo[];
@@ -58,10 +63,18 @@ const int DIO = 25; //Set the DIO pin connection to the display
 extern bool BMP280_active;
 
 class DisplayDevice {
+  public:
+    enum DisplayVariant {
+      DISPLAY_VARIANT_SSD1306, // original OBS OLED display
+      DISPLAY_VARIANT_G98, // JHDLCM G156 SPI LCD display
+      DISPLAY_VARIANT_G156, // JHDLCM G98 I2C LCD display
+    };
+
   private:
     void handleHighlight();
     void displaySimple(uint16_t value);
-    U8G2* m_display = new U8G2_SSD1306_128X64_NONAME_F_HW_I2C(U8G2_R0, U8X8_PIN_NONE); // original OBS display
+    U8G2* m_display;
+    DisplayVariant variant;
     String gridText[ 4 ][ 6 ];
     uint8_t mLastProgress = 255;
     uint8_t mCurrentLine = 0;
@@ -71,7 +84,40 @@ class DisplayDevice {
     bool mHighlighted = false;
 
   public:
-    DisplayDevice() {
+    static DisplayVariant detectVariant() {
+      WIRE.begin();
+
+      WIRE.beginTransmission(SSD1306_I2C_ADDRESS);
+      if (WIRE.endTransmission(true) == 0) {
+        log_i("Found SSD1306 display on I2C");
+        return DISPLAY_VARIANT_SSD1306;
+      }
+
+      WIRE.beginTransmission(G98_I2C_ADDRESS);
+      if (WIRE.endTransmission(true) == 0) {
+        log_i("Found G98 display on I2C");
+        return DISPLAY_VARIANT_G98;
+      }
+
+      // fallback: SPI display
+      log_i("No known display on I2C bus found, falling back to G156 SPI display");
+      return DISPLAY_VARIANT_G156;
+    }
+
+    DisplayDevice(DisplayVariant variant) {
+      this->variant = variant;
+      switch (variant) {
+        case DISPLAY_VARIANT_SSD1306:
+          m_display = new U8G2_SSD1306_128X64_NONAME_F_HW_I2C(U8G2_R0, U8X8_PIN_NONE);
+          break;
+        case DISPLAY_VARIANT_G156:
+          m_display = new U8G2_ST7567_JLX12864_F_4W_HW_SPI(U8G2_R0, 21, 22);
+          break;
+        case DISPLAY_VARIANT_G98:
+          m_display = new U8G2_UC1601_128X64_F_HW_I2C(U8G2_R0);
+          break;
+      }
+
       m_display->begin();
       m_display->setFlipMode(mFlipped);
       m_display->setContrast(74);
@@ -96,13 +142,25 @@ class DisplayDevice {
     //##############################################################
 
     void invert() {
-      m_display->sendF("c", 0xa7);  // enable inversion on SSD1306
       mInverted = true;
+      switch (variant) {
+        case DISPLAY_VARIANT_SSD1306:
+        case DISPLAY_VARIANT_G98:   // TODO: verify
+        case DISPLAY_VARIANT_G156:  // TODO: verify
+          m_display->sendF("c", 0xa7);
+          break;
+      }
     }
 
     void normalDisplay() {
-      m_display->sendF("c", 0xa6);  // disable inversion on SSD1306
       mInverted = false;
+      switch (variant) {
+        case DISPLAY_VARIANT_SSD1306:
+        case DISPLAY_VARIANT_G98:   // TODO: verify
+        case DISPLAY_VARIANT_G156:  // TODO: verify
+          m_display->sendF("c", 0xa6);
+          break;
+      }
     }
 
     void flipScreen() {
