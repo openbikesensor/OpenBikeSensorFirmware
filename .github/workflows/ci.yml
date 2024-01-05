@@ -63,7 +63,7 @@ jobs:
         echo $VERSION > version.txt
         echo Building OBS Version: $VERSION
         sed -i 's|-DBUILD_NUMBER=\\"-dev\\"|-DBUILD_NUMBER=\\"'${SEPARATOR}${PATCH}'\\"|' platformio.ini
-        echo "SONAR_SCANNER_VERSION=4.8.0.2856" >> $GITHUB_ENV
+        echo "SONAR_SCANNER_VERSION=5.0.1.3006" >> $GITHUB_ENV
 
     - name: Cache SonarCloud packages
       id: cache-sonar
