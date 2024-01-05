@@ -41,6 +41,8 @@ const String ObsConfig::PROPERTY_BLUETOOTH = String("bluetooth");
 const String ObsConfig::PROPERTY_OFFSET = String("offset");
 const String ObsConfig::PROPERTY_WIFI_SSID = String("wifiSsid");
 const String ObsConfig::PROPERTY_WIFI_PASSWORD = String("wifiPassword");
+const String ObsConfig::PROPERTY_WIFI_NETWORKS = String("wifiNetworks");
+const String ObsConfig::PROPERTY_WIFI_PRIVATE = String("wifiPrivate");
 const String ObsConfig::PROPERTY_PORTAL_URL = String("portalUrl");
 const String ObsConfig::PROPERTY_PORTAL_TOKEN = String("portalToken");
 const String ObsConfig::PROPERTY_DISPLAY_CONFIG = String("displayConfig");
@@ -481,4 +483,55 @@ bool ObsConfig::removeConfig() {
   return !SPIFFS.exists(OLD_CONFIG_FILENAME)
     && !SPIFFS.exists(CONFIG_OLD_FILENAME)
     && !SPIFFS.exists(CONFIG_FILENAME);
+}
+
+WifiConfig ObsConfig::getWifiConfig(int wifiId) const {
+  WifiConfig result;
+  auto data = getProfileConst(selectedProfile)[PROPERTY_WIFI_NETWORKS][wifiId];
+
+  // legacy data single wifi
+  if (wifiId == 0 && data.isNull()) {
+    result.ssid = getProperty<String>(PROPERTY_WIFI_SSID);
+    result.password = getProperty<String>(PROPERTY_WIFI_PASSWORD);
+    result.trusted = false;
+    return result;
+  }
+  result.ssid = data[PROPERTY_WIFI_SSID].as<String>();
+  result.password = data[PROPERTY_WIFI_PASSWORD].as<String>();
+  result.trusted = data[PROPERTY_WIFI_PRIVATE].as<bool>();
+  return result;
+}
+
+int ObsConfig::getNumberOfWifiConfigs() const {
+  uint result = getProfileConst(selectedProfile)[PROPERTY_WIFI_NETWORKS].size();
+
+  log_i("getNumberOfWifiConfigs: %d", result);
+  log_i("PROPERTY_WIFI_SSID: %s", getProperty<const char*>(PROPERTY_WIFI_SSID));
+  log_i("getProperty<String>(PROPERTY_WIFI_SSID): %s", getProperty<String>(PROPERTY_WIFI_SSID).c_str());
+
+  if (result == 0 && getProperty<String>(PROPERTY_WIFI_SSID).length() > 0) {
+    result = 1;
+  }
+  return (int) result;
+}
+
+bool ObsConfig::removeWifiConfig(int wifiId) {
+  getProfile(selectedProfile)[PROPERTY_WIFI_NETWORKS].remove(wifiId);
+  return true;
+}
+
+bool ObsConfig::addWifiConfig(const WifiConfig &wifiConfig) {
+  auto data = getProfile(selectedProfile)[PROPERTY_WIFI_NETWORKS].createNestedObject();
+  data[PROPERTY_WIFI_SSID] = wifiConfig.ssid;
+  data[PROPERTY_WIFI_PASSWORD] = wifiConfig.password;
+  data[PROPERTY_WIFI_PRIVATE] = wifiConfig.trusted;
+  return true;
+}
+
+bool ObsConfig::setWifiConfig(int wifiId, const WifiConfig &wifiConfig) {
+  auto data = getProfile(selectedProfile)[PROPERTY_WIFI_NETWORKS][wifiId];
+  data[PROPERTY_WIFI_SSID] = wifiConfig.ssid;
+  data[PROPERTY_WIFI_PASSWORD] = wifiConfig.password;
+  data[PROPERTY_WIFI_PRIVATE] = wifiConfig.trusted;
+  return true;
 }

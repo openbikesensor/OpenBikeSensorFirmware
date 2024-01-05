@@ -33,7 +33,7 @@ class TimeUtils {
     static String timeToString(time_t theTime =0);
     static String dateTimeToHttpHeaderString(time_t theTime);
     static void setClockByNtp(const char *ntpServer = nullptr);
-    static void setClockByNtpAndWait(const char *ntpServer = nullptr);
+    static void setClockByNtpAndWait(const char *ntpServer = nullptr, uint32_t timeout = 3 * 60 * 1000);
     static void setClockByGps(uint32_t iTow, int32_t fTow, int16_t week, int8_t leapS = 0);
     static bool systemTimeIsSet();
     static int16_t getLeapSecondsGps(time_t gps);

@@ -55,6 +55,12 @@ enum PrivacyOptions {
   OverridePrivacy = 0x08 //8
 };
 
+struct WifiConfig {
+  String ssid = "";
+  String password = "";
+  bool trusted = false;
+};
+
 struct PrivacyArea {
   double latitude;
   double longitude;
@@ -75,6 +81,7 @@ struct Config {
   int privacyConfig;
   int confirmationTimeWindow;
   std::vector<PrivacyArea> privacyAreas;
+  std::vector<WifiConfig> wifiConfigs;
 };
 
 enum DevOptions {
@@ -109,6 +116,11 @@ class ObsConfig {
     bool removePrivacyArea(int profile, int paId);
     PrivacyArea getPrivacyArea(int profile, int paId) const;
     int getNumberOfPrivacyAreas(int profile) const;
+    WifiConfig getWifiConfig(int wifiId) const;
+    int getNumberOfWifiConfigs() const;
+    bool removeWifiConfig(int wifiId);
+    bool addWifiConfig(WifiConfig const &wifiConfig);
+    bool setWifiConfig(int wifiId, WifiConfig const &wifiConfig);
 
     int getNumberOfProfiles() const;
     int addProfile();
@@ -130,6 +142,8 @@ class ObsConfig {
     static const String PROPERTY_SIM_RA;
     static const String PROPERTY_WIFI_SSID;
     static const String PROPERTY_WIFI_PASSWORD;
+    static const String PROPERTY_WIFI_NETWORKS;
+    static const String PROPERTY_WIFI_PRIVATE;
     static const String PROPERTY_PORTAL_TOKEN;
     static const String PROPERTY_PORTAL_URL;
     static const String PROPERTY_DISPLAY_CONFIG;
