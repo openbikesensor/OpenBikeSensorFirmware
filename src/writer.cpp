@@ -82,7 +82,7 @@ bool FileWriter::appendString(const String &s) {
     mBuffer.concat(s);
     stored = true;
   }
-  if (getBufferLength() > 10000 && !(digitalRead(PUSHBUTTON_PIN))) {
+  if (getBufferLength() > 10000 && !button.read()) {
     flush();
   }
   if (!stored && getBufferLength() < 11000) { // do not add data if our buffer is full already. We loose data here!

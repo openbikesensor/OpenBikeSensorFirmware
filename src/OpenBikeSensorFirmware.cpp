@@ -25,6 +25,7 @@
 #include <utils/button.h>
 #include <utils/timeutils.h>
 #include "OpenBikeSensorFirmware.h"
+#include "variant.h"
 
 #include "SPIFFS.h"
 #include <rom/rtc.h>
@@ -46,6 +47,7 @@ const uint32_t LONG_BUTTON_PRESS_TIME_MS = 2000;
 
 // PINs
 const int PUSHBUTTON_PIN = 2;
+const int IP5306_BUTTON = 13;
 const uint8_t GPS_POWER_PIN = 12;
 const uint8_t BatterieVoltage_PIN = 34;
 
@@ -195,6 +197,8 @@ void setup() {
   //##############################################################
 
   pinMode(PUSHBUTTON_PIN, INPUT);
+  pinMode(IP5306_BUTTON, OUTPUT);
+  digitalWrite(IP5306_BUTTON, LOW);
   pinMode(BatterieVoltage_PIN, INPUT);
   pinMode(GPS_POWER_PIN, OUTPUT);
   digitalWrite(GPS_POWER_PIN,HIGH);
@@ -396,7 +400,7 @@ void writeDataset(const uint8_t confirmationSensorID, DataSet *dataset) {
 }
 
 void loop() {
-  log_v("loop()");
+  log_w("loop()");
   //specify which sensors value can be confirmed by pressing the button, should be configurable
   const uint8_t confirmationSensorID = LEFT_SENSOR_ID;
   auto* currentSet = new DataSet;
@@ -441,6 +445,7 @@ void loop() {
     button.handle(currentTimeMillis);
     gps.handle();
     if (sensorManager->pollDistancesAlternating()) {
+      log_w("poll");
       // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
       const uint16_t reading = sensorManager->sensorValues[confirmationSensorID];
       if (reading > 0 && reading < minDistanceToConfirm) {
@@ -473,6 +478,23 @@ void loop() {
     }
     gps.handle();
     reportBluetooth();
+
+#ifdef OBSPRO
+    // Soft power-off OBSPro when button is pressed for more than 2 seconds
+    if(button.getState() && button.getCurrentStateMillis() > 2000) {
+        log_w("Shutting down OBS");
+        digitalWrite(IP5306_BUTTON, HIGH);
+        delay(300);
+        digitalWrite(IP5306_BUTTON, LOW);
+        delay(300);
+        digitalWrite(IP5306_BUTTON, HIGH);
+        delay(300);
+        digitalWrite(IP5306_BUTTON, LOW);
+        delay(2000);
+        // TODO: Make sure we don't do anything when the system turns off.
+        // TODO: Maybe write SD content and umount it?
+    }
+#endif
     if (button.gotPressed()) { // after button was released, detect long press here
       // immediate user feedback - we start the action
       obsDisplay->highlight();

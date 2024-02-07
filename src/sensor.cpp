@@ -258,7 +258,7 @@ void HCSR04SensorManager::sendTriggerToSensor(uint8_t sensorId) {
   digitalWrite(sensor->triggerPin, HIGH);
   // 10us are specified but some sensors are more stable with 20us according
   // to internet reports
-  delayMicroseconds(20);
+  delayMicroseconds(200);
   digitalWrite(sensor->triggerPin, LOW);
 }
 

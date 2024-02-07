@@ -36,6 +36,7 @@ class HCSR04SensorManager;
 #include "displays.h"
 #include "sensor.h"
 #include "VoltageMeter.h"
+#include "utils/button.h"
 
 // This file should contain declarations of all variables that will be used globally.
 // The variables don't have to be set here, but need to be declared.
@@ -57,6 +58,8 @@ extern DisplayDevice* obsDisplay;
 extern HCSR04SensorManager* sensorManager;
 
 extern VoltageMeter* voltageMeter;
+
+extern Button button;
 
 class Gps;
 extern Gps gps;
