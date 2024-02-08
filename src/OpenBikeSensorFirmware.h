@@ -26,7 +26,7 @@
 
 #include <Arduino.h>
 #define CIRCULAR_BUFFER_INT_SAFE
-#include <CircularBuffer.h>
+#include <CircularBuffer.hpp>
 
 #include "config.h"
 #include "configServer.h"
