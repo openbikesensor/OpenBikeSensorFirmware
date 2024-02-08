@@ -71,7 +71,12 @@ class DisplayDevice {
     uint8_t mLastProgress = 255;
     uint8_t mCurrentLine = 0;
     bool mInverted = false;
+#ifdef OBSPRO
+    bool mFlipped = false;
+#endif
+#ifdef OBSCLASSIC
     bool mFlipped = true;
+#endif
     uint32_t mHighlightTill = 0;
     bool mHighlighted = false;
 
