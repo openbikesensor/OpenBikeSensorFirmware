@@ -206,6 +206,7 @@ void setup() {
   //##############################################################
   // Setup display
   //##############################################################
+#ifdef OBSCLASSIC
   Wire.begin();
 	Wire.setClock(500000);
   Wire.beginTransmission(displayAddress);
@@ -213,6 +214,7 @@ void setup() {
   if (displayError != 0) {
     Serial.println("Display not found");
   }
+#endif
   obsDisplay = new DisplayDevice;
 
   obsDisplay->showLogo(true);
