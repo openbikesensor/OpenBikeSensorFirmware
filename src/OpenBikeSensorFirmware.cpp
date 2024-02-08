@@ -295,7 +295,7 @@ void setup() {
   SPIFFS.end();
   WiFiGenericClass::mode(WIFI_OFF);
   obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "Start GPS...");
-  gps.begin();
+  //gps.begin();  // FIXME: Add GPS support for MAX-M10M
   if (gps.getValidMessageCount() > 0) {
     obsDisplay->showTextOnGrid(2, obsDisplay->currentLine(), "Start GPS OK");
   } else {
