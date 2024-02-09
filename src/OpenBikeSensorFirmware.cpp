@@ -60,7 +60,12 @@ Button button(PUSHBUTTON_PIN);
 Config config;
 
 DisplayDevice* obsDisplay;
+#ifdef OBSPRO
+PGASensorManager* sensorManager;
+#endif
+#ifdef OBSCLASSIC
 HCSR04SensorManager* sensorManager;
+#endif
 static BluetoothManager* bluetoothManager;
 
 Gps gps;
@@ -109,6 +114,14 @@ bool loadConfig(ObsConfig &cfg);
 void copyCollectedSensorData(DataSet *set);
 
 void setupSensors() {
+#ifdef OBSPRO
+  sensorManager = new PGASensorManager;
+  PGASensorInfo sensor2;
+  sensor2.io_pin = SENSOR2_IO_PIN;
+  sensor2.sensorLocation = "Right";
+  sensorManager->registerSensor(sensor2, 1);
+#endif
+#ifdef OBSCLASSIC
   sensorManager = new HCSR04SensorManager;
 
   HCSR04SensorInfo sensorManaged1;
@@ -126,6 +139,7 @@ void setupSensors() {
   sensorManager->setOffsets(config.sensorOffsets);
 
   sensorManager->setPrimarySensor(LEFT_SENSOR_ID);
+#endif
 }
 
 static void setupBluetooth(const ObsConfig &cfg, const String &trackUniqueIdentifier) {
@@ -150,14 +164,18 @@ static void setupBluetooth(const ObsConfig &cfg, const String &trackUniqueIdenti
 static void reportBluetooth() {
   const uint32_t currentInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
   if (bluetoothManager && lastBluetoothInterval != currentInterval) {
-    log_d("Reporting BT: %d/%d cm",
-          sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
-          sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median());
+#ifdef OBSPRO
+    // TODO: Get median values from sensorManager
+    uint16_t left_median = 0;
+    uint16_t right_median = 0;
+#endif
+#ifdef OBSCLASSIC
+    uint16_t left_median = sensorManager->m_sensors[LEFT_SENSOR_ID].median->median();
+    uint16_t right_median = sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median();
+#endif
+    log_d("Reporting BT: %d/%d cm", left_median, right_median);
     lastBluetoothInterval = currentInterval;
-    bluetoothManager->newSensorValues(
-      currentTimeMillis,
-      sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
-      sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median());
+    bluetoothManager->newSensorValues(currentTimeMillis, left_median, right_median);
   }
 }
 
@@ -424,7 +442,10 @@ void loop() {
   currentSet->batteryLevel = voltageMeter->read();
 
   lastMeasurements = sensorManager->m_sensors[confirmationSensorID].numberOfTriggers;
+#ifdef OBSCLASSIC
+  // TODO: Also required for OBSPro?
   sensorManager->reset(startTimeMillis);
+#endif
 
   // if the detected minimum was measured more than 5s ago, it is discarded and cannot be confirmed
   int timeDelta = (int) (currentTimeMillis - timeOfMinimum);
@@ -467,8 +488,8 @@ void loop() {
     if (lastDisplayInterval != (currentTimeMillis / DISPLAY_INTERVAL_MILLIS)) {
       lastDisplayInterval = currentTimeMillis / DISPLAY_INTERVAL_MILLIS;
       obsDisplay->showValues(
-        sensorManager->m_sensors[LEFT_SENSOR_ID],
-        sensorManager->m_sensors[RIGHT_SENSOR_ID],
+        sensorManager->m_sensors[LEFT_SENSOR_ID].minDistance, sensorManager->m_sensors[LEFT_SENSOR_ID].sensorLocation, sensorManager->m_sensors[LEFT_SENSOR_ID].rawDistance,
+        sensorManager->m_sensors[RIGHT_SENSOR_ID].minDistance, sensorManager->m_sensors[RIGHT_SENSOR_ID].sensorLocation, sensorManager->m_sensors[RIGHT_SENSOR_ID].rawDistance, sensorManager->m_sensors[RIGHT_SENSOR_ID].distance,
         minDistanceToConfirm,
         voltageMeter->readPercentage(),
         (int16_t) TemperatureValue,

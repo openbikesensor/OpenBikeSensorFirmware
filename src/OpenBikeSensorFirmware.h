@@ -34,6 +34,7 @@
 #include "globals.h"
 #include "gps.h"
 #include "sensor.h"
+#include "pgaSensor.h"
 #include "writer.h"
 
 #include <Adafruit_BMP280.h>

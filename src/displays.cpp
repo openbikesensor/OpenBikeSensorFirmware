@@ -55,13 +55,15 @@ void DisplayDevice::displaySimple(uint16_t value) {
 }
 
 void DisplayDevice::showValues(
-  HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2, uint16_t minDistanceToConfirm,  int16_t batteryPercentage,
+  uint16_t sensor1MinDistance, const char* sensor1Location, uint16_t sensor1RawDistance,
+  uint16_t sensor2MinDistance, const char* sensor2Location, uint16_t sensor2RawDistance, uint16_t sensor2Distance,
+  uint16_t minDistanceToConfirm,  int16_t batteryPercentage,
   int16_t TemperaturValue, int lastMeasurements, boolean insidePrivacyArea,
   double speed, uint8_t satellites) {
 
   handleHighlight();
 
-  uint16_t value1 = sensor1.minDistance;
+  uint16_t value1 = sensor1MinDistance;
   if (minDistanceToConfirm != MAX_SENSOR_VALUE) {
     value1 = minDistanceToConfirm;
   }
@@ -69,7 +71,7 @@ void DisplayDevice::showValues(
     displaySimple(value1);
   } else {
     if (config.displayConfig & DisplayLeft) {
-      String loc1 = sensor1.sensorLocation;
+      String loc1 = sensor1Location;
       if (insidePrivacyArea) {
         loc1 = "(" + loc1 + ")";
       }
@@ -83,8 +85,8 @@ void DisplayDevice::showValues(
     }
     // Show sensor2, when DisplayRight is configured
     if (config.displayConfig & DisplayRight) {
-      uint16_t value2 = sensor2.distance;
-      String loc2 = sensor2.sensorLocation;
+      uint16_t value2 = sensor2Distance;
+      String loc2 = sensor2Location;
       this->prepareTextOnGrid(3, 0, loc2);
       if (value2 == MAX_SENSOR_VALUE || value2 == 0) {
         this->prepareTextOnGrid(2, 1, "---", LARGE_FONT, 5, 0);
@@ -98,15 +100,15 @@ void DisplayDevice::showValues(
     const int bufSize = 64;
     char buffer[bufSize];
 // #ifdef NERD_SENSOR_DISTANCE
-    snprintf(buffer, bufSize - 1, "%03d|%02d|%03d", sensor1.rawDistance,
-             lastMeasurements, sensor2.rawDistance);
+    snprintf(buffer, bufSize - 1, "%03d|%02d|%03d", sensor1RawDistance,
+             lastMeasurements, sensor2RawDistance);
 // #endif
 #ifdef NERD_HEAP
-    snprintf(buffer, bufSize - 1, "%03d|%02d|%uk", sensor1.rawDistance,
+    snprintf(buffer, bufSize - 1, "%03d|%02d|%uk", sensor1RawDistance,
              lastMeasurements, ESP.getFreeHeap() / 1024);
 #endif
 #ifdef NERD_VOLT
-    snprintf(buffer, bufSize - 1, "%03d|%02d|%3.2fV", sensor1.rawDistance,
+    snprintf(buffer, bufSize - 1, "%03d|%02d|%3.2fV", sensor1RawDistance,
              lastMeasurements, voltageMeter->read());
 #endif
 #ifdef NERD_GPS

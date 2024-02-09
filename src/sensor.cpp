@@ -38,8 +38,6 @@
  *  - JSN-SR04T-2.0 =  ~1125us
  */
 
-const uint16_t MAX_SENSOR_VALUE = 999;
-
 static const uint16_t MIN_DISTANCE_MEASURED_CM =   2;
 static const uint16_t MAX_DISTANCE_MEASURED_CM = 320; // candidate to check I could not get good readings above 300
 

@@ -33,12 +33,21 @@
 #define OBSPRO
 
 // If set, the firmware is build for the OBSClassic
-// #define OBSCLASSIC
+//#define OBSCLASSIC
 
+// Settings specific to OBSPro
 #ifdef OBSPRO
 #define LCD_CS_PIN  12
 #define LCD_DC_PIN  27
 #define LCD_RESET_PIN  4
+
+#define SENSOR2_IO_PIN  35
 #endif
+
+
+// General settings
+#define NUMBER_OF_TOF_SENSORS 2
+#define MAX_SENSOR_VALUE 999
+#define MAX_NUMBER_MEASUREMENTS_PER_INTERVAL 30 //  is 1000/SENSOR_QUIET_PERIOD_AFTER_START_MICRO_SEC/2
 
 #endif
