@@ -116,10 +116,16 @@ void copyCollectedSensorData(DataSet *set);
 void setupSensors() {
 #ifdef OBSPRO
   sensorManager = new PGASensorManager;
-  PGASensorInfo sensor2;
+
+  PGASensorInfo sensor1;
+  sensor1.io_pin = SENSOR1_IO_PIN;
+  sensor1.sensorLocation = "Left";
+  sensorManager->registerSensor(sensor1, 0);
+
+  /*PGASensorInfo sensor2;
   sensor2.io_pin = SENSOR2_IO_PIN;
   sensor2.sensorLocation = "Right";
-  sensorManager->registerSensor(sensor2, 1);
+  sensorManager->registerSensor(sensor2, 1);*/
 #endif
 #ifdef OBSCLASSIC
   sensorManager = new HCSR04SensorManager;
