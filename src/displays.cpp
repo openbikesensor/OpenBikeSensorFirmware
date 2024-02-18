@@ -23,9 +23,9 @@
 
 #include "displays.h"
 
-#include "fonts/fonts.h"
+#include "fonts/logos.h"
 
-void SSD1306DisplayDevice::showNumConfirmed() {
+void DisplayDevice::showNumConfirmed() {
   String val = String(confirmedMeasurements);
   if (confirmedMeasurements <= 9) {
     val = "0" + val;
@@ -34,7 +34,7 @@ void SSD1306DisplayDevice::showNumConfirmed() {
   this->prepareTextOnGrid(3, 5, "conf");
 }
 
-void SSD1306DisplayDevice::showNumButtonPressed() {
+void DisplayDevice::showNumButtonPressed() {
   String val = String(numButtonReleased);
   if (numButtonReleased <= 9) {
     val = "0" + val;
@@ -43,7 +43,7 @@ void SSD1306DisplayDevice::showNumButtonPressed() {
   this->prepareTextOnGrid(1, 5, "press");
 }
 
-void SSD1306DisplayDevice::displaySimple(uint16_t value) {
+void DisplayDevice::displaySimple(uint16_t value) {
   if (value == MAX_SENSOR_VALUE) {
     this->prepareTextOnGrid(0, 0,
                             "", HUGE_FONT, -7, -7);
@@ -54,7 +54,7 @@ void SSD1306DisplayDevice::displaySimple(uint16_t value) {
   this->prepareTextOnGrid(3, 2, "cm", MEDIUM_FONT, -7, -5);
 }
 
-void SSD1306DisplayDevice::showValues(
+void DisplayDevice::showValues(
   HCSR04SensorInfo sensor1, HCSR04SensorInfo sensor2, uint16_t minDistanceToConfirm,  int16_t batteryPercentage,
   int16_t TemperaturValue, int lastMeasurements, boolean insidePrivacyArea,
   double speed, uint8_t satellites) {
@@ -137,11 +137,11 @@ void SSD1306DisplayDevice::showValues(
       showTemperatureValue(TemperaturValue);
   }
 
-  m_display->display();
+  m_display->updateDisplay();
 
 }
 
-void SSD1306DisplayDevice::showGPS(uint8_t sats) {
+void DisplayDevice::showGPS(uint8_t sats) {
   String val = String(sats);
   if (sats <= 9) {
     val = "0" + val;
@@ -150,7 +150,7 @@ void SSD1306DisplayDevice::showGPS(uint8_t sats) {
   this->prepareTextOnGrid(3, 5, "sats");
 }
 
-void SSD1306DisplayDevice::showBatterieValue(int16_t input_val){
+void DisplayDevice::showBatterieValue(int16_t input_val){
 
     uint8_t x_offset_batterie_logo = 65;
     uint8_t y_offset_batterie_logo = 2;
@@ -161,67 +161,49 @@ void SSD1306DisplayDevice::showBatterieValue(int16_t input_val){
        xlocation += 1;
      }
 
-    //cleanGridCellcomplete(3,0);
-
-/*     if(input_val == -1){
-      cleanBattery(x_offset_batterie_logo, y_offset_batterie_logo);
-      m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo6);
-      m_display->setColor(BLACK);
-      this->showTextOnGrid(3, 0, " " + String(0) + "%", Dialog_plain_8,3,0);
-      m_display->setColor(WHITE);
-      m_display->display();
-      this->showTextOnGrid(3, 0, "calc", Dialog_plain_8,6,0);
-    }else{
-      m_display->setColor(BLACK);
-      this->showTextOnGrid(3, 0, "calc", Dialog_plain_8,6,0);
-      m_display->setColor(WHITE);
-      m_display->display();
-    } */
-		if(input_val >= 0){
-			String val = String(input_val);
+     if(input_val >= 0){
+       String val = String(input_val);
       //showLogo(true);
       this->showTextOnGrid(xlocation, 0, val + "%", TINY_FONT, 6, 0);
-       //m_display[0]->drawXbm(192, 0, 8, 9, BatterieLogo1);
 
        if(input_val > 90){
          cleanBattery(x_offset_batterie_logo, y_offset_batterie_logo);
-         m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo1);
+         m_display->drawXBM(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo1);
        }else if (input_val > 70)
        {
          cleanBattery(x_offset_batterie_logo, y_offset_batterie_logo);
-         m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo2);
+         m_display->drawXBM(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo2);
        }else if (input_val> 50)
        {
          cleanBattery(x_offset_batterie_logo, y_offset_batterie_logo);
-         m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo3);
+         m_display->drawXBM(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo3);
        }else if (input_val > 30)
        {
          cleanBattery(x_offset_batterie_logo, y_offset_batterie_logo);
-         m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo4);
+         m_display->drawXBM(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo4);
        }else if (input_val >10)
        {
          cleanBattery(x_offset_batterie_logo, y_offset_batterie_logo);
-         m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo5);
+         m_display->drawXBM(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo5);
        }else
        {
          cleanBattery(x_offset_batterie_logo, y_offset_batterie_logo);
-         m_display->drawXbm(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo6);
+         m_display->drawXBM(x_offset_batterie_logo, y_offset_batterie_logo, 8, 9, BatterieLogo6);
        }
 
 		}
-    //m_display->display();
 	}
 
-void SSD1306DisplayDevice::showTemperatureValue(int16_t input_val){
+void DisplayDevice::showTemperatureValue(int16_t input_val){
     uint8_t x_offset_temp_logo = 30;
     uint8_t y_offset_temp_logo = 2;
     cleanTemperatur(x_offset_temp_logo,y_offset_temp_logo);
-    m_display->drawXbm(x_offset_temp_logo, y_offset_temp_logo, 8, 9, TempLogo);
+    m_display->drawXBM(x_offset_temp_logo, y_offset_temp_logo, 8, 9, TempLogo);
     String val = String(input_val);
     this->showTextOnGrid(1, 0, val + "°C", TINY_FONT);
 }
 
-void SSD1306DisplayDevice::showSpeed(double velocity) {
+void DisplayDevice::showSpeed(double velocity) {
   const int bufSize = 4;
   char buffer[bufSize];
   if (velocity >= 0) {
@@ -233,48 +215,40 @@ void SSD1306DisplayDevice::showSpeed(double velocity) {
   this->prepareTextOnGrid(1, 5, "km/h");
 }
 
-uint8_t SSD1306DisplayDevice::currentLine() const {
+uint8_t DisplayDevice::currentLine() const {
   return mCurrentLine;
 }
 
-uint8_t SSD1306DisplayDevice::newLine() {
+uint8_t DisplayDevice::newLine() {
   if (mCurrentLine >= 5) {
     scrollUp();
   }
   return ++mCurrentLine;
 }
 
-uint8_t SSD1306DisplayDevice::scrollUp() {
+uint8_t DisplayDevice::scrollUp() {
   for (uint8_t i = 0; i < 5; i++) {
     prepareTextOnGrid(2, i, obsDisplay->get_gridTextofCell(2, i + 1));
   }
-  m_display->display();
+  m_display->updateDisplay();
   return mCurrentLine--;
 }
 
-uint8_t SSD1306DisplayDevice::startLine() {
+uint8_t DisplayDevice::startLine() {
   return mCurrentLine = 0;
 }
 
-void SSD1306DisplayDevice::highlight(uint32_t highlightTimeMillis) {
+void DisplayDevice::highlight(uint32_t highlightTimeMillis) {
   mHighlightTill = millis() + highlightTimeMillis;
   if (!mHighlighted) {
-    if (mInverted) {
-      m_display->normalDisplay();
-    } else {
-      m_display->invertDisplay();
-    }
+    setInversion(!mInverted);
     mHighlighted = true;
   }
 }
 
-void SSD1306DisplayDevice::handleHighlight() {
+void DisplayDevice::handleHighlight() {
   if (mHighlighted && mHighlightTill < millis()) {
-    if (mInverted) {
-      m_display->invertDisplay();
-    } else {
-      m_display->normalDisplay();
-    }
+    setInversion(mInverted);
     mHighlighted = false;
   }
 }

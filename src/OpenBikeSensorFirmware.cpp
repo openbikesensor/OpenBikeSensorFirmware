@@ -27,6 +27,7 @@
 #include "OpenBikeSensorFirmware.h"
 
 #include "SPIFFS.h"
+#include "displays.h"
 #include <rom/rtc.h>
 
 #ifndef BUILD_NUMBER
@@ -57,7 +58,7 @@ Button button(PUSHBUTTON_PIN);
 
 Config config;
 
-SSD1306DisplayDevice* obsDisplay;
+DisplayDevice* obsDisplay;
 HCSR04SensorManager* sensorManager;
 static BluetoothManager* bluetoothManager;
 
@@ -91,8 +92,6 @@ CircularBuffer<DataSet*, 10> dataBuffer;
 
 FileWriter* writer;
 
-const uint8_t displayAddress = 0x3c;
-
 // Enable dev-mode. Allows to
 // - set wifi config
 // - prints more detailed log messages to serial (WIFI password)
@@ -105,14 +104,6 @@ void serverLoop();
 void handleButtonInServerMode();
 bool loadConfig(ObsConfig &cfg);
 void copyCollectedSensorData(DataSet *set);
-
-// The BMP280 can keep up to 3.4MHz I2C speed, so no need for an individual slower speed
-void switch_wire_speed_to_VL53(){
-	Wire.setClock(400000);
-}
-void switch_wire_speed_to_SSD1306(){
-	Wire.setClock(500000);
-}
 
 void setupSensors() {
   sensorManager = new HCSR04SensorManager;
@@ -210,15 +201,7 @@ void setup() {
   //##############################################################
   // Setup display
   //##############################################################
-  Wire.begin();
-  Wire.beginTransmission(displayAddress);
-  byte displayError = Wire.endTransmission();
-  if (displayError != 0) {
-    Serial.println("Display not found");
-  }
-  obsDisplay = new SSD1306DisplayDevice;
-
-  switch_wire_speed_to_SSD1306();
+  obsDisplay = new DisplayDevice(DisplayDevice::detectVariant());
 
   obsDisplay->showLogo(true);
   obsDisplay->showTextOnGrid(2, obsDisplay->startLine(), OBSVersion);

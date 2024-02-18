@@ -27,7 +27,7 @@
 #include <Arduino.h>
 
 // Forward declare classes to build (because there is a cyclic dependency between sensor.h and displays.h)
-class SSD1306DisplayDevice;
+class DisplayDevice;
 class HCSR04SensorManager;
 
 
@@ -52,7 +52,7 @@ extern int numButtonReleased;
 extern Config config;
 
 
-extern SSD1306DisplayDevice* obsDisplay;
+extern DisplayDevice* obsDisplay;
 
 extern HCSR04SensorManager* sensorManager;
 

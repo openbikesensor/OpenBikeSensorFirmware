@@ -31,7 +31,7 @@
 #include "displays.h"
 #include "gpsrecord.h"
 
-class SSD1306DisplayDevice;
+class DisplayDevice;
 
 class Gps {
   public:
@@ -47,7 +47,7 @@ class Gps {
     /* read and process data from serial, true if there was valid data. */
     bool handle();
 
-    bool hasFix(SSD1306DisplayDevice *display) const;
+    bool hasFix(DisplayDevice *display) const;
 
     /* Returns true if valid communication with the gps module was possible. */
     bool moduleIsAlive() const;
@@ -56,7 +56,7 @@ class Gps {
 
     uint8_t getValidSatellites() const;
 
-    void showWaitStatus(const SSD1306DisplayDevice *display) const;
+    void showWaitStatus(const DisplayDevice *display) const;
 
     /* Returns current speed, negative value means unknown speed. */
     double getSpeed() const;

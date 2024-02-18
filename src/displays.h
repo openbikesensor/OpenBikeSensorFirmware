@@ -25,30 +25,32 @@
 #define OBS_DISPLAYS_H
 
 #include <Arduino.h>
-#include <SSD1306.h>
+#include <Wire.h>
+#include <U8g2lib.h>
 
 #include "config.h"
 #include "globals.h"
 #include "gps.h"
 #include "logo.h"
+#include "fonts/fonts.h"
 #include "sensor.h"
 
+#define BLACK 0
+#define WHITE 1
 
-extern const uint8_t Open_Sans_Regular_Plain_8[];
-//// this font is part of OLEDDisplay::OLEDDisplay :/
-//extern const uint8_t ArialMT_Plain_10[]; // :(
-extern const uint8_t Open_Sans_Regular_Plain_10[];
-extern const uint8_t Open_Sans_Regular_Plain_20[];
-extern const uint8_t Open_Sans_Regular_Plain_34[];
-extern const uint8_t Open_Sans_Regular_Plain_50[];
+#define SSD1306_I2C_ADDRESS (0x78 >> 1)
+#define G98_I2C_ADDRESS (0x70 >> 1)
+
+#define WIRE Wire
+
 extern const uint8_t BatterieLogo1[];
 extern const uint8_t TempLogo[];
 
-#define TINY_FONT Open_Sans_Regular_Plain_8
-#define SMALL_FONT Open_Sans_Regular_Plain_10
-#define MEDIUM_FONT Open_Sans_Regular_Plain_20
-#define LARGE_FONT Open_Sans_Regular_Plain_34
-#define HUGE_FONT Open_Sans_Regular_Plain_50
+#define TINY_FONT OpenSans_Regular_6
+#define SMALL_FONT OpenSans_Regular_7
+#define MEDIUM_FONT OpenSans_Regular_15
+#define LARGE_FONT OpenSans_Regular_26
+#define HUGE_FONT OpenSans_Regular_37
 
 // Forward declare classes to build (because there is a cyclic dependency between sensor.h and displays.h)
 class HCSR04SensorInfo;
@@ -62,37 +64,70 @@ extern bool BMP280_active;
 
 class DisplayDevice {
   public:
-    DisplayDevice() {}
-    virtual ~DisplayDevice() {}
-    virtual void invert() = 0;
-    virtual void normalDisplay() = 0;
-    //virtual void drawString(int16_t, int16_t, String) = 0;
-    virtual void clear() = 0;
-};
+    enum DisplayVariant {
+      DISPLAY_VARIANT_SSD1306, // original OBS OLED display
+      DISPLAY_VARIANT_G98, // JHDLCM G156 SPI LCD display
+      DISPLAY_VARIANT_G156, // JHDLCM G98 I2C LCD display
+    };
 
-
-class SSD1306DisplayDevice : public DisplayDevice {
   private:
     void handleHighlight();
     void displaySimple(uint16_t value);
-    SSD1306* m_display;
+    U8G2* m_display;
+    DisplayVariant variant;
     String gridText[ 4 ][ 6 ];
     uint8_t mLastProgress = 255;
     uint8_t mCurrentLine = 0;
     bool mInverted = false;
+    bool mFlipped = true;
     uint32_t mHighlightTill = 0;
     bool mHighlighted = false;
 
   public:
-    SSD1306DisplayDevice() : DisplayDevice() {
-      m_display = new SSD1306(0x3c, 21, 22); // ADDRESS, SDA, SCL
-      m_display->init();
-      m_display->setBrightness(255);
-      m_display->setTextAlignment(TEXT_ALIGN_LEFT);
-      m_display->display();
+    static DisplayVariant detectVariant() {
+      WIRE.begin();
+
+      WIRE.beginTransmission(SSD1306_I2C_ADDRESS);
+      if (WIRE.endTransmission(true) == 0) {
+        log_i("Found SSD1306 display on I2C");
+        return DISPLAY_VARIANT_SSD1306;
+      }
+
+      WIRE.beginTransmission(G98_I2C_ADDRESS);
+      if (WIRE.endTransmission(true) == 0) {
+        log_i("Found G98 display on I2C");
+        return DISPLAY_VARIANT_G98;
+      }
+
+      // fallback: SPI display
+      log_i("No known display on I2C bus found, falling back to G156 SPI display");
+      return DISPLAY_VARIANT_G156;
     }
 
-    ~SSD1306DisplayDevice() {
+    DisplayDevice(DisplayVariant variant) {
+      this->variant = variant;
+      switch (variant) {
+        case DISPLAY_VARIANT_SSD1306:
+          m_display = new U8G2_SSD1306_128X64_NONAME_F_HW_I2C(U8G2_R0, U8X8_PIN_NONE);
+          break;
+        case DISPLAY_VARIANT_G156:
+          m_display = new U8G2_ST7567_JLX12864_F_4W_HW_SPI(U8G2_R0, 12, 13, 14);
+          break;
+        case DISPLAY_VARIANT_G98:
+          m_display = new U8G2_UC1601_128X64_F_HW_I2C(U8G2_R0);
+          break;
+      }
+
+      m_display->begin();
+      m_display->setFlipMode(mFlipped);
+      m_display->setContrast(74);
+      m_display->setFontPosTop();
+      m_display->setFontMode(1);
+      m_display->setDrawColor(WHITE);
+      m_display->updateDisplay();
+    }
+
+    ~DisplayDevice() {
       delete m_display;
     }
 
@@ -107,20 +142,19 @@ class SSD1306DisplayDevice : public DisplayDevice {
     //##############################################################
 
     void invert() {
-      m_display->invertDisplay();
-      m_display->display();
       mInverted = true;
+      setInversion(mInverted);
     }
 
     void normalDisplay() {
-      m_display->normalDisplay();
-      m_display->display();
       mInverted = false;
+      setInversion(mInverted);
     }
 
     void flipScreen() {
-      m_display->flipScreenVertically();
-      m_display->display();
+      mFlipped = !mFlipped;
+      m_display->setFlipMode(mFlipped);
+      m_display->updateDisplay();
     }
 
     void clear() {
@@ -133,8 +167,8 @@ class SSD1306DisplayDevice : public DisplayDevice {
     //##############################################################
 
     void showLogo(bool val) {
-      m_display->drawXbm(0, 0, OBSLogo_width, OBSLogo_height, OBSLogo);
-      m_display->display();
+      m_display->drawXBM(0, 0, OBSLogo_width, OBSLogo_height, OBSLogo);
+      m_display->updateDisplay();
     }
 
     //##############################################################
@@ -143,18 +177,18 @@ class SSD1306DisplayDevice : public DisplayDevice {
 
     void showGrid(bool val) {
       // Horizontal lines
-      m_display->drawHorizontalLine(0, 2, 128);
-      m_display->drawHorizontalLine(0, 12, 128);
-      m_display->drawHorizontalLine(0, 22, 128);
-      m_display->drawHorizontalLine(0, 32, 128);
-      m_display->drawHorizontalLine(0, 42, 128);
-      m_display->drawHorizontalLine(0, 52, 128);
-      m_display->drawHorizontalLine(0, 62, 128);
+      m_display->drawHLine(0, 2, 128);
+      m_display->drawHLine(0, 12, 128);
+      m_display->drawHLine(0, 22, 128);
+      m_display->drawHLine(0, 32, 128);
+      m_display->drawHLine(0, 42, 128);
+      m_display->drawHLine(0, 52, 128);
+      m_display->drawHLine(0, 62, 128);
 
       // Vertical lines
-      m_display->drawVerticalLine(32, 0, 64);
-      m_display->drawVerticalLine(64, 0, 64);
-      m_display->drawVerticalLine(96, 0, 64);
+      m_display->drawVLine(32, 0, 64);
+      m_display->drawVLine(64, 0, 64);
+      m_display->drawVLine(96, 0, 64);
     }
 
     //##############################################################
@@ -177,7 +211,7 @@ class SSD1306DisplayDevice : public DisplayDevice {
 
     void showTextOnGrid(int16_t x, int16_t y, String text, const uint8_t* font = SMALL_FONT, int8_t offset_x_ = 0, int8_t offset_y_ = 0) {
       if (prepareTextOnGrid(x, y, text, font,offset_x_,offset_y_)) {
-        m_display->display();
+        m_display->updateDisplay();
       }
     }
 
@@ -197,7 +231,7 @@ class SSD1306DisplayDevice : public DisplayDevice {
         // 2 => 8 - (2*2) = 4
         // 3 => 8 - (3*2) = 2
         int x_offset = 8 - (x * 2);
-        m_display->drawString(x * 32 + x_offset + offset_x_, y * 10 + 1 + offset_y_, gridText[x][y]);
+        m_display->drawStr(x * 32 + x_offset + offset_x_, y * 10 + 1 + offset_y_, gridText[x][y].c_str());
         changed = true;
       }
       return changed;
@@ -210,7 +244,7 @@ class SSD1306DisplayDevice : public DisplayDevice {
           gridText[x][y] = "";
         }
       }
-      m_display->display();
+      m_display->updateDisplay();
     }
 
     // Override the existing WHITE text with BLACK
@@ -219,23 +253,23 @@ class SSD1306DisplayDevice : public DisplayDevice {
     }
 
     void cleanGridCell(int16_t x, int16_t y,int8_t offset_x_, int8_t offset_y_) {
-      m_display->setColor(BLACK);
+      m_display->setDrawColor(BLACK);
       int x_offset = 8 - (x * 2);
-      m_display->drawString(x * 32 + x_offset + offset_x_, y * 10 + 1 + offset_y_, gridText[x][y]);
+      m_display->drawStr(x * 32 + x_offset + offset_x_, y * 10 + 1 + offset_y_, gridText[x][y].c_str());
       gridText[x][y] = "";
-      m_display->setColor(WHITE);
+      m_display->setDrawColor(WHITE);
     }
 
     void cleanBattery(int16_t x, int16_t y){
-      m_display->setColor(BLACK);
-      m_display->drawXbm(x, y, 8, 9, BatterieLogo1);
-      m_display->setColor(WHITE);
+      m_display->setDrawColor(BLACK);
+      m_display->drawXBM(x, y, 8, 9, BatterieLogo1);
+      m_display->setDrawColor(WHITE);
     }
 
     void cleanTemperatur(int16_t x, int16_t y){
-      m_display->setColor(BLACK);
-      m_display->drawXbm(x, y, 8, 9, TempLogo);
-      m_display->setColor(WHITE);
+      m_display->setDrawColor(BLACK);
+      m_display->drawXBM(x, y, 8, 9, TempLogo);
+      m_display->setDrawColor(WHITE);
     }
 
     void drawProgressBar(uint8_t y, uint32_t current, uint32_t target) {
@@ -253,34 +287,34 @@ class SSD1306DisplayDevice : public DisplayDevice {
       uint16_t rowOffset = y * 10 + 3;
 
       if (mLastProgress != progress) {
-        m_display->drawRect(12, rowOffset, 104, 8);
+        m_display->drawFrame(12, rowOffset, 104, 8);
         if (progress != 0) {
-          m_display->fillRect(14, rowOffset + 2, progress > 100 ? 100 : progress, 4);
+          m_display->drawBox(14, rowOffset + 2, progress > 100 ? 100 : progress, 4);
         }
-        m_display->display();
+        m_display->updateDisplay();
         mLastProgress = progress;
       }
     }
 
     void drawWaitBar(uint8_t y, uint16_t tick) {
       uint16_t rowOffset = y * 10 + 3;
-      m_display->drawRect(12, rowOffset, 104, 8);
-      m_display->setColor(BLACK);
-      m_display->fillRect(14, rowOffset + 2, 100, 4);
-      m_display->setColor(WHITE);
+      m_display->drawFrame(12, rowOffset, 104, 8);
+      m_display->setDrawColor(BLACK);
+      m_display->drawBox(14, rowOffset + 2, 100, 4);
+      m_display->setDrawColor(WHITE);
 
       int16_t pos = 45 + (45.0 * sin(tick / 10.0));
-      m_display->fillRect(14 + pos, rowOffset + 2, 10, 4);
-      m_display->display();
+      m_display->drawBox(14 + pos, rowOffset + 2, 10, 4);
+      m_display->updateDisplay();
     }
 
     void clearProgressBar(uint8_t y) {
       if (UINT8_MAX != mLastProgress) {
         clearTextLine(y);
         uint16_t rowOffset = y * 10 + 3;
-        m_display->setColor(BLACK);
-        m_display->fillRect(12, rowOffset, 104, 8);
-        m_display->setColor(WHITE);
+        m_display->setDrawColor(BLACK);
+        m_display->drawBox(12, rowOffset, 104, 8);
+        m_display->setDrawColor(WHITE);
         m_display->display();
         mLastProgress = UINT8_MAX;
       }
@@ -321,6 +355,21 @@ class SSD1306DisplayDevice : public DisplayDevice {
       uint16_t minDistanceToConfirm, int16_t batteryPercentage, int16_t TemperaturValue,
       int lastMeasurements, boolean insidePrivacyArea, double speed, uint8_t satellites);
 
+
+    //##############################################################
+    // Internal methods
+    //##############################################################
+
+  private:
+    void setInversion(bool enabled) {
+      switch (variant) {
+        case DISPLAY_VARIANT_SSD1306:
+        case DISPLAY_VARIANT_G98:   // TODO: verify
+        case DISPLAY_VARIANT_G156:  // TODO: verify
+          m_display->sendF("c", enabled ? 0xa7 : 0xa6);
+          break;
+      }
+    }
 };
 
 #endif
