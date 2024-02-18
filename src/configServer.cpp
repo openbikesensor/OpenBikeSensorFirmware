@@ -492,7 +492,7 @@ String getIp() {
   }
 }
 
-void updateDisplay(SSD1306DisplayDevice * const display, String action = "") {
+void updateDisplay(DisplayDevice * const display, String action = "") {
   if (action.isEmpty()) {
     display->showTextOnGrid(0, 0, "Ver.:");
     display->showTextOnGrid(1, 0, OBSVersion);

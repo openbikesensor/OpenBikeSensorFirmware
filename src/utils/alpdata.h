@@ -39,7 +39,7 @@ static const char *const ALP_DOWNLOAD_URL = "https://alp.u-blox.com/current_14d.
 
 class AlpData {
   public:
-    static void update(SSD1306DisplayDevice *display);
+    static void update(DisplayDevice *display);
     static bool available();
     static void saveMessage(const uint8_t *data, size_t size);
     static size_t loadMessage(uint8_t *data, size_t size);
@@ -50,7 +50,7 @@ class AlpData {
   private:
     static void saveLastModified(const String &header);
     static String loadLastModified();
-    static void displayHttpClientError(SSD1306DisplayDevice *display, int httpError);
+    static void displayHttpClientError(DisplayDevice *display, int httpError);
     File mAlpDataFile;
 
 };
