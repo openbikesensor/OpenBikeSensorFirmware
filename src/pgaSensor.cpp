@@ -6,6 +6,7 @@ PGASensorManager::PGASensorManager()
 {
   for(int i = 0; i < NUMBER_OF_TOF_SENSORS; i++)
     sensorValues[i] = 0;
+  lastTriggerTimeMs = millis();
 }
 
 PGASensorManager::~PGASensorManager()
@@ -13,20 +14,82 @@ PGASensorManager::~PGASensorManager()
 
 }
 
-void PGASensorManager::registerSensor(const PGASensorInfo &sensorInfo, uint8_t sensor_addr)
+void PGASensorManager::registerSensor(const PGASensorInfo &sensorInfo, uint8_t sensorId)
 {
-  if (sensor_addr >= NUMBER_OF_TOF_SENSORS) {
-    log_e("Can not register sensor for index %d, only %d tof sensors supported", sensor_addr, NUMBER_OF_TOF_SENSORS);
+  if (sensorId >= NUMBER_OF_TOF_SENSORS) {
+    log_e("Can not register sensor for index %d, only %d tof sensors supported", sensorId, NUMBER_OF_TOF_SENSORS);
     return;
   }
-  m_sensors[sensor_addr] = sensorInfo;
-  m_sensors[sensor_addr].numberOfTriggers = 0;
-  setupSensor(sensor_addr);
+  m_sensors[sensorId] = sensorInfo;
+  m_sensors[sensorId].numberOfTriggers = 0;
+  setupSensor(sensorId);
 }
 
 // Guess: Return true if the last measurement is complete and a new one is triggered?
 bool PGASensorManager::pollDistancesAlternating()
 {
+  unsigned long timeMs = millis();
+  static uint8_t param = 0;
+  static bool isDump = false;  // True if a dump has to be triggered (false if the dump result has to be read)
+  if(timeMs - lastTriggerTimeMs > 200 && param <= 63)
+  {
+    // Frequently check stat1 register to make sure there are no errors
+    // TODO: Set sensorId
+    uint8_t stat1 = spiRegRead(0, PGA_REG_DEV_STAT1);
+    if(stat1 != 0x00)
+    {
+      log_e("STAT1 register error: 0x%02x", stat1);
+      // TODO: Set sensorId
+      spiRegWrite(0, PGA_REG_DEV_STAT1, 0x00);  // Clear stat1 register
+    }
+
+    // Get data dump of last measurement
+    // TODO: Set sensorId
+    if(!isDump)
+    {
+      // Last measurement was a dump, read and print data
+      //Serial.print("Get dump\n");
+      uint8_t data[128];
+      if(!spiDataDump(0, data))
+        log_e("Unable to get data dump: Checksum error");
+      else
+      {
+        //Serial.printf("\"%d\": [", param);
+        for(int i = 0; i < 128; i++)
+        {
+          Serial.printf("%d", data[i]);
+          if(i+1 != 128)
+            Serial.print(",");
+        }
+        Serial.printf("\n");
+        //param++;
+      }
+    }
+    else
+    {
+      //Serial.print("Get distance\n");
+      // Last measurement was a normal measurement, read and print distance
+      PGAUSResult usResult[1];
+      if(!spiUSResult(0, 1, usResult))
+        Serial.print("Unable to get US result: Checksum error\n");
+      else
+      {
+        Serial.printf("%u, %u, %u\n", usResult[0].tof, usResult[0].width, usResult[0].peakAmplitude);
+      }
+    }
+
+    // Set parameter
+    //spiRegWrite(0, PGA_REG_CURR_LIM_P1, PGA_DIS_CL(0) | PGA_CURR_LIM1(param));
+
+    // Trigger next sensor
+    // TODO: Set sensorId
+    //Serial.printf("Trigger with isDump=%d\n", isDump);
+    spiRegWrite(0, PGA_REG_EE_CNTRL, PGA_DATADUMP_EN((uint8_t)isDump));  // Enable data dump
+    spiBurstAndListen(0, 1, 1);
+    lastTriggerTimeMs = timeMs;
+    isDump = !isDump;
+    return true;
+  }
   return false;
 }
 
@@ -75,9 +138,10 @@ uint32_t PGASensorManager::getNumberOfInterruptAdjustments(const uint8_t sensorI
   return 9000000;
 }
 
-void PGASensorManager::setupSensor(int sensor_addr)
+void PGASensorManager::setupSensor(int sensorId)
 {
-  PGASensorInfo &sensorInfo = m_sensors[sensor_addr];
+  PGASensorInfo &sensorInfo = m_sensors[sensorId];
+
   // Set pin modes
   digitalWrite(sensorInfo.io_pin, LOW);
   pinMode(sensorInfo.io_pin, INPUT);  // IO pin is open drain
@@ -86,42 +150,93 @@ void PGASensorManager::setupSensor(int sensor_addr)
   pinMode(sensorInfo.mosi_pin, OUTPUT);
   pinMode(sensorInfo.miso_pin, INPUT);
 
+  // Check communication
+  // Rerad the DEV_STAT0 register, where the upper nibble should be 0x4
+  // These are the values for REV_ID (0x2) and OPT_ID (0x0)
+  if(spiRegRead(sensorId, PGA_REG_DEV_STAT0) & 0xf0 != 0x40)
+  {
+    log_e("Setup of sensor %d failed: Unexpected result in status register read", sensorId);
+    return;
+  }
+
+  // Basic setup
+  spiRegWrite(sensorId, PGA_REG_INIT_GAIN, PGA_BPF_BW(0) | PGA_GAIN_INIT(0));  // 2 kHz bandwidth, Init_Gain = 0.5 × (GAIN_INIT+1) + value(AFE_GAIN_RNG) [dB]
+  spiRegWrite(sensorId, PGA_REG_FREQUENCY, 55);  // 55 = 41 kHz, Frequency = 0.2 × FREQ + 30 [kHz]
+  //spiRegWrite(sensorId, PGA_REG_DEADTIME, 0x00);  // Deglitch not described in DS, deadtime only relevant for direct drive mode
+  spiRegWrite(sensorId, PGA_REG_PULSE_P1, PGA_IO_IF_SEL(0) | PGA_UART_DIAG(0) | PGA_IO_DIS(0) | P1_PULSE(17)); // Number of pulses
+  spiRegWrite(sensorId, PGA_REG_CURR_LIM_P1, PGA_DIS_CL(0) | PGA_CURR_LIM1(0));  // CURR_LIM1*7mA + 50mA
+  spiRegWrite(sensorId, PGA_REG_CURR_LIM_P2, PGA_LPF_CO(0) | PGA_CURR_LIM2(0));  // CURR_LIM1*7mA + 50mA
+  spiRegWrite(sensorId, PGA_REG_REC_LENGTH, PGA_P1_REC(8) | PGA_P2_REC(0));  // Record time = 4.096 × (Px_REC + 1) [ms], 8 = 36,9ms = 6m range
+  spiRegWrite(sensorId, PGA_REG_DECPL_TEMP, PGA_AFE_GAIN_RNG(1) | PGA_LPM_EN(0) | PGA_DECPL_TEMP_SEL(0) | PGA_DECPL_T(0));  // Time = 4096 × (DECPL_T + 1) [μs], 0 = 4ms = 0,66m?!?
+  spiRegWrite(sensorId, PGA_REG_EE_CNTRL, PGA_DATADUMP_EN(1));  // Enable data dump
+
+  // Threshold map, then check DEV_STAT0.THR_CRC_ERR
+  //th_t = np.array([2000, 2400, 2400, 8000, 8000, 8000, 8000, 8000, 8000, 8000, 8000, 8000])
+  //th_l = np.array([200, 80, 16, 16, 24, 32, 40, 48, 56, 56, 56, 56])
+  PGAThresholds thresholds(
+    TH_TIME_DELTA_2000US, 200/8,
+    TH_TIME_DELTA_5200US, 80/8,
+    TH_TIME_DELTA_2400US, 16/8,
+    TH_TIME_DELTA_8000US, 16/8,
+    TH_TIME_DELTA_8000US, 16/8,
+    TH_TIME_DELTA_8000US, 24/8,
+    TH_TIME_DELTA_8000US, 24/8,
+    TH_TIME_DELTA_8000US, 24/8,
+    TH_TIME_DELTA_8000US, 24,
+    TH_TIME_DELTA_8000US, 24,
+    TH_TIME_DELTA_8000US, 24,
+    TH_TIME_DELTA_8000US, 24
+  );
+  spiRegWriteThesholds(sensorId, 1, thresholds);
+
+  spiRegWrite(sensorId, PGA_REG_DEV_STAT1, 0x00);  // Clear stat1 register
+  safe_usleep(1000);  // Wait a bit
+  log_i("DEV_STAT0: 0x%02x", spiRegRead(sensorId, PGA_REG_DEV_STAT0));
+  log_i("DEV_STAT1: 0x%02x", spiRegRead(sensorId, PGA_REG_DEV_STAT1));
+
+  log_i("Setup of sensor %d done", sensorId);
+
+  // Stress test for writing/reading registers
+  /*uint8_t tmp = 0;
   while(1)
   {
-    uint8_t reg = spiRegRead(sensor_addr, 0x4c);
-    Serial.printf("Reg: 0x%02x\n", reg);
-    delay(100);
-  }
-  while(1);
+    spiRegWrite(sensorId, PGA_REG_USER_DATA1, tmp);
+    int reg = spiRegRead(sensorId, PGA_REG_USER_DATA1);
+    if(reg == -1)
+      Serial.printf("CHECKSUM WRONG!\n");
+    else if(reg != tmp)
+      Serial.printf("WTF SOMETHING WENT WRONG!\n");
+    tmp++;
+  }*/
 
   // Reset the TCI
-  //tciReset(sensor_addr);
+  //tciReset(sensorId);
 
   /*uint8_t data[1];
   while(1)
   {
-    //tciWriteBit(sensor_addr, true);
-    //tciWriteBit(sensor_addr, false);
-    tciReset(sensor_addr);
-    tciReadData(sensor_addr, 0, data, 8);
+    //tciWriteBit(sensorId, true);
+    //tciWriteBit(sensorId, false);
+    tciReset(sensorId);
+    tciReadData(sensorId, 0, data, 8);
     safe_usleep(10000);
   }*/
 
 }
 
 // Reset the TCI interface by driving the IO pin low for >15 ms
-void PGASensorManager::tciReset(int sensor_addr)
+void PGASensorManager::tciReset(int sensorId)
 {
-  PGASensorInfo &sensorInfo = m_sensors[sensor_addr];
+  PGASensorInfo &sensorInfo = m_sensors[sensorId];
   pinMode(sensorInfo.io_pin, OUTPUT);
   safe_usleep(20000);
   pinMode(sensorInfo.io_pin, INPUT);
   safe_usleep(100);
 }
 
-void PGASensorManager::tciWriteBit(int sensor_addr, bool val)
+void PGASensorManager::tciWriteBit(int sensorId, bool val)
 {
-  PGASensorInfo &sensorInfo = m_sensors[sensor_addr];
+  PGASensorInfo &sensorInfo = m_sensors[sensorId];
   pinMode(sensorInfo.io_pin, OUTPUT);
   if(val)
     usleep(100-22);
@@ -134,27 +249,27 @@ void PGASensorManager::tciWriteBit(int sensor_addr, bool val)
     usleep(100-22);
 }
 
-void PGASensorManager::tciWriteByte(int sensor_addr, uint8_t val)
+void PGASensorManager::tciWriteByte(int sensorId, uint8_t val)
 {
 
 }
 
-bool PGASensorManager::tciReadData(int sensor_addr, uint8_t index, uint8_t *data, int bits)
+bool PGASensorManager::tciReadData(int sensorId, uint8_t index, uint8_t *data, int bits)
 {
-  uint8_t io_pin = m_sensors[sensor_addr].io_pin;
+  uint8_t io_pin = m_sensors[sensorId].io_pin;
 
   noInterrupts();
   pinMode(io_pin, OUTPUT);
   safe_usleep(1270-22);  // tCFG_TCI, Device configuration command period
   pinMode(io_pin, INPUT);
   safe_usleep(100-22);  // tDT_TCI, Command processing dead-time
-  tciWriteBit(sensor_addr, false);  // Read
+  tciWriteBit(sensorId, false);  // Read
   safe_usleep(100-22);  // tDT_TCI, Command processing dead-time
 
   // Write register index, lower 4 bits, MSB first
   for(int i = 0; i < 4; i++)
   {
-    tciWriteBit(sensor_addr, !!(index & 0x08));
+    tciWriteBit(sensorId, !!(index & 0x08));
     index <<= 1;
   }
 
@@ -215,45 +330,46 @@ void PGASensorManager::safe_usleep(unsigned long us)
   while(micros() - tstart < us);
 }
 
-uint8_t PGASensorManager::spiTransfer(uint8_t sensor_addr, uint8_t data_out)
+uint8_t PGASensorManager::spiTransfer(uint8_t sensorId, uint8_t data_out)
 {
-  PGASensorInfo &sensorInfo = m_sensors[sensor_addr];
+  PGASensorInfo &sensorInfo = m_sensors[sensorId];
   uint8_t data_in = 0;
-  // The bit timing may not be faster than 18 MHz clock signal. The arduino framework is so slow, that this seems to be no problem...
   for(uint8_t i = 0; i < 8; i++)
   {
     digitalWrite(sensorInfo.sck_pin, HIGH);
     digitalWrite(sensorInfo.mosi_pin, data_out&0x01);
     data_out >>= 1;
+    safe_usleep(2);
     digitalWrite(sensorInfo.sck_pin, LOW);
     data_in >>= 1;
     data_in |= digitalRead(sensorInfo.miso_pin)<<7;
+    safe_usleep(2);
   }
   return data_in;
 }
 
 // Returns the register value or -1 on checksum error
-int PGASensorManager::spiRegRead(uint8_t sensor_addr, uint8_t reg_addr)
+int PGASensorManager::spiRegRead(uint8_t sensorId, uint8_t reg_addr)
 {
-  PGASensorInfo &sensorInfo = m_sensors[sensor_addr];
+  PGASensorInfo &sensorInfo = m_sensors[sensorId];
 
   // Transmit
   checksum_clear();
-  spiTransfer(sensor_addr, 0x55);  // Sync byte
-  spiTransfer(sensor_addr, 0<<5 | 9); // Command: chip address + register read
-  checksum_append_byte(0<<5 | 9);
-  spiTransfer(sensor_addr, reg_addr); // Register address
+  spiTransfer(sensorId, 0x55);  // Sync byte
+  spiTransfer(sensorId, 0<<5 | PGA_CMD_REGISTER_READ); // Command: chip address + register read
+  checksum_append_byte(0<<5 | PGA_CMD_REGISTER_READ);
+  spiTransfer(sensorId, reg_addr); // Register address
   checksum_append_byte(reg_addr);
-  spiTransfer(sensor_addr, checksum_get());  // Checksum
+  spiTransfer(sensorId, checksum_get());  // Checksum
   uint8_t tx_checksum = checksum_get();
 
   // Receive
   checksum_clear();
-  uint8_t diag_data = spiTransfer(sensor_addr, 0x00);
+  uint8_t diag_data = spiTransfer(sensorId, 0x00);
   checksum_append_byte(diag_data);
-  uint8_t reg_val = spiTransfer(sensor_addr, 0x00);
+  uint8_t reg_val = spiTransfer(sensorId, 0x00);
   checksum_append_byte(reg_val);
-  uint8_t checksum = spiTransfer(sensor_addr, 0x00);
+  uint8_t checksum = spiTransfer(sensorId, 0x00);
 
   //Serial.printf("Data: 0x%02x, Checksum (pga): 0x%02x, Checksum (local): 0x%02x, Checksum (tx): %02x\n", reg_val, checksum, checksum_get(), tx_checksum);
 
@@ -261,6 +377,136 @@ int PGASensorManager::spiRegRead(uint8_t sensor_addr, uint8_t reg_addr)
     return -1;
 
   return reg_val;
+}
+
+void PGASensorManager::spiRegWrite(uint8_t sensorId, uint8_t reg_addr, uint8_t value)
+{
+  assert(sensorId >= 0 && sensorId <= 1);
+
+  checksum_clear();
+  spiTransfer(sensorId, 0x55);  // Sync byte
+  spiTransfer(sensorId, 0<<5 | PGA_CMD_REGISTER_WRITE); // Command: chip address + register write
+  checksum_append_byte(0<<5 | PGA_CMD_REGISTER_WRITE);
+  spiTransfer(sensorId, reg_addr);  // Register address
+  checksum_append_byte(reg_addr);
+  spiTransfer(sensorId, value);  // Register address
+  checksum_append_byte(value);
+  spiTransfer(sensorId, checksum_get());  // Checksum
+
+  // Wait a bit to apply changes, depending on the register
+  if(reg_addr == PGA_REG_INIT_GAIN || (reg_addr >= PGA_REG_TVGAIN0 & reg_addr <= PGA_REG_TVGAIN6) || (reg_addr >= PGA_REG_P1_THR_0 && reg_addr <= PGA_REG_P2_THR_15) ||
+    reg_addr == PGA_REG_P1_GAIN_CTRL || reg_addr == PGA_REG_P2_GAIN_CTRL)
+    safe_usleep(61);
+  else
+    safe_usleep(5);
+}
+
+void PGASensorManager::spiRegWriteThesholds(uint8_t sensorId, uint8_t preset, PGAThresholds &thresholds)
+{
+  assert(sensorId >= 0 && sensorId <= 1);
+
+  uint8_t regOffset = preset == 1 ? 0 : PGA_REG_P2_THR_0 - PGA_REG_P1_THR_0;
+  spiRegWrite(sensorId, PGA_REG_P1_THR_0 + regOffset, thresholds.t1<<4 | thresholds.t2);
+  spiRegWrite(sensorId, PGA_REG_P1_THR_1 + regOffset, thresholds.t3<<4 | thresholds.t4);
+  spiRegWrite(sensorId, PGA_REG_P1_THR_2 + regOffset, thresholds.t5<<4 | thresholds.t6);
+  spiRegWrite(sensorId, PGA_REG_P1_THR_3 + regOffset, thresholds.t7<<4 | thresholds.t8);
+  spiRegWrite(sensorId, PGA_REG_P1_THR_4 + regOffset, thresholds.t9<<4 | thresholds.t10);
+  spiRegWrite(sensorId, PGA_REG_P1_THR_5 + regOffset, thresholds.t11<<4 | thresholds.t12);
+  // Now it gets messy with the 5 bit level values...
+  spiRegWrite(sensorId, PGA_REG_P1_THR_6 + regOffset, thresholds.l1<<3 | thresholds.l2>>2);
+  spiRegWrite(sensorId, PGA_REG_P1_THR_7 + regOffset, thresholds.l2<<6 | thresholds.l3<<1 | thresholds.l4>>4);
+  spiRegWrite(sensorId, PGA_REG_P1_THR_8 + regOffset, thresholds.l4<<4 | thresholds.l5>>1);
+  spiRegWrite(sensorId, PGA_REG_P1_THR_9 + regOffset, thresholds.l5<<7 | thresholds.l6<<2 | thresholds.l7>>3);
+  spiRegWrite(sensorId, PGA_REG_P1_THR_10 + regOffset, thresholds.l7<<5 | thresholds.l8);
+  // 8 bit level values are easy again...
+  spiRegWrite(sensorId, PGA_REG_P1_THR_11 + regOffset, thresholds.l9);
+  spiRegWrite(sensorId, PGA_REG_P1_THR_12 + regOffset, thresholds.l10);
+  spiRegWrite(sensorId, PGA_REG_P1_THR_13 + regOffset, thresholds.l11);
+  spiRegWrite(sensorId, PGA_REG_P1_THR_14 + regOffset, thresholds.l12);
+  // Register 15 is a bit special...
+  spiRegWrite(sensorId, PGA_REG_P1_THR_15 + regOffset, PGA_TH_P1_OFF(0));
+}
+
+// Start a burst-and-listen with preset 1 and detect (up to) numberOfObjectsToDetect objects
+// preset is 1 or 2
+// numberOfObjectsToDetect must be 1..8
+void PGASensorManager::spiBurstAndListen(uint8_t sensorId, uint8_t preset, uint8_t numberOfObjectsToDetect)
+{
+  assert(sensorId >= 0 && sensorId <= 1);
+  assert(preset >= 1 && preset <= 2);
+  assert(numberOfObjectsToDetect >= 1 && numberOfObjectsToDetect <= 8);
+
+  checksum_clear();
+  spiTransfer(sensorId, 0x55);  // Sync byte
+  uint8_t cmd = 0<<5 | preset == 1 ? PGA_CMD_BURST_AND_LISTEN_1 : PGA_CMD_BURST_AND_LISTEN_2;
+  spiTransfer(sensorId, cmd); // Command
+  checksum_append_byte(cmd);
+  spiTransfer(sensorId, numberOfObjectsToDetect);
+  checksum_append_byte(numberOfObjectsToDetect);
+  spiTransfer(sensorId, checksum_get());
+}
+
+// Get the last ultrasonic results (triggered by spiBurstAndListen)
+// usResults must be an array of at least numberOfObjectsToDetect elements
+bool PGASensorManager::spiUSResult(uint8_t sensorId, uint8_t numberOfObjectsToDetect, PGAUSResult *usResults)
+{
+  assert(sensorId >= 0 && sensorId <= 1);
+  assert(numberOfObjectsToDetect >= 1 && numberOfObjectsToDetect <= 8);
+
+  spiTransfer(sensorId, 0x55);  // Sync byte
+  spiTransfer(sensorId, 0<<5 | PGA_CMD_ULTRASONIC_RESULT); // Command
+
+  // Get diag data
+  checksum_clear();
+  uint8_t diag = spiTransfer(sensorId, 0x00);
+  checksum_append_byte(diag);
+
+  // Read result data of 4 bytes for each object
+  for(int obj = 0; obj < numberOfObjectsToDetect; obj++)
+  {
+    uint8_t data = spiTransfer(sensorId, 0x00);
+    usResults[obj].tof = ((uint16_t)data)<<8;
+    checksum_append_byte(data);
+    data = spiTransfer(sensorId, 0x00);
+    usResults[obj].tof |= data;
+    checksum_append_byte(data);
+    data = spiTransfer(sensorId, 0x00);
+    usResults[obj].width = data;
+    checksum_append_byte(data);
+    data = spiTransfer(sensorId, 0x00);
+    usResults[obj].peakAmplitude = data;
+    checksum_append_byte(data);
+  }
+
+  // Get checksum
+  uint8_t checksum = spiTransfer(sensorId, 0x00);
+  return checksum == checksum_get();
+}
+
+// data must point to at least 128 bytes
+// Returns true if checksum was ok, false otherwise
+bool PGASensorManager::spiDataDump(const uint8_t sensorId, uint8_t *data)
+{
+  assert(sensorId >= 0 && sensorId <= 1);
+
+  spiTransfer(sensorId, 0x55);  // Sync byte
+  spiTransfer(sensorId, 0<<5 | PGA_CMD_DATA_DUMP); // Command
+
+  // Get diag data
+  checksum_clear();
+  uint8_t diag = spiTransfer(sensorId, 0x00);
+  checksum_append_byte(diag);
+
+  // Read data dump of 128 bytes
+  for(int i = 0; i < 128; i++)
+  {
+    data[i] = spiTransfer(sensorId, 0x00);
+    checksum_append_byte(data[i]);
+  }
+
+  // Get checksum
+  uint8_t checksum = spiTransfer(sensorId, 0x00);
+  return checksum == checksum_get();
 }
 
 void PGASensorManager::checksum_clear()

@@ -119,6 +119,9 @@ void setupSensors() {
 
   PGASensorInfo sensor1;
   sensor1.io_pin = SENSOR1_IO_PIN;
+  sensor1.sck_pin = 25;
+  sensor1.mosi_pin = 33;
+  sensor1.miso_pin = 32;
   sensor1.sensorLocation = "Left";
   sensorManager->registerSensor(sensor1, 0);
 
