@@ -272,12 +272,6 @@ public:
 protected:
   void setupSensor(int idx);
 
-  // TCI Interface
-  void tciReset(int sensor_addr);
-  void tciWriteBit(int sensor_addr, bool val);
-  void tciWriteByte(int sensor_addr, uint8_t val);
-  bool tciReadData(int sensor_addr, uint8_t index, uint8_t *data, int bits);
-  uint8_t tciReadBit(uint8_t io_pin);
   void safe_usleep(unsigned long us);
 
   // Synchronous UART mode (aka SPI without chip-select)
