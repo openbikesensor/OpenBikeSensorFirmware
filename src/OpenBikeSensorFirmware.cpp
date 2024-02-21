@@ -125,10 +125,10 @@ void setupSensors() {
   sensorManager->registerSensor(sensor1, 0);
 
   PGASensorInfo sensor2;
-  sensor1.sck_pin = SENSOR2_SCK_PIN;
-  sensor1.mosi_pin = SENSOR2_MOSI_PIN;
-  sensor1.miso_pin = SENSOR2_MISO_PIN;
-  sensor1.sensorLocation = "Right";
+  sensor2.sck_pin = SENSOR2_SCK_PIN;
+  sensor2.mosi_pin = SENSOR2_MOSI_PIN;
+  sensor2.miso_pin = SENSOR2_MISO_PIN;
+  sensor2.sensorLocation = "Right";
   sensorManager->registerSensor(sensor2, 1);
 #endif
 #ifdef OBSCLASSIC
@@ -550,6 +550,8 @@ void loop() {
 
     gps.handle();
   } // end measureInterval while
+
+  log_e("Measurement done");
 
   currentSet->gpsRecord = gps.getCurrentGpsRecord();
   currentSet->isInsidePrivacyArea = gps.isInsidePrivacyArea();

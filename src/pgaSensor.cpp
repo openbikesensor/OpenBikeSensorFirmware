@@ -22,6 +22,8 @@ void PGASensorManager::registerSensor(const PGASensorInfo &sensorInfo, uint8_t s
   }
   m_sensors[sensorId] = sensorInfo;
   m_sensors[sensorId].numberOfTriggers = 0;
+  sensorValues[sensorId] = MAX_SENSOR_VALUE;
+  m_sensors[sensorId].median = new Median<uint16_t>(5, MAX_SENSOR_VALUE);
   setupSensor(sensorId);
 }
 
@@ -57,6 +59,7 @@ bool PGASensorManager::pollDistancesAlternating()
   }
 #endif
   spiBurstAndListen(nextSensor, 1, 1);
+  m_sensors[nextSensor].numberOfTriggers++;
 
   lastSensor = nextSensor;
   return newMeasurements;
@@ -141,7 +144,7 @@ bool PGASensorManager::pollDistancesAlternating()
     {
       //Serial.print("Get distance\n");
       // Last measurement was a normal measurement, read and print distance
-      PGAUSResult usResult[1];
+      PGAResult usResult[1];
       if(!spiUSResult(0, 1, usResult))
         Serial.print("Unable to get US result: Checksum error\n");
       else
@@ -168,46 +171,6 @@ bool PGASensorManager::pollDistancesAlternating()
 uint16_t PGASensorManager::getCurrentMeasureIndex()
 {
   return lastReadingCount - 1;
-}
-
-uint16_t PGASensorManager::getRawMedianDistance(uint8_t sensorId)
-{
-  return 30000;
-}
-
-uint32_t PGASensorManager::getMaxDurationUs(uint8_t sensorId)
-{
-  return 3000000;
-}
-
-uint32_t PGASensorManager::getMinDurationUs(uint8_t sensorId)
-{
-  return 4000000;
-}
-
-uint32_t PGASensorManager::getLastDelayTillStartUs(uint8_t sensorId)
-{
-  return 5000000;
-}
-
-uint32_t PGASensorManager::getNoSignalReadings(const uint8_t sensorId)
-{
-  return 6000000;
-}
-
-uint32_t PGASensorManager::getNumberOfLowAfterMeasurement(const uint8_t sensorId)
-{
-  return 7000000;
-}
-
-uint32_t PGASensorManager::getNumberOfToLongMeasurement(const uint8_t sensorId)
-{
-  return 8000000;
-}
-
-uint32_t PGASensorManager::getNumberOfInterruptAdjustments(const uint8_t sensorId)
-{
-  return 9000000;
 }
 
 void PGASensorManager::setOffsets(std::vector<uint16_t> offsets)
@@ -425,7 +388,7 @@ void PGASensorManager::spiBurstAndListen(uint8_t sensorId, uint8_t preset, uint8
 
 // Get the last ultrasonic results (triggered by spiBurstAndListen)
 // usResults must be an array of at least numberOfObjectsToDetect elements
-bool PGASensorManager::spiUSResult(uint8_t sensorId, uint8_t numberOfObjectsToDetect, PGAUSResult *usResults)
+bool PGASensorManager::spiUSResult(uint8_t sensorId, uint8_t numberOfObjectsToDetect, PGAResult *usResults)
 {
   assert(sensorId >= 0 && sensorId <= 1);
   assert(numberOfObjectsToDetect >= 1 && numberOfObjectsToDetect <= 8);
@@ -543,19 +506,20 @@ uint8_t PGASensorManager::checksum_get()
 // Returns true if any of the sensors returned a range < 6m
 bool PGASensorManager::collectSensorResults() {
   bool validReading = false;
-  for (size_t idx = 0; idx < NUMBER_OF_TOF_SENSORS; ++idx) {
-    PGAUSResult usResults[1];
-    if(!spiUSResult(idx, 1, usResults))
+  for (size_t sensorId = 0; sensorId < NUMBER_OF_TOF_SENSORS; ++sensorId) {
+    PGASensorInfo* const sensor = &m_sensors[sensorId];
+    PGAResult usResults[1];
+    if(!spiUSResult(sensorId, 1, usResults))
       continue;
 #if PGA_DUMP_ENABLE
-    if(m_sensors[idx].lastMeasurementWasDump)
+    if(sensor->lastMeasurementWasDump)
     {
       uint8_t data[128];
-      if(!spiDataDump(idx, data))
+      if(!spiDataDump(sensorId, data))
         log_e("Unable to get data dump: Checksum error");
       else
       {
-        Serial.printf("dump,%d,", idx);
+        Serial.printf("dump,%d,", sensorId);
         for(int i = 0; i < 128; i++)
         {
           Serial.printf("%d", data[i]);
@@ -568,11 +532,26 @@ bool PGASensorManager::collectSensorResults() {
     else
     {
 #endif
-      Serial.printf("meas,%d,%d,%d,%d\n", idx, usResults[0].tof, usResults[0].width, usResults[0].peakAmplitude);
-      if(usResults->distance < 600)
-      {
-        sensorValues[idx] = usResults[0].distance;
+      Serial.printf("meas,%d,%d,%d,%d\n", sensorId, usResults[0].tof, usResults[0].width, usResults[0].peakAmplitude);
+
+      sensor->echoDurationMicroseconds[lastReadingCount] = usResults[0].tof;
+      uint16_t dist;
+      if(usResults[0].distance < MIN_DISTANCE_MEASURED_CM || usResults[0].distance >= MAX_DISTANCE_MEASURED_CM) {
+        dist = MAX_SENSOR_VALUE;
+      } else {
         validReading = true;
+        dist = static_cast<uint16_t>(usResults[0].distance);
+      }
+      sensor->rawDistance = dist;
+      sensor->median->addValue(dist);
+      sensorValues[sensorId] = sensor->distance = correctSensorOffset(medianMeasure(sensor, dist), sensor->offset);
+
+      log_v("Raw sensor[%d] distance read %03u / %03u (%03u, %03u, %03u) -> *%03ucm*, duration: %zu us",
+        sensorId, sensor->rawDistance, dist, sensor->distances[0], sensor->distances[1],
+        sensor->distances[2], sensorValues[sensorId], usResults[0].tof);
+
+      if (sensor->distance > 0 && sensor->distance < sensor->minDistance) {
+        sensor->minDistance = sensor->distance;
       }
 #if PGA_DUMP_ENABLE
     }
@@ -598,6 +577,52 @@ uint16_t PGASensorManager::millisSince(uint16_t milliseconds) {
     result = -result;
   }
   return result;
+}
+
+uint16_t PGASensorManager::correctSensorOffset(uint16_t dist, uint16_t offset) {
+  uint16_t  result;
+  if (dist == MAX_SENSOR_VALUE) {
+    result = MAX_SENSOR_VALUE;
+  } else if (dist > offset) {
+    result = dist - offset;
+  } else {
+    result = 0; // would be negative if corrected
+  }
+  return result;
+}
+
+uint16_t PGASensorManager::medianMeasure(PGASensorInfo *const sensor, uint16_t value) {
+  sensor->distances[sensor->nextMedianDistance] = value;
+  sensor->nextMedianDistance++;
+
+  // if we got "fantom" measures, they are <= the current measures, so remove
+  // all values <= the current measure from the median data
+  for (unsigned short & distance : sensor->distances) {
+    if (distance < value) {
+      distance = value;
+    }
+  }
+  if (sensor->nextMedianDistance >= MEDIAN_DISTANCE_MEASURES) {
+    sensor->nextMedianDistance = 0;
+  }
+  return median(sensor->distances[0], sensor->distances[1], sensor->distances[2]);
+}
+
+uint16_t PGASensorManager::median(uint16_t a, uint16_t b, uint16_t c) {
+  if (a < b) {
+    if (a >= c) {
+      return a;
+    } else if (b < c) {
+      return b;
+    }
+  } else {
+    if (a < c) {
+      return a;
+    } else if (b >= c) {
+      return b;
+    }
+  }
+  return c;
 }
 
 #endif  // OBSPro

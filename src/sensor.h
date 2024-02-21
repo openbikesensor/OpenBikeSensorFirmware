@@ -50,9 +50,6 @@
       −10            325.4
       −15            322.3
 */
-const uint32_t MICRO_SEC_TO_CM_DIVIDER = 58; // sound speed 340M/S, 2 times back and forward
-
-const uint16_t MEDIAN_DISTANCE_MEASURES = 3;
 
 struct HCSR04SensorInfo {
   uint8_t triggerPin = 15;

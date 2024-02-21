@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <vector>
 #include "variant.h"
+#include "utils/median.h"
 
 #ifndef OBS_PGASENSOR_H
 #define OBS_PGASENSOR_H
@@ -143,17 +144,22 @@
 
 struct PGASensorInfo
 {
-  uint8_t sck_pin;
-  uint8_t mosi_pin;
-  uint8_t miso_pin;
+  // General stuff
   uint16_t numberOfTriggers;
   int32_t echoDurationMicroseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
-  uint16_t rawDistance = 42;  // Current distance value in cm
+  Median<uint16_t>*median = nullptr;
+  uint16_t rawDistance = 0;  // Current distance value in cm
+  uint16_t distances[MEDIAN_DISTANCE_MEASURES] = { MAX_SENSOR_VALUE, MAX_SENSOR_VALUE, MAX_SENSOR_VALUE };
+  uint16_t nextMedianDistance = 0;
   uint16_t minDistance = MAX_SENSOR_VALUE;
   uint16_t distance = MAX_SENSOR_VALUE;
   const char* sensorLocation;
   uint16_t offset = 0;  // TODO: Apply offset
 
+  // Sensor specific stuff
+  uint8_t sck_pin;
+  uint8_t mosi_pin;
+  uint8_t miso_pin;
 #if PGA_DUMP_ENABLE
   // DEBUG: send a raw data dump trigger from time to time
   uint32_t lastDumpTime = 0;
@@ -161,12 +167,12 @@ struct PGASensorInfo
 #endif
 };
 
-struct PGAUSResult
+struct PGAResult
 {
   uint16_t tof;  // Time of flight [us]
-  uint8_t width;
-  uint8_t peakAmplitude;
-  uint16_t distance;  // [cm]
+  uint8_t width;  // Width of the target [us], is usually 255 as targets are fairly wide?
+  uint8_t peakAmplitude;  // Highest amplitude of that target [ADC LSB]
+  uint16_t distance;  // First detected target distance [cm]
 };
 
 #define TH_TIME_DELTA_100US  0x0
@@ -262,23 +268,26 @@ public:
   void registerSensor(const PGASensorInfo &sensorInfo, uint8_t idx);
   bool pollDistancesAlternating();
   uint16_t getCurrentMeasureIndex();
-  uint16_t getRawMedianDistance(uint8_t sensorId);
-  uint32_t getMaxDurationUs(uint8_t sensorId);
-  uint32_t getMinDurationUs(uint8_t sensorId);
-  uint32_t getLastDelayTillStartUs(uint8_t sensorId);
-  uint32_t getNoSignalReadings(const uint8_t sensorId);
-  uint32_t getNumberOfLowAfterMeasurement(const uint8_t sensorId);
-  uint32_t getNumberOfToLongMeasurement(const uint8_t sensorId);
-  uint32_t getNumberOfInterruptAdjustments(const uint8_t sensorId);
+
   void setOffsets(std::vector<uint16_t> offsets);
   void setPrimarySensor(uint8_t idx);
   void reset(uint32_t startMillisTicks);
+
+  // TODO: This is just legacy interrupt stuff for the HCSR04 sensor - not required for PGA460
   void detachInterrupts() {};
   void attachInterrupts() {};
 
-  bool spiDataDump(const uint8_t sensorId, uint8_t *data);
+  // TODO: This just seem to be debug stuff that is not really required and some is not even valid for PGA460
+  uint16_t getRawMedianDistance(uint8_t sensorId) { return 0; };
+  uint32_t getMaxDurationUs(uint8_t sensorId) { return 0; };
+  uint32_t getMinDurationUs(uint8_t sensorId) { return 0; };
+  uint32_t getLastDelayTillStartUs(uint8_t sensorId) { return 0; };
+  uint32_t getNoSignalReadings(const uint8_t sensorId) { return 0; };
+  uint32_t getNumberOfLowAfterMeasurement(const uint8_t sensorId) { return 0; };
+  uint32_t getNumberOfToLongMeasurement(const uint8_t sensorId) { return 0; };
+  uint32_t getNumberOfInterruptAdjustments(const uint8_t sensorId) { return 0; };
 
-  // TODO: These should not be public!
+  // TODO: These variables should not be public!
   PGASensorInfo m_sensors[NUMBER_OF_TOF_SENSORS];
   uint16_t sensorValues[NUMBER_OF_TOF_SENSORS];
   uint16_t lastReadingCount = 0;
@@ -295,8 +304,9 @@ protected:
   void spiRegWrite(uint8_t sensorId, uint8_t reg_addr, uint8_t value);
   void spiRegWriteThesholds(uint8_t sensorId, uint8_t preset, PGAThresholds &thresholds);
   void spiBurstAndListen(uint8_t sensorId, uint8_t preset, uint8_t numberOfObjectsToDetect);
-  bool spiUSResult(uint8_t sensorId, uint8_t numberOfObjectsToDetect, PGAUSResult *usResults);
+  bool spiUSResult(uint8_t sensorId, uint8_t numberOfObjectsToDetect, PGAResult *usResults);
   bool spiIsBusy(uint8_t sensorId);
+  bool spiDataDump(const uint8_t sensorId, uint8_t *data);
 
   // Checksum
   uint8_t checksum_sum;
@@ -316,6 +326,9 @@ protected:
   bool collectSensorResults();
   void registerReadings();
   uint16_t millisSince(uint16_t milliseconds);
+  uint16_t correctSensorOffset(uint16_t dist, uint16_t offset);
+  static uint16_t medianMeasure(PGASensorInfo* const sensor, uint16_t value);
+  static uint16_t median(uint16_t a, uint16_t b, uint16_t c);
 };
 
 #endif  // OBSPRO

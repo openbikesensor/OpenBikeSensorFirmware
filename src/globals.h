@@ -38,6 +38,7 @@ class HCSR04SensorManager;
 #include "pgaSensor.h"
 #include "VoltageMeter.h"
 #include "utils/button.h"
+#include "variant.h"
 
 // This file should contain declarations of all variables that will be used globally.
 // The variables don't have to be set here, but need to be declared.
@@ -70,7 +71,6 @@ extern Button button;
 class Gps;
 extern Gps gps;
 
-extern const uint32_t MAX_DURATION_MICRO_SEC;
 extern const uint8_t LEFT_SENSOR_ID;
 extern const uint8_t RIGHT_SENSOR_ID;
 
