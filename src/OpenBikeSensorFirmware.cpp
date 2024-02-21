@@ -118,17 +118,18 @@ void setupSensors() {
   sensorManager = new PGASensorManager;
 
   PGASensorInfo sensor1;
-  sensor1.io_pin = SENSOR1_IO_PIN;
-  sensor1.sck_pin = 25;
-  sensor1.mosi_pin = 33;
-  sensor1.miso_pin = 32;
+  sensor1.sck_pin = SENSOR1_SCK_PIN;
+  sensor1.mosi_pin = SENSOR1_MOSI_PIN;
+  sensor1.miso_pin = SENSOR1_MISO_PIN;
   sensor1.sensorLocation = "Left";
   sensorManager->registerSensor(sensor1, 0);
 
-  /*PGASensorInfo sensor2;
-  sensor2.io_pin = SENSOR2_IO_PIN;
-  sensor2.sensorLocation = "Right";
-  sensorManager->registerSensor(sensor2, 1);*/
+  PGASensorInfo sensor2;
+  sensor1.sck_pin = SENSOR2_SCK_PIN;
+  sensor1.mosi_pin = SENSOR2_MOSI_PIN;
+  sensor1.miso_pin = SENSOR2_MISO_PIN;
+  sensor1.sensorLocation = "Right";
+  sensorManager->registerSensor(sensor2, 1);
 #endif
 #ifdef OBSCLASSIC
   sensorManager = new HCSR04SensorManager;
@@ -144,11 +145,11 @@ void setupSensors() {
   sensorManaged2.echoPin = (config.displayConfig & DisplaySwapSensors) ? 4 : 26;
   sensorManaged2.sensorLocation = (char*) "Left"; // TODO
   sensorManager->registerSensor(sensorManaged2, 1);
+#endif
 
   sensorManager->setOffsets(config.sensorOffsets);
 
   sensorManager->setPrimarySensor(LEFT_SENSOR_ID);
-#endif
 }
 
 static void setupBluetooth(const ObsConfig &cfg, const String &trackUniqueIdentifier) {
@@ -451,10 +452,8 @@ void loop() {
   currentSet->batteryLevel = voltageMeter->read();
 
   lastMeasurements = sensorManager->m_sensors[confirmationSensorID].numberOfTriggers;
-#ifdef OBSCLASSIC
-  // TODO: Also required for OBSPro?
+
   sensorManager->reset(startTimeMillis);
-#endif
 
   // if the detected minimum was measured more than 5s ago, it is discarded and cannot be confirmed
   int timeDelta = (int) (currentTimeMillis - timeOfMinimum);

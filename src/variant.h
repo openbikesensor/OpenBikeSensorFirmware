@@ -41,8 +41,14 @@
 #define LCD_DC_PIN  27
 #define LCD_RESET_PIN  4
 
-#define SENSOR1_IO_PIN  26
-#define SENSOR2_IO_PIN  22
+#define SENSOR1_SCK_PIN  25
+#define SENSOR1_MOSI_PIN  33
+#define SENSOR1_MISO_PIN  32
+
+#define SENSOR2_SCK_PIN  14
+#define SENSOR2_MOSI_PIN  15
+#define SENSOR2_MISO_PIN  21
+
 #endif
 
 

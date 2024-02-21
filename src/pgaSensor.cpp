@@ -25,10 +25,82 @@ void PGASensorManager::registerSensor(const PGASensorInfo &sensorInfo, uint8_t s
   setupSensor(sensorId);
 }
 
-// Guess: Return true if the last measurement is complete and a new one is triggered?
+// Guess: Returns true if both sensor results are available
 bool PGASensorManager::pollDistancesAlternating()
 {
-  unsigned long timeMs = millis();
+  bool newMeasurements = false;
+
+  // If current sensor is not ready, return
+  if(spiIsBusy(lastSensor))
+    return false;
+
+  uint8_t nextSensor = 1 - lastSensor;
+
+  // Check if the next sensor is the primary sensor, which means that all sensors have been
+  // triggered. Then collect the results of both.
+  if(nextSensor == primarySensor)
+    newMeasurements = collectSensorResults();
+
+  // Trigger next sensor
+#if PGA_DUMP_ENABLE
+  // DEBUG: request a raw data dump from time to time
+  if(millis() - m_sensors[nextSensor].lastDumpTime > PGA_DUMP_TIME)
+  {
+    spiRegWrite(nextSensor, PGA_REG_EE_CNTRL, PGA_DATADUMP_EN(1));
+    m_sensors[nextSensor].lastDumpTime = millis();
+    m_sensors[nextSensor].lastMeasurementWasDump = true;
+  }
+  else
+  {
+    spiRegWrite(nextSensor, PGA_REG_EE_CNTRL, PGA_DATADUMP_EN(0));
+    m_sensors[nextSensor].lastMeasurementWasDump = false;
+  }
+#endif
+  spiBurstAndListen(nextSensor, 1, 1);
+
+  lastSensor = nextSensor;
+  return newMeasurements;
+
+
+  /*if (lastSensor == primarySensor && !spiIsBusy(1 - primarySensor)) {
+    lastSensor = 1 - primarySensor;
+#if PGA_DUMP_ENABLE
+  // DEBUG: request a raw data dump from time to time
+  if(millis() - m_sensors[1-primarySensor].lastDumpTime > 1000)
+  {
+    spiRegWrite(1-primarySensor, PGA_REG_EE_CNTRL, PGA_DATADUMP_EN(1));
+    m_sensors[1-primarySensor].lastDumpTime = millis();
+    m_sensors[1-primarySensor].lastMeasurementWasDump = true;
+  }
+  else
+  {
+    spiRegWrite(1-primarySensor, PGA_REG_EE_CNTRL, PGA_DATADUMP_EN(0));
+    m_sensors[1-primarySensor].lastMeasurementWasDump = false;
+  }
+#endif
+    spiBurstAndListen(1 - primarySensor, 1, 1);
+  } else if (!spiIsBusy(primarySensor)) {
+    newMeasurements = collectSensorResults();
+    lastSensor = primarySensor;
+#if PGA_DUMP_ENABLE
+  // DEBUG: request a raw data dump from time to time
+  if(millis() - m_sensors[primarySensor].lastDumpTime > 1000)
+  {
+    spiRegWrite(primarySensor, PGA_REG_EE_CNTRL, PGA_DATADUMP_EN(1));
+    m_sensors[primarySensor].lastDumpTime = millis();
+    m_sensors[primarySensor].lastMeasurementWasDump = true;
+  }
+  else
+  {
+    spiRegWrite(primarySensor, PGA_REG_EE_CNTRL, PGA_DATADUMP_EN(0));
+    m_sensors[primarySensor].lastMeasurementWasDump = false;
+  }
+#endif
+    spiBurstAndListen(primarySensor, 1, 1);
+  }
+  return newMeasurements;*/
+
+  /*unsigned long timeMs = millis();
   static uint8_t param = 0;
   static bool isDump = false;  // True if a dump has to be triggered (false if the dump result has to be read)
   if(timeMs - lastTriggerTimeMs > 200 && param <= 63)
@@ -90,12 +162,12 @@ bool PGASensorManager::pollDistancesAlternating()
     isDump = !isDump;
     return true;
   }
-  return false;
+  return false;*/
 }
 
 uint16_t PGASensorManager::getCurrentMeasureIndex()
 {
-  return 1;
+  return lastReadingCount - 1;
 }
 
 uint16_t PGASensorManager::getRawMedianDistance(uint8_t sensorId)
@@ -138,13 +210,41 @@ uint32_t PGASensorManager::getNumberOfInterruptAdjustments(const uint8_t sensorI
   return 9000000;
 }
 
+void PGASensorManager::setOffsets(std::vector<uint16_t> offsets)
+{
+  for (size_t idx = 0; idx < NUMBER_OF_TOF_SENSORS; ++idx) {
+    if (idx < offsets.size()) {
+      m_sensors[idx].offset = offsets[idx];
+    } else {
+      m_sensors[idx].offset = 0;
+    }
+  }
+}
+
+/* The primary sensor defines the measurement interval, we trigger a measurement if this
+ * sensor is ready.
+ */
+void PGASensorManager::setPrimarySensor(uint8_t idx) {
+  primarySensor = idx;
+}
+
+void PGASensorManager::reset(uint32_t startMillisTicks) {
+  for (auto & sensor : m_sensors) {
+    sensor.minDistance = MAX_SENSOR_VALUE;
+    memset(&(sensor.echoDurationMicroseconds), 0, sizeof(sensor.echoDurationMicroseconds));
+    sensor.numberOfTriggers = 0;
+  }
+  lastReadingCount = 0;
+  lastSensor = 1 - primarySensor;
+  memset(&(startOffsetMilliseconds), 0, sizeof(startOffsetMilliseconds));
+  startReadingMilliseconds = startMillisTicks;
+}
+
 void PGASensorManager::setupSensor(int sensorId)
 {
   PGASensorInfo &sensorInfo = m_sensors[sensorId];
 
   // Set pin modes
-  digitalWrite(sensorInfo.io_pin, LOW);
-  pinMode(sensorInfo.io_pin, INPUT);  // IO pin is open drain
   digitalWrite(sensorInfo.sck_pin, LOW);
   pinMode(sensorInfo.sck_pin, OUTPUT);
   pinMode(sensorInfo.mosi_pin, OUTPUT);
@@ -168,11 +268,11 @@ void PGASensorManager::setupSensor(int sensorId)
   spiRegWrite(sensorId, PGA_REG_CURR_LIM_P2, PGA_LPF_CO(0) | PGA_CURR_LIM2(0));  // CURR_LIM1*7mA + 50mA
   spiRegWrite(sensorId, PGA_REG_REC_LENGTH, PGA_P1_REC(8) | PGA_P2_REC(0));  // Record time = 4.096 × (Px_REC + 1) [ms], 8 = 36,9ms = 6m range
   spiRegWrite(sensorId, PGA_REG_DECPL_TEMP, PGA_AFE_GAIN_RNG(1) | PGA_LPM_EN(0) | PGA_DECPL_TEMP_SEL(0) | PGA_DECPL_T(0));  // Time = 4096 × (DECPL_T + 1) [μs], 0 = 4ms = 0,66m?!?
-  spiRegWrite(sensorId, PGA_REG_EE_CNTRL, PGA_DATADUMP_EN(1));  // Enable data dump
+  spiRegWrite(sensorId, PGA_REG_EE_CNTRL, PGA_DATADUMP_EN(0));  // Disable data dump
 
   // Threshold map, then check DEV_STAT0.THR_CRC_ERR
-  //th_t = np.array([2000, 2400, 2400, 8000, 8000, 8000, 8000, 8000, 8000, 8000, 8000, 8000])
-  //th_l = np.array([200, 80, 16, 16, 24, 32, 40, 48, 56, 56, 56, 56])
+  // th_t = np.array([2000, 5200, 2400, 8000, 8000, 8000, 8000, 8000, 8000, 8000, 8000, 8000])
+  // th_l = np.array([200, 80, 16, 16, 16, 24, 24, 24, 24, 24, 24, 24])
   PGAThresholds thresholds(
     TH_TIME_DELTA_2000US, 200/8,
     TH_TIME_DELTA_5200US, 80/8,
@@ -223,7 +323,8 @@ uint8_t PGASensorManager::spiTransfer(uint8_t sensorId, uint8_t data_out)
 }
 
 // Returns the register value or -1 on checksum error
-int PGASensorManager::spiRegRead(uint8_t sensorId, uint8_t reg_addr)
+// pdiag: return the value of the diag byte, can be nullptr
+int PGASensorManager::spiRegRead(uint8_t sensorId, uint8_t reg_addr, uint8_t *pdiag)
 {
   PGASensorInfo &sensorInfo = m_sensors[sensorId];
 
@@ -239,8 +340,10 @@ int PGASensorManager::spiRegRead(uint8_t sensorId, uint8_t reg_addr)
 
   // Receive
   checksum_clear();
-  uint8_t diag_data = spiTransfer(sensorId, 0x00);
-  checksum_append_byte(diag_data);
+  uint8_t diag = spiTransfer(sensorId, 0x00);
+  checksum_append_byte(diag);
+  if(pdiag != nullptr)
+    *pdiag = diag;
   uint8_t reg_val = spiTransfer(sensorId, 0x00);
   checksum_append_byte(reg_val);
   uint8_t checksum = spiTransfer(sensorId, 0x00);
@@ -350,11 +453,26 @@ bool PGASensorManager::spiUSResult(uint8_t sensorId, uint8_t numberOfObjectsToDe
     data = spiTransfer(sensorId, 0x00);
     usResults[obj].peakAmplitude = data;
     checksum_append_byte(data);
+
+    // Convert tof to distance in cm
+    // TODO: Add temperature compensation by reading tempearture from sensor (somewhere else)
+    const double tof = usResults[obj].tof*1e-6;
+    const double v = 343.0;
+    usResults[obj].distance = (uint16_t)(tof*v/2.0*100.0);
   }
 
   // Get checksum
   uint8_t checksum = spiTransfer(sensorId, 0x00);
   return checksum == checksum_get();
+}
+
+bool PGASensorManager::spiIsBusy(uint8_t sensorId)
+{
+  uint8_t diag;
+  int res = spiRegRead(sensorId, PGA_REG_USER_DATA1, &diag);
+  if(res == -1)
+    return true;
+  return !!(diag & PGA_DIAG_BUSY_MASK);
 }
 
 // data must point to at least 128 bytes
@@ -419,6 +537,67 @@ uint8_t PGASensorManager::checksum_get()
   while(checksum_offset != 7)
     checksum_append_bit(0);
   return ~(checksum_sum + checksum_carry);  // Checksum is the inverted sum + carry
+}
+
+// Gets the distances from the sensors
+// Returns true if any of the sensors returned a range < 6m
+bool PGASensorManager::collectSensorResults() {
+  bool validReading = false;
+  for (size_t idx = 0; idx < NUMBER_OF_TOF_SENSORS; ++idx) {
+    PGAUSResult usResults[1];
+    if(!spiUSResult(idx, 1, usResults))
+      continue;
+#if PGA_DUMP_ENABLE
+    if(m_sensors[idx].lastMeasurementWasDump)
+    {
+      uint8_t data[128];
+      if(!spiDataDump(idx, data))
+        log_e("Unable to get data dump: Checksum error");
+      else
+      {
+        Serial.printf("dump,%d,", idx);
+        for(int i = 0; i < 128; i++)
+        {
+          Serial.printf("%d", data[i]);
+          if(i+1 != 128)
+            Serial.print(",");
+        }
+        Serial.printf("\n");
+      }
+    }
+    else
+    {
+#endif
+      Serial.printf("meas,%d,%d,%d,%d\n", idx, usResults[0].tof, usResults[0].width, usResults[0].peakAmplitude);
+      if(usResults->distance < 600)
+      {
+        sensorValues[idx] = usResults[0].distance;
+        validReading = true;
+      }
+#if PGA_DUMP_ENABLE
+    }
+#endif
+  }
+  if (validReading) {
+    registerReadings();
+  }
+  return validReading;
+}
+
+// Store the relative times of this reading (a pair of measurements?)
+void PGASensorManager::registerReadings() {
+  startOffsetMilliseconds[lastReadingCount] = millisSince(startReadingMilliseconds);
+  if (lastReadingCount < MAX_NUMBER_MEASUREMENTS_PER_INTERVAL - 1) {
+    lastReadingCount++;
+  }
+}
+
+uint16_t PGASensorManager::millisSince(uint16_t milliseconds) {
+  uint16_t result = ((uint16_t) millis()) - milliseconds;
+  if (result & 0x8000) {
+    result = -result;
+  }
+  return result;
 }
 
 #endif  // OBSPro

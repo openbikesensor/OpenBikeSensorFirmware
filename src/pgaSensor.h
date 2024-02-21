@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <vector>
 #include "variant.h"
 
 #ifndef OBS_PGASENSOR_H
@@ -135,10 +136,13 @@
 
 #define PGA_REG_THR_CRC  0x7f
 
+#define PGA_DIAG_BUSY_MASK  0x01
+#define PGA_DUMP_ENABLE 1
+#define PGA_DUMP_TIME  500
+
 
 struct PGASensorInfo
 {
-  uint8_t io_pin;
   uint8_t sck_pin;
   uint8_t mosi_pin;
   uint8_t miso_pin;
@@ -148,6 +152,13 @@ struct PGASensorInfo
   uint16_t minDistance = MAX_SENSOR_VALUE;
   uint16_t distance = MAX_SENSOR_VALUE;
   const char* sensorLocation;
+  uint16_t offset = 0;  // TODO: Apply offset
+
+#if PGA_DUMP_ENABLE
+  // DEBUG: send a raw data dump trigger from time to time
+  uint32_t lastDumpTime = 0;
+  bool lastMeasurementWasDump = false;
+#endif
 };
 
 struct PGAUSResult
@@ -155,6 +166,7 @@ struct PGAUSResult
   uint16_t tof;  // Time of flight [us]
   uint8_t width;
   uint8_t peakAmplitude;
+  uint16_t distance;  // [cm]
 };
 
 #define TH_TIME_DELTA_100US  0x0
@@ -258,6 +270,9 @@ public:
   uint32_t getNumberOfLowAfterMeasurement(const uint8_t sensorId);
   uint32_t getNumberOfToLongMeasurement(const uint8_t sensorId);
   uint32_t getNumberOfInterruptAdjustments(const uint8_t sensorId);
+  void setOffsets(std::vector<uint16_t> offsets);
+  void setPrimarySensor(uint8_t idx);
+  void reset(uint32_t startMillisTicks);
   void detachInterrupts() {};
   void attachInterrupts() {};
 
@@ -276,11 +291,12 @@ protected:
 
   // Synchronous UART mode (aka SPI without chip-select)
   uint8_t spiTransfer(uint8_t sensorId, uint8_t data_out);
-  int spiRegRead(uint8_t sensorId, uint8_t reg_addr);
+  int spiRegRead(uint8_t sensorId, uint8_t reg_addr, uint8_t *pdiag = nullptr);
   void spiRegWrite(uint8_t sensorId, uint8_t reg_addr, uint8_t value);
   void spiRegWriteThesholds(uint8_t sensorId, uint8_t preset, PGAThresholds &thresholds);
   void spiBurstAndListen(uint8_t sensorId, uint8_t preset, uint8_t numberOfObjectsToDetect);
   bool spiUSResult(uint8_t sensorId, uint8_t numberOfObjectsToDetect, PGAUSResult *usResults);
+  bool spiIsBusy(uint8_t sensorId);
 
   // Checksum
   uint8_t checksum_sum;
@@ -294,6 +310,12 @@ protected:
 
   // Alternating state
   unsigned long lastTriggerTimeMs;
+  uint8_t lastSensor;
+  uint8_t primarySensor = 1;
+  uint32_t startReadingMilliseconds = 0;
+  bool collectSensorResults();
+  void registerReadings();
+  uint16_t millisSince(uint16_t milliseconds);
 };
 
 #endif  // OBSPRO
