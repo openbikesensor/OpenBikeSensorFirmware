@@ -127,7 +127,8 @@ class Gps {
         NAV_POSLLH = 0x0201,
         NAV_STATUS = 0x0301,
         NAV_DOP = 0x0401,
-        NAV_SOL = 0x0601,
+        NAV_SOL = 0x0601,  // Only available in M6
+        NAV_PVT = 0x0701,  // Only available in M10
         NAV_VELNED = 0x1201,
         NAV_TIMEGPS = 0x2001,
         NAV_TIMEUTC = 0x2101,
@@ -148,9 +149,10 @@ class Gps {
         ACK_NAK = 0x0005,
 
         // ACK 0x06
-        CFG_PRT = 0x0006,
-        CFG_MSG = 0x0106,
-        CFG_INF = 0x0206,
+        CFG_PRT = 0x0006,  // Only available in M6
+        CFG_MSG = 0x0106,  // Only available in M6, replaced with CFG-MSGOUT-UBX*
+        CFG_INF = 0x0206,  // Only available in M6
+        CFG_VALSET = 0x8a06,  // Only available in M10
         CFG_RST = 0x0406,
         CFG_TP = 0x0706,
         CFG_CFG = 0x0906,
@@ -161,13 +163,13 @@ class Gps {
 
         // MON 0x0A
         MON_VER = 0x040a,
-        MON_HW = 0x090a,
+        MON_HW = 0x090a,  // Only available in M6
 
         // AID 0x0B
-        AID_INI = 0x010B,
-        AID_HUI = 0x020B,
-        AID_ALPSRV = 0x320B,
-        AID_ALP = 0x500B,
+        AID_INI = 0x010B,  // Only available in M6
+        AID_HUI = 0x020B,  // Only available in M6
+        AID_ALPSRV = 0x320B,  // Only available in M6
+        AID_ALP = 0x500B,  // Only available in M6
 
         // TIM 0x0D
         // ESF 0x10
@@ -183,6 +185,25 @@ class Gps {
 
         // UBX, special 0xf1
     };
+    // Key-ID pairs are only available in M10, they are used for the configuration
+    enum class UBX_CFG_KEY_ID {
+      CFG_UART1_BAUDRATE = 0x40520001,  // Type: U4
+      CFG_UART1OUTPROT_NMEA = 0x10740002, // Type: L
+      CFG_MSGOUT_UBX_MON_HW_UART1 = 0x209101b5,  // Type: U1, Output rate of the UBX-MON-HW message on port UART1
+      CFG_MSGOUT_UBX_NAV_STATUS_UART1 = 0x2091001b, // Type: U1, Output rate of the UBX-NAV-STATUS message on port UART1
+      CFG_MSGOUT_UBX_NAV_TIMEGPS_UART1 = 0x20910048,  // Type: U1, Output rate of the UBX-NAV-TIMEGPS message on port UART1
+      CFG_MSGOUT_UBX_NAV_SBAS_UART1 = 0x2091006b,  // Type: U1, Output rate of the UBX-NAV-SBAS message on port UART1
+      CFG_MSGOUT_UBX_NAV_POSLLH_UART1 = 0x2091002a,  // Type: U1, Output rate of the UBX-NAV-POSLLH message on port UART1
+      CFG_MSGOUT_UBX_NAV_DOP_UART1 = 0x20910039,  // Type: U1, Output rate of the UBX-NAV-DOP message on port UART1
+      CFG_MSGOUT_UBX_NAV_VELNED_UART1 = 0x20910043,  // Type: U1, Output rate of the UBX-NAV-VELNED message on port UART1
+      CFG_MSGOUT_UBX_NAV_PVT_UART1 = 0x20910007,  // Type: U1, Output rate of the UBX-NAV-PVT message on port UART1
+    };
+    // CFG Layers are only available in M10, they are used for selecting wehere to store a configuration
+    enum UBX_CFG_LAYER : uint8_t {
+      RAM = 1,
+      BBR = 2,
+      FLASH = 4
+    } aStatus;
     union GpsBuffer {
       uint8_t u1Data[MAX_MESSAGE_LENGTH];
       char charData[MAX_MESSAGE_LENGTH];
@@ -328,6 +349,42 @@ class Gps {
         uint8_t numSv;
         uint32_t reserved2;
       } navSol;
+      struct __attribute__((__packed__)) {
+        UBX_HEADER ubxHeader;
+        uint32_t iTow;
+        uint16_t year;
+        uint8_t month;
+        uint8_t day;
+        uint8_t hour;
+        uint8_t min;
+        uint8_t sec;
+        uint8_t valid;  // bit0: validDate, bit1: validTime, bit2: fullResolved, bit3: validMag
+        uint32_t tAcc;
+        int32_t nano;
+        GpsRecord::GPS_FIX fixType;
+        uint8_t flags;
+        uint8_t flags2;
+        uint8_t numSV;
+        int32_t lon;
+        int32_t lat;
+        int32_t height;
+        int32_t hMSL;
+        uint32_t hAcc;
+        uint32_t vAcc;
+        int32_t velN;
+        int32_t velE;
+        int32_t velD;
+        int32_t gSpeed;
+        int32_t headMot;
+        uint32_t sAcc;
+        uint32_t headAcc;
+        uint16_t pDOP;
+        uint16_t flags3;
+        uint8_t reserved0[4];
+        int32_t headVeh;
+        int16_t magDec;
+        uint16_t magAcc;
+      } navPvt;
       struct __attribute__((__packed__)) {
         UBX_HEADER ubxHeader;
         uint32_t iTow;
@@ -511,8 +568,10 @@ class Gps {
     void sendUbx(uint16_t ubxMsgId, const uint8_t *payload = {}, uint16_t length = 0);
 
     void sendUbx(UBX_MSG ubxMsgId, const uint8_t *payload = {}, uint16_t length = 0);
+    void sendUbxCfg(enum UBX_CFG_LAYER layer, UBX_CFG_KEY_ID keyId, uint32_t value);  // Only available in M10
 
     bool sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer = {}, size_t size = 0, const uint16_t timeoutMs = 200);
+    bool sendCfgAndWaitForAck(enum UBX_CFG_LAYER layer, UBX_CFG_KEY_ID keyId, uint32_t value, const uint16_t timeoutMs = 200);
 
     void parseUbxMessage();
 
@@ -534,7 +593,12 @@ class Gps {
 
     static bool validNmeaMessageChar(uint8_t chr);
 
+#ifdef UBX_M6
     bool setMessageInterval(UBX_MSG msgId, uint8_t seconds, bool waitForAck = true);
+#endif
+#ifdef UBX_M10
+    bool setMessageInterval(UBX_CFG_KEY_ID msgId, uint8_t seconds, bool waitForAck = true);
+#endif
 
     /* Make sure fresh GPS data can be added to the current internal record.
      * Add TOW and millis ticks to the record if not already set,

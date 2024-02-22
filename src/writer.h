@@ -28,7 +28,7 @@
 #include <SD.h>
 #include <utility>
 #include <vector>
-
+#include "gps.h"
 #include "globals.h"
 
 

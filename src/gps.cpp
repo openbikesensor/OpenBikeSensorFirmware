@@ -40,9 +40,19 @@ void Gps::begin() {
   enableAlpIfDataIsAvailable();
   pollStatistics();
   if (mLastTimeTimeSet == 0) {
+#ifdef UBX_M10
+    setMessageInterval(UBX_CFG_KEY_ID::CFG_MSGOUT_UBX_NAV_TIMEGPS_UART1, 1);
+#endif
+#ifdef UBX_M6
     setMessageInterval(UBX_MSG::NAV_TIMEGPS, 1);
+#endif
   } else {
+#ifdef UBX_M10
+    setMessageInterval(UBX_CFG_KEY_ID::CFG_MSGOUT_UBX_NAV_TIMEGPS_UART1, 240);
+#endif
+#ifdef UBX_M6
     setMessageInterval(UBX_MSG::NAV_TIMEGPS, 240);
+#endif
   }
 }
 
@@ -76,6 +86,24 @@ void Gps::sendUbx(uint16_t ubxMsgId, const uint8_t payload[], uint16_t length) {
   mSerial.write(buffer, length + 8);
 }
 
+// Send a CFG_VALSET ubx command to write a configuration
+// Only available in M10 devices
+void Gps::sendUbxCfg(enum UBX_CFG_LAYER layer, UBX_CFG_KEY_ID keyId, uint32_t value)
+{
+  uint8_t ubxCfgMsg[] = {0x00, layer, 0x00, 0x00,
+    (uint8_t)((uint32_t)keyId), (uint8_t)(((uint32_t)keyId)>>8), (uint8_t)(((uint32_t)keyId)>>16), (uint8_t)(((uint32_t)keyId)>>24),
+    (uint8_t)((uint32_t)value), (uint8_t)(((uint32_t)value)>>8), (uint8_t)(((uint32_t)value)>>16), (uint8_t)(((uint32_t)value)>>24)};
+  uint16_t length = 0;
+  uint8_t lengthId = (((uint32_t)keyId)>>28)&0x07;
+  if(lengthId == 0x01 || lengthId == 0x02)
+    length = 1;
+  else if(lengthId == 0x03)
+    length = 2;
+  else if(lengthId == 0x04)
+    length = 4;
+  sendUbx(UBX_MSG::CFG_VALSET, ubxCfgMsg, length + 8);
+}
+
 /* Method sends the message in the receive buffer! */
 void Gps::sendUbxDirect() {
   const uint16_t length = mGpsBuffer.ubxHeader.length;
@@ -99,10 +127,17 @@ void Gps::configureGpsModule() {
     0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0xFE, 0xFF, 0x00, 0x00, 0x03
   };
+#ifdef UBX_M10
+  // It is fairly stupid to reset the config here, as the baud rate will be reset (at least for M10)
+  //sendUbx(UBX_MSG::CFG_CFG, UBX_CFG_CFG_CLR, sizeof(UBX_CFG_CFG_CLR)); // Newer devices will not answer this request
+#endif
+#ifdef UBX_M6
   sendAndWaitForAck(UBX_MSG::CFG_CFG, UBX_CFG_CFG_CLR, sizeof(UBX_CFG_CFG_CLR));
+#endif
   handle(300);
 
   log_d("Start CFG");
+#ifdef UBX_M6
   // INF messages via UBX only
   const uint8_t UBX_CFG_INF_UBX[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0xef, 0x00, 0x00, 0x00, 0x00,
@@ -114,24 +149,43 @@ void Gps::configureGpsModule() {
     0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   };
   sendAndWaitForAck(UBX_MSG::CFG_INF, UBX_CFG_INF_NMEA, sizeof(UBX_CFG_INF_NMEA));
+#endif
 
+#ifdef UBX_M6
+  // Only required for M6 modules, NMEA is globally deactivated for M10 during begin()
   setMessageInterval(UBX_MSG::NMEA_GGA, 0);
   setMessageInterval(UBX_MSG::NMEA_RMC, 0);
   setMessageInterval(UBX_MSG::NMEA_GLL, 0);
   setMessageInterval(UBX_MSG::NMEA_GSA, 0);
   setMessageInterval(UBX_MSG::NMEA_GSV, 0);
   setMessageInterval(UBX_MSG::NMEA_VTG, 0);
+#endif
   setStatisticsIntervalInSeconds(0);
+#ifdef UBX_M6
+  // AID is not available on M10 modules? At least I could not find it
   setMessageInterval(UBX_MSG::AID_ALPSRV, 0);
+#endif
   enableSbas();
-  setMessageInterval(UBX_MSG::NAV_SBAS, 59);
 
+#ifdef UBX_M6
+  setMessageInterval(UBX_MSG::NAV_SBAS, 59);
   setMessageInterval(UBX_MSG::NAV_POSLLH, 1);
   setMessageInterval(UBX_MSG::NAV_DOP, 1);
   setMessageInterval(UBX_MSG::NAV_SOL, 1);
   setMessageInterval(UBX_MSG::NAV_VELNED, 1);
   setMessageInterval(UBX_MSG::NAV_TIMEGPS, 1);
+#endif
+#ifdef UBX_M10
+  setMessageInterval(UBX_CFG_KEY_ID::CFG_MSGOUT_UBX_NAV_SBAS_UART1, 59);
+  setMessageInterval(UBX_CFG_KEY_ID::CFG_MSGOUT_UBX_NAV_POSLLH_UART1, 1);
+  setMessageInterval(UBX_CFG_KEY_ID::CFG_MSGOUT_UBX_NAV_DOP_UART1, 1);
+  setMessageInterval(UBX_CFG_KEY_ID::CFG_MSGOUT_UBX_NAV_VELNED_UART1, 1);
+  // SOL not available in M10, the message NAV-PVT is used instead
+  setMessageInterval(UBX_CFG_KEY_ID::CFG_MSGOUT_UBX_NAV_PVT_UART1, 1);
+  setMessageInterval(UBX_CFG_KEY_ID::CFG_MSGOUT_UBX_NAV_TIMEGPS_UART1, 1);
+#endif
 
+#ifdef UBX_M6
   // "dynModel" - "3: pedestrian"
   // "static hold" - 80cm/s == 2.88 km/h
   // "staticHoldMaxDist" - 20m (not supported by our GPS receivers)
@@ -143,7 +197,11 @@ void Gps::configureGpsModule() {
     0x00, 0x00, 0x00, 0x00
   };
   sendAndWaitForAck(UBX_MSG::CFG_NAV5, UBX_CFG_NAV5, sizeof(UBX_CFG_NAV5));
+#endif
+  // TODO: Set dynModel for M10, static hold stuff does not seem to be available any more
 
+#ifdef UBX_M6
+  // Not used for M10, as OBSPro does not have a GPS LED
   // "timepulse" - affecting the led, switching to 10ms pulse every 10sec,
   //   to be clearly differentiable from the default (100ms each second)
   const uint8_t UBX_CFG_TP[] = {
@@ -152,20 +210,35 @@ void Gps::configureGpsModule() {
     0x00, 0x00, 0x00, 0x00
   };
   sendAndWaitForAck(UBX_MSG::CFG_TP, UBX_CFG_TP, sizeof(UBX_CFG_TP));
+#endif
 
+#ifdef UBX_M6
+  // What is this good for? Not bothering implementing that for OBSPro
   // Leave some info in the GPS module
   String inv = String("\x01openbikesensor.org/") + OBSVersion;
   sendAndWaitForAck(UBX_MSG::CFG_RINV, reinterpret_cast<const uint8_t *>(inv.c_str()),
                     inv.length());
+#endif
 
+#ifdef UBX_M6
+  // AID only available in M6 modules
   // Used to store GPS AID data every 3 minutes+
   setMessageInterval(UBX_MSG::AID_INI, 185);
+#endif
 
   // Persist configuration
+#ifdef UBX_M6
   const uint8_t UBX_CFG_CFG_SAVE[] = {
     0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x17
   };
+#endif
+#ifdef UBX_M10
+  const uint8_t UBX_CFG_CFG_SAVE[] = {
+    0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF,
+    0x00, 0x00, 0x00, 0x00, 0x03
+  };
+#endif
   // write cfg takes longer.
   if (sendAndWaitForAck(UBX_MSG::CFG_CFG, UBX_CFG_CFG_SAVE, sizeof(UBX_CFG_CFG_SAVE), 3000)) {
     addStatisticsMessage("OBS: Did update GPS settings.");
@@ -183,7 +256,13 @@ void Gps::softResetGps() {
 //  const uint8_t UBX_CFG_RST[] = {0xFF, 0xFF, 0x02, 0x00}; // Cold START
   // we had the case where the reset took several seconds
   // see https://github.com/openbikesensor/OpenBikeSensorFirmware/issues/309
+#ifdef UBX_M6
   sendAndWaitForAck(UBX_MSG::CFG_RST, UBX_CFG_RST, 4, 5000);
+#endif
+#ifdef UBX_M10
+  // Newer firmware (like M10) will not ack this message
+  sendUbx(UBX_MSG::CFG_RST, UBX_CFG_RST, 4);
+#endif
   handle(200);
 }
 
@@ -211,6 +290,7 @@ void Gps::enableSbas() {// Enable SBAS subsystem!
 }
 
 void Gps::enableAlpIfDataIsAvailable() {
+#ifdef UBX_M6
   if (AlpData::available()) {
     log_i("Enable ALP");
     // don't wait for ack - newer modules do not support this old ALPSRV
@@ -220,7 +300,7 @@ void Gps::enableAlpIfDataIsAvailable() {
     log_w("Disable ALP - no data!");
     setMessageInterval(UBX_MSG::AID_ALPSRV, 0);
   }
-
+#endif
 }
 
 /* Poll or refresh one time statistics, also spends some time
@@ -248,10 +328,17 @@ void Gps::pollStatistics() {
  * Zero seconds means never.
  */
 void Gps::setStatisticsIntervalInSeconds(uint16_t seconds) {
+#ifdef UBX_M6
   setMessageInterval(UBX_MSG::NAV_STATUS, seconds);
   setMessageInterval(UBX_MSG::MON_HW, seconds);
+#endif
+#ifdef UBX_M10
+  setMessageInterval(UBX_CFG_KEY_ID::CFG_MSGOUT_UBX_NAV_STATUS_UART1, seconds);
+  setMessageInterval(UBX_CFG_KEY_ID::CFG_MSGOUT_UBX_MON_HW_UART1, seconds);
+#endif
 }
 
+#ifdef UBX_M6
 bool Gps::setMessageInterval(UBX_MSG msgId, uint8_t seconds, bool waitForAck) {
   uint8_t ubxCfgMsg[] = {
     0x0A, 0x09, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00
@@ -261,8 +348,7 @@ bool Gps::setMessageInterval(UBX_MSG msgId, uint8_t seconds, bool waitForAck) {
   ubxCfgMsg[3] = seconds;
   bool result;
   if (waitForAck) {
-    result = sendAndWaitForAck(
-      UBX_MSG::CFG_MSG, ubxCfgMsg, sizeof(ubxCfgMsg));
+    result = sendAndWaitForAck(UBX_MSG::CFG_MSG, ubxCfgMsg, sizeof(ubxCfgMsg));
   } else {
     result = true;
     sendUbx(UBX_MSG::CFG_MSG, ubxCfgMsg, sizeof(ubxCfgMsg));
@@ -272,6 +358,23 @@ bool Gps::setMessageInterval(UBX_MSG msgId, uint8_t seconds, bool waitForAck) {
   }
   return result;
 }
+#endif
+
+#ifdef UBX_M10
+bool Gps::setMessageInterval(UBX_CFG_KEY_ID msgId, uint8_t seconds, bool waitForAck) {
+  bool result;
+  if (waitForAck) {
+    result = sendCfgAndWaitForAck(UBX_CFG_LAYER::RAM, msgId, seconds);
+  } else {
+    result = true;
+    sendUbxCfg(UBX_CFG_LAYER::RAM, msgId, seconds);
+  }
+  if (!result) {
+    log_e("Failed for sendUbxCfg of 0x%08x!", msgId);
+  }
+  return result;
+}
+#endif
 
 /* Initialize the GPS module to talk 115200.
  * If 115200 is not on by default the module is also configured,
@@ -290,12 +393,19 @@ bool Gps::setBaud() {
 
   mSerial.updateBaudRate(9600);
   // switch to 115200 "blind", switch off NMEA
+#ifdef UBX_M6
   const uint8_t UBX_CFG_PRT[] = {
     0x01, 0x00, 0x00, 0x00, 0xd0, 0x08, 0x00, 0x00,
     0x00, 0xc2, 0x01, 0x00, 0x03, 0x00, 0x01, 0x00,
     0x00, 0x00, 0x00, 0x00
   };
   sendUbx(UBX_MSG::CFG_PRT, UBX_CFG_PRT, sizeof(UBX_CFG_PRT));
+#endif
+#ifdef UBX_M10
+  sendCfgAndWaitForAck(UBX_CFG_LAYER::RAM, UBX_CFG_KEY_ID::CFG_UART1OUTPROT_NMEA, 0);  // Disable NMEA
+  sendUbxCfg(UBX_CFG_LAYER::RAM, UBX_CFG_KEY_ID::CFG_UART1_BAUDRATE, 115200);  // Blindly set baudrate
+  log_i("Blindly switched to 115200 baud rate");
+#endif
   mSerial.flush();
   mSerial.updateBaudRate(115200);
 
@@ -310,11 +420,15 @@ bool Gps::setBaud() {
     log_e("NO GPS????");
     delay(5000);
   }
+  else
+    log_i("Connected to GPS");
   if (connected && mSerial.baudRate() / 10 != 115200 / 10) {
     log_e("Reported rate: %d", mSerial.baudRate());
+#ifdef UBX_M6
     if (sendAndWaitForAck(UBX_MSG::CFG_PRT, UBX_CFG_PRT, sizeof(UBX_CFG_PRT))) {
       mSerial.updateBaudRate(115200);
     }
+#endif
   }
   if (checkCommunication()) {
     configureGpsModule();
@@ -356,9 +470,43 @@ bool Gps::sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer, size_t size
     log_w("Retry to send 0x%04x after %dms.", ubxMsgId, millis() - loopStart);
   }
   if (result) {
-    log_d("Success in sending cfg. 0x%04x took %dms", ubxMsgId, millis() - start);
+    log_d("Success in sending. 0x%04x took %dms", ubxMsgId, millis() - start);
   } else {
-    log_e("Failed to send cfg. 0x%04x NAK: %d after %dms", ubxMsgId, mNakReceived, millis() - start);
+    log_e("Failed to send. 0x%04x NAK: %d after %dms", ubxMsgId, mNakReceived, millis() - start);
+  }
+  return result;
+}
+
+bool Gps::sendCfgAndWaitForAck(enum UBX_CFG_LAYER layer, UBX_CFG_KEY_ID keyId, uint32_t value, const uint16_t timeoutMs) {
+  const int tries = 2;
+  auto start = millis();
+
+  bool result = false;
+  for (int i = 0; i < tries; i++) {
+    handle();
+    auto const loopStart = millis();
+    mNakReceived = false;
+    mAckReceived = false;
+    mLastAckMsgId = 0;
+
+    sendUbxCfg(layer, keyId, value);
+    mSerial.flush();
+    handle();
+    while (mLastAckMsgId != (uint16_t) UBX_MSG::CFG_VALSET && millis() - loopStart < timeoutMs) {
+      if (!handle()) {
+        delay(1);
+      }
+    }
+    if (mAckReceived || mNakReceived) {
+      result = mAckReceived;
+      break;
+    }
+    log_w("Retry to send cfg 0x%08x after %dms.", keyId, millis() - loopStart);
+  }
+  if (result) {
+    log_d("Success in sending cfg. 0x%08x took %dms", keyId, millis() - start);
+  } else {
+    log_e("Failed to send cfg. 0x%08x NAK: %d after %dms", keyId, mNakReceived, millis() - start);
   }
   return result;
 }
@@ -934,12 +1082,20 @@ void Gps::parseUbxMessage() {
       mIncomingGpsRecord.setInfo(mGpsBuffer.navSol.numSv, mGpsBuffer.navSol.gpsFix, mGpsBuffer.navSol.flags);
     }
       break;
+    case (uint16_t) UBX_MSG::NAV_PVT: {
+      log_v("PVT: iTOW: %u, gpsFix: %d, flags: %02x, numSV: %d, pDop: %04d.",
+            mGpsBuffer.navPvt.iTow, mGpsBuffer.navPvt.gpsFix, mGpsBuffer.navPvt.flags,
+            mGpsBuffer.navPvt.numSV, mGpsBuffer.navPvt.pDop);
+      prepareGpsData(mGpsBuffer.navPvt.iTow, mMessageStarted);
+      mIncomingGpsRecord.setInfo(mGpsBuffer.navPvt.numSV, mGpsBuffer.navPvt.fixType, mGpsBuffer.navPvt.flags);
+    }
+      break;
     case (uint16_t) UBX_MSG::NAV_VELNED: {
       log_v("VELNED: iTOW: %u, speed: %d cm/s, gSpeed: %d cm/s, heading: %d,"
             " speedAcc: %d, cAcc: %d",
             mGpsBuffer.navVelned.iTow, mGpsBuffer.navVelned.speed, mGpsBuffer.navVelned.gSpeed,
             mGpsBuffer.navVelned.heading, mGpsBuffer.navVelned.sAcc, mGpsBuffer.navVelned.cAcc);
-      prepareGpsData(mGpsBuffer.navDop.iTow, mMessageStarted);
+      prepareGpsData(mGpsBuffer.navVelned.iTow, mMessageStarted);
       mIncomingGpsRecord.setVelocity(mGpsBuffer.navVelned.gSpeed, mGpsBuffer.navVelned.heading);
     }
       break;
@@ -948,7 +1104,7 @@ void Gps::parseUbxMessage() {
             mGpsBuffer.navPosllh.iTow, mGpsBuffer.navPosllh.lon, mGpsBuffer.navPosllh.lat,
             mGpsBuffer.navPosllh.height, mGpsBuffer.navPosllh.hMsl, mGpsBuffer.navPosllh.hAcc,
             mGpsBuffer.navPosllh.vAcc, delayMs);
-      prepareGpsData(mGpsBuffer.navDop.iTow, mMessageStarted);
+      prepareGpsData(mGpsBuffer.navPosllh.iTow, mMessageStarted);
       mIncomingGpsRecord.setPosition(mGpsBuffer.navPosllh.lon, mGpsBuffer.navPosllh.lat, mGpsBuffer.navPosllh.hMsl);
     }
       break;
@@ -1087,6 +1243,7 @@ void Gps::handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps &message, const uin
                            + mLastGpsWeek + " -> " + message.week);
     }
     mLastGpsWeek = message.week;
+    mIncomingGpsRecord.setWeek(mLastGpsWeek);
   }
   if ((message.valid & 0x03) == 0x03  // WEEK && TOW
       && delayMs < 20
@@ -1105,7 +1262,12 @@ void Gps::handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps &message, const uin
     if (mLastTimeTimeSet == 0) {
       mLastTimeTimeSet = receivedMs;
       // This triggers another NAV-TIMEGPS message!
+#ifdef UBX_M6
       setMessageInterval(UBX_MSG::NAV_TIMEGPS, 240, false); // every 4 minutes
+#endif
+#ifdef UBX_M10
+      setMessageInterval(UBX_CFG_KEY_ID::CFG_MSGOUT_UBX_NAV_TIMEGPS_UART1, 240, false); // every 4 minutes
+#endif
     } else {
       mLastTimeTimeSet = receivedMs;
     }

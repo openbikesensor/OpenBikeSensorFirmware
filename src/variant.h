@@ -48,7 +48,12 @@
 #define SENSOR2_SCK_PIN  14
 #define SENSOR2_MOSI_PIN  15
 #define SENSOR2_MISO_PIN  21
+#define UBX_M10
+#endif
 
+// Settings specific to OBSClassic
+#if OBSCLASSIC
+#define UBS_M6
 #endif
 
 

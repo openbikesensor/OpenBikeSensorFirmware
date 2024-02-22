@@ -48,7 +48,9 @@ const uint32_t LONG_BUTTON_PRESS_TIME_MS = 2000;
 // PINs
 const int PUSHBUTTON_PIN = 2;
 const int IP5306_BUTTON = 13;
+#ifdef OBSCLASSIC
 const uint8_t GPS_POWER_PIN = 12;
+#endif
 const uint8_t BatterieVoltage_PIN = 34;
 
 int confirmedMeasurements = 0;
@@ -228,8 +230,10 @@ void setup() {
   pinMode(IP5306_BUTTON, OUTPUT);
   digitalWrite(IP5306_BUTTON, LOW);
   pinMode(BatterieVoltage_PIN, INPUT);
+  #ifdef OBSCLASSIC
   pinMode(GPS_POWER_PIN, OUTPUT);
   digitalWrite(GPS_POWER_PIN,HIGH);
+  #endif
 
   //##############################################################
   // Setup display
@@ -323,7 +327,7 @@ void setup() {
   SPIFFS.end();
   WiFiGenericClass::mode(WIFI_OFF);
   obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "Start GPS...");
-  //gps.begin();  // FIXME: Add GPS support for MAX-M10M
+  gps.begin();
   if (gps.getValidMessageCount() > 0) {
     obsDisplay->showTextOnGrid(2, obsDisplay->currentLine(), "Start GPS OK");
   } else {
@@ -546,12 +550,11 @@ void loop() {
       minDistanceToConfirm = MAX_SENSOR_VALUE; // ready for next confirmation
     }
 
+    // TODO: Add support for temperature reading from PGA460
     if(BMP280_active == true)  TemperatureValue = bmp280.readTemperature();
 
     gps.handle();
   } // end measureInterval while
-
-  log_e("Measurement done");
 
   currentSet->gpsRecord = gps.getCurrentGpsRecord();
   currentSet->isInsidePrivacyArea = gps.isInsidePrivacyArea();
