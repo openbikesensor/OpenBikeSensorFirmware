@@ -49,6 +49,8 @@
 #define SENSOR2_MOSI_PIN  15
 #define SENSOR2_MISO_PIN  21
 #define UBX_M10
+
+#define POWER_KEEP_ALIVE_INTERVAL_MS  5000UL
 #endif
 
 // Settings specific to OBSClassic
