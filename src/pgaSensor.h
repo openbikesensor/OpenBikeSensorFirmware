@@ -294,7 +294,7 @@ public:
   uint16_t startOffsetMilliseconds[MAX_NUMBER_MEASUREMENTS_PER_INTERVAL + 1];
 
 protected:
-  void setupSensor(int idx);
+  void setupSensor(int sensorId);
 
   void safe_usleep(unsigned long us);
 
@@ -320,7 +320,7 @@ protected:
 
   // Alternating state
   unsigned long lastTriggerTimeMs;
-  uint8_t lastSensor;
+  uint8_t lastSensor = 1;
   uint8_t primarySensor = 1;
   uint32_t startReadingMilliseconds = 0;
   bool collectSensorResults();

@@ -166,6 +166,7 @@ void PGASensorManager::safe_usleep(unsigned long us)
 
 uint8_t PGASensorManager::spiTransfer(uint8_t sensorId, uint8_t data_out)
 {
+  assert(sensorId >= 0 && sensorId <= 1);
   PGASensorInfo &sensorInfo = m_sensors[sensorId];
   uint8_t data_in = 0;
   for(uint8_t i = 0; i < 8; i++)
