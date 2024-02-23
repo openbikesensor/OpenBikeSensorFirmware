@@ -138,7 +138,7 @@
 #define PGA_REG_THR_CRC  0x7f
 
 #define PGA_DIAG_BUSY_MASK  0x01
-#define PGA_DUMP_ENABLE 1
+#define PGA_DUMP_ENABLE 0  // Prints raw data of the measurements, for debugging or calibration of a new transducer
 #define PGA_DUMP_TIME  500
 
 

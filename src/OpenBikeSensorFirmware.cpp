@@ -433,8 +433,8 @@ void setup() {
   //##############################################################
 
   BMP280_active = TemperatureValue = bmp280.begin(BMP280_ADDRESS_ALT,BMP280_CHIPID);
-  if(BMP280_active == true) TemperatureValue = bmp280.readTemperature();
-
+  if(BMP280_active == true)
+    TemperatureValue = bmp280.readTemperature();
 
   gps.handle();
 

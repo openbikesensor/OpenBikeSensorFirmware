@@ -163,7 +163,7 @@ class Gps {
 
         // MON 0x0A
         MON_VER = 0x040a,
-        MON_HW = 0x090a,  // Only available in M6
+        MON_HW = 0x090a,
 
         // AID 0x0B
         AID_INI = 0x010B,  // Only available in M6

@@ -429,8 +429,8 @@ bool PGASensorManager::collectSensorResults() {
     }
     else
     {
+    Serial.printf("meas,%d,%d,%d,%d\n", sensorId, usResults[0].tof, usResults[0].width, usResults[0].peakAmplitude);
 #endif
-      Serial.printf("meas,%d,%d,%d,%d\n", sensorId, usResults[0].tof, usResults[0].width, usResults[0].peakAmplitude);
 
       sensor->echoDurationMicroseconds[lastReadingCount] = usResults[0].tof;
       uint16_t dist;
