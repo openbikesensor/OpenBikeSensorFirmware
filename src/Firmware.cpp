@@ -27,7 +27,9 @@
 #include <SD.h>
 #include <Update.h>
 #include <esp_ota_ops.h>
-#include "utils/cacerts.h"
+
+// https://docs.platformio.org/en/latest/platforms/espressif32.html#embedding-binary-data
+extern const uint8_t x509_crt_bundle_start[] asm("_binary_src_truststore_x509_crt_bundle_start");
 
 static const String FLASH_APP_FILENAME("/sdflash/app.bin");
 static const String OPEN_BIKE_SENSOR_FLASH_APP_PROJECT_NAME("OpenBikeSensorFlash");
@@ -37,7 +39,7 @@ static const int SHA256_HASH_LEN = 32;
 // todo: error handling
 void Firmware::downloadToSd(String url, String filename, bool unsafe) {
   WiFiClientSecure client;
-  if (!unsafe) client.setCACert(trustedRootCACertificates);
+  if (!unsafe) client.setCACertBundle(x509_crt_bundle_start);
   else client.setInsecure();
   HTTPClient http;
   http.setUserAgent(mUserAgent);
@@ -63,8 +65,8 @@ bool Firmware::downloadToFlash(String url,
                                bool unsafe) {
   bool success = false;
   WiFiClientSecure client;
-  if (!unsafe) client.setCACert(trustedRootCACertificates);
-  if (unsafe) client.setInsecure();
+  if (!unsafe) client.setCACertBundle(x509_crt_bundle_start);
+  else client.setInsecure();
   HTTPClient http;
   http.setUserAgent(mUserAgent);
   http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
