@@ -27,6 +27,8 @@
 #include "alpdata.h"
 #include "timeutils.h"
 
+extern const uint8_t x509_crt_bundle_start[] asm("_binary_src_truststore_x509_crt_bundle_start");
+
 /* Download http://alp.u-blox.com/current_14d.alp (ssl?) if there is a new one
  * Takes 5 seconds to update the data.
 */
@@ -54,8 +56,10 @@ void AlpData::update(DisplayDevice *display) {
   log_d("Existing file is from %s", lastModified.c_str());
   display->showTextOnGrid(0, 5, "ALP data...");
 
+  WiFiClientSecure wiFiClient;
+  wiFiClient.setCACertBundle(x509_crt_bundle_start);
   HTTPClient httpClient;
-  httpClient.begin(ALP_DOWNLOAD_URL);
+  httpClient.begin(wiFiClient, ALP_DOWNLOAD_URL);
   const char *lastModifiedHeaderName = "Last-Modified";
   const char *headers[] = {lastModifiedHeaderName};
   httpClient.collectHeaders(headers, 1);
