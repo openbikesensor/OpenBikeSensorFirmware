@@ -30,6 +30,11 @@
 #include "config.h" // PrivacyArea
 #include "displays.h"
 #include "gpsrecord.h"
+#include "variant.h"
+
+// Connects both UARTs together to directly talkt to the GPS with the USB interface
+// If set, also disable serial logging (DCORE_DEBUG_LEVEL=0 in platformio.ini)
+//#define GPS_TRANSPARENT_UART
 
 class DisplayDevice;
 
@@ -185,6 +190,7 @@ class Gps {
 
         // UBX, special 0xf1
     };
+#ifdef UBX_M10
     // Key-ID pairs are only available in M10, they are used for the configuration
     enum class UBX_CFG_KEY_ID {
       CFG_UART1_BAUDRATE = 0x40520001,  // Type: U4
@@ -197,7 +203,10 @@ class Gps {
       CFG_MSGOUT_UBX_NAV_DOP_UART1 = 0x20910039,  // Type: U1, Output rate of the UBX-NAV-DOP message on port UART1
       CFG_MSGOUT_UBX_NAV_VELNED_UART1 = 0x20910043,  // Type: U1, Output rate of the UBX-NAV-VELNED message on port UART1
       CFG_MSGOUT_UBX_NAV_PVT_UART1 = 0x20910007,  // Type: U1, Output rate of the UBX-NAV-PVT message on port UART1
+      CFG_SIGNAL_GLO_ENA = 0x10310025,  // Type: L, GLONASS enable
+      CFG_NAVSPG_DYNMODEL = 0x20110021,  // Type: E1, Dynamic platform model, 0=portable, 2=stationary, 3=pedestrian, 4=automotive, 5=sea, 6..8=airborne, ...
     };
+#endif
     // CFG Layers are only available in M10, they are used for selecting wehere to store a configuration
     enum UBX_CFG_LAYER : uint8_t {
       RAM = 1,
@@ -568,10 +577,14 @@ class Gps {
     void sendUbx(uint16_t ubxMsgId, const uint8_t *payload = {}, uint16_t length = 0);
 
     void sendUbx(UBX_MSG ubxMsgId, const uint8_t *payload = {}, uint16_t length = 0);
+#ifdef UBX_M10
     void sendUbxCfg(enum UBX_CFG_LAYER layer, UBX_CFG_KEY_ID keyId, uint32_t value);  // Only available in M10
+#endif
 
     bool sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer = {}, size_t size = 0, const uint16_t timeoutMs = 200);
-    bool sendCfgAndWaitForAck(enum UBX_CFG_LAYER layer, UBX_CFG_KEY_ID keyId, uint32_t value, const uint16_t timeoutMs = 200);
+#ifdef UBX_M10
+    bool sendCfgAndWaitForAck(enum UBX_CFG_LAYER layer, UBX_CFG_KEY_ID keyId, uint32_t value, const uint16_t timeoutMs = 200);  // Only available in M10
+#endif
 
     void parseUbxMessage();
 

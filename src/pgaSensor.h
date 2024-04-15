@@ -139,7 +139,7 @@
 
 #define PGA_DIAG_BUSY_MASK  0x01
 #define PGA_DUMP_ENABLE 0  // Prints raw data of the measurements, for debugging or calibration of a new transducer
-#define PGA_DUMP_TIME  500
+#define PGA_DUMP_TIME  500   // Period for dumping a complete raw data measurement (RX amplitude over time)
 
 
 struct PGASensorInfo

@@ -25,6 +25,29 @@ void PGASensorManager::registerSensor(const PGASensorInfo &sensorInfo, uint8_t s
   sensorValues[sensorId] = MAX_SENSOR_VALUE;
   m_sensors[sensorId].median = new Median<uint16_t>(5, MAX_SENSOR_VALUE);
   setupSensor(sensorId);
+
+  // DEBUG: Dump complete config register map
+  /*Serial.printf("Register dump for sensor %d\n", sensorId);
+  uint8_t dump_regs[] = {0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, 0x5F, 0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6A, 0x6B, 0x6C, 0x6D, 0x6E, 0x6F, 0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7A, 0x7B, 0x7C, 0x7D, 0x7E, 0x7F};
+  for(int i = 0; i < sizeof(dump_regs); i++)
+    Serial.printf("Reg 0x%02x: 0x%02x\n", dump_regs[i], spiRegRead(sensorId, dump_regs[i]));*/
+
+  // DEBUG: Stress test writing/reading user register
+  /*uint8_t test = 0;
+  uint32_t count = 0;
+  log_e("Starting pga stress test");
+  while(1)
+  {
+    spiRegWrite(sensorId, PGA_REG_USER_DATA1, test);
+    uint8_t readback = spiRegRead(sensorId, PGA_REG_USER_DATA1);
+    if(test != readback)
+    {
+      log_e("Failed on %d after %d tests", test, count);
+      count = 0;
+    }
+    count++;
+    test++;
+  }*/
 }
 
 // Guess: Returns true if both sensor results are available
@@ -110,6 +133,9 @@ void PGASensorManager::setupSensor(int sensorId)
   pinMode(sensorInfo.mosi_pin, OUTPUT);
   pinMode(sensorInfo.miso_pin, INPUT);
 
+  // Wait at least 15 ms to sync the synchronous UART
+  safe_usleep(20000);
+
   // Check communication
   // Rerad the DEV_STAT0 register, where the upper nibble should be 0x4
   // These are the values for REV_ID (0x2) and OPT_ID (0x0)
@@ -134,20 +160,21 @@ void PGASensorManager::setupSensor(int sensorId)
   // th_t = np.array([2000, 5200, 2400, 8000, 8000, 8000, 8000, 8000, 8000, 8000, 8000, 8000])
   // th_l = np.array([200, 80, 16, 16, 16, 24, 24, 24, 24, 24, 24, 24])
   PGAThresholds thresholds(
-    TH_TIME_DELTA_2000US, 200/8,
-    TH_TIME_DELTA_5200US, 80/8,
-    TH_TIME_DELTA_2400US, 16/8,
-    TH_TIME_DELTA_8000US, 16/8,
-    TH_TIME_DELTA_8000US, 16/8,
+    TH_TIME_DELTA_2000US, 255/8,
+    TH_TIME_DELTA_4000US, 80/8,
+    TH_TIME_DELTA_2400US, 24/8,
     TH_TIME_DELTA_8000US, 24/8,
     TH_TIME_DELTA_8000US, 24/8,
-    TH_TIME_DELTA_8000US, 24/8,
-    TH_TIME_DELTA_8000US, 24,
-    TH_TIME_DELTA_8000US, 24,
-    TH_TIME_DELTA_8000US, 24,
-    TH_TIME_DELTA_8000US, 24
+    TH_TIME_DELTA_8000US, 32/8,
+    TH_TIME_DELTA_8000US, 32/8,
+    TH_TIME_DELTA_8000US, 32/8,
+    TH_TIME_DELTA_8000US, 32,
+    TH_TIME_DELTA_8000US, 32,
+    TH_TIME_DELTA_8000US, 32,
+    TH_TIME_DELTA_8000US, 32
   );
   spiRegWriteThesholds(sensorId, 1, thresholds);
+  spiRegWriteThesholds(sensorId, 2, thresholds);
 
   spiRegWrite(sensorId, PGA_REG_DEV_STAT1, 0x00);  // Clear stat1 register
   safe_usleep(1000);  // Wait a bit
@@ -171,14 +198,15 @@ uint8_t PGASensorManager::spiTransfer(uint8_t sensorId, uint8_t data_out)
   uint8_t data_in = 0;
   for(uint8_t i = 0; i < 8; i++)
   {
-    digitalWrite(sensorInfo.sck_pin, HIGH);
+    // It seems that the datasheet is wrong about the SPI mode...
+    // It says: ... with data set on the rising edge of the clock and sampled on the falling edge of the clock
+    // But we have to set the data before the rising edge.
     digitalWrite(sensorInfo.mosi_pin, data_out&0x01);
     data_out >>= 1;
-    safe_usleep(2);
-    digitalWrite(sensorInfo.sck_pin, LOW);
+    digitalWrite(sensorInfo.sck_pin, HIGH);
     data_in >>= 1;
     data_in |= digitalRead(sensorInfo.miso_pin)<<7;
-    safe_usleep(2);
+    digitalWrite(sensorInfo.sck_pin, LOW);
   }
   return data_in;
 }
@@ -242,6 +270,7 @@ void PGASensorManager::spiRegWrite(uint8_t sensorId, uint8_t reg_addr, uint8_t v
 void PGASensorManager::spiRegWriteThesholds(uint8_t sensorId, uint8_t preset, PGAThresholds &thresholds)
 {
   assert(sensorId >= 0 && sensorId <= 1);
+  assert(preset >= 1 && preset <= 2);
 
   uint8_t regOffset = preset == 1 ? 0 : PGA_REG_P2_THR_0 - PGA_REG_P1_THR_0;
   spiRegWrite(sensorId, PGA_REG_P1_THR_0 + regOffset, thresholds.t1<<4 | thresholds.t2);
@@ -276,7 +305,7 @@ void PGASensorManager::spiBurstAndListen(uint8_t sensorId, uint8_t preset, uint8
 
   checksum_clear();
   spiTransfer(sensorId, 0x55);  // Sync byte
-  uint8_t cmd = 0<<5 | preset == 1 ? PGA_CMD_BURST_AND_LISTEN_1 : PGA_CMD_BURST_AND_LISTEN_2;
+  uint8_t cmd = 0<<5 | (preset == 1 ? PGA_CMD_BURST_AND_LISTEN_1 : PGA_CMD_BURST_AND_LISTEN_2);
   spiTransfer(sensorId, cmd); // Command
   checksum_append_byte(cmd);
   spiTransfer(sensorId, numberOfObjectsToDetect);

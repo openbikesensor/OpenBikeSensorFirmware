@@ -515,6 +515,12 @@ void loop() {
   auto* currentSet = new DataSet;
   uint32_t thisLoopTow;
 
+  if(shutdownState != 0) {
+    obsDisplay->clear();
+    while(1)
+      delay(1);
+  }
+
   if (gps.hasTowTicks()) {
     /* only Timeinfo is reliably set until now! */
     GpsRecord incoming = gps.getIncomingGpsRecord();
@@ -555,7 +561,6 @@ void loop() {
     button.handle(currentTimeMillis);
     gps.handle();
     if (sensorManager->pollDistancesAlternating()) {
-      log_w("poll");
       // if a new minimum on the selected sensor is detected, the value and the time of detection will be stored
       const uint16_t reading = sensorManager->sensorValues[confirmationSensorID];
       if (reading > 0 && reading < minDistanceToConfirm) {
@@ -707,6 +712,8 @@ bool loadConfig(ObsConfig &cfg) {
     }
   }
 
+  SPI.begin(18, 19, 23, 5);
+  SPI.setDataMode(SPI_MODE0);
   if (SD.begin() && SD.exists("/obs.json")) {
     obsDisplay->showTextOnGrid(2, obsDisplay->currentLine(), "Init from SD.");
     log_i("Configuration init from SD.");

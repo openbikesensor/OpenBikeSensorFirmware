@@ -54,6 +54,21 @@ void Gps::begin() {
     setMessageInterval(UBX_MSG::NAV_TIMEGPS, 240);
 #endif
   }
+
+  //Serial.updateBaudRate(9600);
+  //mSerial.begin(9600, SERIAL_8N1);
+  // Debug - forward gps serial to normal serial
+  /*
+  log_e("--------_STARTING LOOP");
+  while(1)
+  {
+    int val = mSerial.read();
+    if(val >= 0)
+      Serial.write(val);
+    val = Serial.read();
+    if(val >= 0)
+      mSerial.write(val);
+  }*/
 }
 
 void Gps::sendUbx(UBX_MSG ubxMsgId, const uint8_t payload[], uint16_t length) {
@@ -167,6 +182,11 @@ void Gps::configureGpsModule() {
 #endif
   enableSbas();
 
+#ifdef UBX_M10
+  // Enable Glonass for M10, GPS and Galileo are enabled by default
+  sendCfgAndWaitForAck(UBX_CFG_LAYER::RAM, UBX_CFG_KEY_ID::CFG_SIGNAL_GLO_ENA, 1);
+#endif
+
 #ifdef UBX_M6
   setMessageInterval(UBX_MSG::NAV_SBAS, 59);
   setMessageInterval(UBX_MSG::NAV_POSLLH, 1);
@@ -198,7 +218,9 @@ void Gps::configureGpsModule() {
   };
   sendAndWaitForAck(UBX_MSG::CFG_NAV5, UBX_CFG_NAV5, sizeof(UBX_CFG_NAV5));
 #endif
-  // TODO: Set dynModel for M10, static hold stuff does not seem to be available any more
+#ifdef UBX_M10
+  sendCfgAndWaitForAck(UBX_CFG_LAYER::RAM, UBX_CFG_KEY_ID::CFG_NAVSPG_DYNMODEL, 4);  // Set dynamic model to 4 (automotive)
+#endif
 
 #ifdef UBX_M6
   // Not used for M10, as OBSPro does not have a GPS LED
@@ -383,6 +405,7 @@ bool Gps::setMessageInterval(UBX_CFG_KEY_ID msgId, uint8_t seconds, bool waitFor
 bool Gps::setBaud() {
   mSerial.end();
   mSerial.setRxBufferSize(512);
+
   mSerial.begin(115200, SERIAL_8N1);
   while(mSerial.read() >= 0) ;
 
@@ -392,6 +415,7 @@ bool Gps::setBaud() {
   }
 
   mSerial.updateBaudRate(9600);
+
   // switch to 115200 "blind", switch off NMEA
 #ifdef UBX_M6
   const uint8_t UBX_CFG_PRT[] = {
@@ -544,8 +568,19 @@ bool Gps::handle() {
   boolean gotGpsData = false;
   int bytesProcessed = 0;
   int data;
+#ifdef GPS_TRANSPARENT_UART
+  // Redicrect data to GPS
+  while((data = Serial.read()) >= 0)
+    mSerial.write(data);
+#endif
   while ((data = mSerial.read()) >= 0) {
     bytesProcessed++;
+
+#ifdef GPS_TRANSPARENT_UART
+    // Redicrect data from GPS
+    Serial.write(data);
+#endif
+
 #ifdef GPS_LOW_LEVEL_DEBUGGING
     log_w("GPS in: 0x%02x", data);
 #endif
@@ -1083,9 +1118,9 @@ void Gps::parseUbxMessage() {
     }
       break;
     case (uint16_t) UBX_MSG::NAV_PVT: {
-      log_v("PVT: iTOW: %u, gpsFix: %d, flags: %02x, numSV: %d, pDop: %04d.",
-            mGpsBuffer.navPvt.iTow, mGpsBuffer.navPvt.gpsFix, mGpsBuffer.navPvt.flags,
-            mGpsBuffer.navPvt.numSV, mGpsBuffer.navPvt.pDop);
+      log_v("PVT: iTOW: %u, fixType: %d, flags: %02x, numSV: %d, pDop: %04d.",
+            mGpsBuffer.navPvt.iTow, mGpsBuffer.navPvt.fixType, mGpsBuffer.navPvt.flags,
+            mGpsBuffer.navPvt.numSV, mGpsBuffer.navPvt.pDOP);
       prepareGpsData(mGpsBuffer.navPvt.iTow, mMessageStarted);
       mIncomingGpsRecord.setInfo(mGpsBuffer.navPvt.numSV, mGpsBuffer.navPvt.fixType, mGpsBuffer.navPvt.flags);
     }
