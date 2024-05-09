@@ -35,9 +35,10 @@ static const size_t APP_PARTITION_SIZE = 0x380000; // read from part?
 static const int SHA256_HASH_LEN = 32;
 
 // todo: error handling
-void Firmware::downloadToSd(String url, String filename) {
+void Firmware::downloadToSd(String url, String filename, bool unsafe) {
   WiFiClientSecure client;
-  client.setCACert(trustedRootCACertificates);
+  if (!unsafe) client.setCACert(trustedRootCACertificates);
+  else client.setInsecure();
   HTTPClient http;
   http.setUserAgent(mUserAgent);
   http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
@@ -58,10 +59,12 @@ void Firmware::downloadToSd(String url, String filename) {
 }
 
 bool Firmware::downloadToFlash(String url,
-                               std::function<void(uint32_t pos, uint32_t size)> progress) {
+                               std::function<void(uint32_t pos, uint32_t size)> progress,
+                               bool unsafe) {
   bool success = false;
   WiFiClientSecure client;
-  client.setCACert(trustedRootCACertificates);
+  if (!unsafe) client.setCACert(trustedRootCACertificates);
+  if (unsafe) client.setInsecure();
   HTTPClient http;
   http.setUserAgent(mUserAgent);
   http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);

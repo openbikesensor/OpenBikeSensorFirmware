@@ -29,8 +29,8 @@
 class Firmware {
   public:
     explicit Firmware(String userAgent) : mUserAgent(userAgent) {};
-    void downloadToSd(String url, String filename);
-    bool downloadToFlash(String url, std::function<void(uint32_t, uint32_t)> progress);
+    void downloadToSd(String url, String filename, bool unsafe);
+    bool downloadToFlash(String url, std::function<void(uint32_t, uint32_t)> progress, bool unsafe);
     String getLastMessage();
 
     static String getFlashAppVersion();

@@ -24,3 +24,9 @@ docs/.jekyll-metadata
 docs/vendor
 
 .DS_Store
+
+# for people installing pio venv style
+venv
+
+# jetbrains
+.idea
