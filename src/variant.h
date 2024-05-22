@@ -24,13 +24,15 @@
 #ifndef VARIANT_H
 #define VARIANT_H
 
+
+// Use custom_config.ini to set the needed variant!
 // If set, the firmware is build for the OBSPro hardware variant
 // The main differences are:
 //   - The button is inverted
 //   - The button is also responsible for soft-power-off
 //   - The display is a JHD12864-G156BT which is SPI based
 //   - The ultrasonic sensors are PGA460 based
-#define OBSPRO
+//#define OBSPRO
 
 // If set, the firmware is build for the OBSClassic
 //#define OBSCLASSIC

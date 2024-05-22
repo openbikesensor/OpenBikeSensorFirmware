@@ -18,6 +18,9 @@ build_flags =
     -DDEVELOP
 ; http lib loglevel
     -DHTTPS_LOGLEVEL=3
+; select OBS Variant
+    -DOBSCLASSIC
+;    -DOBSPRO
 
 
 ; === upload_port ===
