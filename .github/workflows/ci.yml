@@ -35,7 +35,7 @@ jobs:
     # could use a container with sq tools already installed
        image: infinitecoding/platformio-for-ci:latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
@@ -67,7 +67,7 @@ jobs:
 
     - name: Cache SonarCloud packages
       id: cache-sonar
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.sonar/cache
@@ -182,7 +182,7 @@ jobs:
           -Dsonar.projectVersion=${{ env.OBS_MAJOR_VERSION }}
 
     - name: Upload Build Asset
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: obs-${{ env.OBS_VERSION }}
         path: |
@@ -194,7 +194,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload Build Asset Initial Flash
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: obs-${{ env.OBS_VERSION }}-initial-flash
         path: |
@@ -209,7 +209,7 @@ jobs:
     - name: Generate changelog
       id: changelog
       if: ${{ env.OBS_PREPARE_RELEASE == 'true' }}
-      uses: metcalfc/changelog-generator@v4.2.0
+      uses: metcalfc/changelog-generator@v4.3.1
       with:
         myToken: ${{ secrets.GITHUB_TOKEN }}
 

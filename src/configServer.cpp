@@ -249,6 +249,7 @@ static const char* const updateSdIndex = R""""(
 <p>{description}</p>
 <h3>From Github (preferred)</h3>
 List also pre-releases<br><input type='checkbox' id='preReleases' onchange='selectFirmware()'>
+Ignore TLS Errors (see documentation)<br><input type='checkbox' id='ignoreSSL' onchange='selectFirmware()'>
 <script>
 let availableReleases;
 async function updateFirmwareList() {
@@ -259,6 +260,7 @@ async function updateFirmwareList() {
 }
 function selectFirmware() {
    const displayPreReleases = (document.getElementById('preReleases').checked == true);
+   const ignoreSSL = (document.getElementById('ignoreSSL').checked == true);
    url = "";
    version = "";
    availableReleases.filter(r => displayPreReleases || !r.prerelease).forEach(release => {
@@ -276,16 +278,25 @@ function selectFirmware() {
      document.getElementById('version').value = "Update to " + version;
      document.getElementById('version').disabled = false;
      document.getElementById('downloadUrl').value = url;
+     document.getElementById('directlink').href = url;
    } else {
      document.getElementById('version').value = "No version found";
      document.getElementById('version').disabled = true;
      document.getElementById('downloadUrl').value = "";
+     document.getElementById('directlink').href = "";
+   }
+   if (ignoreSSL) {
+    document.getElementById('unsafe').value = "1";
+   } else {
+    document.getElementById('unsafe').value = "0";
    }
 }
 updateFirmwareList();
 </script>
 <input type='hidden' name='downloadUrl' id='downloadUrl' value=''/>
+<input type='hidden' name='unsafe' id='unsafe' value='0'/>
 <input type='submit' name='version' id='version' class=btn value='Update' />
+If the upgrade via the button above does not work<br/><a id="directlink" href="">download firmware.bin</a><br/> and upload manually below.
 <h3>File Upload</h3>
 )"""";
 
@@ -1676,11 +1687,13 @@ void updateProgress(size_t pos, size_t all) {
 static void handleFlashUpdateUrlAction(HTTPRequest * req, HTTPResponse * res) {
   const auto params = extractParameters(req);
   const auto url = getParameter(params, "downloadUrl");
+  const auto unsafe = getParameter(params,"unsafe");
+
   log_i("Flash App Url is '%s'", url.c_str());
 
   Firmware f(String("OBS/") + String(OBSVersion));
   sensorManager->detachInterrupts();
-  if (f.downloadToFlash(url, updateProgress)) {
+  if (f.downloadToFlash(url, updateProgress, unsafe[0] == '1')) {
     obsDisplay->showTextOnGrid(0, 3, "Success!");
     sendRedirect(res, "/updatesd");
   } else {
@@ -2112,6 +2125,8 @@ static bool mkSdFlashDir() {
 static void handleFirmwareUpdateSdUrlAction(HTTPRequest * req, HTTPResponse * res) {
   const auto params = extractParameters(req);
   const auto url = getParameter(params, "downloadUrl");
+  const auto unsafe = getParameter(params, "unsafe");
+
   log_i("OBS Firmware URL is '%s'", url.c_str());
 
   if (!mkSdFlashDir()) {
@@ -2122,7 +2137,9 @@ static void handleFirmwareUpdateSdUrlAction(HTTPRequest * req, HTTPResponse * re
   }
   // TODO: Progress bar display && http!
   Firmware f(String("OBS/") + String(OBSVersion));
-  f.downloadToSd(url, "/sdflash/app.bin");
+  f.downloadToSd(url, "/sdflash/app.bin", unsafe[0] == '1');
+  obsDisplay->showTextOnGrid(0, 3, unsafe);
+
 
   String firmwareError = Firmware::checkSdFirmware();
   if (Firmware::getFlashAppVersion().isEmpty()) {

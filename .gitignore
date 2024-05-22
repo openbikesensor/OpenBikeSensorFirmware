@@ -25,3 +25,9 @@ docs/vendor
 
 .DS_Store
 .vscode
+
+# for people installing pio venv style
+venv
+
+# jetbrains
+.idea
