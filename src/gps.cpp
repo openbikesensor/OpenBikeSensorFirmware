@@ -101,6 +101,7 @@ void Gps::sendUbx(uint16_t ubxMsgId, const uint8_t payload[], uint16_t length) {
   mSerial.write(buffer, length + 8);
 }
 
+#ifdef UBX_M10
 // Send a CFG_VALSET ubx command to write a configuration
 // Only available in M10 devices
 void Gps::sendUbxCfg(enum UBX_CFG_LAYER layer, UBX_CFG_KEY_ID keyId, uint32_t value)
@@ -118,6 +119,7 @@ void Gps::sendUbxCfg(enum UBX_CFG_LAYER layer, UBX_CFG_KEY_ID keyId, uint32_t va
     length = 4;
   sendUbx(UBX_MSG::CFG_VALSET, ubxCfgMsg, length + 8);
 }
+#endif
 
 /* Method sends the message in the receive buffer! */
 void Gps::sendUbxDirect() {
@@ -501,6 +503,7 @@ bool Gps::sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer, size_t size
   return result;
 }
 
+#ifdef UBX_M10
 bool Gps::sendCfgAndWaitForAck(enum UBX_CFG_LAYER layer, UBX_CFG_KEY_ID keyId, uint32_t value, const uint16_t timeoutMs) {
   const int tries = 2;
   auto start = millis();
@@ -534,6 +537,8 @@ bool Gps::sendCfgAndWaitForAck(enum UBX_CFG_LAYER layer, UBX_CFG_KEY_ID keyId, u
   }
   return result;
 }
+#endif
+
 
 /* Will delay for the given number of ms and handle GPS if needed. */
 void Gps::handle(uint32_t milliSeconds) {

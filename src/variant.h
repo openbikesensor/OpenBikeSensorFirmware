@@ -57,7 +57,7 @@
 
 // Settings specific to OBSClassic
 #if OBSCLASSIC
-#define UBS_M6
+#define UBX_M6
 #endif
 
 

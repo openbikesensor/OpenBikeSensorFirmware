@@ -221,11 +221,12 @@ static void buttonBluetooth(const DataSet *dataSet, uint16_t measureIndex) {
   }
 }
 
+static uint8_t shutdownState = 0;
+
 #ifdef OBSPRO
 // Power-management keep alive timer
 // This function is called every 100 ms
 static unsigned long timeOfLastPowerKeepAlive = 0;
-static uint8_t shutdownState = 0;
 static uint8_t buttonPressedCounter = 0;
 static void powerKeepAliveTimerISR()
 {
