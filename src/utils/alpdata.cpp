@@ -38,7 +38,7 @@ void AlpData::update(SSD1306DisplayDevice *display) {
   if (!f || f.size() < ALP_DATA_MIN_FILE_SIZE ) {
     lastModified = "";
   } else if (lastWrite > TimeUtils::PAST_TIME &&
-    time(nullptr) - lastWrite > 4 * 24 * 60 * 60) {
+    time(nullptr) - lastWrite < 4 * 24 * 60 * 60) {
     log_d("File still current %s",
           TimeUtils::dateTimeToString(lastWrite).c_str());
     log_d("Now: %s",
