@@ -38,14 +38,6 @@
  *  - JSN-SR04T-2.0 =  ~1125us
  */
 
-const uint16_t MAX_SENSOR_VALUE = 999;
-
-static const uint16_t MIN_DISTANCE_MEASURED_CM =   2;
-static const uint16_t MAX_DISTANCE_MEASURED_CM = 320; // candidate to check I could not get good readings above 300
-
-static const uint32_t MIN_DURATION_MICRO_SEC = MIN_DISTANCE_MEASURED_CM * MICRO_SEC_TO_CM_DIVIDER;
-const uint32_t MAX_DURATION_MICRO_SEC = MAX_DISTANCE_MEASURED_CM * MICRO_SEC_TO_CM_DIVIDER;
-
 /* This time is maximum echo pin high time if the sensor gets no response
  * HC-SR04: observed 71ms, docu 60ms
  * JSN-SR04T: observed 58ms
@@ -258,7 +250,7 @@ void HCSR04SensorManager::sendTriggerToSensor(uint8_t sensorId) {
   digitalWrite(sensor->triggerPin, HIGH);
   // 10us are specified but some sensors are more stable with 20us according
   // to internet reports
-  delayMicroseconds(20);
+  delayMicroseconds(200);
   digitalWrite(sensor->triggerPin, LOW);
 }
 

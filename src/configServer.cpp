@@ -503,7 +503,7 @@ String getIp() {
   }
 }
 
-void updateDisplay(SSD1306DisplayDevice * const display, String action = "") {
+void updateDisplay(DisplayDevice * const display, String action = "") {
   if (action.isEmpty()) {
     display->showTextOnGrid(0, 0, "Ver.:");
     display->showTextOnGrid(1, 0, OBSVersion);
@@ -1065,7 +1065,8 @@ static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
   page += keyValue("GPS messages", gps.getMessagesHtml());
 
   page += "<h3>Display / Button</h3>";
-  page += keyValue("Button State", digitalRead(PUSHBUTTON_PIN));
+
+  page += keyValue("Button State", button.read());
   page += keyValue("Display i2c last error", Wire.getWriteError());
   page += keyValue("Display i2c speed", Wire.getClock() / 1000, "KHz");
   page += keyValue("Display i2c timeout", Wire.getTimeOut(), "ms");

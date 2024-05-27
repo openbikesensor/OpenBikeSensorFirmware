@@ -24,6 +24,7 @@ docs/.jekyll-metadata
 docs/vendor
 
 .DS_Store
+.vscode
 
 # for people installing pio venv style
 venv

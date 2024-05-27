@@ -27,6 +27,7 @@
 #include <vector>
 #include <Arduino.h>
 
+#include "variant.h"
 #include "globals.h"
 #include "utils/median.h"
 
@@ -49,14 +50,6 @@
       −10            325.4
       −15            322.3
 */
-const uint32_t MICRO_SEC_TO_CM_DIVIDER = 58; // sound speed 340M/S, 2 times back and forward
-
-
-const uint16_t MEDIAN_DISTANCE_MEASURES = 3;
-const uint16_t MAX_NUMBER_MEASUREMENTS_PER_INTERVAL = 30; //  is 1000/SENSOR_QUIET_PERIOD_AFTER_START_MICRO_SEC/2
-extern const uint16_t MAX_SENSOR_VALUE;
-
-const uint8_t NUMBER_OF_TOF_SENSORS = 2;
 
 struct HCSR04SensorInfo {
   uint8_t triggerPin = 15;

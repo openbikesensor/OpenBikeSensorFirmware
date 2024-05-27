@@ -23,11 +23,12 @@
 
 #include "button.h"
 #include "esp32-hal-gpio.h"
+#include "variant.h"
 
 Button::Button(int pin) : mPin(pin) {
   pinMode(pin, INPUT);
   mLastStateChangeMillis = mLastRawReadMillis = millis();
-  mLastState = mLastRawState = digitalRead(pin);
+  mLastState = mLastRawState = read();
 }
 
 void Button::handle() {
@@ -35,7 +36,7 @@ void Button::handle() {
 }
 
 void Button::handle(unsigned long millis) {
-  const int state = digitalRead(mPin);
+  const int state = read();
 
   if (state != mLastRawState) {
     mLastRawReadMillis = millis;
@@ -64,7 +65,11 @@ bool Button::gotPressed() {
 
 int Button::read() const {
   // not debounced
+#ifdef OBSPRO
+  return !digitalRead(mPin);
+#else
   return digitalRead(mPin);
+#endif
 }
 
 int Button::getState() const {
