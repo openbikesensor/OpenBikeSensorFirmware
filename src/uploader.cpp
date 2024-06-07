@@ -25,9 +25,11 @@
 
 #include "globals.h"
 #include "utils/multipart.h"
-#include "utils/cacerts.h"
 #include "utils/timeutils.h"
 #include "writer.h"
+
+// https://docs.platformio.org/en/latest/platforms/espressif32.html#embedding-binary-data
+extern const uint8_t x509_crt_bundle_start[] asm("_binary_src_truststore_x509_crt_bundle_start");
 
 static char const *const HTTP_LOCATION_HEADER = "location";
 
@@ -35,7 +37,7 @@ Uploader::Uploader(String portalUrl, String userToken) :
     mPortalUrl(std::move(portalUrl)),
     mPortalUserToken(std::move(userToken)) {
   TimeUtils::setClockByNtpAndWait();
-  mWiFiClient.setCACert(trustedRootCACertificates);
+  mWiFiClient.setCACertBundle(x509_crt_bundle_start);
 }
 
 /* Upload file as track data to "The Portal" as multipart form data.
