@@ -69,7 +69,7 @@ static WiFiMulti wifiMulti;
 //  - back navigation after save
 static const char* const header =
   "<!DOCTYPE html>\n"
-  "<html lang='en'><head><meta charset='utf-8'/><title>{title}</title>"
+  "<html lang='en'><head><meta charset='utf-8'/><title>{title}</title><meta name='viewport' content='width=device-width,initial-scale=1.0' />"
 // STYLE
     "<style>"
     "#file-input,input, button {width:100%;height:44px;border-radius:4px;margin:10px auto;font-size:15px;}"
