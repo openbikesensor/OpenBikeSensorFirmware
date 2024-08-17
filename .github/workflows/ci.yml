@@ -363,7 +363,7 @@ jobs:
         asset_content_type: application/x-esp32
 
     - name: Upload Release Asset obspro
-      id: upload-release-asset
+      id: upload-obspro-release-asset
       if: ${{ env.OBS_PREPARE_RELEASE == 'true' }}
       uses: actions/upload-release-asset@v1
       env:
@@ -375,7 +375,7 @@ jobs:
         asset_content_type: application/zip
 
     - name: Upload Release Asset Initial Flash pro
-      id: upload-release-asset-initial-flash
+      id: upload-obspro-release-asset-initial-flash
       if: ${{ env.OBS_PREPARE_RELEASE == 'true' }}
       uses: actions/upload-release-asset@v1
       env:
@@ -387,7 +387,7 @@ jobs:
         asset_content_type: application/zip
 
     - name: Upload Release Asset app bin pro
-      id: upload-release-asset-app-bin
+      id: upload-obspro-release-asset-app-bin
       if: ${{ env.OBS_PREPARE_RELEASE == 'true' }}
       uses: actions/upload-release-asset@v1
       env:
