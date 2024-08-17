@@ -396,5 +396,5 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./bin/.pio/build/obspro/firmware.bin
-        asset_name: obspro-firmware.bin
+        asset_name: firmware-obspro.bin
         asset_content_type: application/x-esp32
