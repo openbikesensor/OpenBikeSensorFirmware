@@ -1,13 +1,8 @@
 ; This file should contain your local modifications to the PlatformIO.ini file.
 
-[env:esp32dev]
+[env:myObs]
 build_flags =
-; settings needed by the build
-    -DHTTPS_REQUEST_MAX_REQUEST_LENGTH=1024
-; reduce probability of https://github.com/fhessel/esp32_https_server/pull/123
-    -DHTTPS_CONNECTION_DATA_CHUNK_SIZE=1024
-; custom default configuration
-;
+    ${env.build_flags}
 ; you can specify a custom config json (see docs/software/firmware/obs_cfg.md)
 ; here which will be used for fresh installs based on this firmware
     -DCUSTOM_OBS_DEFAULT_CONFIG='"{ obs: [ { displayConfig: 15, offset: [ 30, 30 ], httpPin: \\"12345678\\", wifiSsid: \\"SID\\", wifiPassword: \\"87654321\\" } ] }"'
