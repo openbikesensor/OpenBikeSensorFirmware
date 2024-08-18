@@ -271,7 +271,6 @@ static const char* const updateSdIndex =
   "              || asset.name.endsWith(\"firmware-obspro.bin\") "
 #endif
   "           ).forEach(\n"
-  "           release.assets.filter(asset => asset.name.endsWith(\"flash.bin\") asset.name.endsWith(\"firmware.bin\")).forEach(\n"
   "                asset => {\n"
   "                  if (!url) {\n"
   "                   version = release.name;\n"
