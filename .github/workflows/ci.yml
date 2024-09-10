@@ -91,7 +91,14 @@ jobs:
     - name: Install build dependencies
       run: |
         apt-get update
-        apt-get install -qq -y zip
+        apt-get install -qq -y zip curl python
+
+    - name: Update TLS Truststore
+      run: |
+        cd src/truststore/
+        curl --remote-name https://raw.githubusercontent.com/espressif/arduino-esp32/master/tools/gen_crt_bundle.py
+        curl --remote-name https://curl.se/ca/cacert.pem
+        python3 gen_crt_bundle.py --input cacert.pem
 
     - name: Build firmware
       run: |
