@@ -124,21 +124,21 @@ void setupSensors() {
 
   PGASensorInfo sensor1;
   sensor1.sck_pin =
-    (config.displayConfig & DisplaySwapSensors) ? SENSOR2_SCK_PIN : SENSOR1_SCK_PIN;
+    (config.displayConfig & DisplaySwapSensors) ? SENSOR1_SCK_PIN : SENSOR2_SCK_PIN;
   sensor1.mosi_pin =
-    (config.displayConfig & DisplaySwapSensors) ? SENSOR2_MOSI_PIN : SENSOR1_MOSI_PIN;
+    (config.displayConfig & DisplaySwapSensors) ? SENSOR1_MOSI_PIN : SENSOR2_MOSI_PIN;
   sensor1.miso_pin =
-    (config.displayConfig & DisplaySwapSensors) ? SENSOR2_MISO_PIN : SENSOR1_MISO_PIN;
+    (config.displayConfig & DisplaySwapSensors) ? SENSOR1_MISO_PIN : SENSOR2_MISO_PIN;
   sensor1.sensorLocation = "Right";
   sensorManager->registerSensor(sensor1, 0);
 
   PGASensorInfo sensor2;
   sensor2.sck_pin =
-    (config.displayConfig & DisplaySwapSensors) ? SENSOR1_SCK_PIN : SENSOR2_SCK_PIN;
+    (config.displayConfig & DisplaySwapSensors) ? SENSOR2_SCK_PIN : SENSOR1_SCK_PIN;
   sensor2.mosi_pin =
-    (config.displayConfig & DisplaySwapSensors) ? SENSOR1_MOSI_PIN : SENSOR2_MOSI_PIN;
+    (config.displayConfig & DisplaySwapSensors) ? SENSOR2_MOSI_PIN : SENSOR1_MOSI_PIN;
   sensor2.miso_pin =
-    (config.displayConfig & DisplaySwapSensors) ? SENSOR1_MISO_PIN : SENSOR2_MISO_PIN;
+    (config.displayConfig & DisplaySwapSensors) ? SENSOR2_MISO_PIN : SENSOR1_MISO_PIN;
   sensor2.sensorLocation = "Left";
   sensorManager->registerSensor(sensor2, 1);
 #endif
