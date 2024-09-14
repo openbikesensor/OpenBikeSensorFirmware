@@ -82,7 +82,7 @@ bool FileWriter::appendString(const String &s) {
     mBuffer.concat(s);
     stored = true;
   }
-  if (getBufferLength() > 10000 && !(digitalRead(PUSHBUTTON_PIN))) {
+  if (getBufferLength() > 10000 && !button.read()) {
     flush();
   }
   if (!stored && getBufferLength() < 11000) { // do not add data if our buffer is full already. We loose data here!
@@ -107,12 +107,13 @@ bool FileWriter::flush() {
   log_v("Writing to concrete file.");
   const auto start = millis();
   result = FileUtil::appendFile(SD, mFileName.c_str(), mBuffer.c_str() );
+  const unsigned int fileAppendSize = mBuffer.length();
   mBuffer.clear();
   mWriteTimeMillis = millis() - start;
   if (!mFinalFileName) {
     correctFilename();
   }
-  log_v("Writing to concrete file done took %lums.", mWriteTimeMillis);
+  log_e("Writing %u bytes to concrete file done took %lums.", fileAppendSize, mWriteTimeMillis);
   return result;
 }
 
@@ -124,6 +125,14 @@ bool CSVFileWriter::writeHeader(String trackId) {
   String header;
   header += "OBSDataFormat=2&";
   header += "OBSFirmwareVersion=" + String(OBSVersion) + "&";
+#ifdef OBSPRO
+  header += "HardwareType=OBSPro&";
+  header += "HardwareRev=v2.1&";  // TODO: Use hardware revision detection
+#endif
+#ifdef OBSCLASSIC
+  header += "HardwareType=OBSClassic&";
+  //header += "HardwareRev=?"  // TODO: Auto detect hardware revision not available in OBSClassic
+#endif
   header += "DeviceId=" + String((uint16_t)(ESP.getEfuseMac() >> 32), 16) + "&";
   header += "DataPerMeasurement=3&";
   header += "MaximumMeasurementsPerLine=" + String(MAX_NUMBER_MEASUREMENTS_PER_INTERVAL) + "&";

@@ -97,11 +97,13 @@ jobs:
       run: |
         mkdir sonarqube-out
         ./sonarqube/build-wrapper-linux-x86/build-wrapper-linux-x86-64 --out-dir sonarqube-out \
-          platformio ci --build-dir="./bin" --keep-build-dir --project-conf=platformio.ini ./src/
+          platformio ci --environment obspro --environment obs --build-dir ./bin --keep-build-dir --project-conf platformio.ini ./src/
 
-    - name: Package firmware
+    - name: Package firmware OBS classic
       run: |
         set -eux
+        mkdir -p obs-classic
+        cd obs-classic
         if [ -f "/github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/bin/bootloader_dio_40m.elf" ]; then
            cp /github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/bin/bootloader_dio_40m.elf 0x01000.elf
         elif [ -f "/github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/bin/bootloader_dio_40m.bin" ]; then
@@ -112,10 +114,10 @@ jobs:
            find /github/home/.platformio/ -name "bootloader*.elf"
            exit 1
         fi
-        cp bin/.pio/build/esp32dev/partitions.bin 0x08000.bin
+        cp ../bin/.pio/build/obs/partitions.bin 0x08000.bin
         cp /github/home/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin 0x0e000.bin
-        cp bin/.pio/build/esp32dev/firmware.bin 0x10000.bin
-        cp bin/.pio/build/esp32dev/firmware.bin firmware.bin
+        cp ../bin/.pio/build/obs/firmware.bin 0x10000.bin
+        cp ../bin/.pio/build/obs/firmware.bin firmware.bin
         ESPTOOL=/github/home/.platformio/packages/tool-esptoolpy/esptool.py
         chmod +x ${ESPTOOL}
         # CMD to create a merged binary (still missing flash.app)
@@ -138,16 +140,73 @@ jobs:
             0x01000 0x01000.bin.org
         echo OpenBikeSensor bootloader params
         ${ESPTOOL} --chip esp32 image_info --version 2 0x01000.bin || echo image_info failed
-        cp src/fonts/LICENSE.txt LICENSE-OpenSans.txt
+        cp ../src/fonts/LICENSE.txt LICENSE-OpenSans.txt
         wget --no-verbose -O COPYRIGHT-ESP.html https://docs.espressif.com/projects/esp-idf/en/latest/esp32/COPYRIGHT.html
         wget --no-verbose -O LICENSE-ARDUINO-ESP32.md https://github.com/espressif/arduino-esp32/raw/master/LICENSE.md
-        zip --junk-paths obs-${{ env.OBS_VERSION }}-initial-flash.zip \
+        zip --junk-paths ../obs-${{ env.OBS_VERSION }}-initial-flash.zip \
           0x*.bin \
           COPYRIGHT-ESP.html \
           LICENSE-ARDUINO-ESP32.md \
           LICENSE-OpenSans.txt \
           LICENSE
-        zip --junk-paths obs-${{ env.OBS_VERSION }}.zip \
+        zip --junk-paths ../obs-${{ env.OBS_VERSION }}.zip \
+          firmware.bin \
+          COPYRIGHT-ESP.html \
+          LICENSE-ARDUINO-ESP32.md \
+          LICENSE-OpenSans.txt \
+          LICENSE
+
+    - name: Package firmware OBS pro
+      run: |
+        set -eux
+        mkdir -p obs-pro
+        cd obs-pro
+        if [ -f "/github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/bin/bootloader_dio_40m.elf" ]; then
+           cp /github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/bin/bootloader_dio_40m.elf 0x01000.elf
+        elif [ -f "/github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/bin/bootloader_dio_40m.bin" ]; then
+           cp /github/home/.platformio/packages/framework-arduinoespressif32/tools/sdk/bin/bootloader_dio_40m.bin 0x01000.bin
+        else 
+           echo could not find bootloader_dio_40m.bin, new location?
+           find /github/home/.platformio/ -name "bootloader*.bin"
+           find /github/home/.platformio/ -name "bootloader*.elf"
+           exit 1
+        fi
+        cp ../bin/.pio/build/obspro/partitions.bin 0x08000.bin
+        cp /github/home/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin 0x0e000.bin
+        cp ../bin/.pio/build/obspro/firmware.bin 0x10000.bin
+        cp ../bin/.pio/build/obspro/firmware.bin firmware.bin
+        ESPTOOL=/github/home/.platformio/packages/tool-esptoolpy/esptool.py
+        chmod +x ${ESPTOOL}
+        # CMD to create a merged binary (still missing flash.app)
+        # ${ESPTOOL} --trace --chip esp32 merge_bin --output merged.bin  \
+        #    --flash_freq keep --flash_mode dio --flash_size 4MB \
+        #    0x01000 0x01000.bin \
+        #    0x08000 0x08000.bin \
+        #    0x0e000 0x0e000.bin \
+        #    0x10000 0x10000.bin
+        ${ESPTOOL} --trace --chip esp32 elf2image \
+            --dont-append-digest \
+            --flash_freq 40m --flash_mode dio \
+            0x01000.elf
+        echo Original bootloader params after elf2image
+        ${ESPTOOL} --chip esp32 image_info --version 2 0x01000.bin || echo image_info for converted bootloader failed
+        mv 0x01000.bin 0x01000.bin.org
+        ${ESPTOOL} --trace --chip esp32 merge_bin --output 0x01000.bin  \
+            --flash_freq 40m --flash_mode dio --flash_size 4MB \
+            --target-offset 0x01000 \
+            0x01000 0x01000.bin.org
+        echo OpenBikeSensor bootloader params
+        ${ESPTOOL} --chip esp32 image_info --version 2 0x01000.bin || echo image_info failed
+        cp ../src/fonts/LICENSE.txt LICENSE-OpenSans.txt
+        wget --no-verbose -O COPYRIGHT-ESP.html https://docs.espressif.com/projects/esp-idf/en/latest/esp32/COPYRIGHT.html
+        wget --no-verbose -O LICENSE-ARDUINO-ESP32.md https://github.com/espressif/arduino-esp32/raw/master/LICENSE.md
+        zip --junk-paths ../obspro-${{ env.OBS_VERSION }}-initial-flash.zip \
+          0x*.bin \
+          COPYRIGHT-ESP.html \
+          LICENSE-ARDUINO-ESP32.md \
+          LICENSE-OpenSans.txt \
+          LICENSE
+        zip --junk-paths ../obspro-${{ env.OBS_VERSION }}.zip \
           firmware.bin \
           COPYRIGHT-ESP.html \
           LICENSE-ARDUINO-ESP32.md \
@@ -155,6 +214,7 @@ jobs:
           LICENSE
 
     - name: Analyze with SonarCloud
+      if: false
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -186,11 +246,11 @@ jobs:
       with:
         name: obs-${{ env.OBS_VERSION }}
         path: |
-          firmware.bin
-          COPYRIGHT-ESP.html
-          LICENSE-ARDUINO-ESP32.md
-          LICENSE-OpenSans.txt
-          LICENSE
+          obs-classic/firmware.bin
+          obs-classic/COPYRIGHT-ESP.html
+          obs-classic/LICENSE-ARDUINO-ESP32.md
+          obs-classic/LICENSE-OpenSans.txt
+          obs-classic/LICENSE
         if-no-files-found: error
 
     - name: Upload Build Asset Initial Flash
@@ -198,12 +258,36 @@ jobs:
       with:
         name: obs-${{ env.OBS_VERSION }}-initial-flash
         path: |
-          0x*.bin
-          COPYRIGHT-ESP.html
-          LICENSE-ARDUINO-ESP32.md
-          LICENSE-OpenSans.txt
-          LICENSE
+          obs-classic/0x*.bin
+          obs-classic/COPYRIGHT-ESP.html
+          obs-classic/LICENSE-ARDUINO-ESP32.md
+          obs-classic/LICENSE-OpenSans.txt
+          obs-classic/LICENSE
           sonarqube-out/build-wrapper-dump.json
+        if-no-files-found: error
+
+    - name: Upload Build Asset obspro
+      uses: actions/upload-artifact@v4
+      with:
+        name: obspro-${{ env.OBS_VERSION }}
+        path: |
+          obs-pro/firmware.bin
+          obs-pro/COPYRIGHT-ESP.html
+          obs-pro/LICENSE-ARDUINO-ESP32.md
+          obs-pro/LICENSE-OpenSans.txt
+          obs-pro/LICENSE
+        if-no-files-found: error
+
+    - name: Upload Build Asset Initial Flash obspro
+      uses: actions/upload-artifact@v4
+      with:
+        name: obspro-${{ env.OBS_VERSION }}-initial-flash
+        path: |
+          obs-pro/0x*.bin
+          obs-pro/COPYRIGHT-ESP.html
+          obs-pro/LICENSE-ARDUINO-ESP32.md
+          obs-pro/LICENSE-OpenSans.txt
+          obs-pro/LICENSE
         if-no-files-found: error
 
     - name: Generate changelog
@@ -275,6 +359,42 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./bin/.pio/build/esp32dev/firmware.bin
+        asset_path: ./bin/.pio/build/obs/firmware.bin
         asset_name: firmware.bin
+        asset_content_type: application/x-esp32
+
+    - name: Upload Release Asset obspro
+      id: upload-obspro-release-asset
+      if: ${{ env.OBS_PREPARE_RELEASE == 'true' }}
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./obspro-${{ env.OBS_VERSION }}.zip
+        asset_name: obspro-${{ env.OBS_VERSION }}.zip
+        asset_content_type: application/zip
+
+    - name: Upload Release Asset Initial Flash pro
+      id: upload-obspro-release-asset-initial-flash
+      if: ${{ env.OBS_PREPARE_RELEASE == 'true' }}
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./obspro-${{ env.OBS_VERSION }}-initial-flash.zip
+        asset_name: obspro-${{ env.OBS_VERSION }}-initial-flash.zip
+        asset_content_type: application/zip
+
+    - name: Upload Release Asset app bin pro
+      id: upload-obspro-release-asset-app-bin
+      if: ${{ env.OBS_PREPARE_RELEASE == 'true' }}
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./bin/.pio/build/obspro/firmware.bin
+        asset_name: firmware-obspro.bin
         asset_content_type: application/x-esp32

@@ -27,7 +27,7 @@
 #include <Arduino.h>
 
 // Forward declare classes to build (because there is a cyclic dependency between sensor.h and displays.h)
-class SSD1306DisplayDevice;
+class DisplayDevice;
 class HCSR04SensorManager;
 
 
@@ -35,7 +35,10 @@ class HCSR04SensorManager;
 #include "config.h"
 #include "displays.h"
 #include "sensor.h"
+#include "pgaSensor.h"
 #include "VoltageMeter.h"
+#include "utils/button.h"
+#include "variant.h"
 
 // This file should contain declarations of all variables that will be used globally.
 // The variables don't have to be set here, but need to be declared.
@@ -52,18 +55,23 @@ extern int numButtonReleased;
 extern Config config;
 
 
-extern SSD1306DisplayDevice* obsDisplay;
+extern DisplayDevice* obsDisplay;
 
+#ifdef OBSPRO
+extern PGASensorManager *sensorManager;
+#endif
+#ifdef OBSCLASSIC
 extern HCSR04SensorManager* sensorManager;
+#endif
 
 extern VoltageMeter* voltageMeter;
+
+extern Button button;
 
 class Gps;
 extern Gps gps;
 
-extern const uint32_t MAX_DURATION_MICRO_SEC;
 extern const uint8_t LEFT_SENSOR_ID;
 extern const uint8_t RIGHT_SENSOR_ID;
-extern const uint16_t MAX_SENSOR_VALUE;
 
 #endif

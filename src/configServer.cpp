@@ -245,60 +245,65 @@ static const char* const backupIndex =
   "<input type='button' onclick=\"window.location.href='/settings/backup.json'\" class=btn value='Download' />"
   "<h3>Restore</h3>";
 
-static const char* const updateSdIndex = R""""(
-<p>{description}</p>
-<h3>From Github (preferred)</h3>
-List also pre-releases<br><input type='checkbox' id='preReleases' onchange='selectFirmware()'>
-Ignore TLS Errors (see documentation)<br><input type='checkbox' id='ignoreSSL' onchange='selectFirmware()'>
-<script>
-let availableReleases;
-async function updateFirmwareList() {
-    (await fetch('{releaseApiUrl}')).json().then(res => {
-        availableReleases = res;
-        selectFirmware();
-    })
-}
-function selectFirmware() {
-   const displayPreReleases = (document.getElementById('preReleases').checked == true);
-   const ignoreSSL = (document.getElementById('ignoreSSL').checked == true);
-   url = "";
-   version = "";
-   availableReleases.filter(r => displayPreReleases || !r.prerelease).forEach(release => {
-           release.assets.filter(asset => asset.name.endsWith(".bin")).forEach(
-                asset => {
-                  if (!url) {
-                   version = release.name;
-                   url = asset.browser_download_url;
-                  }
-               }
-           )
-        }
-   )
-   if (url) {
-     document.getElementById('version').value = "Update to " + version;
-     document.getElementById('version').disabled = false;
-     document.getElementById('downloadUrl').value = url;
-     document.getElementById('directlink').href = url;
-   } else {
-     document.getElementById('version').value = "No version found";
-     document.getElementById('version').disabled = true;
-     document.getElementById('downloadUrl').value = "";
-     document.getElementById('directlink').href = "";
-   }
-   if (ignoreSSL) {
-    document.getElementById('unsafe').value = "1";
-   } else {
-    document.getElementById('unsafe').value = "0";
-   }
-}
-updateFirmwareList();
-</script>
-<input type='hidden' name='downloadUrl' id='downloadUrl' value=''/>
-<input type='hidden' name='unsafe' id='unsafe' value='0'/>
-<input type='submit' name='version' id='version' class=btn value='Update' />
-If the upgrade via the button above does not work<br/><a id="directlink" href="">download firmware.bin</a><br/> and upload manually below.
-<h3>File Upload</h3>
-)"""";
+static const char* const updateSdIndex =
+  "<p>{description}</p>\n"
+  "<h3>From Github (preferred)</h3>\n"
+  "List also pre-releases<br><input type='checkbox' id='preReleases' onchange='selectFirmware()'>\n"
+  "Ignore TLS Errors (see documentation)<br><input type='checkbox' id='ignoreSSL' onchange='selectFirmware()'>\n"
+  "<script>\n"
+  "let availableReleases;\n"
+  "async function updateFirmwareList() {\n"
+  "    (await fetch('{releaseApiUrl}')).json().then(res => {\n"
+  "        availableReleases = res;\n"
+  "        selectFirmware();\n"
+  "    })\n"
+  "}\n"
+  "function selectFirmware() {\n"
+  "   const displayPreReleases = (document.getElementById('preReleases').checked == true);\n"
+  "   const ignoreSSL = (document.getElementById('ignoreSSL').checked == true);\n"
+  "   url = \"\";\n"
+  "   version = \"\";\n"
+  "   availableReleases.filter(r => displayPreReleases || !r.prerelease).forEach(release => {\n"
+  "           release.assets.filter(asset => asset.name.endsWith(\"flash.bin\") "
+#ifdef OBSCLASSIC
+  "              || asset.name.endsWith(\"firmware.bin\") "
+#else
+  "              || asset.name.endsWith(\"firmware-obspro.bin\") "
+#endif
+  "           ).forEach(\n"
+  "                asset => {\n"
+  "                  if (!url) {\n"
+  "                   version = release.name;\n"
+  "                   url = asset.browser_download_url;\n"
+  "                  }\n"
+  "               }\n"
+  "           )\n"
+  "        }\n"
+  "   )\n"
+  "   if (url) {\n"
+  "     document.getElementById('version').value = \"Update to \" + version;\n"
+  "     document.getElementById('version').disabled = false;\n"
+  "     document.getElementById('downloadUrl').value = url;\n"
+  "     document.getElementById('directlink').href = url;\n"
+  "   } else {\n"
+  "     document.getElementById('version').value = \"No version found\";\n"
+  "     document.getElementById('version').disabled = true;\n"
+  "     document.getElementById('downloadUrl').value = \"\";\n"
+  "     document.getElementById('directlink').href = \"\";\n"
+  "   }\n"
+  "   if (ignoreSSL) {\n"
+  "    document.getElementById('unsafe').value = \"1\";\n"
+  "   } else {\n"
+  "    document.getElementById('unsafe').value = \"0\";\n"
+  "   }\n"
+  "}\n"
+  "updateFirmwareList();\n"
+  "</script>\n"
+  "<input type='hidden' name='downloadUrl' id='downloadUrl' value=''/>\n"
+  "<input type='hidden' name='unsafe' id='unsafe' value='0'/>\n"
+  "<input type='submit' name='version' id='version' class=btn value='Update' />\n"
+  "If the upgrade via the button above does not work<br/><a id=\"directlink\" href=\"\">download firmware.bin</a><br/> and upload manually below.\n"
+  "<h3>File Upload</h3>";
 
 // #########################################
 // Config
@@ -503,7 +508,7 @@ String getIp() {
   }
 }
 
-void updateDisplay(SSD1306DisplayDevice * const display, String action = "") {
+void updateDisplay(DisplayDevice * const display, String action = "") {
   if (action.isEmpty()) {
     display->showTextOnGrid(0, 0, "Ver.:");
     display->showTextOnGrid(1, 0, OBSVersion);
@@ -1065,7 +1070,8 @@ static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
   page += keyValue("GPS messages", gps.getMessagesHtml());
 
   page += "<h3>Display / Button</h3>";
-  page += keyValue("Button State", digitalRead(PUSHBUTTON_PIN));
+
+  page += keyValue("Button State", button.read());
   page += keyValue("Display i2c last error", Wire.getWriteError());
   page += keyValue("Display i2c speed", Wire.getClock() / 1000, "KHz");
   page += keyValue("Display i2c timeout", Wire.getTimeOut(), "ms");

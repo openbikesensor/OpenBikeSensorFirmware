@@ -25,6 +25,7 @@
 #include <utils/button.h>
 #include <utils/timeutils.h>
 #include "OpenBikeSensorFirmware.h"
+#include "variant.h"
 
 #include "SPIFFS.h"
 #include <rom/rtc.h>
@@ -36,7 +37,7 @@
 
 // --- Global variables ---
 // Version only change the "vN.M" part if needed.
-const char *OBSVersion = "v0.20" BUILD_NUMBER;
+const char *OBSVersion = "v0.21" BUILD_NUMBER;
 
 const uint8_t LEFT_SENSOR_ID = 1;
 const uint8_t RIGHT_SENSOR_ID = 0;
@@ -46,8 +47,13 @@ const uint32_t LONG_BUTTON_PRESS_TIME_MS = 2000;
 
 // PINs
 const int PUSHBUTTON_PIN = 2;
+const int IP5306_BUTTON = 13;
+#ifdef OBSCLASSIC
 const uint8_t GPS_POWER_PIN = 12;
+#endif
 const uint8_t BatterieVoltage_PIN = 34;
+
+hw_timer_t *timer0_powermanagement_cfg = NULL;
 
 int confirmedMeasurements = 0;
 int numButtonReleased = 0;
@@ -57,8 +63,13 @@ Button button(PUSHBUTTON_PIN);
 
 Config config;
 
-SSD1306DisplayDevice* obsDisplay;
+DisplayDevice* obsDisplay;
+#ifdef OBSPRO
+PGASensorManager* sensorManager;
+#endif
+#ifdef OBSCLASSIC
 HCSR04SensorManager* sensorManager;
+#endif
 static BluetoothManager* bluetoothManager;
 
 Gps gps;
@@ -93,6 +104,7 @@ FileWriter* writer;
 
 const uint8_t displayAddress = 0x3c;
 
+
 // Enable dev-mode. Allows to
 // - set wifi config
 // - prints more detailed log messages to serial (WIFI password)
@@ -106,15 +118,25 @@ void handleButtonInServerMode();
 bool loadConfig(ObsConfig &cfg);
 void copyCollectedSensorData(DataSet *set);
 
-// The BMP280 can keep up to 3.4MHz I2C speed, so no need for an individual slower speed
-void switch_wire_speed_to_VL53(){
-	Wire.setClock(400000);
-}
-void switch_wire_speed_to_SSD1306(){
-	Wire.setClock(500000);
-}
-
 void setupSensors() {
+#ifdef OBSPRO
+  sensorManager = new PGASensorManager;
+
+  PGASensorInfo sensor1;
+  sensor1.sck_pin = SENSOR1_SCK_PIN;
+  sensor1.mosi_pin = SENSOR1_MOSI_PIN;
+  sensor1.miso_pin = SENSOR1_MISO_PIN;
+  sensor1.sensorLocation = "Left";
+  sensorManager->registerSensor(sensor1, 0);
+
+  PGASensorInfo sensor2;
+  sensor2.sck_pin = SENSOR2_SCK_PIN;
+  sensor2.mosi_pin = SENSOR2_MOSI_PIN;
+  sensor2.miso_pin = SENSOR2_MISO_PIN;
+  sensor2.sensorLocation = "Right";
+  sensorManager->registerSensor(sensor2, 1);
+#endif
+#ifdef OBSCLASSIC
   sensorManager = new HCSR04SensorManager;
 
   HCSR04SensorInfo sensorManaged1;
@@ -128,6 +150,7 @@ void setupSensors() {
   sensorManaged2.echoPin = (config.displayConfig & DisplaySwapSensors) ? 4 : 26;
   sensorManaged2.sensorLocation = (char*) "Left"; // TODO
   sensorManager->registerSensor(sensorManaged2, 1);
+#endif
 
   sensorManager->setOffsets(config.sensorOffsets);
 
@@ -156,14 +179,18 @@ static void setupBluetooth(const ObsConfig &cfg, const String &trackUniqueIdenti
 static void reportBluetooth() {
   const uint32_t currentInterval = currentTimeMillis / BLUETOOTH_INTERVAL_MILLIS;
   if (bluetoothManager && lastBluetoothInterval != currentInterval) {
-    log_d("Reporting BT: %d/%d cm",
-          sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
-          sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median());
+#ifdef OBSPRO
+    // TODO: Get median values from sensorManager
+    uint16_t left_median = 0;
+    uint16_t right_median = 0;
+#endif
+#ifdef OBSCLASSIC
+    uint16_t left_median = sensorManager->m_sensors[LEFT_SENSOR_ID].median->median();
+    uint16_t right_median = sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median();
+#endif
+    log_d("Reporting BT: %d/%d cm", left_median, right_median);
     lastBluetoothInterval = currentInterval;
-    bluetoothManager->newSensorValues(
-      currentTimeMillis,
-      sensorManager->m_sensors[LEFT_SENSOR_ID].median->median(),
-      sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median());
+    bluetoothManager->newSensorValues(currentTimeMillis, left_median, right_median);
   }
 }
 
@@ -194,6 +221,72 @@ static void buttonBluetooth(const DataSet *dataSet, uint16_t measureIndex) {
   }
 }
 
+static uint8_t shutdownState = 0;
+
+#ifdef OBSPRO
+// Power-management keep alive timer
+// This function is called every 100 ms
+static unsigned long timeOfLastPowerKeepAlive = 0;
+static uint8_t buttonPressedCounter = 0;
+static void powerKeepAliveTimerISR()
+{
+  // Send "keep alive" trigger to power management module
+  // This is done by toggling the pin every 300 ms or more
+  if(shutdownState == 0)
+  {
+    if(!digitalRead(IP5306_BUTTON) && millis() - timeOfLastPowerKeepAlive > POWER_KEEP_ALIVE_INTERVAL_MS)
+    {
+      timeOfLastPowerKeepAlive = millis();
+      digitalWrite(IP5306_BUTTON, HIGH);
+    }
+    else if(digitalRead(IP5306_BUTTON) && millis() - timeOfLastPowerKeepAlive > 300)
+    {
+      timeOfLastPowerKeepAlive = millis();
+      digitalWrite(IP5306_BUTTON, LOW);
+    }
+  }
+
+  // Soft power-off OBSPro when button is pressed for more than 2 seconds
+  if(button.read())
+  {
+    if(buttonPressedCounter < 255)
+      buttonPressedCounter++;
+  }
+  else
+    buttonPressedCounter = 0;
+
+  if(shutdownState == 0 && buttonPressedCounter >= 20) {
+    shutdownState = 1;
+  }
+  switch(shutdownState)
+  {
+    case 1:
+      digitalWrite(IP5306_BUTTON, LOW);
+      break;
+    case 4:
+      digitalWrite(IP5306_BUTTON, HIGH);
+      break;
+    case 7:
+      digitalWrite(IP5306_BUTTON, LOW);
+      break;
+    case 10:
+      digitalWrite(IP5306_BUTTON, HIGH);
+      break;
+    case 13:
+      digitalWrite(IP5306_BUTTON, LOW);
+      noInterrupts();
+      while(1)
+        NOP();
+      break;
+    default:
+      break;
+  }
+  if(shutdownState != 0 && shutdownState < 13)
+    shutdownState++;
+}
+
+#endif
+
 void setup() {
   Serial.begin(115200);
   log_i("openbikesensor.org - OBS/%s", OBSVersion);
@@ -203,22 +296,35 @@ void setup() {
   //##############################################################
 
   pinMode(PUSHBUTTON_PIN, INPUT);
+  pinMode(IP5306_BUTTON, OUTPUT);
+  digitalWrite(IP5306_BUTTON, LOW);
   pinMode(BatterieVoltage_PIN, INPUT);
+  #ifdef OBSCLASSIC
   pinMode(GPS_POWER_PIN, OUTPUT);
   digitalWrite(GPS_POWER_PIN,HIGH);
+  #endif
+
+#ifdef OBSPRO
+  // Setup power management timer to trigger every 100ms (clock is 80 MHz)
+  timer0_powermanagement_cfg = timerBegin(0, 1000, true);
+  timerAttachInterrupt(timer0_powermanagement_cfg, &powerKeepAliveTimerISR, true);
+  timerAlarmWrite(timer0_powermanagement_cfg, 8000, true);
+  timerAlarmEnable(timer0_powermanagement_cfg);
+#endif
 
   //##############################################################
   // Setup display
   //##############################################################
+#ifdef OBSCLASSIC
   Wire.begin();
+	Wire.setClock(500000);
   Wire.beginTransmission(displayAddress);
   byte displayError = Wire.endTransmission();
   if (displayError != 0) {
     Serial.println("Display not found");
   }
-  obsDisplay = new SSD1306DisplayDevice;
-
-  switch_wire_speed_to_SSD1306();
+#endif
+  obsDisplay = new DisplayDevice;
 
   obsDisplay->showLogo(true);
   obsDisplay->showTextOnGrid(2, obsDisplay->startLine(), OBSVersion);
@@ -328,8 +434,8 @@ void setup() {
   //##############################################################
 
   BMP280_active = TemperatureValue = bmp280.begin(BMP280_ADDRESS_ALT,BMP280_CHIPID);
-  if(BMP280_active == true) TemperatureValue = bmp280.readTemperature();
-
+  if(BMP280_active == true)
+    TemperatureValue = bmp280.readTemperature();
 
   gps.handle();
 
@@ -405,11 +511,16 @@ void writeDataset(const uint8_t confirmationSensorID, DataSet *dataset) {
 }
 
 void loop() {
-  log_v("loop()");
   //specify which sensors value can be confirmed by pressing the button, should be configurable
   const uint8_t confirmationSensorID = LEFT_SENSOR_ID;
   auto* currentSet = new DataSet;
   uint32_t thisLoopTow;
+
+  if(shutdownState != 0) {
+    obsDisplay->clear();
+    while(1)
+      delay(1);
+  }
 
   if (gps.hasTowTicks()) {
     /* only Timeinfo is reliably set until now! */
@@ -427,6 +538,7 @@ void loop() {
   currentSet->batteryLevel = voltageMeter->read();
 
   lastMeasurements = sensorManager->m_sensors[confirmationSensorID].numberOfTriggers;
+
   sensorManager->reset(startTimeMillis);
 
   // if the detected minimum was measured more than 5s ago, it is discarded and cannot be confirmed
@@ -469,8 +581,8 @@ void loop() {
     if (lastDisplayInterval != (currentTimeMillis / DISPLAY_INTERVAL_MILLIS)) {
       lastDisplayInterval = currentTimeMillis / DISPLAY_INTERVAL_MILLIS;
       obsDisplay->showValues(
-        sensorManager->m_sensors[LEFT_SENSOR_ID],
-        sensorManager->m_sensors[RIGHT_SENSOR_ID],
+        sensorManager->m_sensors[LEFT_SENSOR_ID].minDistance, sensorManager->m_sensors[LEFT_SENSOR_ID].sensorLocation, sensorManager->m_sensors[LEFT_SENSOR_ID].rawDistance,
+        sensorManager->m_sensors[RIGHT_SENSOR_ID].minDistance, sensorManager->m_sensors[RIGHT_SENSOR_ID].sensorLocation, sensorManager->m_sensors[RIGHT_SENSOR_ID].rawDistance, sensorManager->m_sensors[RIGHT_SENSOR_ID].distance,
         minDistanceToConfirm,
         voltageMeter->readPercentage(),
         (int16_t) TemperatureValue,
@@ -482,6 +594,7 @@ void loop() {
     }
     gps.handle();
     reportBluetooth();
+
     if (button.gotPressed()) { // after button was released, detect long press here
       // immediate user feedback - we start the action
       obsDisplay->highlight();
@@ -502,6 +615,7 @@ void loop() {
       minDistanceToConfirm = MAX_SENSOR_VALUE; // ready for next confirmation
     }
 
+    // TODO: Add support for temperature reading from PGA460
     if(BMP280_active == true)  TemperatureValue = bmp280.readTemperature();
 
     gps.handle();
@@ -599,6 +713,8 @@ bool loadConfig(ObsConfig &cfg) {
     }
   }
 
+  SPI.begin(18, 19, 23, 5);
+  SPI.setDataMode(SPI_MODE0);
   if (SD.begin() && SD.exists("/obs.json")) {
     obsDisplay->showTextOnGrid(2, obsDisplay->currentLine(), "Init from SD.");
     log_i("Configuration init from SD.");

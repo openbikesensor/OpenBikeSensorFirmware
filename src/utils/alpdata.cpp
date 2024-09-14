@@ -30,7 +30,7 @@
 /* Download http://alp.u-blox.com/current_14d.alp (ssl?) if there is a new one
  * Takes 5 seconds to update the data.
 */
-void AlpData::update(SSD1306DisplayDevice *display) {
+void AlpData::update(DisplayDevice *display) {
   String lastModified = loadLastModified();
 
   File f = SD.open(ALP_DATA_FILE_NAME, FILE_READ);
@@ -95,7 +95,7 @@ void AlpData::update(SSD1306DisplayDevice *display) {
   httpClient.end();
 }
 
-void AlpData::displayHttpClientError(SSD1306DisplayDevice *display, int httpError) {
+void AlpData::displayHttpClientError(DisplayDevice *display, int httpError) {
   display->showTextOnGrid(0, 4, String("ALP data failed ") + String(httpError).c_str());
   String errorString = HTTPClient::errorToString(httpError);
   display->showTextOnGrid(0, 5, errorString.c_str());
