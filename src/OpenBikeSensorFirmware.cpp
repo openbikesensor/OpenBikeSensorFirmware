@@ -77,7 +77,7 @@ Gps gps;
 static const long BLUETOOTH_INTERVAL_MILLIS = 100;
 static long lastBluetoothInterval = 0;
 
-static const long DISPLAY_INTERVAL_MILLIS = 25;
+static const long DISPLAY_INTERVAL_MILLIS = 200;
 static long lastDisplayInterval = 0;
 
 float TemperatureValue = -1;
