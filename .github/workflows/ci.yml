@@ -91,7 +91,7 @@ jobs:
     - name: Install build dependencies
       run: |
         apt-get update
-        apt-get install -qq -y zip curl python
+        apt-get install -qq -y zip curl python3 python3-cryptography
 
     - name: Update TLS Truststore
       run: |
