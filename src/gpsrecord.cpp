@@ -116,6 +116,7 @@ String GpsRecord::toScaledString(const int32_t value, const uint16_t scale) {
 }
 
 bool GpsRecord::hasValidFix() const {
+  log_d("hasValidFix: mFixStatus=%u, mHdop=%u, mSatellitesUsed=%u", mFixStatus, mHdop, mSatellitesUsed);
   return (mFixStatus == FIX_2D || mFixStatus == FIX_3D || mFixStatus == GPS_AND_DEAD_RECKONING)
     && mHdop != 9999 && mSatellitesUsed != 0;
 }

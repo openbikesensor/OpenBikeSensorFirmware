@@ -739,6 +739,8 @@ bool Gps::hasFix(DisplayDevice *display) const {
     log_d("Got location...");
     display->showTextOnGrid(2, 4, "Got location");
     result = true;
+  } else {
+    log_d("NO location...mLastTimeTimeSet=%u", mLastTimeTimeSet);
   }
   return result;
 }
