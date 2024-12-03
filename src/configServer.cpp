@@ -1479,7 +1479,7 @@ void uploadTracks(HTTPResponse *res) {
         okCount++;
       } else {
         html += "<a href='#' title='" + ObsUtils::encodeForXmlAttribute(uploader.getLastStatusMessage())
-                + "'>" + HTML_ENTITY_FAILED_CROSS + "</a>";
+                + "'>" + HTML_ENTITY_FAILED_CROSS + "</a><p><tt>" + ObsUtils::encodeForXmlAttribute(uploader.getLastStatusMessage()) + "</tt></p>";
         failedCount++;
       }
       if (res) {
