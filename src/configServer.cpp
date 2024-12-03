@@ -551,7 +551,7 @@ void registerPages(HTTPServer * httpServer) {
   httpServer->registerNode(new ResourceNode("/settings/restore", HTTP_POST, handleBackupRestore));
   httpServer->registerNode(new ResourceNode("/settings/wifi", HTTP_GET, handleWifi));
   httpServer->registerNode(new ResourceNode("/settings/wifi/action", HTTP_POST, handleWifiSave));
-  httpServer->registerNode(new ResourceNode("/settings/wifi/delete", HTTP_POST, handleWifiDeleteAction));
+  httpServer->registerNode(new ResourceNode("/settings/wifi/delete", HTTP_GET, handleWifiDeleteAction));
   httpServer->registerNode(new ResourceNode("/settings/general", HTTP_GET, handleConfig));
   httpServer->registerNode(new ResourceNode("/settings/general/action", HTTP_POST, handleConfigSave));
   httpServer->registerNode(new ResourceNode("/updateFlash", HTTP_GET, handleFlashUpdate));
