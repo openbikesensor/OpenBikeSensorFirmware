@@ -139,21 +139,14 @@ void Gps::sendUbxDirect() {
 
 /* Resets the stored GPS config and stores our config! */
 void Gps::configureGpsModule() {
-  // Clear configuration, RESET TO DEFAULT
-  const uint8_t UBX_CFG_CFG_CLR[] = {
-    0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0xFE, 0xFF, 0x00, 0x00, 0x03
-  };
-#ifdef UBX_M10
-  // It is fairly stupid to reset the config here, as the baud rate will be reset (at least for M10)
-  //sendUbx(UBX_MSG::CFG_CFG, UBX_CFG_CFG_CLR, sizeof(UBX_CFG_CFG_CLR)); // Newer devices will not answer this request
-#endif
-#ifdef UBX_M6
-  sendAndWaitForAck(UBX_MSG::CFG_CFG, UBX_CFG_CFG_CLR, sizeof(UBX_CFG_CFG_CLR));
-#endif
-  handle(300);
-
-  log_d("Start CFG");
+  // The CFG_CFG_CLR caused trouble on newer modules - connection settings get reset.
+  // no CFG_CFG_CLR for now if this fails we might need more fine-grained
+  // reset
+  // const uint8_t UBX_CFG_CFG_CLR[] = {
+  //   0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  //   0xFE, 0xFF, 0x00, 0x00, 0x03
+  // };
+  log_i("Start GPS CFG");
 #ifdef UBX_M6
   // INF messages via UBX only
   const uint8_t UBX_CFG_INF_UBX[] = {
@@ -1286,7 +1279,7 @@ void Gps::handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps &message, const uin
     mIncomingGpsRecord.setWeek(mLastGpsWeek);
   }
   if ((message.valid & 0x03) == 0x03  // WEEK && TOW
-      && delayMs < 20
+      && delayMs < 200 // FIXME: needs to be lower once we have multi GPS versions support 20
       && message.tAcc < (20 * 1000 * 1000 /* 20ms */)
       && (mLastTimeTimeSet == 0
           || (mLastTimeTimeSet + (2 * 60 * 1000 /* 2 minutes */)) < receivedMs)) {
