@@ -585,6 +585,7 @@ class Gps {
 #ifdef UBX_M10
     bool sendCfgAndWaitForAck(enum UBX_CFG_LAYER layer, UBX_CFG_KEY_ID keyId, uint32_t value, const uint16_t timeoutMs = 200);  // Only available in M10
 #endif
+    bool waitForData(const uint16_t timeoutMs);
 
     void parseUbxMessage();
 

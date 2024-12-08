@@ -273,14 +273,12 @@ void Gps::softResetGps() {
 //  const uint8_t UBX_CFG_RST[] = {0xFF, 0xFF, 0x02, 0x00}; // Cold START
   // we had the case where the reset took several seconds
   // see https://github.com/openbikesensor/OpenBikeSensorFirmware/issues/309
-#ifdef UBX_M6
-  sendAndWaitForAck(UBX_MSG::CFG_RST, UBX_CFG_RST, 4, 5000);
-#endif
-#ifdef UBX_M10
-  // Newer firmware (like M10) will not ack this message
+  // Newer firmware (like M10 and likely also M8) will not ack this
+  // message so we do not wait for the ACK
   sendUbx(UBX_MSG::CFG_RST, UBX_CFG_RST, 4);
-#endif
-  handle(200);
+  waitForData(1000);
+  handle();
+  log_i("Soft-RESET GPS! Done");
 }
 
 /* There had been changes for the satellites used for SBAS
@@ -601,6 +599,17 @@ bool Gps::handle() {
   }
   // TODO: Add dead device detection re-init if no data for 60 seconds...
   return gotGpsData;
+}
+
+bool Gps::waitForData(const uint16_t timeoutMs) {
+  if (mSerial.available() > 0) {
+    return true;
+  }
+  auto end = millis() + timeoutMs;
+  while (mSerial.available() <= 0 && millis() < end) {
+    delay(1);
+  }
+  return mSerial.available() > 0;
 }
 
 static const String STATIC_MSG_PREFIX[] = {
