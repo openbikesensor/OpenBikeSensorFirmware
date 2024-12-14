@@ -261,7 +261,7 @@ static void powerKeepAliveTimerISR()
   else
     buttonPressedCounter = 0;
 
-  if(shutdownState == 0 && buttonPressedCounter >= 20) {
+  if(shutdownState == 0 && buttonPressedCounter >= 50) {
     shutdownState = 1;
   }
   switch(shutdownState)
