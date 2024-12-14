@@ -160,7 +160,10 @@ class Gps {
         CFG_VALSET = 0x8a06,  // Only available in M10
         CFG_RST = 0x0406,
         CFG_TP = 0x0706,
+        CFG_TP5 = 0x3106,
+
         CFG_CFG = 0x0906,
+        CFG_GNSS = 0x3e06,
         CFG_SBAS = 0x1606,
         CFG_NAVX5 = 0x2306,
         CFG_NAV5 = 0x2406,

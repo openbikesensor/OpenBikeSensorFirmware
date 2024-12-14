@@ -212,6 +212,20 @@ void Gps::configureGpsModule() {
     0x00, 0x00, 0x00, 0x00
   };
   sendAndWaitForAck(UBX_MSG::CFG_NAV5, UBX_CFG_NAV5, sizeof(UBX_CFG_NAV5));
+  // on m8n enable all nav systems but baidou - baidou fails when used together with galileo
+  const uint8_t UBX_CFG_GNSS[] = {
+      0x00, 0x20, 0x20, 0x07, 0x00, 0x08, 0x10, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x01, 0x03,
+      0x00, 0x01, 0x00, 0x01, 0x00, 0x02, 0x04, 0x08, 0x00, 0x01, 0x00, 0x01, 0x00, 0x03, 0x08,
+      0x10, 0x00, 0x00, 0x00, 0x01, 0x00, 0x03, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x05,
+      0x00, 0x03, 0x00, 0x01, 0x00, 0x01, 0x00, 0x06, 0x08, 0x0e, 0x00, 0x01, 0x00, 0x01, 0x00
+  } ;
+  bool success = sendAndWaitForAck(UBX_MSG::CFG_GNSS, UBX_CFG_GNSS, sizeof(UBX_CFG_GNSS));
+  if (success) {
+    addStatisticsMessage("Successfully set GNSS");
+  } 
+  else {
+    addStatisticsMessage("GNSS not configured, likely older GPS");
+  }
 #endif
 #ifdef UBX_M10
   sendCfgAndWaitForAck(UBX_CFG_LAYER::RAM, UBX_CFG_KEY_ID::CFG_NAVSPG_DYNMODEL, 4);  // Set dynamic model to 4 (automotive)
@@ -226,7 +240,16 @@ void Gps::configureGpsModule() {
     0x01, 0x01, 0x00, 0x00, 0x32, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00
   };
-  sendAndWaitForAck(UBX_MSG::CFG_TP, UBX_CFG_TP, sizeof(UBX_CFG_TP));
+  success = sendAndWaitForAck(UBX_MSG::CFG_TP, UBX_CFG_TP, sizeof(UBX_CFG_TP));
+  // newer gps (m8n) use tp5 for timepulse config
+  if (!success) {
+    const uint8_t UBX_CFG_TP5[] = { 0x00, 0x01, 0x00, 0x00, 0x32, 0x00, 0x00, 0x00, 0x40, 0x42, 0x0f, 0x00, 0x40, 0x42, 0x0f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x27, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x77, 0x00, 0x00, 0x00};
+    if (!sendAndWaitForAck(UBX_MSG::CFG_TP5, UBX_CFG_TP5, sizeof(UBX_CFG_TP5))) {
+      addStatisticsMessage("Successfully set timepulse for newer gps");
+    } else {
+      addStatisticsMessage("No ack for setting timepulse in either new or old format");
+    }
+  }
 #endif
 
 #ifdef UBX_M6
@@ -1026,7 +1049,7 @@ void Gps::parseUbxMessage() {
       break;
     case (uint16_t) UBX_MSG::ACK_NAK: {
       if (mLastAckMsgId != 0) {
-        log_e("ACK overrun had ack: %d for 0x%04x", mAckReceived, mLastAckMsgId);
+        log_e("ACK-NAK overrun had ack: %d for 0x%04x", mAckReceived, mLastAckMsgId);
       }
       log_e("ACK-NAK 0x%04x", mGpsBuffer.ack.ubxMsgId);
       mAckReceived = false;
@@ -1260,7 +1283,10 @@ void Gps::parseUbxMessage() {
       log_d("CFG_SBAS");
       break;
     case (uint16_t) UBX_MSG::CFG_NAV5:
-      log_d("CFG_SBAS");
+      log_d("CFG_NAV5");
+      break;
+    case (uint16_t) UBX_MSG::CFG_GNSS:
+      log_d("CFG_GNSS");
       break;
     default:
       log_e("Got UBX_MESSAGE! Id: 0x%04x Len %d iTOW %d", mGpsBuffer.ubxHeader.ubxMsgId,
@@ -1288,7 +1314,7 @@ void Gps::handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps &message, const uin
     mIncomingGpsRecord.setWeek(mLastGpsWeek);
   }
   if ((message.valid & 0x03) == 0x03  // WEEK && TOW
-      && delayMs < 200 // FIXME: needs to be lower once we have multi GPS versions support 20
+      && delayMs < 80
       && message.tAcc < (20 * 1000 * 1000 /* 20ms */)
       && (mLastTimeTimeSet == 0
           || (mLastTimeTimeSet + (2 * 60 * 1000 /* 2 minutes */)) < receivedMs)) {
