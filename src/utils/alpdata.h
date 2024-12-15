@@ -33,7 +33,7 @@ static const char *const ALP_DATA_FILE_NAME = "/current_14d.alp";
 static const char *const ALP_NEW_DATA_FILE_NAME = "/current_14d.new";
 static const char *const AID_INI_DATA_FILE_NAME = "/aid_ini.ubx";
 
-static const int32_t ALP_DATA_MIN_FILE_SIZE = 80000; // CHECK!
+static const int32_t ALP_DATA_MIN_FILE_SIZE = 60000; // We have seen 71k ALP files - so lets hope 60k is safe
 
 static const char *const ALP_DOWNLOAD_URL = "https://alp.u-blox.com/current_14d.alp";
 
