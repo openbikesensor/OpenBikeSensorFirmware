@@ -1314,7 +1314,6 @@ void Gps::handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps &message, const uin
     mIncomingGpsRecord.setWeek(mLastGpsWeek);
   }
   if ((message.valid & 0x03) == 0x03  // WEEK && TOW
-      && delayMs < 250
       && message.tAcc < (20 * 1000 * 1000 /* 20ms */)
       && (mLastTimeTimeSet == 0
           || (mLastTimeTimeSet + (2 * 60 * 1000 /* 2 minutes */)) < receivedMs)) {
@@ -1327,19 +1326,20 @@ void Gps::handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps &message, const uin
                            + oldTime + " -> " + newTime + " delay " + String(delayMs)
                            + "ms. tAcc:" + String(message.tAcc) + "ns");
     }
-    if (mLastTimeTimeSet == 0) {
-      mLastTimeTimeSet = receivedMs;
-      // This triggers another NAV-TIMEGPS message!
-#ifdef UBX_M6
-      setMessageInterval(UBX_MSG::NAV_TIMEGPS, 240, false); // every 4 minutes
-#endif
+    else if (mLastTimeTimeSet == 0) {
+      #ifdef UBX_M6 
+      setMessageInterval(UBX_MSG::NAV_TIMEGPS, (delayMs>200) ? 2:240, false); // every 4 minutes or, if the last one wasn't accurate yet every 2 seconds.
+      if (delayMs < 200) 
+      #endif
+        mLastTimeTimeSet = receivedMs;
 #ifdef UBX_M10
+      // This triggers another NAV-TIMEGPS message!
       setMessageInterval(UBX_CFG_KEY_ID::CFG_MSGOUT_UBX_NAV_TIMEGPS_UART1, 240, false); // every 4 minutes
 #endif
     } else {
       mLastTimeTimeSet = receivedMs;
     }
-  }
+  }       
 }
 
 void Gps::handleUbxAidIni(const GpsBuffer::AidIni &message) const {
