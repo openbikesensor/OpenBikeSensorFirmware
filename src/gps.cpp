@@ -1314,7 +1314,7 @@ void Gps::handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps &message, const uin
     mIncomingGpsRecord.setWeek(mLastGpsWeek);
   }
   if ((message.valid & 0x03) == 0x03  // WEEK && TOW
-      && delayMs < 80
+      && delayMs < 250
       && message.tAcc < (20 * 1000 * 1000 /* 20ms */)
       && (mLastTimeTimeSet == 0
           || (mLastTimeTimeSet + (2 * 60 * 1000 /* 2 minutes */)) < receivedMs)) {
