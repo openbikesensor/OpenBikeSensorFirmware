@@ -1115,8 +1115,16 @@ void Gps::parseUbxMessage() {
     }
       break;
     case (uint16_t) UBX_MSG::MON_HW: {
-      log_v("MON-HW Antenna Status %d, noise level %d", mGpsBuffer.monHw.aStatus,
-            mGpsBuffer.monHw.noisePerMs);
+      const char* aStatus;
+      switch (mGpsBuffer.monHw.aStatus) {
+        case mGpsBuffer.monHw.INIT: aStatus = "init"; break;
+        case mGpsBuffer.monHw.DONTKNOW: aStatus = "?"; break;
+        case mGpsBuffer.monHw.OK: aStatus = "ok"; break;
+        case mGpsBuffer.monHw.SHORT: aStatus = "short"; break;
+        case mGpsBuffer.monHw.OPEN: aStatus = "open"; break;
+        default: aStatus = "invalid";
+      }
+      log_v("MON-HW Antenna Status %d %s, Antenna Power %d, Gain (0-8191) %d, noise level %d", mGpsBuffer.monHw.aStatus, aStatus, mGpsBuffer.monHw.aPower, mGpsBuffer.monHw.agcCnt, mGpsBuffer.monHw.noisePerMs);
       mLastNoiseLevel = mGpsBuffer.monHw.noisePerMs;
     }
       break;
