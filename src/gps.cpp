@@ -1124,7 +1124,7 @@ void Gps::parseUbxMessage() {
         case mGpsBuffer.monHw.OPEN: aStatus = "open"; break;
         default: aStatus = "invalid";
       }
-      log_v("MON-HW Antenna Status %d %s, Antenna Power %d, Gain (0-8191) %d, noise level %d", mGpsBuffer.monHw.aStatus, aStatus, mGpsBuffer.monHw.aPower, mGpsBuffer.monHw.agcCnt, mGpsBuffer.monHw.noisePerMs);
+      log_d("MON-HW Antenna Status %d %s, Antenna Power %d, Gain (0-8191) %d, noise level %d", mGpsBuffer.monHw.aStatus, aStatus, mGpsBuffer.monHw.aPower, mGpsBuffer.monHw.agcCnt, mGpsBuffer.monHw.noisePerMs);
       mLastNoiseLevel = mGpsBuffer.monHw.noisePerMs;
     }
       break;
@@ -1152,7 +1152,7 @@ void Gps::parseUbxMessage() {
     }
       break;
     case (uint16_t) UBX_MSG::NAV_SOL: {
-      log_v("SOL: iTOW: %u, gpsFix: %d, flags: %02x, numSV: %d, pDop: %04d.",
+      log_d("SOL: iTOW: %u, gpsFix: %d, flags: %02x, numSV: %d, pDop: %04d.",
             mGpsBuffer.navSol.iTow, mGpsBuffer.navSol.gpsFix, mGpsBuffer.navSol.flags,
             mGpsBuffer.navSol.numSv, mGpsBuffer.navSol.pDop);
       if (mGpsBuffer.navSol.flags & 4) { // WKNSET
@@ -1170,7 +1170,7 @@ void Gps::parseUbxMessage() {
     }
       break;
     case (uint16_t) UBX_MSG::NAV_PVT: {
-      log_v("PVT: iTOW: %u, fixType: %d, flags: %02x, numSV: %d, pDop: %04d.",
+      log_d("PVT: iTOW: %u, fixType: %d, flags: %02x, numSV: %d, pDop: %04d.",
             mGpsBuffer.navPvt.iTow, mGpsBuffer.navPvt.fixType, mGpsBuffer.navPvt.flags,
             mGpsBuffer.navPvt.numSV, mGpsBuffer.navPvt.pDOP);
       prepareGpsData(mGpsBuffer.navPvt.iTow, mMessageStarted);
@@ -1178,7 +1178,7 @@ void Gps::parseUbxMessage() {
     }
       break;
     case (uint16_t) UBX_MSG::NAV_VELNED: {
-      log_v("VELNED: iTOW: %u, speed: %d cm/s, gSpeed: %d cm/s, heading: %d,"
+      log_d("VELNED: iTOW: %u, speed: %d cm/s, gSpeed: %d cm/s, heading: %d,"
             " speedAcc: %d, cAcc: %d",
             mGpsBuffer.navVelned.iTow, mGpsBuffer.navVelned.speed, mGpsBuffer.navVelned.gSpeed,
             mGpsBuffer.navVelned.heading, mGpsBuffer.navVelned.sAcc, mGpsBuffer.navVelned.cAcc);
@@ -1311,7 +1311,7 @@ void Gps::parseUbxMessage() {
       log_d("CFG_GNSS");
       break;
     default:
-      log_e("Got UBX_MESSAGE! Id: 0x%04x Len %d iTOW %d", mGpsBuffer.ubxHeader.ubxMsgId,
+      log_e("Got unparsed UBX_MESSAGE! Id: 0x%04x Len %d iTOW %d", mGpsBuffer.ubxHeader.ubxMsgId,
             mGpsBuffer.ubxHeader.length, mGpsBuffer.navStatus.iTow);
   }
 }
