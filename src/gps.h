@@ -107,6 +107,8 @@ class Gps {
     uint32_t getNumberOfAlpBytesSent() const;
     uint32_t getUnexpectedCharReceivedCount() const;
 
+    void coldResetGps();
+
   private:
     /* ALP msgs up to 0x16A seen might be more? */
     static const int MAX_MESSAGE_LENGTH = 128 * 3;
