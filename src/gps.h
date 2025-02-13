@@ -553,6 +553,7 @@ class Gps {
     uint32_t mUnexpectedCharReceivedCount = 0;
     uint8_t mNmeaChk;
     uint16_t mLastNoiseLevel;
+    uint16_t mLastGain;
     AlpData mAlpData;
     bool mAidIniSent = false;
     /* record that was last received */

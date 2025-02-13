@@ -795,7 +795,8 @@ void Gps::showWaitStatus(DisplayDevice const * display) const {
   if (mValidMessagesReceived == 0) { // could not get any valid char from GPS module
     satellitesString[0] = "OFF?";
   } else if (mLastTimeTimeSet == 0) {
-    satellitesString[0] = String(mCurrentGpsRecord.mSatellitesUsed) + "sats SN:" + String(mLastNoiseLevel);
+    satellitesString[0] = "aGain:" + String(mLastGain);
+    satellitesString[1] = String(mCurrentGpsRecord.mSatellitesUsed) + "sats SN:" + String(mLastNoiseLevel);
   } else {
     satellitesString[0] = "GPS " + TimeUtils::timeToString();
     satellitesString[1] = String(mCurrentGpsRecord.mSatellitesUsed) + "sats SN:" + String(mLastNoiseLevel);
@@ -1126,6 +1127,7 @@ void Gps::parseUbxMessage() {
       }
       log_d("MON-HW Antenna Status %d %s, Antenna Power %d, Gain (0-8191) %d, noise level %d", mGpsBuffer.monHw.aStatus, aStatus, mGpsBuffer.monHw.aPower, mGpsBuffer.monHw.agcCnt, mGpsBuffer.monHw.noisePerMs);
       mLastNoiseLevel = mGpsBuffer.monHw.noisePerMs;
+      mLastGain = mGpsBuffer.monHw.agcCnt;
     }
       break;
     case (uint16_t) UBX_MSG::NAV_STATUS: {
