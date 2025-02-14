@@ -1070,6 +1070,8 @@ static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
   page += keyValue("GPS satellites", gps.getValidSatellites());
   page += keyValue("GPS uptime", gps.getUptime(), "ms");
   page += keyValue("GPS noise level", gps.getLastNoiseLevel());
+  page += keyValue("GPS Antenna Gain", gps.getLastAntennaGain());
+  page += keyValue("GPS Jamming Level", gps.getLastJamInd());
   page += keyValue("GPS baud rate", gps.getBaudRate());
   page += keyValue("GPS ALP bytes", gps.getNumberOfAlpBytesSent());
   page += keyValue("GPS messages", gps.getMessagesHtml());

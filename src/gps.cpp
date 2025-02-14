@@ -1128,6 +1128,7 @@ void Gps::parseUbxMessage() {
       log_d("MON-HW Antenna Status %d %s, Antenna Power %d, Gain (0-8191) %d, noise level %d", mGpsBuffer.monHw.aStatus, aStatus, mGpsBuffer.monHw.aPower, mGpsBuffer.monHw.agcCnt, mGpsBuffer.monHw.noisePerMs);
       mLastNoiseLevel = mGpsBuffer.monHw.noisePerMs;
       mLastGain = mGpsBuffer.monHw.agcCnt;
+      mLastJamInd = mGpsBuffer.monHw.jamInd;
     }
       break;
     case (uint16_t) UBX_MSG::NAV_STATUS: {
@@ -1433,6 +1434,14 @@ void Gps::aidIni() {
 
 uint16_t Gps::getLastNoiseLevel() const {
   return mLastNoiseLevel;
+}
+
+uint16_t Gps::getLastAntennaGain() const {
+  return mLastGain;
+}
+
+uint8_t Gps::getLastJamInd() const {
+  return mLastJamInd;
 }
 
 uint32_t Gps::getBaudRate() {

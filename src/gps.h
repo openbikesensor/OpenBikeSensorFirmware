@@ -70,6 +70,10 @@ class Gps {
 
     uint16_t getLastNoiseLevel() const;
 
+    uint16_t getLastAntennaGain() const;
+
+    uint8_t getLastJamInd() const;
+
     /* Collected informational messages as String. */
     String getMessages() const;
 
@@ -306,7 +310,7 @@ class Gps {
         uint8_t flags;
         uint8_t reserved1;
         uint32_t usedMask;
-        uint8_t vp[25]; //M8 only 17bytes?
+        uint8_t vp[17]; //M6 25bytes, M8 only 17bytes?
         uint8_t jamInd; //cwSuppression / CW interference suppression level, scaled (0 = no CW jamming, 255 = strong CW jamming)
         uint16_t reserved3;
         uint32_t pinIrq;
@@ -554,6 +558,7 @@ class Gps {
     uint8_t mNmeaChk;
     uint16_t mLastNoiseLevel;
     uint16_t mLastGain;
+    uint8_t mLastJamInd;
     AlpData mAlpData;
     bool mAidIniSent = false;
     /* record that was last received */
