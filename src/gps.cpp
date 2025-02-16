@@ -34,10 +34,10 @@ const String Gps::INF_SEVERITY_STRING[] = {
 void Gps::begin() {
   setBaud();
   softResetGps();
-  if (mGpsNeedsConfigUpdate) {
+  //if (mGpsNeedsConfigUpdate) {
     configureGpsModule();
-  }
-  enableAlpIfDataIsAvailable();
+  //}
+  // enableAlpIfDataIsAvailable();
   pollStatistics();
   if (mLastTimeTimeSet == 0) {
 #ifdef UBX_M10
@@ -249,6 +249,14 @@ void Gps::configureGpsModule() {
     } else {
       addStatisticsMessage("No ack for setting timepulse in either new or old format");
     }
+    const uint8_t UBX_CFG_RATE[] = {0xE8, 0x03, 0x01, 0x00, 0x00, 0x00};
+    if (!sendAndWaitForAck(UBX_MSG::CFG_TP5, UBX_CFG_TP5, sizeof(UBX_CFG_RATE))) {
+      addStatisticsMessage("Successfully set rate");
+      obsDisplay->showTextOnGrid(0, 5, "rate set");
+    }      else{
+      obsDisplay->showTextOnGrid(0, 5, "rate not set");
+    } 
+
   }
 #endif
 
@@ -292,8 +300,8 @@ void Gps::configureGpsModule() {
 void Gps::softResetGps() {
   log_i("Soft-RESET GPS!");
   handle();
-  const uint8_t UBX_CFG_RST[] = {0x00, 0x00, 0x02, 0x00}; // WARM START
-//  const uint8_t UBX_CFG_RST[] = {0xFF, 0xFF, 0x02, 0x00}; // Cold START
+  //const uint8_t UBX_CFG_RST[] = {0x00, 0x00, 0x02, 0x00}; // WARM START
+  const uint8_t UBX_CFG_RST[] = {0xFF, 0x81, 0x04, 0x00}; // Cold START '0xFF, 0x81, 0x04, 0x00'
   // we had the case where the reset took several seconds
   // see https://github.com/openbikesensor/OpenBikeSensorFirmware/issues/309
   // Newer firmware (like M10 and likely also M8) will not ack this
@@ -777,7 +785,7 @@ int32_t Gps::getMessagesWithFailedCrcCount() const {
 }
 
 void Gps::showWaitStatus(DisplayDevice const * display) const {
-  String satellitesString[2];
+  String satellitesString[3];
   if (mValidMessagesReceived == 0) { // could not get any valid char from GPS module
     satellitesString[0] = "OFF?";
   } else if (mLastTimeTimeSet == 0) {
@@ -786,13 +794,15 @@ void Gps::showWaitStatus(DisplayDevice const * display) const {
     satellitesString[0] = "GPS " + TimeUtils::timeToString();
     satellitesString[1] = String(mCurrentGpsRecord.mSatellitesUsed) + "sats SN:" + String(mLastNoiseLevel);
   }
+  satellitesString[2] = String(mCurrentGpsRecord.mFixStatus) + "<fx m>" + String(mValidMessagesReceived);
 
-  if (satellitesString[1].isEmpty()) {
-    obsDisplay->showTextOnGrid(2, display->currentLine(), satellitesString[0]);
-  } else {
     obsDisplay->showTextOnGrid(2, display->currentLine() - 1, satellitesString[0]);
     obsDisplay->showTextOnGrid(2, display->currentLine(), satellitesString[1]);
-  }
+    obsDisplay->showTextOnGrid(0, 1, satellitesString[2]);
+    obsDisplay->showTextOnGrid(0, 2, String(mCurrentGpsRecord.mLatitude));
+    obsDisplay->showTextOnGrid(0, 3, String(mCurrentGpsRecord.mLongitude));
+    obsDisplay->showTextOnGrid(0, 4, String(mCurrentGpsRecord.hwVer));
+    obsDisplay->showTextOnGrid(0, 5, String(mCurrentGpsRecord.swVer));
 }
 
 bool Gps::moduleIsAlive() const {
@@ -1098,6 +1108,8 @@ void Gps::parseUbxMessage() {
             String(mGpsBuffer.monVer.swVersion).c_str(),
             String(mGpsBuffer.monVer.hwVersion).c_str(),
             mGpsBuffer.ubxHeader.length);
+      mIncomingGpsRecord.swVer = String(mGpsBuffer.monVer.swVersion);
+      mIncomingGpsRecord.hwVer = String(mGpsBuffer.monVer.hwVersion);
     }
       break;
     case (uint16_t) UBX_MSG::MON_HW: {
@@ -1314,10 +1326,9 @@ void Gps::handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps &message, const uin
     mIncomingGpsRecord.setWeek(mLastGpsWeek);
   }
   if ((message.valid & 0x03) == 0x03  // WEEK && TOW
-      && delayMs < 250
       && message.tAcc < (20 * 1000 * 1000 /* 20ms */)
-      && (mLastTimeTimeSet == 0
-          || (mLastTimeTimeSet + (2 * 60 * 1000 /* 2 minutes */)) < receivedMs)) {
+      && ((mLastTimeTimeSet == 0)
+          || ((mLastTimeTimeSet + (2 * 60 * 1000 /* 2 minutes */)) < receivedMs))) {
     String oldTime = TimeUtils::dateTimeToString();
     TimeUtils::setClockByGps(message.iTow, message.fTow, message.week);
     String newTime = TimeUtils::dateTimeToString();
@@ -1331,7 +1342,7 @@ void Gps::handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps &message, const uin
       mLastTimeTimeSet = receivedMs;
       // This triggers another NAV-TIMEGPS message!
 #ifdef UBX_M6
-      setMessageInterval(UBX_MSG::NAV_TIMEGPS, 240, false); // every 4 minutes
+      setMessageInterval(UBX_MSG::NAV_TIMEGPS, (delayMs>200) ? 5 : 240, false); // every 4 minutes
 #endif
 #ifdef UBX_M10
       setMessageInterval(UBX_CFG_KEY_ID::CFG_MSGOUT_UBX_NAV_TIMEGPS_UART1, 240, false); // every 4 minutes
