@@ -31,14 +31,56 @@ const String Gps::INF_SEVERITY_STRING[] = {
   String("TST"), String("DBG")
 };
 
+bool Gps::is_neo6() const {
+  if (String(hwString).substring(0,4) == String("00040007").substring(0,4)) {
+    return true;
+  }
+  return false;
+}
+
+bool Gps::is_neo8() const {
+  if (String(hwString).substring(0,4) == String("00080000").substring(0,4)) {
+    return true;
+  }
+  return false;
+}
+
+bool Gps::is_neo10() const {
+  if (String(hwString).substring(0,4) == String("000A0000").substring(0,4)) {
+    return true;
+  }
+  return false;
+}
+
+String Gps::hw() const {
+  if (is_neo6()){
+    return "Neo6";
+  }
+  if (is_neo8()){
+    return "Neo8";
+  }
+  if (is_neo10()) {
+    return "NeoA";
+  }
+  return "Neo" + String(hwString).substring(3,4);
+}
+
 void Gps::begin() {
   setBaud();
   softResetGps();
-  //if (mGpsNeedsConfigUpdate) {
+  if (mGpsNeedsConfigUpdate) {
     configureGpsModule();
-  //}
-  // enableAlpIfDataIsAvailable();
+  }
   pollStatistics();
+  if(is_neo8()) {
+    coldStartGps();
+  }  
+  pollStatistics();
+
+  if (is_neo6()) {
+    enableAlpIfDataIsAvailable();
+  }
+  
   if (mLastTimeTimeSet == 0) {
 #ifdef UBX_M10
     setMessageInterval(UBX_CFG_KEY_ID::CFG_MSGOUT_UBX_NAV_TIMEGPS_UART1, 1);
@@ -300,6 +342,21 @@ void Gps::configureGpsModule() {
 void Gps::softResetGps() {
   log_i("Soft-RESET GPS!");
   handle();
+  const uint8_t UBX_CFG_RST[] = {0x00, 0x00, 0x02, 0x00}; // WARM START
+  //const uint8_t UBX_CFG_RST[] = {0xFF, 0x81, 0x04, 0x00}; // Cold START '0xFF, 0x81, 0x04, 0x00'
+  // we had the case where the reset took several seconds
+  // see https://github.com/openbikesensor/OpenBikeSensorFirmware/issues/309
+  // Newer firmware (like M10 and likely also M8) will not ack this
+  // message so we do not wait for the ACK
+  sendUbx(UBX_MSG::CFG_RST, UBX_CFG_RST, 4);
+  waitForData(1000);
+  handle();
+  log_i("Soft-RESET GPS! Done");
+}
+
+void Gps::coldStartGps() {
+  log_i("Cold-Start GPS!");
+  handle();
   //const uint8_t UBX_CFG_RST[] = {0x00, 0x00, 0x02, 0x00}; // WARM START
   const uint8_t UBX_CFG_RST[] = {0xFF, 0x81, 0x04, 0x00}; // Cold START '0xFF, 0x81, 0x04, 0x00'
   // we had the case where the reset took several seconds
@@ -309,7 +366,7 @@ void Gps::softResetGps() {
   sendUbx(UBX_MSG::CFG_RST, UBX_CFG_RST, 4);
   waitForData(1000);
   handle();
-  log_i("Soft-RESET GPS! Done");
+  log_i("Cold Start GPS! Done");
 }
 
 /* There had been changes for the satellites used for SBAS
@@ -785,24 +842,31 @@ int32_t Gps::getMessagesWithFailedCrcCount() const {
 }
 
 void Gps::showWaitStatus(DisplayDevice const * display) const {
+  static bool clear = false;
+  if (!is_neo6() && !clear) {
+     obsDisplay->clear();
+     clear = true;
+  }
   String satellitesString[3];
   if (mValidMessagesReceived == 0) { // could not get any valid char from GPS module
     satellitesString[0] = "OFF?";
   } else if (mLastTimeTimeSet == 0) {
     satellitesString[0] = String(mCurrentGpsRecord.mSatellitesUsed) + "sats SN:" + String(mLastNoiseLevel);
   } else {
-    satellitesString[0] = "GPS " + TimeUtils::timeToString();
+    satellitesString[0] = String(hw()).substring(1) + TimeUtils::timeToString();
     satellitesString[1] = String(mCurrentGpsRecord.mSatellitesUsed) + "sats SN:" + String(mLastNoiseLevel);
   }
   satellitesString[2] = String(mCurrentGpsRecord.mFixStatus) + "<fx m>" + String(mValidMessagesReceived);
 
     obsDisplay->showTextOnGrid(2, display->currentLine() - 1, satellitesString[0]);
     obsDisplay->showTextOnGrid(2, display->currentLine(), satellitesString[1]);
-    obsDisplay->showTextOnGrid(0, 1, satellitesString[2]);
-    obsDisplay->showTextOnGrid(0, 2, String(mCurrentGpsRecord.mLatitude));
-    obsDisplay->showTextOnGrid(0, 3, String(mCurrentGpsRecord.mLongitude));
-    obsDisplay->showTextOnGrid(0, 4, String(mCurrentGpsRecord.hwVer));
-    obsDisplay->showTextOnGrid(0, 5, String(mCurrentGpsRecord.swVer));
+    if (!is_neo6()){
+      obsDisplay->showTextOnGrid(0, 1, satellitesString[2]);
+      obsDisplay->showTextOnGrid(0, 2, String(mCurrentGpsRecord.mLatitude));
+      obsDisplay->showTextOnGrid(0, 3, String(mCurrentGpsRecord.mLongitude));
+      obsDisplay->showTextOnGrid(0, 4, String(hw())+" Detail");
+
+    }
 }
 
 bool Gps::moduleIsAlive() const {
@@ -1108,8 +1172,9 @@ void Gps::parseUbxMessage() {
             String(mGpsBuffer.monVer.swVersion).c_str(),
             String(mGpsBuffer.monVer.hwVersion).c_str(),
             mGpsBuffer.ubxHeader.length);
-      mIncomingGpsRecord.swVer = String(mGpsBuffer.monVer.swVersion);
-      mIncomingGpsRecord.hwVer = String(mGpsBuffer.monVer.hwVersion);
+      for (int i = 0; i < sizeof(hwString) && i < sizeof(mGpsBuffer.monVer.hwVersion) ; i++) {
+        hwString[i]=mGpsBuffer.monVer.hwVersion[i];
+      }
     }
       break;
     case (uint16_t) UBX_MSG::MON_HW: {

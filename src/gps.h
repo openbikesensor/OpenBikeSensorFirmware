@@ -567,11 +567,17 @@ class Gps {
     bool mGpsNeedsConfigUpdate = false;
     static const String INF_SEVERITY_STRING[];
 
+    char hwString[10];
+
     void configureGpsModule();
 
     bool encode(uint8_t data);
 
     bool setBaud();
+    bool is_neo6() const;
+    bool is_neo8() const;
+    bool is_neo10() const;
+    String hw() const;
 
     bool checkCommunication();
 
@@ -625,6 +631,7 @@ class Gps {
     void prepareGpsData(uint32_t tow, uint32_t messageStartedMillisTicks);
 
     void softResetGps();
+    void coldStartGps();
 
     void handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps & message, const uint32_t receivedMs, const uint32_t delayMs);
     void handleUbxAidIni(const GpsBuffer::AidIni &message) const;

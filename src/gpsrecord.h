@@ -102,8 +102,6 @@ class GpsRecord {
     uint32_t mCreatedAtMillisTicks;
     static const int32_t pow10[10];
     static String toScaledString(int32_t value, uint16_t scale);
-    String hwVer;
-    String swVer;
 };
 
 

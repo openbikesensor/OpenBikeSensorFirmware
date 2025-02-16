@@ -40,8 +40,6 @@ void GpsRecord::reset(uint32_t tow, uint32_t gpsWeek, uint32_t createdAtMillisTi
   mVelocitySet = false;
   mInfoSet = false;
   mHdopSet = false;
-  hwVer = "unknown";
-  swVer = "unknown";
 }
 
 void GpsRecord::setWeek(uint32_t week) {
