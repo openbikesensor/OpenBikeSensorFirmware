@@ -70,6 +70,10 @@ class Gps {
 
     uint16_t getLastNoiseLevel() const;
 
+    uint16_t getLastAntennaGain() const;
+
+    uint8_t getLastJamInd() const;
+
     /* Collected informational messages as String. */
     String getMessages() const;
 
@@ -106,6 +110,8 @@ class Gps {
 
     uint32_t getNumberOfAlpBytesSent() const;
     uint32_t getUnexpectedCharReceivedCount() const;
+
+    void coldResetGps();
 
   private:
     /* ALP msgs up to 0x16A seen might be more? */
@@ -288,6 +294,7 @@ class Gps {
         uint32_t pinDir;
         uint32_t pinVal;
         uint16_t noisePerMs;
+        uint16_t agcCnt; // AGC (Automatic Gain Control) Monitor, as percentage of maximum gain,range 0 to 8191 (100%)
         enum ANT_STATUS : uint8_t {
           INIT = 0,
           DONTKNOW = 1,
@@ -303,8 +310,8 @@ class Gps {
         uint8_t flags;
         uint8_t reserved1;
         uint32_t usedMask;
-        uint8_t vp[25];
-        uint8_t jamInd;
+        uint8_t vp[17]; //M6 25bytes, M8 only 17bytes?
+        uint8_t jamInd; //cwSuppression / CW interference suppression level, scaled (0 = no CW jamming, 255 = strong CW jamming)
         uint16_t reserved3;
         uint32_t pinIrq;
         uint32_t pullH;
@@ -550,6 +557,8 @@ class Gps {
     uint32_t mUnexpectedCharReceivedCount = 0;
     uint8_t mNmeaChk;
     uint16_t mLastNoiseLevel;
+    uint16_t mLastGain;
+    uint8_t mLastJamInd;
     AlpData mAlpData;
     bool mAidIniSent = false;
     /* record that was last received */
