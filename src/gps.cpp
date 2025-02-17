@@ -862,11 +862,11 @@ void Gps::showWaitStatus(DisplayDevice const * display) const {
     obsDisplay->showTextOnGrid(2, display->currentLine() - 1, satellitesString[0]);
     obsDisplay->showTextOnGrid(2, display->currentLine(), satellitesString[1]);
     if (!is_neo6()){
-      obsDisplay->showTextOnGrid(0, 1, satellitesString[2]);
-      obsDisplay->showTextOnGrid(0, 2, String(mCurrentGpsRecord.mLatitude));
-      obsDisplay->showTextOnGrid(0, 3, String(mCurrentGpsRecord.mLongitude));
-      obsDisplay->showTextOnGrid(0, 4, String(hw())+" Detail");
-
+      obsDisplay->showTextOnGrid(0, 1, String(hw())+" Detail");
+      obsDisplay->showTextOnGrid(0, 2, satellitesString[2]);
+      obsDisplay->showTextOnGrid(0, 3, String(mCurrentGpsRecord.mLatitude));
+      obsDisplay->showTextOnGrid(0, 4, String(mCurrentGpsRecord.mLongitude));
+      obsDisplay->showTextOnGrid(0, 5, "Gain:" + String(mLastGain) + " Jam:" + String(mLastJamInd));
     }
 }
 

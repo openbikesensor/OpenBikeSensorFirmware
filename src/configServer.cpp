@@ -1134,7 +1134,7 @@ static void handleColdStartGPS(HTTPRequest *, HTTPResponse * res) {
   String html = createPage(gpsColdIndex);
   html = replaceDefault(html, "Navigation");
   sendHtml(res, html);
-  gps.coldResetGps();
+  gps.coldStartGps();
   res->finalize();
 }
 

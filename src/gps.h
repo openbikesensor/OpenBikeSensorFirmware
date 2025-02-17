@@ -111,7 +111,8 @@ class Gps {
     uint32_t getNumberOfAlpBytesSent() const;
     uint32_t getUnexpectedCharReceivedCount() const;
 
-    void coldResetGps();
+    void coldStartGps();
+
 
   private:
     /* ALP msgs up to 0x16A seen might be more? */
@@ -640,7 +641,6 @@ class Gps {
     void prepareGpsData(uint32_t tow, uint32_t messageStartedMillisTicks);
 
     void softResetGps();
-    void coldStartGps();
 
     void handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps & message, const uint32_t receivedMs, const uint32_t delayMs);
     void handleUbxAidIni(const GpsBuffer::AidIni &message) const;
