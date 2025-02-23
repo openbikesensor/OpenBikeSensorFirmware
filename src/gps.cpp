@@ -72,7 +72,14 @@ void Gps::begin() {
     configureGpsModule();
   }
   pollStatistics();
-  if(is_neo8()) {
+  if((!is_neo6()) || (!SD.exists(AID_INI_DATA_FILE_NAME))) {
+    // we're on a non-6 neo and avoid AID_INI because is deprecated
+    // or we're on a neo6 but last boot we didn't get far enough to receive fresh
+    // ALP_INI data after initializing
+    // so restart GPS for good measure.
+    if (is_neo6()) log_i("We found no AID_INI on with neo6 on boot - coldstart gps in case  its in a state where it doesn't get fixes");
+    if (!is_neo6()) log_i("Coldstart because we found that newer neos profit from that.");
+
     coldStartGps();
   }  
   pollStatistics();
@@ -414,11 +421,15 @@ void Gps::enableAlpIfDataIsAvailable() {
 /* Poll or refresh one time statistics, also spends some time
  * to collect the results.
  */
+
 void Gps::pollStatistics() {
   handle();
-  sendUbx(UBX_MSG::AID_ALP);
-  handle();
   sendUbx(UBX_MSG::MON_VER);
+  handle(20);
+  if (is_neo6()){
+    // AID_ALP is a neo6-only thing
+    sendUbx(UBX_MSG::AID_ALP);
+  }
   handle();
   sendUbx(UBX_MSG::MON_HW);
   handle();
@@ -1206,7 +1217,7 @@ void Gps::parseUbxMessage() {
       mGpsUptime = mGpsBuffer.navStatus.msss;
       if (mGpsBuffer.navStatus.ttff != 0) {
         addStatisticsMessage("TimeToFix: " + String(mGpsBuffer.navStatus.ttff) + "ms");
-      } else if (!mAidIniSent) {
+      } else if (!mAidIniSent and is_neo6()) {
         mAidIniSent = true;
         aidIni();
       }
