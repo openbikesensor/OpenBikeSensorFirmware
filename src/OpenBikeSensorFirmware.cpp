@@ -240,12 +240,14 @@ static void powerKeepAliveTimerISR()
   if(shutdownState == 0)
   {
     unsigned long timeSinceLastPowerKeepAlive = millis() - timeOfLastPowerKeepAlive;
-    if(!digitalRead(IP5306_BUTTON) && timeSinceLastPowerKeepAlive > POWER_KEEP_ALIVE_INTERVAL_MS)
+    bool ip5306ButtonState = digitalRead(IP5306_BUTTON);
+
+    if(!ip5306ButtonState && timeSinceLastPowerKeepAlive > POWER_KEEP_ALIVE_INTERVAL_MS)
     {
       timeOfLastPowerKeepAlive = millis();
       digitalWrite(IP5306_BUTTON, HIGH);
     }
-    else if(digitalRead(IP5306_BUTTON) && timeSinceLastPowerKeepAlive > 300)
+    else if(ip5306ButtonState && timeSinceLastPowerKeepAlive > 300)
     {
       timeOfLastPowerKeepAlive = millis();
       digitalWrite(IP5306_BUTTON, LOW);
