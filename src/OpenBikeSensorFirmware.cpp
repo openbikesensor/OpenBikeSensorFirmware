@@ -103,7 +103,7 @@ CircularBuffer<DataSet*, 10> dataBuffer;
 FileWriter* writer;
 
 const uint8_t displayAddress = 0x3c;
-
+const uint16_t BUTTON_PRESS_THRESHOLD_FOR_SHUTDOWN_MS = 10000;
 
 // Enable dev-mode. Allows to
 // - set wifi config
@@ -233,35 +233,26 @@ static uint8_t shutdownState = 0;
 // Power-management keep alive timer
 // This function is called every 100 ms
 static unsigned long timeOfLastPowerKeepAlive = 0;
-static uint8_t buttonPressedCounter = 0;
 static void powerKeepAliveTimerISR()
 {
   // Send "keep alive" trigger to power management module
   // This is done by toggling the pin every 300 ms or more
   if(shutdownState == 0)
   {
-    if(!digitalRead(IP5306_BUTTON) && millis() - timeOfLastPowerKeepAlive > POWER_KEEP_ALIVE_INTERVAL_MS)
+    unsigned long timeSinceLastPowerKeepAlive = millis() - timeOfLastPowerKeepAlive;
+    if(!digitalRead(IP5306_BUTTON) && timeSinceLastPowerKeepAlive > POWER_KEEP_ALIVE_INTERVAL_MS)
     {
       timeOfLastPowerKeepAlive = millis();
       digitalWrite(IP5306_BUTTON, HIGH);
     }
-    else if(digitalRead(IP5306_BUTTON) && millis() - timeOfLastPowerKeepAlive > 300)
+    else if(digitalRead(IP5306_BUTTON) && timeSinceLastPowerKeepAlive > 300)
     {
       timeOfLastPowerKeepAlive = millis();
       digitalWrite(IP5306_BUTTON, LOW);
     }
   }
 
-  // Soft power-off OBSPro when button is pressed for more than 10 seconds
-  if(button.read())
-  {
-    if(buttonPressedCounter < 255)
-      buttonPressedCounter++;
-  }
-  else
-    buttonPressedCounter = 0;
-
-  if(shutdownState == 0 && buttonPressedCounter >= 100) {
+  if(shutdownState == 0 && button.read() && button.getCurrentStateMillis() >= BUTTON_PRESS_THRESHOLD_FOR_SHUTDOWN_MS) {
     shutdownState = 1;
   }
   switch(shutdownState)
