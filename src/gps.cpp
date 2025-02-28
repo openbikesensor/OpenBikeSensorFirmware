@@ -32,21 +32,21 @@ const String Gps::INF_SEVERITY_STRING[] = {
 };
 
 bool Gps::is_neo6() const {
-  if (String(hwString).substring(0,4) == String("00040007").substring(0,4)) {
+  if (String(hwString).substring(0,4) == String("0004")) {
     return true;
   }
   return false;
 }
 
 bool Gps::is_neo8() const {
-  if (String(hwString).substring(0,4) == String("00080000").substring(0,4)) {
+  if (String(hwString).substring(0,4) == String("0008")) {
     return true;
   }
   return false;
 }
 
 bool Gps::is_neo10() const {
-  if (String(hwString).substring(0,4) == String("000A0000").substring(0,4)) {
+  if (String(hwString).substring(0,4) == String("000A")) {
     return true;
   }
   return false;
@@ -298,14 +298,6 @@ void Gps::configureGpsModule() {
     } else {
       addStatisticsMessage("No ack for setting timepulse in either new or old format");
     }
-    const uint8_t UBX_CFG_RATE[] = {0xE8, 0x03, 0x01, 0x00, 0x00, 0x00};
-    if (!sendAndWaitForAck(UBX_MSG::CFG_TP5, UBX_CFG_TP5, sizeof(UBX_CFG_RATE))) {
-      addStatisticsMessage("Successfully set rate");
-      obsDisplay->showTextOnGrid(0, 5, "rate set");
-    }      else{
-      obsDisplay->showTextOnGrid(0, 5, "rate not set");
-    } 
-
   }
 #endif
 
@@ -1418,6 +1410,7 @@ void Gps::handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps &message, const uin
     mIncomingGpsRecord.setWeek(mLastGpsWeek);
   }
   if ((message.valid & 0x03) == 0x03  // WEEK && TOW
+      && delayMs < 1000
       && message.tAcc < (20 * 1000 * 1000 /* 20ms */)
       && ((mLastTimeTimeSet == 0)
           || ((mLastTimeTimeSet + (2 * 60 * 1000 /* 2 minutes */)) < receivedMs))) {
@@ -1431,10 +1424,12 @@ void Gps::handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps &message, const uin
                            + "ms. tAcc:" + String(message.tAcc) + "ns");
     }
     if (mLastTimeTimeSet == 0) {
-      mLastTimeTimeSet = receivedMs;
-      // This triggers another NAV-TIMEGPS message!
+      if (delayMs < 100) { // keep mLastTimeTimeSet at 0 unless reasonable delayMs
+        mLastTimeTimeSet = receivedMs;
+      }
+      // This triggers another NAV-TIMEGPS message! more often until good time is received
 #ifdef UBX_M6
-      setMessageInterval(UBX_MSG::NAV_TIMEGPS, (delayMs>200) ? 5 : 240, false); // every 4 minutes
+      setMessageInterval(UBX_MSG::NAV_TIMEGPS, (delayMs>100) ? 5 : 240, false); // every 4 minutes
 #endif
 #ifdef UBX_M10
       setMessageInterval(UBX_CFG_KEY_ID::CFG_MSGOUT_UBX_NAV_TIMEGPS_UART1, 240, false); // every 4 minutes
