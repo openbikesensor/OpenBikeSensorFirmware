@@ -78,6 +78,7 @@ jobs:
     - name: Install SonarQube dependencies
       if: steps.cache-sonar.outputs.cache-hit != 'true'
       run: |
+        set -eux
         mkdir -p sonarqube
         cd sonarqube
         wget --no-verbose https://sonarcloud.io/static/cpp/build-wrapper-linux-x86.zip
