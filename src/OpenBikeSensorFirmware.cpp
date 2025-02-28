@@ -252,7 +252,7 @@ static void powerKeepAliveTimerISR()
     }
   }
 
-  // Soft power-off OBSPro when button is pressed for more than 2 seconds
+  // Soft power-off OBSPro when button is pressed for more than 10 seconds
   if(button.read())
   {
     if(buttonPressedCounter < 255)
@@ -261,7 +261,7 @@ static void powerKeepAliveTimerISR()
   else
     buttonPressedCounter = 0;
 
-  if(shutdownState == 0 && buttonPressedCounter >= 50) {
+  if(shutdownState == 0 && buttonPressedCounter >= 100) {
     shutdownState = 1;
   }
   switch(shutdownState)
