@@ -31,11 +31,11 @@ Button::Button(int pin) : mPin(pin) {
   mLastState = mLastRawState = read();
 }
 
-void Button::handle() {
-  handle(millis());
+bool Button::handle() {
+  return handle(millis());
 }
 
-void Button::handle(unsigned long millis) {
+bool Button::handle(unsigned long millis) {
   const int state = read();
 
   if (state != mLastRawState) {
@@ -52,6 +52,7 @@ void Button::handle(unsigned long millis) {
       mReleaseEvents++;
     }
   }
+  return state;
 }
 
 bool Button::gotPressed() {

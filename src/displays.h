@@ -100,6 +100,7 @@ class DisplayDevice {
     uint8_t scrollUp();
     uint8_t startLine();
     void highlight(uint32_t highlightTimeMillis = 500);
+    bool handleShutdownDisplay();
 
     //##############################################################
     // Basic display configuration

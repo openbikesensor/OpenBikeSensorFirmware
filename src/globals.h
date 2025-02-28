@@ -73,5 +73,6 @@ extern Gps gps;
 
 extern const uint8_t LEFT_SENSOR_ID;
 extern const uint8_t RIGHT_SENSOR_ID;
+extern const uint16_t BUTTON_PRESS_THRESHOLD_FOR_SHUTDOWN_MS;
 
 #endif
