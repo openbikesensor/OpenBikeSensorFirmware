@@ -320,6 +320,36 @@ class Gps {
         uint32_t pinIrq;
         uint32_t pullH;
         uint32_t pullL;
+      } monHwNew;
+      struct __attribute__((__packed__)) {
+        UBX_HEADER ubxHeader;
+        uint32_t pinSel;
+        uint32_t pinBank;
+        uint32_t pinDir;
+        uint32_t pinVal;
+        uint16_t noisePerMs;
+        uint16_t agcCnt; // AGC (Automatic Gain Control) Monitor, as percentage of maximum gain,range 0 to 8191 (100%)
+        enum ANT_STATUS : uint8_t {
+          INIT = 0,
+          DONTKNOW = 1,
+          OK = 2,
+          SHORT = 3,
+          OPEN = 4,
+        } aStatus;
+        enum ANT_POWER : uint8_t {
+          OFF = 0,
+          ON = 1,
+          POWER_DONTKNOW = 2,
+        } aPower;
+        uint8_t flags;
+        uint8_t reserved1;
+        uint32_t usedMask;
+        uint8_t vp[25];
+        uint8_t jamInd;
+        uint16_t reserved3;
+        uint32_t pinIrq;
+        uint32_t pullH;
+        uint32_t pullL;
       } monHw;
       struct __attribute__((__packed__)) {
         UBX_HEADER ubxHeader;

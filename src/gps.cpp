@@ -1181,18 +1181,33 @@ void Gps::parseUbxMessage() {
       break;
     case (uint16_t) UBX_MSG::MON_HW: {
       const char* aStatus;
-      switch (mGpsBuffer.monHw.aStatus) {
-        case mGpsBuffer.monHw.INIT: aStatus = "init"; break;
-        case mGpsBuffer.monHw.DONTKNOW: aStatus = "?"; break;
-        case mGpsBuffer.monHw.OK: aStatus = "ok"; break;
-        case mGpsBuffer.monHw.SHORT: aStatus = "short"; break;
-        case mGpsBuffer.monHw.OPEN: aStatus = "open"; break;
-        default: aStatus = "invalid";
+      if (is_neo6()) {
+        switch (mGpsBuffer.monHw.aStatus) {
+          case mGpsBuffer.monHw.INIT: aStatus = "init"; break;
+          case mGpsBuffer.monHw.DONTKNOW: aStatus = "?"; break;
+          case mGpsBuffer.monHw.OK: aStatus = "ok"; break;
+          case mGpsBuffer.monHw.SHORT: aStatus = "short"; break;
+          case mGpsBuffer.monHw.OPEN: aStatus = "open"; break;
+          default: aStatus = "invalid";
+        }
+        log_d("MON-HW Antenna Status %d %s, Antenna Power %d, Gain (0-8191) %d, noise level %d", mGpsBuffer.monHw.aStatus, aStatus, mGpsBuffer.monHw.aPower, mGpsBuffer.monHw.agcCnt, mGpsBuffer.monHw.noisePerMs);
+        mLastNoiseLevel = mGpsBuffer.monHw.noisePerMs;
+        mLastGain = mGpsBuffer.monHw.agcCnt;
+        mLastJamInd = mGpsBuffer.monHw.jamInd;
+      } else {
+        switch (mGpsBuffer.monHwNew.aStatus) {
+          case mGpsBuffer.monHwNew.INIT: aStatus = "init"; break;
+          case mGpsBuffer.monHwNew.DONTKNOW: aStatus = "?"; break;
+          case mGpsBuffer.monHwNew.OK: aStatus = "ok"; break;
+          case mGpsBuffer.monHwNew.SHORT: aStatus = "short"; break;
+          case mGpsBuffer.monHwNew.OPEN: aStatus = "open"; break;
+          default: aStatus = "invalid";
+        }
+        log_d("MON-HW Antenna Status %d %s, Antenna Power %d, Gain (0-8191) %d, noise level %d", mGpsBuffer.monHwNew.aStatus, aStatus, mGpsBuffer.monHwNew.aPower, mGpsBuffer.monHwNew.agcCnt, mGpsBuffer.monHwNew.noisePerMs);
+        mLastNoiseLevel = mGpsBuffer.monHwNew.noisePerMs;
+        mLastGain = mGpsBuffer.monHwNew.agcCnt;
+        mLastJamInd = mGpsBuffer.monHwNew.jamInd;
       }
-      log_d("MON-HW Antenna Status %d %s, Antenna Power %d, Gain (0-8191) %d, noise level %d", mGpsBuffer.monHw.aStatus, aStatus, mGpsBuffer.monHw.aPower, mGpsBuffer.monHw.agcCnt, mGpsBuffer.monHw.noisePerMs);
-      mLastNoiseLevel = mGpsBuffer.monHw.noisePerMs;
-      mLastGain = mGpsBuffer.monHw.agcCnt;
-      mLastJamInd = mGpsBuffer.monHw.jamInd;
     }
       break;
     case (uint16_t) UBX_MSG::NAV_STATUS: {
