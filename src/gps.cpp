@@ -342,7 +342,6 @@ void Gps::softResetGps() {
   log_i("Soft-RESET GPS!");
   handle();
   const uint8_t UBX_CFG_RST[] = {0x00, 0x00, 0x02, 0x00}; // WARM START
-  //const uint8_t UBX_CFG_RST[] = {0xFF, 0x81, 0x04, 0x00}; // Cold START '0xFF, 0x81, 0x04, 0x00'
   // we had the case where the reset took several seconds
   // see https://github.com/openbikesensor/OpenBikeSensorFirmware/issues/309
   // Newer firmware (like M10 and likely also M8) will not ack this
@@ -356,13 +355,7 @@ void Gps::softResetGps() {
 void Gps::coldStartGps() {
   log_i("Cold-Start GPS!");
   handle();
-  //const uint8_t UBX_CFG_RST[] = {0x00, 0x00, 0x02, 0x00}; // WARM START
-  const uint8_t UBX_CFG_RST[] = {0xFF, 0x81, 0x04, 0x00}; // Cold START '0xFF, 0x81, 0x04, 0x00'
-  // https://content.u-blox.com/sites/default/files/products/documents/u-blox8-M8_ReceiverDescrProtSpec_UBX-13003221.pdf?utm_content=UBX-13003221
-  //          eph=1, alm=1, health=1, klob=1, pos=1, clkd=1, osc=1, utc=1, rtc=1, aop=1, resetMode=4, reserved0=0
-  // can be generated via pyubx2 UBXMessage reset = pyubx2.UBXMessage(...)
-  // output via ", ".join([f"0x{b:02X}" for b in reset.payload])
-
+  const uint8_t UBX_CFG_RST[] = {0xFF, 0xFF, 0x00, 0x00}; 
   // we had the case where the reset took several seconds
   // see https://github.com/openbikesensor/OpenBikeSensorFirmware/issues/309
   // Newer firmware (like M10 and likely also M8) will not ack this
