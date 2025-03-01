@@ -113,6 +113,9 @@ class Gps {
 
     void coldStartGps();
 
+    bool is_neo6() const;
+    bool is_neo8() const;
+    bool is_neo10() const;
 
   private:
     /* ALP msgs up to 0x16A seen might be more? */
@@ -584,9 +587,7 @@ class Gps {
     bool encode(uint8_t data);
 
     bool setBaud();
-    bool is_neo6() const;
-    bool is_neo8() const;
-    bool is_neo10() const;
+
     String hw() const;
 
     bool checkCommunication();
