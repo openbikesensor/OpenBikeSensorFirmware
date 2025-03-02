@@ -848,7 +848,7 @@ void Gps::showWaitStatus(DisplayDevice const * display) const {
      obsDisplay->clear();
      clear = true;
   }
-  String satellitesString[3];
+  String satellitesString[2];
   if (mValidMessagesReceived == 0) { // could not get any valid char from GPS module
     satellitesString[0] = "OFF?";
   } else if (mLastTimeTimeSet == 0) {
@@ -858,17 +858,21 @@ void Gps::showWaitStatus(DisplayDevice const * display) const {
     satellitesString[0] = String(hw()).substring(1) + TimeUtils::timeToString();
     satellitesString[1] = String(mCurrentGpsRecord.mSatellitesUsed) + "sats SN:" + String(mLastNoiseLevel);
   }
-  satellitesString[2] = String(mCurrentGpsRecord.mFixStatus) + "<fx m>" + String(mValidMessagesReceived);
+  obsDisplay->showTextOnGrid(2, display->currentLine() - 1, satellitesString[0]);
+  obsDisplay->showTextOnGrid(2, display->currentLine(), satellitesString[1]);
+  if (!is_neo6()){
+    obsDisplay->showTextOnGrid(0, 1, String(hw())+" GPS");
+    obsDisplay->showTextOnGrid(2, 1, "HDOP: " + getHdopAsString() + "D");
 
-    obsDisplay->showTextOnGrid(2, display->currentLine() - 1, satellitesString[0]);
-    obsDisplay->showTextOnGrid(2, display->currentLine(), satellitesString[1]);
-    if (!is_neo6()){
-      obsDisplay->showTextOnGrid(0, 1, String(hw())+" Detail");
-      obsDisplay->showTextOnGrid(0, 2, "Gain:" + String(mLastGain) + " Jam:" + String(mLastJamInd));
-      obsDisplay->showTextOnGrid(0, 3, satellitesString[2]);
-      obsDisplay->showTextOnGrid(0, 4, String(mCurrentGpsRecord.mLatitude));
-      obsDisplay->showTextOnGrid(0, 5, String(mCurrentGpsRecord.mLongitude));
-    }
+    obsDisplay->showTextOnGrid(0, 2, "Jam: " + String(mLastJamInd));
+    obsDisplay->showTextOnGrid(2, 2, "Msgs: " + String(mValidMessagesReceived));
+    obsDisplay->showTextOnGrid(2, 3, "Fix: " + String(mCurrentGpsRecord.mFixStatus) + "D");
+    obsDisplay->showTextOnGrid(0, 3, "lat,lon:");
+
+
+    obsDisplay->showTextOnGrid(0, 4, String(mCurrentGpsRecord.mLatitude));
+    obsDisplay->showTextOnGrid(0, 5, String(mCurrentGpsRecord.mLongitude));
+  }
 }
 
 bool Gps::moduleIsAlive() const {
