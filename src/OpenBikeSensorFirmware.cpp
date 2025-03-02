@@ -446,7 +446,6 @@ void setup() {
   gps.handle();
 
   setupBluetooth(cfg, trackUniqueIdentifier);
-
   obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "Wait for GPS");
   obsDisplay->newLine();
   gps.handle();

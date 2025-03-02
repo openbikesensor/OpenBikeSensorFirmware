@@ -70,6 +70,10 @@ class Gps {
 
     uint16_t getLastNoiseLevel() const;
 
+    uint16_t getLastAntennaGain() const;
+
+    uint8_t getLastJamInd() const;
+
     /* Collected informational messages as String. */
     String getMessages() const;
 
@@ -106,6 +110,12 @@ class Gps {
 
     uint32_t getNumberOfAlpBytesSent() const;
     uint32_t getUnexpectedCharReceivedCount() const;
+
+    void coldStartGps();
+
+    bool is_neo6() const;
+    bool is_neo8() const;
+    bool is_neo10() const;
 
   private:
     /* ALP msgs up to 0x16A seen might be more? */
@@ -288,6 +298,37 @@ class Gps {
         uint32_t pinDir;
         uint32_t pinVal;
         uint16_t noisePerMs;
+        uint16_t agcCnt; // AGC (Automatic Gain Control) Monitor, as percentage of maximum gain,range 0 to 8191 (100%)
+        enum ANT_STATUS : uint8_t {
+          INIT = 0,
+          DONTKNOW = 1,
+          OK = 2,
+          SHORT = 3,
+          OPEN = 4,
+        } aStatus;
+        enum ANT_POWER : uint8_t {
+          OFF = 0,
+          ON = 1,
+          POWER_DONTKNOW = 2,
+        } aPower;
+        uint8_t flags;
+        uint8_t reserved1;
+        uint32_t usedMask;
+        uint8_t vp[17]; //M6 25bytes, M8 only 17bytes?
+        uint8_t jamInd; //cwSuppression / CW interference suppression level, scaled (0 = no CW jamming, 255 = strong CW jamming)
+        uint16_t reserved3;
+        uint32_t pinIrq;
+        uint32_t pullH;
+        uint32_t pullL;
+      } monHwNew;
+      struct __attribute__((__packed__)) {
+        UBX_HEADER ubxHeader;
+        uint32_t pinSel;
+        uint32_t pinBank;
+        uint32_t pinDir;
+        uint32_t pinVal;
+        uint16_t noisePerMs;
+        uint16_t agcCnt; // AGC (Automatic Gain Control) Monitor, as percentage of maximum gain,range 0 to 8191 (100%)
         enum ANT_STATUS : uint8_t {
           INIT = 0,
           DONTKNOW = 1,
@@ -550,6 +591,8 @@ class Gps {
     uint32_t mUnexpectedCharReceivedCount = 0;
     uint8_t mNmeaChk;
     uint16_t mLastNoiseLevel;
+    uint16_t mLastGain;
+    uint8_t mLastJamInd;
     AlpData mAlpData;
     bool mAidIniSent = false;
     /* record that was last received */
@@ -567,11 +610,15 @@ class Gps {
     bool mGpsNeedsConfigUpdate = false;
     static const String INF_SEVERITY_STRING[];
 
+    char hwString[10];
+
     void configureGpsModule();
 
     bool encode(uint8_t data);
 
     bool setBaud();
+
+    String hw() const;
 
     bool checkCommunication();
 

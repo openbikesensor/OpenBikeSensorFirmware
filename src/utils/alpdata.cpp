@@ -172,6 +172,7 @@ size_t AlpData::loadMessage(uint8_t *data, size_t size) {
     result = f.read(data, size);
     f.close();
     log_d("Read %d bytes", result);
+    SD.remove(AID_INI_DATA_FILE_NAME);
   }
   return result;
 }
