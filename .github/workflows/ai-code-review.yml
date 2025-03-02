@@ -41,5 +41,7 @@ jobs:
             ${{ steps.get_diff.outputs.pull_request_diff }}
           pull_request_chunk_size: "3500"
           extra_prompt: |-
+            Please introduce yourself at the beginning briefly and add 
+            a short warning about the AI generated test.
             The code is running on an ESP32-D0WDQ6.
           log_level: "DEBUG"
