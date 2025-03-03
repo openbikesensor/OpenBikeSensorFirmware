@@ -31,14 +31,63 @@ const String Gps::INF_SEVERITY_STRING[] = {
   String("TST"), String("DBG")
 };
 
+bool Gps::is_neo6() const {
+  if (String(hwString).substring(0,4) == String("0004")) {
+    return true;
+  }
+  return false;
+}
+
+bool Gps::is_neo8() const {
+  if (String(hwString).substring(0,4) == String("0008")) {
+    return true;
+  }
+  return false;
+}
+
+bool Gps::is_neo10() const {
+  if (String(hwString).substring(0,4) == String("000A")) {
+    return true;
+  }
+  return false;
+}
+
+String Gps::hw() const {
+  if (is_neo6()){
+    return "Neo6";
+  }
+  if (is_neo8()){
+    return "Neo8";
+  }
+  if (is_neo10()) {
+    return "NeoA";
+  }
+  return "Neo" + String(hwString).substring(3,4);
+}
+
 void Gps::begin() {
   setBaud();
   softResetGps();
   if (mGpsNeedsConfigUpdate) {
     configureGpsModule();
   }
-  enableAlpIfDataIsAvailable();
   pollStatistics();
+  if((!is_neo6()) || (!SD.exists(AID_INI_DATA_FILE_NAME))) {
+    // we're on a non-6 neo and avoid AID_INI because is deprecated
+    // or we're on a neo6 but last boot we didn't get far enough to receive fresh
+    // ALP_INI data after initializing
+    // so restart GPS for good measure.
+    if (is_neo6()) log_i("We found no AID_INI on with neo6 on boot - coldstart gps in case  its in a state where it doesn't get fixes");
+    if (!is_neo6()) log_i("Coldstart because we found that newer neos profit from that.");
+
+    coldStartGps();
+  }  
+  pollStatistics();
+
+  if (is_neo6()) {
+    enableAlpIfDataIsAvailable();
+  }
+  
   if (mLastTimeTimeSet == 0) {
 #ifdef UBX_M10
     setMessageInterval(UBX_CFG_KEY_ID::CFG_MSGOUT_UBX_NAV_TIMEGPS_UART1, 1);
@@ -293,7 +342,6 @@ void Gps::softResetGps() {
   log_i("Soft-RESET GPS!");
   handle();
   const uint8_t UBX_CFG_RST[] = {0x00, 0x00, 0x02, 0x00}; // WARM START
-//  const uint8_t UBX_CFG_RST[] = {0xFF, 0xFF, 0x02, 0x00}; // Cold START
   // we had the case where the reset took several seconds
   // see https://github.com/openbikesensor/OpenBikeSensorFirmware/issues/309
   // Newer firmware (like M10 and likely also M8) will not ack this
@@ -302,6 +350,20 @@ void Gps::softResetGps() {
   waitForData(1000);
   handle();
   log_i("Soft-RESET GPS! Done");
+}
+
+void Gps::coldStartGps() {
+  log_i("Cold-Start GPS!");
+  handle();
+  const uint8_t UBX_CFG_RST[] = {0xFF, 0xFF, 0x00, 0x00}; 
+  // we had the case where the reset took several seconds
+  // see https://github.com/openbikesensor/OpenBikeSensorFirmware/issues/309
+  // Newer firmware (like M10 and likely also M8) will not ack this
+  // message so we do not wait for the ACK
+  sendUbx(UBX_MSG::CFG_RST, UBX_CFG_RST, 4);
+  waitForData(3000);
+  handle();
+  log_i("Cold Start GPS! Done");
 }
 
 /* There had been changes for the satellites used for SBAS
@@ -344,11 +406,15 @@ void Gps::enableAlpIfDataIsAvailable() {
 /* Poll or refresh one time statistics, also spends some time
  * to collect the results.
  */
+
 void Gps::pollStatistics() {
   handle();
-  sendUbx(UBX_MSG::AID_ALP);
-  handle();
   sendUbx(UBX_MSG::MON_VER);
+  handle(20);
+  if (is_neo6()){
+    // AID_ALP is a neo6-only thing
+    sendUbx(UBX_MSG::AID_ALP);
+  }
   handle();
   sendUbx(UBX_MSG::MON_HW);
   handle();
@@ -777,21 +843,35 @@ int32_t Gps::getMessagesWithFailedCrcCount() const {
 }
 
 void Gps::showWaitStatus(DisplayDevice const * display) const {
+  static bool clear = false;
+  if (!is_neo6() && !clear) {
+     obsDisplay->clear();
+     clear = true;
+  }
   String satellitesString[2];
   if (mValidMessagesReceived == 0) { // could not get any valid char from GPS module
     satellitesString[0] = "OFF?";
   } else if (mLastTimeTimeSet == 0) {
-    satellitesString[0] = String(mCurrentGpsRecord.mSatellitesUsed) + "sats SN:" + String(mLastNoiseLevel);
+    satellitesString[0] = "aGain:" + String(mLastGain);
+    satellitesString[1] = String(mCurrentGpsRecord.mSatellitesUsed) + "sats SN:" + String(mLastNoiseLevel);
   } else {
-    satellitesString[0] = "GPS " + TimeUtils::timeToString();
+    satellitesString[0] = String(hw()).substring(1) + TimeUtils::timeToString();
     satellitesString[1] = String(mCurrentGpsRecord.mSatellitesUsed) + "sats SN:" + String(mLastNoiseLevel);
   }
+  obsDisplay->showTextOnGrid(2, display->currentLine() - 1, satellitesString[0]);
+  obsDisplay->showTextOnGrid(2, display->currentLine(), satellitesString[1]);
+  if (!is_neo6()){
+    obsDisplay->showTextOnGrid(0, 1, String(hw())+" GPS");
+    obsDisplay->showTextOnGrid(2, 1, "HDOP: " + getHdopAsString() + "D");
 
-  if (satellitesString[1].isEmpty()) {
-    obsDisplay->showTextOnGrid(2, display->currentLine(), satellitesString[0]);
-  } else {
-    obsDisplay->showTextOnGrid(2, display->currentLine() - 1, satellitesString[0]);
-    obsDisplay->showTextOnGrid(2, display->currentLine(), satellitesString[1]);
+    obsDisplay->showTextOnGrid(0, 2, "Jam: " + String(mLastJamInd));
+    obsDisplay->showTextOnGrid(2, 2, "Msgs: " + String(mValidMessagesReceived));
+    obsDisplay->showTextOnGrid(2, 3, "Fix: " + String(mCurrentGpsRecord.mFixStatus) + "D");
+    obsDisplay->showTextOnGrid(0, 3, "lat,lon:");
+
+
+    obsDisplay->showTextOnGrid(0, 4, String(mCurrentGpsRecord.mLatitude));
+    obsDisplay->showTextOnGrid(0, 5, String(mCurrentGpsRecord.mLongitude));
   }
 }
 
@@ -1098,12 +1178,40 @@ void Gps::parseUbxMessage() {
             String(mGpsBuffer.monVer.swVersion).c_str(),
             String(mGpsBuffer.monVer.hwVersion).c_str(),
             mGpsBuffer.ubxHeader.length);
+      for (int i = 0; i < sizeof(hwString) && i < sizeof(mGpsBuffer.monVer.hwVersion) ; i++) {
+        hwString[i]=mGpsBuffer.monVer.hwVersion[i];
+      }
     }
       break;
     case (uint16_t) UBX_MSG::MON_HW: {
-      log_v("MON-HW Antenna Status %d, noise level %d", mGpsBuffer.monHw.aStatus,
-            mGpsBuffer.monHw.noisePerMs);
-      mLastNoiseLevel = mGpsBuffer.monHw.noisePerMs;
+      const char* aStatus;
+      if (is_neo6()) {
+        switch (mGpsBuffer.monHw.aStatus) {
+          case mGpsBuffer.monHw.INIT: aStatus = "init"; break;
+          case mGpsBuffer.monHw.DONTKNOW: aStatus = "?"; break;
+          case mGpsBuffer.monHw.OK: aStatus = "ok"; break;
+          case mGpsBuffer.monHw.SHORT: aStatus = "short"; break;
+          case mGpsBuffer.monHw.OPEN: aStatus = "open"; break;
+          default: aStatus = "invalid";
+        }
+        log_d("MON-HW Antenna Status %d %s, Antenna Power %d, Gain (0-8191) %d, noise level %d", mGpsBuffer.monHw.aStatus, aStatus, mGpsBuffer.monHw.aPower, mGpsBuffer.monHw.agcCnt, mGpsBuffer.monHw.noisePerMs);
+        mLastNoiseLevel = mGpsBuffer.monHw.noisePerMs;
+        mLastGain = mGpsBuffer.monHw.agcCnt;
+        mLastJamInd = mGpsBuffer.monHw.jamInd;
+      } else {
+        switch (mGpsBuffer.monHwNew.aStatus) {
+          case mGpsBuffer.monHwNew.INIT: aStatus = "init"; break;
+          case mGpsBuffer.monHwNew.DONTKNOW: aStatus = "?"; break;
+          case mGpsBuffer.monHwNew.OK: aStatus = "ok"; break;
+          case mGpsBuffer.monHwNew.SHORT: aStatus = "short"; break;
+          case mGpsBuffer.monHwNew.OPEN: aStatus = "open"; break;
+          default: aStatus = "invalid";
+        }
+        log_d("MON-HW Antenna Status %d %s, Antenna Power %d, Gain (0-8191) %d, noise level %d", mGpsBuffer.monHwNew.aStatus, aStatus, mGpsBuffer.monHwNew.aPower, mGpsBuffer.monHwNew.agcCnt, mGpsBuffer.monHwNew.noisePerMs);
+        mLastNoiseLevel = mGpsBuffer.monHwNew.noisePerMs;
+        mLastGain = mGpsBuffer.monHwNew.agcCnt;
+        mLastJamInd = mGpsBuffer.monHwNew.jamInd;
+      }
     }
       break;
     case (uint16_t) UBX_MSG::NAV_STATUS: {
@@ -1113,7 +1221,7 @@ void Gps::parseUbxMessage() {
       mGpsUptime = mGpsBuffer.navStatus.msss;
       if (mGpsBuffer.navStatus.ttff != 0) {
         addStatisticsMessage("TimeToFix: " + String(mGpsBuffer.navStatus.ttff) + "ms");
-      } else if (!mAidIniSent) {
+      } else if (!mAidIniSent and is_neo6()) {
         mAidIniSent = true;
         aidIni();
       }
@@ -1130,7 +1238,7 @@ void Gps::parseUbxMessage() {
     }
       break;
     case (uint16_t) UBX_MSG::NAV_SOL: {
-      log_v("SOL: iTOW: %u, gpsFix: %d, flags: %02x, numSV: %d, pDop: %04d.",
+      log_d("SOL: iTOW: %u, gpsFix: %d, flags: %02x, numSV: %d, pDop: %04d.",
             mGpsBuffer.navSol.iTow, mGpsBuffer.navSol.gpsFix, mGpsBuffer.navSol.flags,
             mGpsBuffer.navSol.numSv, mGpsBuffer.navSol.pDop);
       if (mGpsBuffer.navSol.flags & 4) { // WKNSET
@@ -1148,7 +1256,7 @@ void Gps::parseUbxMessage() {
     }
       break;
     case (uint16_t) UBX_MSG::NAV_PVT: {
-      log_v("PVT: iTOW: %u, fixType: %d, flags: %02x, numSV: %d, pDop: %04d.",
+      log_d("PVT: iTOW: %u, fixType: %d, flags: %02x, numSV: %d, pDop: %04d.",
             mGpsBuffer.navPvt.iTow, mGpsBuffer.navPvt.fixType, mGpsBuffer.navPvt.flags,
             mGpsBuffer.navPvt.numSV, mGpsBuffer.navPvt.pDOP);
       prepareGpsData(mGpsBuffer.navPvt.iTow, mMessageStarted);
@@ -1156,7 +1264,7 @@ void Gps::parseUbxMessage() {
     }
       break;
     case (uint16_t) UBX_MSG::NAV_VELNED: {
-      log_v("VELNED: iTOW: %u, speed: %d cm/s, gSpeed: %d cm/s, heading: %d,"
+      log_d("VELNED: iTOW: %u, speed: %d cm/s, gSpeed: %d cm/s, heading: %d,"
             " speedAcc: %d, cAcc: %d",
             mGpsBuffer.navVelned.iTow, mGpsBuffer.navVelned.speed, mGpsBuffer.navVelned.gSpeed,
             mGpsBuffer.navVelned.heading, mGpsBuffer.navVelned.sAcc, mGpsBuffer.navVelned.cAcc);
@@ -1289,7 +1397,7 @@ void Gps::parseUbxMessage() {
       log_d("CFG_GNSS");
       break;
     default:
-      log_e("Got UBX_MESSAGE! Id: 0x%04x Len %d iTOW %d", mGpsBuffer.ubxHeader.ubxMsgId,
+      log_e("Got unparsed UBX_MESSAGE! Id: 0x%04x Len %d iTOW %d", mGpsBuffer.ubxHeader.ubxMsgId,
             mGpsBuffer.ubxHeader.length, mGpsBuffer.navStatus.iTow);
   }
 }
@@ -1314,10 +1422,10 @@ void Gps::handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps &message, const uin
     mIncomingGpsRecord.setWeek(mLastGpsWeek);
   }
   if ((message.valid & 0x03) == 0x03  // WEEK && TOW
-      && delayMs < 250
+      && delayMs < 1000
       && message.tAcc < (20 * 1000 * 1000 /* 20ms */)
-      && (mLastTimeTimeSet == 0
-          || (mLastTimeTimeSet + (2 * 60 * 1000 /* 2 minutes */)) < receivedMs)) {
+      && ((mLastTimeTimeSet == 0)
+          || ((mLastTimeTimeSet + (2 * 60 * 1000 /* 2 minutes */)) < receivedMs))) {
     String oldTime = TimeUtils::dateTimeToString();
     TimeUtils::setClockByGps(message.iTow, message.fTow, message.week);
     String newTime = TimeUtils::dateTimeToString();
@@ -1328,10 +1436,12 @@ void Gps::handleUbxNavTimeGps(const GpsBuffer::UbxNavTimeGps &message, const uin
                            + "ms. tAcc:" + String(message.tAcc) + "ns");
     }
     if (mLastTimeTimeSet == 0) {
-      mLastTimeTimeSet = receivedMs;
-      // This triggers another NAV-TIMEGPS message!
+      if (delayMs < 100) { // keep mLastTimeTimeSet at 0 unless reasonable delayMs
+        mLastTimeTimeSet = receivedMs;
+      }
+      // This triggers another NAV-TIMEGPS message! more often until good time is received
 #ifdef UBX_M6
-      setMessageInterval(UBX_MSG::NAV_TIMEGPS, 240, false); // every 4 minutes
+      setMessageInterval(UBX_MSG::NAV_TIMEGPS, (delayMs>100) ? 5 : 240, false); // every 4 minutes
 #endif
 #ifdef UBX_M10
       setMessageInterval(UBX_CFG_KEY_ID::CFG_MSGOUT_UBX_NAV_TIMEGPS_UART1, 240, false); // every 4 minutes
@@ -1409,6 +1519,14 @@ void Gps::aidIni() {
 
 uint16_t Gps::getLastNoiseLevel() const {
   return mLastNoiseLevel;
+}
+
+uint16_t Gps::getLastAntennaGain() const {
+  return mLastGain;
+}
+
+uint8_t Gps::getLastJamInd() const {
+  return mLastJamInd;
 }
 
 uint32_t Gps::getBaudRate() {

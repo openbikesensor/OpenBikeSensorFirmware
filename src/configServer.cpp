@@ -230,6 +230,9 @@ static const char* const development =
 static const char* const rebootIndex =
   "<h3>Device reboots now.</h3>";
 
+static const char* const gpsColdIndex =
+  "<h3>GPS cold start</h3>";
+
 // #########################################
 // Wifi
 // #########################################
@@ -456,6 +459,7 @@ static void handleNotFound(HTTPRequest * req, HTTPResponse * res);
 static void handleIndex(HTTPRequest * req, HTTPResponse * res);
 static void handleAbout(HTTPRequest * req, HTTPResponse * res);
 static void handleReboot(HTTPRequest * req, HTTPResponse * res);
+static void handleColdStartGPS(HTTPRequest * req, HTTPResponse * res);
 static void handleBackup(HTTPRequest * req, HTTPResponse * res);
 static void handleBackupDownload(HTTPRequest * req, HTTPResponse * res);
 static void handleBackupRestore(HTTPRequest * req, HTTPResponse * res);
@@ -546,6 +550,7 @@ void registerPages(HTTPServer * httpServer) {
   httpServer->registerNode(new ResourceNode("/", HTTP_GET, handleIndex));
   httpServer->registerNode(new ResourceNode("/about", HTTP_GET, handleAbout));
   httpServer->registerNode(new ResourceNode("/reboot", HTTP_GET, handleReboot));
+  httpServer->registerNode(new ResourceNode("/cold", HTTP_GET, handleColdStartGPS));
   httpServer->registerNode(new ResourceNode("/settings/backup", HTTP_GET, handleBackup));
   httpServer->registerNode(new ResourceNode("/settings/backup.json", HTTP_GET, handleBackupDownload));
   httpServer->registerNode(new ResourceNode("/settings/restore", HTTP_POST, handleBackupRestore));
@@ -724,7 +729,8 @@ static void wifiConnectedActions() {
   if (WiFiClass::status() == WL_CONNECTED) {
     TimeUtils::setClockByNtpAndWait(WiFi.gatewayIP().toString().c_str());
   }
-  if (SD.begin() && WiFiClass::status() == WL_CONNECTED) {
+  if (SD.begin() && WiFiClass::status() == WL_CONNECTED 
+       && (!gps.moduleIsAlive() || gps.is_neo6())) {
     AlpData::update(obsDisplay);
   }
 
@@ -1065,6 +1071,8 @@ static void handleAbout(HTTPRequest *req, HTTPResponse * res) {
   page += keyValue("GPS satellites", gps.getValidSatellites());
   page += keyValue("GPS uptime", gps.getUptime(), "ms");
   page += keyValue("GPS noise level", gps.getLastNoiseLevel());
+  page += keyValue("GPS Antenna Gain", gps.getLastAntennaGain());
+  page += keyValue("GPS Jamming Level", gps.getLastJamInd());
   page += keyValue("GPS baud rate", gps.getBaudRate());
   page += keyValue("GPS ALP bytes", gps.getNumberOfAlpBytesSent());
   page += keyValue("GPS messages", gps.getMessagesHtml());
@@ -1121,6 +1129,14 @@ static void handleReboot(HTTPRequest *, HTTPResponse * res) {
   res->finalize();
   delay(1000);
   ESP.restart();
+}
+
+static void handleColdStartGPS(HTTPRequest *, HTTPResponse * res) {
+  String html = createPage(gpsColdIndex);
+  html = replaceDefault(html, "Navigation");
+  sendHtml(res, html);
+  gps.coldStartGps();
+  res->finalize();
 }
 
 

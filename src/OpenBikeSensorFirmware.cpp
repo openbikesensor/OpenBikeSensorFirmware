@@ -399,9 +399,10 @@ void setup() {
       esp_bt_mem_release(ESP_BT_MODE_BTDM)); // no bluetooth at all here.
 
     delay(200);
-    startServer(&cfg);
+    obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "Start GPS...");
     gps.begin();
     gps.setStatisticsIntervalInSeconds(2); // ??
+    startServer(&cfg);
     while (true) {
       yield();
       serverLoop();
@@ -446,7 +447,6 @@ void setup() {
   gps.handle();
 
   setupBluetooth(cfg, trackUniqueIdentifier);
-
   obsDisplay->showTextOnGrid(2, obsDisplay->newLine(), "Wait for GPS");
   obsDisplay->newLine();
   gps.handle();
