@@ -361,7 +361,7 @@ void Gps::coldStartGps() {
   // Newer firmware (like M10 and likely also M8) will not ack this
   // message so we do not wait for the ACK
   sendUbx(UBX_MSG::CFG_RST, UBX_CFG_RST, 4);
-  waitForData(1000);
+  waitForData(3000);
   handle();
   log_i("Cold Start GPS! Done");
 }

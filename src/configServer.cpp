@@ -729,7 +729,8 @@ static void wifiConnectedActions() {
   if (WiFiClass::status() == WL_CONNECTED) {
     TimeUtils::setClockByNtpAndWait(WiFi.gatewayIP().toString().c_str());
   }
-  if (SD.begin() && WiFiClass::status() == WL_CONNECTED && gps.is_neo6()) {
+  if (SD.begin() && WiFiClass::status() == WL_CONNECTED 
+       && (!gps.moduleIsAlive() || gps.is_neo6())) {
     AlpData::update(obsDisplay);
   }
 
