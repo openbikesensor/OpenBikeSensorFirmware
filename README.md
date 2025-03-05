@@ -1,4 +1,4 @@
-# OpenBikeSensor
+# Firmware for OpenBikeSensor Classic and OpenBikeSensor Pro
 
 [![GitHub version](https://img.shields.io/github/v/release/openbikesensor/OpenBikeSensorFirmware)](https://github.com/openbikesensor/OpenBikeSensorFirmware/releases/latest)
 [![GitHub version](https://img.shields.io/github/release-date/openbikesensor/OpenBikeSensorFirmware)](https://github.com/openbikesensor/OpenBikeSensorFirmware/releases/latest)
@@ -29,10 +29,8 @@ ultrasonic sensors connected to an ESP32.
 
 ## Description
 
-Inspired by the Berlin project Radmesser. This version uses a simple push 
-button at the handle bar to confirm distance-measures were actually overtaking 
-vehicles. It has its own GPS, and a SD card for logging, so it does not 
-require any additional hardware (like a smartphone).
+This is the firmware used for the [OpenBikeSensor Classic](https://www.openbikesensor.org/docs/classic/), our old and trusty yet complex-to-assemble workhorse
+as well as the [OpenBikeSensor Pro](https://www.openbikesensor.org/device/) (of which thus far only a few prototypes exist).
 
 Starting with version v0.3 the firmware also exposes the measured data via 
 [BLE bluetooth](https://github.com/openbikesensor/OpenBikeSensorFirmware/blob/master/docs/software/firmware/bluetooth_services.md).
@@ -56,14 +54,16 @@ documentation with different variants in the former
 For a more none technical description of the process switch to
 https://www.openbikesensor.org/docs/firmware/.
 
-### Updating to 0.14.x
-Updating to 0.14.x will require you to download the latest release
+### Updating to 0.19.x
+Updating to 0.19.x will require you to download the latest release
 ``firmware.bin`` and flash it using the **file upload** section in
 the firmware update screen.
 
 The reason for this is that Github changed their SSL Certificate Root
 and the old Firmware did not trust the new certicate. Once you are
-at 0.14.x, updates will work as usual again.
+at 0.19.x, updates will work as usual again. For the future we have
+improved the upgrade mechanism to avoid the issue even when Github
+changes their authority again.
 
 ### Step By Step with version v0.7.x and above
 
@@ -127,12 +127,13 @@ You can find the OpenBikeSensor documentation under:
 
 ## Getting Started Coding
 
-1. You need a OpenBikeSensor in order to try work on the Firmware. [Head over to our Hardware Guide to assemble one](https://www.openbikesensor.org/docs/hardware/).
+1. You need an OpenBikeSensor Classic (or, in the near future alternatively an OpenBikeSensor Pro) in order to work on the firmware. [Head over to our hardware guide to assemble one](https://www.openbikesensor.org/docs/hardware/).
 2. Clone this repo: `git clone https://github.com/openbikesensor/OpenBikeSensorFirmware.git` and `cd` into it.
 3. Choose between developing with recommended [VSCode](https://www.openbikesensor.org/software/firmware/setup.html#vscode), 
    or [CLion](https://www.openbikesensor.org/software/firmware/setup.html#clion) (license required), 
    respectively [Arduino IDE](https://www.openbikesensor.org/software/firmware/setup.html#clion) (discouraged).
-4. Happy Coding! :tada: We are open for your pull request.
+4. While flashing with platformio use either `pio run -t upload -e obs` or `pio run -t upload -e obspro` matching the Hardware you work with.
+5. Happy Coding! :tada: We are open for your pull request.
 
 
 ## License
