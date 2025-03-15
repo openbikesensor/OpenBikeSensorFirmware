@@ -530,6 +530,10 @@ void updateDisplay(DisplayDevice * const display, String action = "") {
       display->showTextOnGrid(0, 3, "Pass:");
       display->showTextOnGrid(1, 3, "12345678");
     } else {
+      display->showTextOnGrid(0, 1, "wifi issue");
+      display->showTextOnGrid(0, 2, WiFi.softAPIP().toString());
+      display->showTextOnGrid(0, 3, "AP: " + WiFi.softAPSSID());
+      display->showTextOnGrid(0, 4, "PW: 12345678");
       log_w("Unexpected wifi mode %d ", WiFiGenericClass::getMode());
     }
   } else {
@@ -823,6 +827,8 @@ void startServer(ObsConfig *obsConfig) {
   tryWiFiConnect();
 
   if (WiFiClass::status() != WL_CONNECTED) {
+    WiFi.mode(WIFI_MODE_NULL);
+    WiFi.setHostname("obs");
     CreateWifiSoftAP();
     touchConfigServerHttp(); // side effect do not allow track upload via button
     MDNS.begin("obs");
