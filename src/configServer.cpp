@@ -694,7 +694,7 @@ bool CreateWifiSoftAP() {
   // disconnect(bool wifioff = true, bool eraseap = true) 
   // in the hopes of fixing an occasional issue when ap is not connectable any more after fw upgrade
   // https://forum.openbikesensor.org/t/verbindung-zum-obs-wlan-schlaegt-fehl-falsches-passwort/2353/9
-  WiFi.disconnect(false, false); 
+  WiFi.disconnect(true, true); 
   log_i("Initialize SoftAP");
   String apName = OBS_ID;
   String APPassword = "12345678";
