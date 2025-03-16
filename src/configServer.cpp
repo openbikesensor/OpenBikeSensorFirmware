@@ -41,6 +41,7 @@
 #include "obsimprov.h"
 #include <WiFi.h>
 #include <WiFiMulti.h>
+#include <esp_wifi.h>
 #include <esp_arduino_version.h>
 
 using namespace httpsserver;
@@ -698,7 +699,13 @@ bool CreateWifiSoftAP() {
   log_i("Initialize SoftAP");
   String apName = OBS_ID;
   String APPassword = "12345678";
-  softAccOK  =  WiFi.softAP(apName.c_str(), APPassword.c_str(), 1, 0, 1);
+
+  // without this sometimes during firmware upgrades when upgrading esp-idf
+  // the wifi SoftAP will not accept clients
+  esp_wifi_restore();
+
+  softAccOK  =  WiFi.softAP(apName.c_str(), APPassword.c_str(), 1, 0, 2);
+
   delay(2000); // Without delay I've seen the IP address blank
   /* Soft AP network parameters */
   IPAddress apIP(172, 20, 0, 1);
@@ -826,6 +833,13 @@ void startServer(ObsConfig *obsConfig) {
   obsDisplay->showTextOnGrid(0, 1, "SSID:");
   obsDisplay->showTextOnGrid(1, 1,
                              theObsConfig->getProperty<String>(ObsConfig::PROPERTY_WIFI_SSID));
+
+  // We don't really need persistent wifi config from the ESP
+  // - it will even potentially leave wifi credentials on ESPs.
+  // additionally it can break softAP during ESP-Framework upgrades.
+  // The main purpose seems to be to slightly speed up wifi 
+  // config which is not so relevant for us.
+  WiFi.persistent(false);
 
   tryWiFiConnect();
 
