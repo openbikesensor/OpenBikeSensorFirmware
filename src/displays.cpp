@@ -54,6 +54,30 @@ void DisplayDevice::displaySimple(uint16_t value) {
   this->prepareTextOnGrid(3, 2, "cm", MEDIUM_FONT, -7, -5);
 }
 
+bool startedShutdownDisplay = false;
+
+bool DisplayDevice::handleShutdownDisplay()
+{
+  bool updated = false;
+#ifdef OBSPRO
+  bool buttonPressed = button.getState();
+  if (buttonPressed && button.getCurrentStateMillis() > 3000)
+  {
+    auto pressTimeMs = button.getCurrentStateMillis() - 3000;
+    // black out the display from top to bottom for so that after 7000 ms the whole display is black
+    auto linesToFill = (pressTimeMs * 64) / (BUTTON_PRESS_THRESHOLD_FOR_SHUTDOWN_MS - 3000);
+
+    m_display->drawBox(0, 0, 128, linesToFill);
+    startedShutdownDisplay = true;
+  } else if (startedShutdownDisplay) {
+    startedShutdownDisplay = false;
+    clear();
+    updated = true;
+  }
+#endif
+  return updated;
+}
+
 void DisplayDevice::showValues(
   uint16_t sensor1MinDistance, const char* sensor1Location, uint16_t sensor1RawDistance,
   uint16_t sensor2MinDistance, const char* sensor2Location, uint16_t sensor2RawDistance, uint16_t sensor2Distance,
@@ -138,9 +162,8 @@ void DisplayDevice::showValues(
     if(BMP280_active == true)
       showTemperatureValue(TemperaturValue);
   }
-
+  handleShutdownDisplay();
   m_display->updateDisplay();
-
 }
 
 void DisplayDevice::showGPS(uint8_t sats) {

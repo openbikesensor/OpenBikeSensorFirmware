@@ -77,7 +77,7 @@ Gps gps;
 static const long BLUETOOTH_INTERVAL_MILLIS = 100;
 static long lastBluetoothInterval = 0;
 
-static const long DISPLAY_INTERVAL_MILLIS = 200;
+static const long DISPLAY_INTERVAL_MILLIS = 300;
 static long lastDisplayInterval = 0;
 
 float TemperatureValue = -1;
@@ -103,7 +103,7 @@ CircularBuffer<DataSet*, 10> dataBuffer;
 FileWriter* writer;
 
 const uint8_t displayAddress = 0x3c;
-
+constexpr uint16_t BUTTON_PRESS_THRESHOLD_FOR_SHUTDOWN_MS = 5000;
 
 // Enable dev-mode. Allows to
 // - set wifi config
@@ -233,35 +233,31 @@ static uint8_t shutdownState = 0;
 // Power-management keep alive timer
 // This function is called every 100 ms
 static unsigned long timeOfLastPowerKeepAlive = 0;
-static uint8_t buttonPressedCounter = 0;
 static void powerKeepAliveTimerISR()
 {
+  unsigned long now = millis();
+
   // Send "keep alive" trigger to power management module
   // This is done by toggling the pin every 300 ms or more
   if(shutdownState == 0)
   {
-    if(!digitalRead(IP5306_BUTTON) && millis() - timeOfLastPowerKeepAlive > POWER_KEEP_ALIVE_INTERVAL_MS)
+    unsigned long timeSinceLastPowerKeepAlive = now - timeOfLastPowerKeepAlive;
+    bool ip5306ButtonState = digitalRead(IP5306_BUTTON);
+
+    if(!ip5306ButtonState && timeSinceLastPowerKeepAlive > POWER_KEEP_ALIVE_INTERVAL_MS)
     {
-      timeOfLastPowerKeepAlive = millis();
+      timeOfLastPowerKeepAlive = now;
       digitalWrite(IP5306_BUTTON, HIGH);
     }
-    else if(digitalRead(IP5306_BUTTON) && millis() - timeOfLastPowerKeepAlive > 300)
+    else if(ip5306ButtonState && timeSinceLastPowerKeepAlive > 300)
     {
-      timeOfLastPowerKeepAlive = millis();
+      timeOfLastPowerKeepAlive = now;
       digitalWrite(IP5306_BUTTON, LOW);
     }
   }
 
-  // Soft power-off OBSPro when button is pressed for more than 2 seconds
-  if(button.read())
-  {
-    if(buttonPressedCounter < 255)
-      buttonPressedCounter++;
-  }
-  else
-    buttonPressedCounter = 0;
-
-  if(shutdownState == 0 && buttonPressedCounter >= 50) {
+  if(shutdownState == 0 && button.handle(now)
+    && button.getCurrentStateMillis() >= BUTTON_PRESS_THRESHOLD_FOR_SHUTDOWN_MS) {
     shutdownState = 1;
   }
   switch(shutdownState)

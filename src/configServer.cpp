@@ -514,6 +514,7 @@ String getIp() {
 }
 
 void updateDisplay(DisplayDevice * const display, String action = "") {
+  obsDisplay->handleShutdownDisplay();
   if (action.isEmpty()) {
     display->showTextOnGrid(0, 0, "Ver.:");
     display->showTextOnGrid(1, 0, OBSVersion);
@@ -2107,6 +2108,7 @@ void configServerHandle() {
   if (obsImprov) {
     obsImprov->handle();
   }
+  obsDisplay->handleShutdownDisplay();
 }
 
 std::vector<std::pair<String,String>> extractParameters(HTTPRequest *req) {
