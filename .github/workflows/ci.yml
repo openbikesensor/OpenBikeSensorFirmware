@@ -84,9 +84,9 @@ jobs:
         wget --no-verbose https://sonarcloud.io/static/cpp/build-wrapper-linux-x86.zip
         unzip -qq build-wrapper-linux-x86.zip
         rm build-wrapper-linux-x86.zip
-        wget --no-verbose https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${{ env.SONAR_SCANNER_VERSION }}-linux.zip
-        unzip -qq sonar-scanner-cli-${{ env.SONAR_SCANNER_VERSION }}-linux.zip
-        rm sonar-scanner-cli-${{ env.SONAR_SCANNER_VERSION }}-linux.zip
+        wget --no-verbose https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${{ env.SONAR_SCANNER_VERSION }}-linux-x64.zip
+        unzip -qq sonar-scanner-cli-${{ env.SONAR_SCANNER_VERSION }}-linux-x64.zip
+        rm sonar-scanner-cli-${{ env.SONAR_SCANNER_VERSION }}-linux-x64.zip
         cd ..
 
     - name: Install build dependencies
@@ -239,7 +239,7 @@ jobs:
         ## not as of 2023-06-09
         sed -i "s|/github/home/.platformio/packages/toolchain-xtensa-esp32/bin/xtensa-esp32-elf-g..|`pwd`/.github/fake-cc|g" \
             sonarqube-out/build-wrapper-dump.json
-        ./sonarqube/sonar-scanner-${{ env.SONAR_SCANNER_VERSION }}-linux/bin/sonar-scanner \
+        ./sonarqube/sonar-scanner-${{ env.SONAR_SCANNER_VERSION }}-linux-x64/bin/sonar-scanner \
           -Dsonar.host.url=https://sonarcloud.io \
           -Dsonar.organization=openbikesensor \
           -Dsonar.projectKey=openbikesensor_OpenBikeSensorFirmware \
