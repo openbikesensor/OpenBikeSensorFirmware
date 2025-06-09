@@ -28,8 +28,8 @@
 class Button {
   public:
     explicit Button(int pin);
-    void handle();
-    void handle(unsigned long millis);
+    bool handle();
+    bool handle(unsigned long millis);
     int read() const;
     int getState() const;
     bool gotPressed();
