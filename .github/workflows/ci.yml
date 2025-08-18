@@ -35,7 +35,7 @@ jobs:
     # could use a container with sq tools already installed
        image: infinitecoding/platformio-for-ci:latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         fetch-depth: 0
 
