@@ -61,22 +61,16 @@ class DisplayDevice {
   private:
     void handleHighlight();
     void displaySimple(uint16_t value);
-#ifdef OBSPRO
-    U8G2* m_display = new U8G2_ST7567_JLX12864_F_4W_HW_SPI(U8G2_R0, LCD_CS_PIN, LCD_DC_PIN, LCD_RESET_PIN); // SPI based JHD12864-G156BT for OBSPro
-#endif
-#ifdef OBSCLASSIC
+
     U8G2* m_display = new U8G2_SSD1306_128X64_NONAME_F_HW_I2C(U8G2_R0, U8X8_PIN_NONE); // original OBSClassic display
-#endif
+
     String gridText[ 4 ][ 6 ];
     uint8_t mLastProgress = 255;
     uint8_t mCurrentLine = 0;
     bool mInverted = false;
-#ifdef OBSPRO
-    bool mFlipped = false;
-#endif
-#ifdef OBSCLASSIC
+
     bool mFlipped = true;
-#endif
+
     uint32_t mHighlightTill = 0;
     bool mHighlighted = false;
 

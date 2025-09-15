@@ -229,70 +229,6 @@ static void buttonBluetooth(const DataSet *dataSet, uint16_t measureIndex) {
 
 static uint8_t shutdownState = 0;
 
-#ifdef OBSPRO
-// Power-management keep alive timer
-// This function is called every 100 ms
-static unsigned long timeOfLastPowerKeepAlive = 0;
-static uint8_t buttonPressedCounter = 0;
-static void powerKeepAliveTimerISR()
-{
-  // Send "keep alive" trigger to power management module
-  // This is done by toggling the pin every 300 ms or more
-  if(shutdownState == 0)
-  {
-    if(!digitalRead(IP5306_BUTTON) && millis() - timeOfLastPowerKeepAlive > POWER_KEEP_ALIVE_INTERVAL_MS)
-    {
-      timeOfLastPowerKeepAlive = millis();
-      digitalWrite(IP5306_BUTTON, HIGH);
-    }
-    else if(digitalRead(IP5306_BUTTON) && millis() - timeOfLastPowerKeepAlive > 300)
-    {
-      timeOfLastPowerKeepAlive = millis();
-      digitalWrite(IP5306_BUTTON, LOW);
-    }
-  }
-
-  // Soft power-off OBSPro when button is pressed for more than 2 seconds
-  if(button.read())
-  {
-    if(buttonPressedCounter < 255)
-      buttonPressedCounter++;
-  }
-  else
-    buttonPressedCounter = 0;
-
-  if(shutdownState == 0 && buttonPressedCounter >= 50) {
-    shutdownState = 1;
-  }
-  switch(shutdownState)
-  {
-    case 1:
-      digitalWrite(IP5306_BUTTON, LOW);
-      break;
-    case 4:
-      digitalWrite(IP5306_BUTTON, HIGH);
-      break;
-    case 7:
-      digitalWrite(IP5306_BUTTON, LOW);
-      break;
-    case 10:
-      digitalWrite(IP5306_BUTTON, HIGH);
-      break;
-    case 13:
-      digitalWrite(IP5306_BUTTON, LOW);
-      noInterrupts();
-      while(1)
-        NOP();
-      break;
-    default:
-      break;
-  }
-  if(shutdownState != 0 && shutdownState < 13)
-    shutdownState++;
-}
-
-#endif
-
 void setup() {
   Serial.begin(115200);
   log_i("openbikesensor.org - OBS/%s", OBSVersion);
@@ -309,14 +245,6 @@ void setup() {
   pinMode(GPS_POWER_PIN, OUTPUT);
   digitalWrite(GPS_POWER_PIN,HIGH);
   #endif
-
-#ifdef OBSPRO
-  // Setup power management timer to trigger every 100ms (clock is 80 MHz)
-  timer0_powermanagement_cfg = timerBegin(0, 1000, true);
-  timerAttachInterrupt(timer0_powermanagement_cfg, &powerKeepAliveTimerISR, true);
-  timerAlarmWrite(timer0_powermanagement_cfg, 8000, true);
-  timerAlarmEnable(timer0_powermanagement_cfg);
-#endif
 
   //##############################################################
   // Setup display
