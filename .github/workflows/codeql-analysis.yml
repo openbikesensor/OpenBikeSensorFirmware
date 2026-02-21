@@ -25,15 +25,12 @@ jobs:
     name: Analyze
     runs-on: ubuntu-latest
     container:
-    # could use a container with sq tools already installed
        image: infinitecoding/platformio-for-ci:latest
 
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'cpp' ]
-        # CodeQL supports [ 'cpp', 'csharp', 'go', 'java', 'javascript', 'python' ]
-        # Learn more:
+        language: [ 'cpp', 'actions' ]
         # https://docs.github.com/en/free-pro-team@latest/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#changing-the-languages-that-are-analyzed
 
     steps:
