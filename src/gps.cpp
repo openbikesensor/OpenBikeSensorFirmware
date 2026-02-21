@@ -82,14 +82,14 @@ void Gps::begin() {
     if (!is_neo6()) log_i("Coldstart because we found that newer neos profit from that.");
 
     coldStartGps();
-  }
+  }  
   pollStatistics();
 #endif
 
   if (is_neo6()) {
     enableAlpIfDataIsAvailable();
   }
-
+  
   if (mLastTimeTimeSet == 0) {
 #ifdef UBX_M10
     setMessageInterval(UBX_CFG_KEY_ID::CFG_MSGOUT_UBX_NAV_TIMEGPS_UART1, 1);
@@ -109,7 +109,6 @@ void Gps::begin() {
   //Serial.updateBaudRate(9600);
   //mSerial.begin(9600, SERIAL_8N1);
   // Debug - forward gps serial to normal serial
-
   /*
   log_e("--------_STARTING LOOP");
   while(1)
@@ -120,8 +119,7 @@ void Gps::begin() {
     val = Serial.read();
     if(val >= 0)
       mSerial.write(val);
-  }
-  */
+  }*/
 }
 
 void Gps::sendUbx(UBX_MSG ubxMsgId, const uint8_t payload[], uint16_t length) {
@@ -275,7 +273,7 @@ void Gps::configureGpsModule() {
   bool success = sendAndWaitForAck(UBX_MSG::CFG_GNSS, UBX_CFG_GNSS, sizeof(UBX_CFG_GNSS));
   if (success) {
     addStatisticsMessage("Successfully set GNSS");
-  }
+  } 
   else {
     addStatisticsMessage("GNSS not configured, likely older GPS");
   }
@@ -359,7 +357,7 @@ void Gps::softResetGps() {
 void Gps::coldStartGps() {
   log_i("Cold-Start GPS!");
   handle();
-  const uint8_t UBX_CFG_RST[] = {0xFF, 0xFF, 0x00, 0x00};
+  const uint8_t UBX_CFG_RST[] = {0xFF, 0xFF, 0x00, 0x00}; 
   // we had the case where the reset took several seconds
   // see https://github.com/openbikesensor/OpenBikeSensorFirmware/issues/309
   // Newer firmware (like M10 and likely also M8) will not ack this
@@ -580,8 +578,7 @@ bool Gps::sendAndWaitForAck(UBX_MSG ubxMsgId, const uint8_t *buffer, size_t size
     log_w("Retry to send 0x%04x after %dms.", ubxMsgId, millis() - loopStart);
   }
   if (result) {
-    //log_d("Success in sending. 0x%04x took %dms", ubxMsgId, millis() - start);
-    log_e("Success in sending. 0x%04x took %dms", ubxMsgId, millis() - start);
+    log_d("Success in sending. 0x%04x took %dms", ubxMsgId, millis() - start);
   } else {
     log_e("Failed to send. 0x%04x NAK: %d after %dms", ubxMsgId, mNakReceived, millis() - start);
   }
