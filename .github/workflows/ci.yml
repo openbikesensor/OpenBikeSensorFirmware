@@ -249,7 +249,7 @@ jobs:
           -Dsonar.projectVersion=${{ env.OBS_MAJOR_VERSION }}
 
     - name: Upload Build Asset
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: obs-${{ env.OBS_VERSION }}
         path: |
@@ -261,7 +261,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload Build Asset Initial Flash
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: obs-${{ env.OBS_VERSION }}-initial-flash
         path: |
@@ -274,7 +274,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload Build Asset obspro
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: obspro-${{ env.OBS_VERSION }}
         path: |
@@ -286,7 +286,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload Build Asset Initial Flash obspro
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: obspro-${{ env.OBS_VERSION }}-initial-flash
         path: |
