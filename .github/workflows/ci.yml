@@ -35,7 +35,7 @@ jobs:
     # could use a container with sq tools already installed
        image: infinitecoding/platformio-for-ci:latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         fetch-depth: 0
 
@@ -63,11 +63,11 @@ jobs:
         echo $VERSION > version.txt
         echo Building OBS Version: $VERSION
         sed -i 's|-DBUILD_NUMBER=\\"-dev\\"|-DBUILD_NUMBER=\\"'${SEPARATOR}${PATCH}'\\"|' platformio.ini
-        echo "SONAR_SCANNER_VERSION=7.1.0.4889" >> $GITHUB_ENV
+        echo "SONAR_SCANNER_VERSION=8.0.1.6346" >> $GITHUB_ENV
 
     - name: Cache SonarCloud packages
       id: cache-sonar
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: |
           ~/.sonar/cache
@@ -300,7 +300,7 @@ jobs:
     - name: Generate changelog
       id: changelog
       if: ${{ env.OBS_PREPARE_RELEASE == 'true' }}
-      uses: metcalfc/changelog-generator@v4.3.1
+      uses: metcalfc/changelog-generator@v4
       with:
         myToken: ${{ secrets.GITHUB_TOKEN }}
 
