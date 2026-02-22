@@ -127,7 +127,7 @@ bool CSVFileWriter::writeHeader(String trackId) {
   header += "OBSFirmwareVersion=" + String(OBSVersion) + "&";
 #ifdef OBSPRO
   header += "HardwareType=OBSPro&";
-  header += "HardwareRev=v2.1&";  // TODO: Use hardware revision detection
+  header += "HardwareRev=v2.2&";  // TODO: Use hardware revision detection
 #endif
 #ifdef OBSCLASSIC
   header += "HardwareType=OBSClassic&";

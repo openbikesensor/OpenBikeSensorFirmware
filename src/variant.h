@@ -27,11 +27,7 @@
 
 // Use custom_config.ini to set the needed variant!
 // If set, the firmware is build for the OBSPro hardware variant
-// The main differences are:
-//   - The button is inverted
-//   - The button is also responsible for soft-power-off
-//   - The display is a JHD12864-G156BT which is SPI based
-//   - The ultrasonic sensors are PGA460 based
+// The main difference is the ultrasonic sensors being PGA460 based
 //#define OBSPRO
 
 // If set, the firmware is build for the OBSClassic
@@ -39,9 +35,6 @@
 
 // Settings specific to OBSPro
 #ifdef OBSPRO
-#define LCD_CS_PIN  12
-#define LCD_DC_PIN  27
-#define LCD_RESET_PIN  4
 
 #define SENSOR1_SCK_PIN  25
 #define SENSOR1_MOSI_PIN  33
@@ -49,7 +42,7 @@
 
 #define SENSOR2_SCK_PIN  14
 #define SENSOR2_MOSI_PIN  15
-#define SENSOR2_MISO_PIN  21
+#define SENSOR2_MISO_PIN  26
 #define UBX_M10
 
 #define POWER_KEEP_ALIVE_INTERVAL_MS  5000UL

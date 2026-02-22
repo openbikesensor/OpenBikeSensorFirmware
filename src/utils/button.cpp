@@ -65,11 +65,7 @@ bool Button::gotPressed() {
 
 int Button::read() const {
   // not debounced
-#ifdef OBSPRO
-  return !digitalRead(mPin);
-#else
   return digitalRead(mPin);
-#endif
 }
 
 int Button::getState() const {

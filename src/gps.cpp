@@ -72,6 +72,7 @@ void Gps::begin() {
     configureGpsModule();
   }
   pollStatistics();
+#ifndef UBX_M10
   if((!is_neo6()) || (!SD.exists(AID_INI_DATA_FILE_NAME))) {
     // we're on a non-6 neo and avoid AID_INI because is deprecated
     // or we're on a neo6 but last boot we didn't get far enough to receive fresh
@@ -83,6 +84,7 @@ void Gps::begin() {
     coldStartGps();
   }  
   pollStatistics();
+#endif
 
   if (is_neo6()) {
     enableAlpIfDataIsAvailable();
