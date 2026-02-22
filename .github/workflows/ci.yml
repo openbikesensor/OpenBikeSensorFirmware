@@ -227,6 +227,10 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         set -eux
+        if [ -z "${SONAR_TOKEN:-}" ]; then
+          echo "Will not execute SonarQube - SONAR_TOKEN not set."
+          exit 0
+        fi
         # Hack - point sonarqube to the real sources not the copy of it
         # See also https://community.sonarsource.com/t/scanning-platformio-c-embeded-projects/35141/2
         sed -i 's|OpenBikeSensorFirmware/bin|OpenBikeSensorFirmware|g' \
