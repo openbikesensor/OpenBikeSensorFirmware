@@ -187,8 +187,8 @@ static void reportBluetooth() {
   if (bluetoothManager && lastBluetoothInterval != currentInterval) {
 #ifdef OBSPRO
     // TODO: Get median values from sensorManager
-    uint16_t left_median = 0;
-    uint16_t right_median = 0;
+    uint16_t left_median = sensorManager->m_sensors[LEFT_SENSOR_ID].median->median();
+    uint16_t right_median = sensorManager->m_sensors[RIGHT_SENSOR_ID].median->median();
 #endif
 #ifdef OBSCLASSIC
     uint16_t left_median = sensorManager->m_sensors[LEFT_SENSOR_ID].median->median();
