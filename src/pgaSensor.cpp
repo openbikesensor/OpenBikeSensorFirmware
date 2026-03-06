@@ -153,25 +153,44 @@ void PGASensorManager::setupSensor(int sensorId)
   spiRegWrite(sensorId, PGA_REG_CURR_LIM_P1, PGA_DIS_CL(0) | PGA_CURR_LIM1(0));  // CURR_LIM1*7mA + 50mA
   spiRegWrite(sensorId, PGA_REG_CURR_LIM_P2, PGA_LPF_CO(0) | PGA_CURR_LIM2(0));  // CURR_LIM1*7mA + 50mA
   spiRegWrite(sensorId, PGA_REG_REC_LENGTH, PGA_P1_REC(8) | PGA_P2_REC(0));  // Record time = 4.096 × (Px_REC + 1) [ms], 8 = 36,9ms = 6m range
-  spiRegWrite(sensorId, PGA_REG_DECPL_TEMP, PGA_AFE_GAIN_RNG(1) | PGA_LPM_EN(0) | PGA_DECPL_TEMP_SEL(0) | PGA_DECPL_T(0));  // Time = 4096 × (DECPL_T + 1) [μs], 0 = 4ms = 0,66m?!?
+  spiRegWrite(sensorId, PGA_REG_DECPL_TEMP, PGA_AFE_GAIN_RNG(3) | PGA_LPM_EN(0) | PGA_DECPL_TEMP_SEL(0) | PGA_DECPL_T(0));  // Time = 4096 × (DECPL_T + 1) [μs], 0 = 4ms = 0,66m?!?
   spiRegWrite(sensorId, PGA_REG_EE_CNTRL, PGA_DATADUMP_EN(0));  // Disable data dump
 
+  // Gain map
+  // Gain = 0.5 × (TVGAIN+1) + value(AFE_GAIN_RNG) [dB]
+  // TVGAIN is 0..63, time is any TH_TIME_DELTA_*
+  // The gain map is applied for both profiles.
+  // Times are given in deltas to previous time, except the first one
+  // So there is a constant gain of g0 from 0 to t0, then a linear interpolation from g0 to g1 between t0 and t1,
+  // then another linear interpolation from g1 to g2 between t1 and t2, and so on. After t6, the gain is constant at g6.
+  // I think the INIT_GAIN value is ignored, if TVGAIN is used, but AFE_GAIN_RNG still applies.
+  PGATVGain gains(
+    TH_TIME_DELTA_2000US, 0,
+    TH_TIME_DELTA_5200US, 40,
+    TH_TIME_DELTA_5200US, 45,
+    TH_TIME_DELTA_5200US, 50,
+    TH_TIME_DELTA_5200US, 55,
+    TH_TIME_DELTA_5200US, 60
+  );
+  spiRegWriteGains(sensorId, gains);
+
   // Threshold map, then check DEV_STAT0.THR_CRC_ERR
-  // th_t = np.array([2000, 5200, 2400, 8000, 8000, 8000, 8000, 8000, 8000, 8000, 8000, 8000])
-  // th_l = np.array([200, 80, 16, 16, 16, 24, 24, 24, 24, 24, 24, 24])
+  // The first 8 values are only 5 bit, so the 0..255 value has to be devided by 8.
+  // th_t = np.array([1000, 2000, 2400, 8000, 8000, 8000, 8000, 8000, 8000, 8000, 8000, 8000])
+  // th_l = np.array([255, 80, 30, 30, 30, 25, 25, 20, 20, 20, 20, 20])
   PGAThresholds thresholds(
-    TH_TIME_DELTA_2000US, 255/8,
-    TH_TIME_DELTA_4000US, 80/8,
-    TH_TIME_DELTA_2400US, 24/8,
-    TH_TIME_DELTA_8000US, 24/8,
-    TH_TIME_DELTA_8000US, 24/8,
-    TH_TIME_DELTA_8000US, 32/8,
-    TH_TIME_DELTA_8000US, 32/8,
-    TH_TIME_DELTA_8000US, 32/8,
-    TH_TIME_DELTA_8000US, 32,
-    TH_TIME_DELTA_8000US, 32,
-    TH_TIME_DELTA_8000US, 32,
-    TH_TIME_DELTA_8000US, 32
+    TH_TIME_DELTA_1000US, 240/8,
+    TH_TIME_DELTA_2000US, 80/8,
+    TH_TIME_DELTA_2400US, 30/8,
+    TH_TIME_DELTA_8000US, 30/8,
+    TH_TIME_DELTA_8000US, 30/8,
+    TH_TIME_DELTA_8000US, 25/8,
+    TH_TIME_DELTA_8000US, 25/8,
+    TH_TIME_DELTA_8000US, 20/8,
+    TH_TIME_DELTA_8000US, 20,
+    TH_TIME_DELTA_8000US, 20,
+    TH_TIME_DELTA_8000US, 20,
+    TH_TIME_DELTA_8000US, 20
   );
   spiRegWriteThesholds(sensorId, 1, thresholds);
   spiRegWriteThesholds(sensorId, 2, thresholds);
@@ -265,6 +284,20 @@ void PGASensorManager::spiRegWrite(uint8_t sensorId, uint8_t reg_addr, uint8_t v
     safe_usleep(61);
   else
     safe_usleep(5);
+}
+
+void PGASensorManager::spiRegWriteGains(uint8_t sensorId, PGATVGain &gains)
+{
+  assert(sensorId >= 0 && sensorId <= 1);
+
+  // The order of the time/gain values is a bit messy, so we have to do some bit shifting to write them to the registers
+  spiRegWrite(sensorId, PGA_REG_TVGAIN0, gains.t0<<4 | gains.t1);
+  spiRegWrite(sensorId, PGA_REG_TVGAIN1, gains.t2<<4 | gains.t3);
+  spiRegWrite(sensorId, PGA_REG_TVGAIN2, gains.t4<<4 | gains.t5);
+  spiRegWrite(sensorId, PGA_REG_TVGAIN3, gains.g1<<2 | gains.g2>>4);
+  spiRegWrite(sensorId, PGA_REG_TVGAIN4, gains.g2<<4 | gains.g3>>2);
+  spiRegWrite(sensorId, PGA_REG_TVGAIN5, gains.g3<<6 | gains.g4);
+  spiRegWrite(sensorId, PGA_REG_TVGAIN6, gains.g5<<2);
 }
 
 void PGASensorManager::spiRegWriteThesholds(uint8_t sensorId, uint8_t preset, PGAThresholds &thresholds)

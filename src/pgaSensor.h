@@ -260,6 +260,44 @@ struct PGAThresholds
   uint8_t l12;  // 8(!) bits
 };
 
+struct PGATVGain
+{
+  PGATVGain(
+    uint8_t t0 = TH_TIME_DELTA_100US, uint8_t g0 = 0,
+    uint8_t t1 = TH_TIME_DELTA_100US, uint8_t g1 = 0,
+    uint8_t t2 = TH_TIME_DELTA_100US, uint8_t g2 = 0,
+    uint8_t t3 = TH_TIME_DELTA_100US, uint8_t g3 = 0,
+    uint8_t t4 = TH_TIME_DELTA_100US, uint8_t g4 = 0,
+    uint8_t t5 = TH_TIME_DELTA_100US, uint8_t g5 = 0
+  )
+  {
+    this->t0 = t0 & 0x0f;
+    this->g0 = g0 & 0x3f;
+    this->t1 = t1 & 0x0f;
+    this->g1 = g1 & 0x3f;
+    this->t2 = t2 & 0x0f;
+    this->g2 = g2 & 0x3f;
+    this->t3 = t3 & 0x0f;
+    this->g3 = g3 & 0x3f;
+    this->t4 = t4 & 0x0f;
+    this->g4 = g4 & 0x3f;
+    this->t5 = t5 & 0x0f;
+    this->g5 = g5 & 0x3f;
+  }
+  uint8_t t0;
+  uint8_t g0;
+  uint8_t t1;
+  uint8_t g1;
+  uint8_t t2;
+  uint8_t g2;
+  uint8_t t3;
+  uint8_t g3;
+  uint8_t t4;
+  uint8_t g4;
+  uint8_t t5;
+  uint8_t g5;
+};
+
 class PGASensorManager
 {
 public:
@@ -302,6 +340,7 @@ protected:
   uint8_t spiTransfer(uint8_t sensorId, uint8_t data_out);
   int spiRegRead(uint8_t sensorId, uint8_t reg_addr, uint8_t *pdiag = nullptr);
   void spiRegWrite(uint8_t sensorId, uint8_t reg_addr, uint8_t value);
+  void spiRegWriteGains(uint8_t sensorId, PGATVGain &gains);
   void spiRegWriteThesholds(uint8_t sensorId, uint8_t preset, PGAThresholds &thresholds);
   void spiBurstAndListen(uint8_t sensorId, uint8_t preset, uint8_t numberOfObjectsToDetect);
   bool spiUSResult(uint8_t sensorId, uint8_t numberOfObjectsToDetect, PGAResult *usResults);
