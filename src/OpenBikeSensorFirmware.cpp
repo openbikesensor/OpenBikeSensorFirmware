@@ -237,7 +237,6 @@ void setup() {
   // Configure button pin as INPUT
   //##############################################################
 
-  pinMode(PUSHBUTTON_PIN, INPUT);
   pinMode(IP5306_BUTTON, OUTPUT);
   digitalWrite(IP5306_BUTTON, LOW);
   pinMode(BatterieVoltage_PIN, INPUT);

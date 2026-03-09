@@ -26,7 +26,7 @@
 #include "variant.h"
 
 Button::Button(int pin) : mPin(pin) {
-  pinMode(pin, INPUT);
+  pinMode(pin, INPUT_PULLDOWN);
   mLastStateChangeMillis = mLastRawReadMillis = millis();
   mLastState = mLastRawState = read();
 }
