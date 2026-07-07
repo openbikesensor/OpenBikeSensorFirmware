@@ -29,6 +29,7 @@
 #ifndef OBS_CONFIG_SERVER_H
 #define OBS_CONFIG_SERVER_H
 
+
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
@@ -44,10 +45,12 @@
 // DNS server
 //const byte DNS_PORT = 53;
 //DNSServer dnsServer;
+#define FIRMWARE_UPLOAD_BUFFER_SIZE 8192
 
 void startServer(ObsConfig *pConfig);
 bool configServerWasConnectedViaHttp();
 void uploadTracks(httpsserver::HTTPResponse *res = nullptr);
 void configServerHandle();
+
 
 #endif

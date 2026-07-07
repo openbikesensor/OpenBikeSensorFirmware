@@ -1765,11 +1765,21 @@ static void handleFlashFileUpdateAction(HTTPRequest *req, HTTPResponse *res) {
     log_i("Got form data %s type %s filename %s", parser.getFieldName().c_str(),
           parser.getFieldMimeType().c_str(), parser.getFieldFilename().c_str());
 
+    byte buffer[FIRMWARE_UPLOAD_BUFFER_SIZE];
+    size_t bufferPos = 0;
     while (!parser.endOfField()) {
-      byte buffer[256];
-      size_t len = parser.read(buffer, 256);
-      if (Update.write(buffer, len) != len) {
-        Update.printError(Serial);
+      size_t len = parser.read(buffer + bufferPos, sizeof(buffer) - bufferPos);
+      if (len > 0) {
+        bufferPos += len;
+      }
+      if (bufferPos == sizeof(buffer) || (parser.endOfField() && bufferPos > 0)) {
+        if (Update.write(buffer, bufferPos) != bufferPos) {
+          Update.printError(Serial);
+        }
+        bufferPos = 0;
+      }
+      if (len == 0 && !parser.endOfField()) {
+        delay(1);
       }
     }
     log_i("Done reading");
@@ -2222,19 +2232,35 @@ static void handleFirmwareUpdateSdAction(HTTPRequest * req, HTTPResponse * res) 
 
     int tick = 0;
     size_t pos = 0;
+    byte buffer[4096];
+    size_t bufferPos = 0;
     while (!parser.endOfField()) {
-      byte buffer[256];
-      size_t len = parser.read(buffer, 256);
-      obsDisplay->drawWaitBar(4, tick++);
-      log_v("Read data %d", len);
-      pos += len;
-      if (newFile.write(buffer, len) != len) {
-        obsDisplay->showTextOnGrid(0, 3, "Write Error");
-        obsDisplay->showTextOnGrid(0, 4, (String("Failed @") + String(pos)).c_str());
-        res->setStatusCode(500);
-        res->setStatusText((String("Failed to write @") + String(pos)).c_str());
-        res->print((String("Failed to write @") + String(pos)).c_str());
-        return;
+      size_t len = parser.read(buffer + bufferPos, sizeof(buffer) - bufferPos);
+      if (len > 0) {
+        bufferPos += len;
+        pos += len;
+        tick++;
+      }
+
+      if (bufferPos == sizeof(buffer) || (parser.endOfField() && bufferPos > 0)) {
+        if (newFile.write(buffer, bufferPos) != bufferPos) {
+          obsDisplay->showTextOnGrid(0, 3, "Write Error");
+          obsDisplay->showTextOnGrid(0, 4, (String("Failed @") + String(pos)).c_str());
+          res->setStatusCode(500);
+          res->setStatusText((String("Failed to write @") + String(pos)).c_str());
+          res->print((String("Failed to write @") + String(pos)).c_str());
+          newFile.close();
+          return;
+        }
+        bufferPos = 0;
+        // Update display every ~16KB (4 * 4096)
+        if ((tick / 16) % 4 == 0) {
+          obsDisplay->drawWaitBar(4, tick / 16);
+        }
+      }
+      if (len == 0 && !parser.endOfField()) {
+        // Should not happen, but avoid infinite loop
+        delay(1);
       }
     }
     obsDisplay->clearProgressBar(4);
