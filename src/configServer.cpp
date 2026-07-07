@@ -2232,7 +2232,7 @@ static void handleFirmwareUpdateSdAction(HTTPRequest * req, HTTPResponse * res) 
 
     int tick = 0;
     size_t pos = 0;
-    byte buffer[4096];
+    byte buffer[FIRMWARE_UPLOAD_BUFFER_SIZE];
     size_t bufferPos = 0;
     while (!parser.endOfField()) {
       size_t len = parser.read(buffer + bufferPos, sizeof(buffer) - bufferPos);
