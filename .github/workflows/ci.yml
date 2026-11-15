@@ -253,7 +253,7 @@ jobs:
           -Dsonar.projectVersion=${{ env.OBS_MAJOR_VERSION }}
 
     - name: Upload Build Asset
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: obs-${{ env.OBS_VERSION }}
         path: |
@@ -265,7 +265,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload Build Asset Initial Flash
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: obs-${{ env.OBS_VERSION }}-initial-flash
         path: |
@@ -278,7 +278,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload Build Asset obspro
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: obspro-${{ env.OBS_VERSION }}
         path: |
@@ -290,7 +290,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload Build Asset Initial Flash obspro
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: obspro-${{ env.OBS_VERSION }}-initial-flash
         path: |
@@ -301,32 +301,31 @@ jobs:
           obs-pro/LICENSE
         if-no-files-found: error
 
-    - name: Generate changelog
-      id: changelog
+    - name: Stage release assets
       if: ${{ env.OBS_PREPARE_RELEASE == 'true' }}
-      uses: metcalfc/changelog-generator@v4
-      with:
-        myToken: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        set -eux
+        mkdir -p release-assets
+        cp ./bin/.pio/build/obspro/firmware.bin release-assets/Zfirmware-obspro.bin
+        cp ./bin/.pio/build/obs/firmware.bin release-assets/firmware.bin
 
     - name: Create Release
       id: create_release
       if: ${{ env.OBS_PREPARE_RELEASE == 'true' }}
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v3
       with:
         tag_name: ${{ env.OBS_VERSION }}
-        release_name: ${{ env.OBS_VERSION }}
+        name: ${{ env.OBS_VERSION }}
+        target_commitish: ${{ github.sha }}
+        generate_release_notes: true
         body: |
           ![GitHub downloads](https://img.shields.io/github/downloads-pre/openbikesensor/OpenBikeSensorFirmware/${{ env.OBS_VERSION }}/total) ![GitHub commits since release](https://img.shields.io/github/commits-since/openbikesensor/OpenBikeSensorFirmware/${{ github.sha }}?label=commits%20since%20${{ env.OBS_VERSION }})
 
           Version ${{ env.OBS_VERSION }} based on ${{ github.ref }} ${{ github.sha }}
 
-          ${{ steps.changelog.outputs.changelog }}
-          
           ## :tada: Major features and improvements
 
-          ## :rocket: New features and improvements 
+          ## :rocket: New features and improvements
 
           ## :bug: Bug Fixes
 
@@ -337,75 +336,11 @@ jobs:
           ## :construction_worker: Changes for developers / internal
         draft: true
         prerelease: true
-
-    - name: Upload Release Asset
-      id: upload-release-asset
-      if: ${{ env.OBS_PREPARE_RELEASE == 'true' }}
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./obs-${{ env.OBS_VERSION }}.zip
-        asset_name: obs-${{ env.OBS_VERSION }}.zip
-        asset_content_type: application/zip
-
-    - name: Upload Release Asset Initial Flash
-      id: upload-release-asset-initial-flash
-      if: ${{ env.OBS_PREPARE_RELEASE == 'true' }}
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./obs-${{ env.OBS_VERSION }}-initial-flash.zip
-        asset_name: obs-${{ env.OBS_VERSION }}-initial-flash.zip
-        asset_content_type: application/zip
-
-    - name: Upload Release Asset obspro
-      id: upload-obspro-release-asset
-      if: ${{ env.OBS_PREPARE_RELEASE == 'true' }}
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./obspro-${{ env.OBS_VERSION }}.zip
-        asset_name: obspro-${{ env.OBS_VERSION }}.zip
-        asset_content_type: application/zip
-
-    - name: Upload Release Asset Initial Flash pro
-      id: upload-obspro-release-asset-initial-flash
-      if: ${{ env.OBS_PREPARE_RELEASE == 'true' }}
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./obspro-${{ env.OBS_VERSION }}-initial-flash.zip
-        asset_name: obspro-${{ env.OBS_VERSION }}-initial-flash.zip
-        asset_content_type: application/zip
-
-    - name: Upload Release Asset app bin pro
-      id: upload-obspro-release-asset-app-bin
-      if: ${{ env.OBS_PREPARE_RELEASE == 'true' }}
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./bin/.pio/build/obspro/firmware.bin
-        asset_name: Zfirmware-obspro.bin
-        asset_content_type: application/x-esp32
-
-    - name: Upload Release Asset app bin
-      id: upload-release-asset-app-bin
-      if: ${{ env.OBS_PREPARE_RELEASE == 'true' }}
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./bin/.pio/build/obs/firmware.bin
-        asset_name: firmware.bin
-        asset_content_type: application/x-esp32
+        fail_on_unmatched_files: true
+        files: |
+          ./obs-${{ env.OBS_VERSION }}.zip
+          ./obs-${{ env.OBS_VERSION }}-initial-flash.zip
+          ./obspro-${{ env.OBS_VERSION }}.zip
+          ./obspro-${{ env.OBS_VERSION }}-initial-flash.zip
+          release-assets/Zfirmware-obspro.bin
+          release-assets/firmware.bin
